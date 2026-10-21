@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Workflow · MuseFlow 0.11.0</title>
+  <title>Workflow · MuseFlow 0.12.0</title>
   <link rel="icon" type="image/png" sizes="128x128" href="icons/icon128.png" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <header class="toolbar">
-    <div class="brand"><img class="brand-logo" src="icons/26flow.svg" alt="26Flow" /><strong class="brand-name">Flow</strong><span class="brand-version">0.11.0</span></div>
+    <div class="brand"><img class="brand-logo" src="icons/26flow.svg" alt="26Flow" /><strong class="brand-name">Flow</strong><span class="brand-version">0.12.0</span></div>
     <div class="toolbar-tools" aria-label="Add workflow nodes">
       <button id="batchImagesBtn" type="button">＋ Tạo ảnh hàng loạt</button><button id="scriptImportBtn" type="button">＋ Script → Nodes</button>
       <button id="addNodeMenuBtn" type="button" aria-haspopup="true" aria-expanded="false">＋ Add node</button>
@@ -66,14 +66,14 @@
     </div>
   </main>
   <section id="timelineDock" class="timeline-dock collapsed" aria-label="Video timeline">
-    <div class="timeline-dock-header"><div class="timeline-heading"><strong>Timeline</strong><span id="timelineClipCount">0 clips</span><small>Arrange scenes · drag clips to reorder</small></div><div class="timeline-dock-actions"><button id="timelineImportAllBtn" type="button" title="Add every Generate Video node to the timeline">＋ Import all videos</button><div class="timeline-output-picker"><button id="timelineAddVideoBtn" type="button" title="Add a video output">＋ Add clip</button><div id="timelineOutputMenu" class="timeline-output-menu hidden"></div></div><button id="timelinePlayBtn" type="button" title="Preview sequence">▶ Preview</button><select id="timelineExportFormat" title="Choose export format"><option value="webm">WebM</option><option value="mp4">MP4 (H.264)</option></select><button id="timelineExportBtn" type="button" title="Export the full stitched timeline video">⇩ Export</button><button id="timelineExportStopBtn" class="timeline-export-stop hidden" type="button" title="Stop timeline export">■ Stop</button><button id="timelineToggleBtn" type="button" aria-expanded="false" title="Show timeline">▲</button></div></div>
-    <div id="timelineDropZone" class="timeline-drop-zone">Drag a Generate Video node or video clip here</div>
+    <div class="timeline-dock-header"><div class="timeline-heading"><strong>Timeline</strong><span id="timelineClipCount">0 clips</span><small>Arrange scenes · drag clips to reorder</small></div><div class="timeline-dock-actions"><button id="timelineImportAllBtn" type="button" title="Add every Generate Video node to the timeline">＋ Import all videos</button><div class="timeline-output-picker"><button id="timelineAddVideoBtn" type="button" title="Add a video output">＋ Thêm ảnh/video</button><div id="timelineOutputMenu" class="timeline-output-menu hidden"></div></div><button id="timelinePlayBtn" type="button" title="Preview sequence">▶ Preview</button><select id="timelineExportFormat" title="Choose export format"><option value="webm">WebM</option><option value="mp4">MP4 (H.264)</option></select><button id="timelineExportBtn" type="button" title="Export the full stitched timeline video">⇩ Xuất tất cả</button><button id="timelineExportSingleBtn" type="button" title="Xuất mỗi cảnh thành một video riêng theo định dạng đã chọn">⇩ Xuất từng clip</button><button id="timelineExportStopBtn" class="timeline-export-stop hidden" type="button" title="Stop timeline export">■ Stop</button><button id="timelineToggleBtn" type="button" aria-expanded="false" title="Show timeline">▲</button></div></div>
+    <div id="timelineDropZone" class="timeline-drop-zone">Thêm ảnh/video · kéo để sắp xếp · đặt thời lượng mỗi cảnh</div>
     <div class="timeline-dock-content"><div id="timelineTrack" class="timeline-dock-track"></div></div>
   </section>
 
   <aside id="timelinePreviewPanel" class="timeline-preview-panel hidden" aria-label="Timeline video preview">
     <header><strong>Timeline Preview</strong><button id="closeTimelinePreview" type="button" aria-label="Close preview">×</button></header>
-    <div class="timeline-preview-stage"><video id="timelinePlayer" class="is-active" controls playsinline preload="auto"></video><video id="timelinePlayerNext" playsinline preload="auto"></video></div>
+    <div class="timeline-preview-stage"><img id="timelineStill" hidden alt="Ảnh trên dòng thời gian" /><video id="timelinePlayer" class="is-active" controls playsinline preload="auto"></video><video id="timelinePlayerNext" playsinline preload="auto"></video></div>
     <div class="timeline-preview-caption">Scene playback</div>
   </aside>
 

@@ -1,4 +1,4 @@
-# Workflow · MuseFlow 0.11.0
+# Workflow · MuseFlow 0.12.0
 
 Extension Chrome/Edge dựa trên [MuseFlow / 26Flow](https://github.com/bynne2602/museflow), mở rộng canvas/timeline để làm việc với Muse.ai, Gemini, ChatGPT và API Google, OpenAI, fal.ai. Giữ nguyên giấy phép GPL-2.0-or-later của nguồn gốc và thông báo FFmpeg đi kèm.
 
@@ -155,3 +155,15 @@ Tạo văn bản mặc định **Tự gửi khi sẵn sàng**, thay cho chờ 2 
 Thanh trên cùng hiển thị Muse / Gemini / GPT và API được dùng: **xanh = kết nối, rảnh; vàng = đang làm; xám = lỗi; tím = cần kiểm tra**. Di chuột xem chi tiết; bấm tên AI hoặc ↻ để kiểm tra lại. Tự kiểm tra tab mỗi 15 giây khi rảnh; API chỉ xác minh bằng tác vụ thật, không tự gọi tính phí để thử kết nối.
 
 Kiểm thử Chromium với phản hồi giả lập: tải video xong mới gửi, tự nhận văn bản khi cấu trúc phản hồi thay đổi, không lấy prompt/đoạn đang viết làm kết quả; Run All nhiều nhánh, đợi đầu vào, FIFO, lỗi nhánh, Dừng tất cả và màu trạng thái. Chưa xác minh trên phiên AI đăng nhập thật. Sau cập nhật cần Reload extension rồi tải lại Workflow và các tab AI để thay bridge cũ.
+
+
+### 0.12.0 — xuất từng clip, ghép tất cả và ảnh thành video
+
+Ở dòng thời gian, **Thêm ảnh/video** chọn đầu ra Tạo ảnh, Tạo video, Ảnh đầu vào, Video đầu vào hoặc Đổi kích thước ảnh. Có thể kéo cổng đầu ra ảnh/video xuống dòng thời gian. Đặt thời lượng mỗi cảnh (1–60 giây), kéo các cảnh để đổi thứ tự.
+
+- **Xuất từng clip**: tải mỗi cảnh thành một video riêng, theo thứ tự và thời lượng đã đặt, dùng MP4 hoặc WebM đang chọn. Tên tệp có số thứ tự và ID/tên node.
+- **Xuất tất cả**: ghép mọi cảnh trên dòng thời gian thành một video duy nhất, đúng thứ tự kéo thả. Mọi cảnh phải có tệp trước khi xuất; không tự bỏ qua cảnh chưa có kết quả.
+- Hai ảnh cũng ghép được thành một video: ảnh lần lượt xuất hiện theo thời lượng đặt, ví dụ 3 giây + 4 giây = video 7 giây. Có thể trộn ảnh với video. Ảnh được giữ tĩnh; âm thanh của đoạn video được giữ, đoạn ảnh có tiếng im lặng. Đây là ghép cảnh trực tiếp trong trình duyệt, không gọi AI tạo chuyển động.
+- **Dừng** hủy xuất hiện tại và các clip còn lại trong đợt xuất riêng. Trình duyệt có thể yêu cầu cho phép tải nhiều tệp khi xuất riêng.
+
+MP4 dùng FFmpeg cục bộ; WebM ảnh/cảnh hỗn hợp và xuất riêng cũng dùng FFmpeg. Kiểm thử Chromium + FFmpeg WASM thật, dùng FFprobe kiểm tra codec, âm thanh và tổng thời lượng, lấy khung hình để xác minh thứ tự ảnh, cùng kiểm thử dừng đợt xuất. Sửa menu thêm clip bị che bởi vùng canvas.
