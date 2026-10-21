@@ -103,12 +103,17 @@
     return wrap;
   }
   async function otherTabMessage(provider,message,signal){
+    const checkAbort=()=>{if(signal?.aborted)throw new DOMException('Đã dừng.','AbortError');};
+    checkAbort();
     const tabs=await chrome.tabs.query({url:WorkflowAI.providers[provider].urls});
     const tab=tabs.find(t=>t.active)||tabs[0];if(!tab?.id)throw new Error(`Mở tab ${WorkflowAI.providers[provider].name} và đăng nhập trước.`);
-    aiTabs.set(message.requestId,tab.id);
     // Install before sending; never retry a generation after an ambiguous send failure.
     await chrome.scripting.executeScript({target:{tabId:tab.id},files:['ai-bridge.js']});
-    try{return await sendMuseTabMessage(tab.id,message,signal);}finally{if(!message.requestId)aiTabs.delete(message.requestId);}
+    checkAbort();
+    const cancel=()=>{void chrome.tabs.sendMessage(tab.id,{type:'WORKFLOW_AI_STOP',requestId:message.requestId}).catch(()=>{});};
+    if(message.requestId)aiTabs.set(message.requestId,tab.id);
+    signal?.addEventListener('abort',cancel,{once:true});
+    try{return await sendMuseTabMessage(tab.id,message,signal);}finally{signal?.removeEventListener('abort',cancel);aiTabs.delete(message.requestId);}
   }
   async function generateWithProvider(n,request,signal){
     const provider=n.data.provider||(n.type==='generateText'?'gemini':'muse');
@@ -122,7 +127,6 @@
     return WorkflowAI.api(provider,request,aiKeys[provider],signal);
   }
   async function blobAsDataUrlFromUrl(url){if(url.startsWith('data:'))return url;const r=await fetch(url);if(!r.ok)throw new Error('Không tải được tệp nguồn để chuyển sang AI.');return blobAsDataUrl(await r.blob());}
-  async function stopOtherProviders(requestId){const tab=aiTabs.get(requestId);if(tab)try{await chrome.tabs.sendMessage(tab,{type:'WORKFLOW_AI_STOP',requestId});}catch{}}
   async function refreshConnections(){
     const host=$('#aiConnections');host.replaceChildren();
     for(const [id,p] of Object.entries(WorkflowAI.providers)){
@@ -1070,7 +1074,7 @@
     setRunStatus(`Stopped ${node?.type==='generateVideo'?'video':'image'} generation: ${nodeId}`,'warn');
     render();
     // Cancellation is best-effort for Muse, but never wait for its response to unlock the UI.
-    void sendMuseStop(requestId);void stopOtherProviders(requestId);
+    void sendMuseStop(requestId);
     try{clearTimeout(autoSaveTimer);void queueWorkflowSave();}catch{}
   }
 

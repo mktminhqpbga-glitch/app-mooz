@@ -65,7 +65,7 @@
   chrome.runtime.onMessage.addListener((request,sender,respond)=>{
     if(sender.id!==chrome.runtime.id)return false;
     if(request.type==='WORKFLOW_AI_CHECK'){respond({ok:true,signedIn:!!composer(),composer:!!composer()});return false;}
-    if(request.type==='WORKFLOW_AI_STOP'){active.get(request.requestId)?.abort();stopped()?.click();respond({ok:true});return false;}
+    if(request.type==='WORKFLOW_AI_STOP'){const controller=active.get(request.requestId);if(controller){controller.abort();stopped()?.click();}respond({ok:true,stopped:!!controller});return false;}
     if(request.type!=='WORKFLOW_AI_GENERATE')return false;
     if(busy){respond({ok:false,error:'Tab AI đang xử lý một yêu cầu khác.'});return false;}
     busy=true;const controller=new AbortController();active.set(request.requestId,controller);

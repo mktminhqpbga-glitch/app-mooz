@@ -24,7 +24,7 @@ Tình trạng dựa trên mã nguồn ZIP được cung cấp, không kế thừ
 
 ## Kiểm tra trên Chrome/Edge của người dùng
 
-1. Load unpacked từ thư mục gốc có manifest phiên bản 0.6.0, tải lại các tab AI.
+1. Load unpacked từ thư mục gốc có manifest phiên bản 0.6.2, tải lại các tab AI.
 2. Mở Gemini/ChatGPT/Muse đã đăng nhập, kiểm tra màu kết nối; không mở tab phải hiển thị xám.
 3. Tạo văn bản từ prompt, rồi từ ảnh; xác nhận đầu ra đúng trong node và nối sang node khác được.
 4. Dùng Gemini phân tích một video nhỏ có chi tiết chuyển động ở giữa; xác nhận tab nhận video gốc, không phải ba ảnh.
@@ -32,4 +32,4 @@ Tình trạng dựa trên mã nguồn ZIP được cung cấp, không kế thừ
 6. Bấm Dừng trong lúc chờ upload/AI; xác nhận node thoát trạng thái chạy. Dừng API là best-effort, tác vụ nhà cung cấp có thể đã bắt đầu.
 7. Thử API bằng khóa của người dùng: văn bản trước, ảnh sau; Veo/Motion Control cuối cùng vì có chi phí và yêu cầu quyền model.
 8. Xuất/nhập workflow, đóng/mở lại canvas; xác nhận media và đầu ra văn bản còn, khóa không có trong JSON xuất.
-9. Xuất một timeline ngắn WebM/MP4 và kiểm tra âm thanh/thời lượng; chưa được xác nhận tự động trong lần này.
+9. Xuất một timeline ngắn WebM/MP4 và kiểm tra âm thanh/thời lượng; MP4 hai clip ngắn đã được kiểm tra tự động bằng FFmpeg WASM và ffprobe; WebM và timeline dài chưa kiểm thử.
