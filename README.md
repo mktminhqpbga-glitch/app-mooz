@@ -1,4 +1,4 @@
-# Workflow · MuseFlow 0.13.0
+# Workflow · MuseFlow 0.14.0
 
 Extension Chrome/Edge dựa trên [MuseFlow / 26Flow](https://github.com/bynne2602/museflow), mở rộng canvas/timeline để làm việc với Muse.ai, Gemini, ChatGPT và API Google, OpenAI, fal.ai. Giữ nguyên giấy phép GPL-2.0-or-later của nguồn gốc và thông báo FFmpeg đi kèm.
 
@@ -177,3 +177,10 @@ MP4 dùng FFmpeg cục bộ; WebM ảnh/cảnh hỗn hợp và xuất riêng cũ
 - Mỗi tệp không quá 100 MB; sai loại tệp bị từ chối và giữ nguyên dữ liệu cũ. Khi con trỏ ở ô văn bản, dán vẫn theo cách bình thường. Không tự gửi AI sau khi nhập tệp.
 
 Kiểm thử Chromium: kéo/dán, thay tệp, từ chối sai loại, tạo nối nguồn ảnh/video, nhiều ảnh tham chiếu, thêm cảnh và lưu workflow; các sự kiện clipboard/drop dùng tệp giả lập.
+
+
+### 0.14.0 — bộ node âm thanh, hậu kỳ và mẫu workflow
+
+Thêm Âm thanh đầu vào, Âm thanh/nhạc nền, Phụ đề, Lồng tiếng, Đồng bộ lời đọc–cảnh, Chuyển cảnh, Điều chỉnh tốc độ và Mẫu workflow vào cả menu thêm node và chuột phải. Các node hậu kỳ nối được vào nhau, chạy qua Run All, có nút dừng/tải tệp và đưa kết quả vào dòng thời gian. Chạy một node phía sau dùng lại kết quả hậu kỳ/giọng đọc nguồn đã có; Run All vẫn tạo kết quả mới cho các node của lượt đó.
+
+Hướng dẫn, cách nối và giới hạn: [docs/MEDIA-STUDIO.md](docs/MEDIA-STUDIO.md). Lồng tiếng và nhận diện phụ đề cần OpenAI API có quyền/số dư; âm thanh tải lên và SRT nhập tay không cần API. Các ý tưởng tiếp theo và tình trạng chưa truy cập được Toby Labs: [docs/WORKFLOW-IDEAS.md](docs/WORKFLOW-IDEAS.md).

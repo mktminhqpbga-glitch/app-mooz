@@ -1,0 +1,80 @@
+/* Local media processing; remote speech requests occur only on explicit execution. */
+(()=>{
+ const video={id:'video',label:'Video',type:'video'},audio={id:'audio',label:'Âm thanh',type:'audio'},text={id:'text',label:'Văn bản',type:'text'};
+ const definitions={
+  audioInput:{title:'Âm thanh đầu vào',outputs:[audio]},
+  audioMix:{title:'Âm thanh / nhạc nền',inputs:[video,audio],outputs:[video]},
+  subtitles:{title:'Phụ đề',inputs:[video,text],outputs:[video,text]},
+  voiceover:{title:'Lồng tiếng',inputs:[text],outputs:[audio]},
+  voiceSync:{title:'Đồng bộ lời đọc – cảnh',inputs:[{...video,label:'Các cảnh'},{...audio,label:'Các bản đọc'},text],outputs:[video]},
+  transition:{title:'Chuyển cảnh',inputs:[{...video,id:'first',label:'Cảnh trước'},{...video,id:'second',label:'Cảnh sau'}],outputs:[video]},
+  speed:{title:'Điều chỉnh tốc độ',inputs:[video],outputs:[video]},
+  workflowTemplate:{title:'Mẫu workflow',inputs:[],outputs:[]}
+ };
+ const effects=new Set(['audioMix','subtitles','voiceover','voiceSync','transition','speed']);
+ const finite=(value,min,max,label)=>{const n=Number(value);if(!Number.isFinite(n)||n<min||n>max)throw Error(`${label}: cần số từ ${min} đến ${max}.`);return n;};
+ function parseSrt(value){
+  const raw=String(value||'').replace(/^\uFEFF/,'').replace(/\r/g,'').trim();if(!raw)throw Error('Chưa có phụ đề SRT.');
+  const seconds=value=>{const m=/^(\d{2,}):(\d{2}):(\d{2})[,.](\d{3})$/.exec(value);if(!m||+m[2]>59||+m[3]>59)throw Error('Mốc thời gian SRT không hợp lệ.');return +m[1]*3600 + +m[2]*60 + +m[3] + +m[4]/1000;};
+  let previous=0;return raw.split(/\n\s*\n/).map(block=>{const lines=block.split('\n');if(/^\d+$/.test(lines[0].trim()))lines.shift();const match=/^(\S+)\s+-->\s+(\S+)\s*$/.exec(lines.shift()||'');if(!match)throw Error('Phụ đề cần định dạng SRT: 00:00:01,000 --> 00:00:02,000.');const start=seconds(match[1]),end=seconds(match[2]),text=lines.join('\n').trim();if(end<=start||start<previous||!text)throw Error('Phụ đề phải có nội dung, thời gian tăng dần và không chồng nhau.');previous=end;return {start,end,text};});
+ }
+ const timestamp=seconds=>{let n=Math.round(seconds*1000);const h=Math.floor(n/3600000);n%=3600000;const m=Math.floor(n/60000);n%=60000;return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(Math.floor(n/1000)).padStart(2,'0')},${String(n%1000).padStart(3,'0')}`;};
+ const srt=cues=>cues.map((c,i)=>`${i+1}\n${timestamp(c.start)} --> ${timestamp(c.end)}\n${c.text}`).join('\n\n');
+ function tempo(speed){let n=finite(speed,.25,4,'Tốc độ'),out=[];while(n>2){out.push('atempo=2');n/=2;}while(n<.5){out.push('atempo=0.5');n/=.5;}out.push('atempo='+n);return out.join(',');}
+ function sceneDurations(total,count,lines=[]){finite(total,.05,86400,'Thời lượng lời đọc');if(!count)throw Error('Chưa có cảnh video.');if(lines.length&&lines.length!==count)throw Error('Mỗi dòng kịch bản phải tương ứng một cảnh.');const weights=lines.length?lines.map(line=>Math.max(1,line.trim().split(/\s+/).length)):Array(count).fill(1),sum=weights.reduce((a,b)=>a+b,0);return weights.map(w=>total*w/sum);}
+ async function responseOk(response){if(response.ok)return response;let message='';try{message=(await response.json()).error?.message||'';}catch{}throw Error(`OpenAI HTTP ${response.status}${message?': '+message:''}`);}
+ async function speak(text,{key,voice='coral',speed=1,signal}={}){
+  if(!key)throw Error('Nhập OpenAI API key trong Kết nối AI để tạo tệp giọng đọc.');if(!text?.trim()||text.length>4096)throw Error('Lời đọc cần từ 1 đến 4096 ký tự.');finite(speed,.25,4,'Tốc độ giọng');
+  const r=await responseOk(await fetch('https://api.openai.com/v1/audio/speech',{method:'POST',headers:{Authorization:'Bearer '+key,'Content-Type':'application/json'},body:JSON.stringify({model:'gpt-4o-mini-tts',input:text,voice,speed:Number(speed),response_format:'mp3'}),signal}));const blob=await r.blob();if(!blob.size)throw Error('API không trả tệp âm thanh.');return blob;
+ }
+ async function transcribe(asset,{key,signal}={}){
+  if(!key)throw Error('Cần OpenAI API key để nhận diện lời nói; vẫn có thể nhập SRT thủ công.');
+  if(!asset?.url)throw Error('Nối video/âm thanh trước khi nhận diện lời nói.');
+  const response=await fetch(asset.url,{signal,credentials:'include'});if(!response.ok)throw Error('Không đọc được video/âm thanh.');const blob=await response.blob();if(blob.size>25*1024*1024)throw Error('Nhận diện lời nói chỉ nhận tệp tối đa 25 MB.');
+  const form=new FormData();const extension=({'video/webm':'webm','audio/webm':'webm','audio/wav':'wav','audio/x-wav':'wav','audio/mp4':'m4a','audio/mpeg':'mp3','video/mp4':'mp4'})[blob.type]||(asset.kind==='audio'?'mp3':'mp4');form.append('file',blob,'source.'+extension);form.append('model','whisper-1');form.append('response_format','verbose_json');form.append('timestamp_granularities[]','segment');
+  const r=await responseOk(await fetch('https://api.openai.com/v1/audio/transcriptions',{method:'POST',headers:{Authorization:'Bearer '+key},body:form,signal})),data=await r.json();
+  if(!data.segments?.length)throw Error('Chưa nhận diện được đoạn lời nói có thời gian.');return srt(data.segments.map(x=>({start:x.start,end:x.end,text:x.text.trim()})));
+ }
+ let queue;
+ async function process(type,{videos=[],audios=[],settings={},captions='',lines=[]}={},signal,progress=()=>{}){
+  queue ||= WorkflowRuntime.queue();const release=await queue.acquire('ffmpeg-studio',signal,()=>progress('Đợi bộ xử lý video cục bộ…'));
+  let ffmpeg,abort;try{
+   if(signal?.aborted)throw new DOMException('Đã dừng.','AbortError');
+   ffmpeg=new FFmpegWASM.FFmpeg();abort=()=>ffmpeg.terminate();signal?.addEventListener('abort',abort,{once:true});let tail=[];
+   ffmpeg.on('log',e=>{tail.push(e.message);if(tail.length>8)tail.shift();});ffmpeg.on('progress',e=>progress('Đang xử lý '+Math.max(0,Math.min(99,Math.round((e.progress||0)*100)))+'%'));
+   await ffmpeg.load({coreURL:chrome.runtime.getURL('vendor/ffmpeg/ffmpeg-core.js'),wasmURL:chrome.runtime.getURL('vendor/ffmpeg/ffmpeg-core.wasm')},{signal});
+   const sources=[...videos,...audios],info=[],paths=[];
+   for(const [i,asset] of sources.entries()){
+    if(!asset?.url)throw Error('Thiếu tệp đầu vào.');const r=await fetch(asset.url,{signal,credentials:'include'});if(!r.ok)throw Error('Không đọc được tệp đầu vào.');const bytes=new Uint8Array(await r.arrayBuffer());if(!bytes.length)throw Error('Tệp đầu vào trống.');if(bytes.length>100*1024*1024)throw Error('Tệp đầu vào vượt 100 MB.');
+    const file='/input'+i+'.bin';paths.push(file);await ffmpeg.writeFile(file,bytes,{signal});
+    const code=await ffmpeg.ffprobe(['-v','error','-show_entries','stream=codec_type,width,height:format=duration','-of','json',file,'-o','/probe.json'],-1,{signal});const probe=JSON.parse(await ffmpeg.readFile('/probe.json','utf8',{signal})),v=probe.streams?.find(s=>s.codec_type==='video'),a=probe.streams?.some(s=>s.codec_type==='audio'),duration=Number(probe.format?.duration);if(!Number.isFinite(duration)||duration<=0)throw Error('Không xác định được thời lượng tệp.');if(i<videos.length&&!v)throw Error('Đầu vào cảnh không phải video.');if(i>=videos.length&&!a)throw Error('Đầu vào lời đọc/nhạc không có âm thanh.');info.push({width:v?.width,height:v?.height,audio:a,duration});
+   }
+   if(!videos.length)throw Error('Nối video đầu vào trước.');
+   const args=[],filters=[],base=info[0],factor=Math.min(1,1280/Math.max(base.width,base.height)),w=Math.max(2,Math.floor(base.width*factor/2)*2),h=Math.max(2,Math.floor(base.height*factor/2)*2),normalize=`scale=${w}:${h}:force_original_aspect_ratio=decrease,pad=${w}:${h}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=24,format=yuv420p`,videoOut=['-c:v','libx264','-preset','ultrafast','-crf','20','-pix_fmt','yuv420p'],audioOut=['-c:a','aac','-b:a','160k','-ar','48000'];let report='',outputDuration=base.duration;
+   paths.forEach((path,i)=>{if(type==='audioMix'&&i===videos.length&&settings.loop!==false)args.push('-stream_loop','-1');args.push('-i',path);});
+   if(type==='speed'){
+    const speed=finite(settings.speed??1,.25,4,'Tốc độ');filters.push(`[0:v]${normalize},setpts=(PTS-STARTPTS)/${speed}[v]`);if(base.audio)filters.push(`[0:a]${tempo(speed)}[a]`);args.push('-filter_complex',filters.join(';'),'-map','[v]');if(base.audio)args.push('-map','[a]');outputDuration=base.duration/speed;report=`Tốc độ ${speed}×; ${outputDuration.toFixed(2)} giây.`;
+   }else if(type==='subtitles'){
+    const cues=parseSrt(captions),size=finite(settings.fontSize??24,10,80,'Cỡ chữ');if(cues.at(-1).end>base.duration+.1)throw Error('Phụ đề vượt thời lượng video.');
+    await ffmpeg.createDir('/fonts',{signal});const r=await fetch(chrome.runtime.getURL('vendor/fonts/DejaVuSans.ttf'),{signal});if(!r.ok)throw Error('Không tải được phông chữ phụ đề.');await ffmpeg.writeFile('/fonts/DejaVuSans.ttf',new Uint8Array(await r.arrayBuffer()),{signal});await ffmpeg.writeFile('/captions.srt',new TextEncoder().encode(srt(cues)),{signal});
+    args.push('-vf',`${normalize},subtitles=/captions.srt:fontsdir=/fonts:force_style='FontName=DejaVu Sans,FontSize=${size},Outline=2,MarginV=18'`,'-map','0:v','-map','0:a?');report=`Đã gắn ${cues.length} đoạn phụ đề; ${base.duration.toFixed(2)} giây.`;
+   }else if(type==='audioMix'){
+    if(audios.length!==1)throw Error('Nối một tệp nhạc hoặc lời đọc.');const music=finite(settings.musicVolume??.5,0,2,'Âm lượng nhạc'),original=settings.muteOriginal?0:finite(settings.originalVolume??1,0,2,'Âm lượng gốc');
+    filters.push(`[1:a]volume=${music},aresample=48000,apad,atrim=duration=${base.duration},asetpts=PTS-STARTPTS[music]`);
+    if(base.audio){filters.push(`[0:a]volume=${original},aresample=48000,asetpts=PTS-STARTPTS[original]`,'[original][music]amix=inputs=2:duration=longest:normalize=0[a]');}else filters.push('[music]anull[a]');
+    args.push('-vf',normalize,'-filter_complex',filters.join(';'),'-map','0:v','-map','[a]','-t',String(base.duration));report='Đã trộn nhạc/lời đọc với video; '+base.duration.toFixed(2)+' giây.';
+   }else if(type==='transition'){
+    if(videos.length!==2)throw Error('Nối đủ hai video trước và sau.');const duration=finite(settings.duration??.4,.1,5,'Thời gian chuyển'),allowed=['fade','dissolve','wipeleft','slideright'];if(!allowed.includes(settings.transition||'fade'))throw Error('Kiểu chuyển cảnh không hợp lệ.');if(duration>=Math.min(info[0].duration,info[1].duration))throw Error('Chuyển cảnh phải ngắn hơn mỗi clip.');
+    videos.forEach((_,i)=>{filters.push(`[${i}:v]${normalize},settb=AVTB,setpts=PTS-STARTPTS[v${i}]`);filters.push(info[i].audio?`[${i}:a]aresample=48000,aformat=channel_layouts=stereo,asetpts=PTS-STARTPTS[a${i}]`:`anullsrc=r=48000:cl=stereo,atrim=duration=${info[i].duration}[a${i}]`);});
+    filters.push(`[v0][v1]xfade=transition=${settings.transition||'fade'}:duration=${duration}:offset=${base.duration-duration}[v]`,`[a0][a1]acrossfade=d=${duration}[a]`);args.push('-filter_complex_threads','1','-filter_complex',filters.join(';'),'-map','[v]','-map','[a]');outputDuration=info[0].duration+info[1].duration-duration;report=`Chuyển ${settings.transition||'fade'} ${duration}s; tổng ${outputDuration.toFixed(2)} giây.`;
+   }else if(type==='voiceSync'){
+    if(audios.length!==1&&audios.length!==videos.length)throw Error('Cần một bản đọc chung hoặc một bản đọc cho mỗi cảnh.');const narration=info.slice(videos.length),durations=audios.length===1?sceneDurations(narration[0].duration,videos.length,lines):narration.map(x=>x.duration);
+    videos.forEach((_,i)=>{const d=durations[i],retime=settings.fit==='stretch'?`setpts=${d/info[i].duration}*(PTS-STARTPTS)`: 'setpts=PTS-STARTPTS';filters.push(`[${i}:v]${retime},${normalize},tpad=stop_mode=clone:stop_duration=${d},trim=duration=${d},setpts=PTS-STARTPTS[v${i}]`);});filters.push(videos.map((_,i)=>`[v${i}]`).join('')+`concat=n=${videos.length}:v=1:a=0[v]`);
+    if(audios.length===1)args.push('-filter_complex',filters.join(';'),'-map','[v]','-map',`${videos.length}:a:0`);else{audios.forEach((_,i)=>filters.push(`[${videos.length+i}:a]aresample=48000,aformat=channel_layouts=stereo,asetpts=PTS-STARTPTS[a${i}]`));filters.push(audios.map((_,i)=>`[a${i}]`).join('')+`concat=n=${audios.length}:v=0:a=1[a]`);args.push('-filter_complex',filters.join(';'),'-map','[v]','-map','[a]');}outputDuration=durations.reduce((a,b)=>a+b,0);args.push('-t',String(outputDuration));report=durations.map((d,i)=>`Cảnh ${i+1}: ${d.toFixed(2)} giây`).join('\n')+'\nĐã thay âm thanh gốc bằng lời đọc.';
+   }else throw Error('Tác vụ video không được hỗ trợ.');
+   args.push(...videoOut,...audioOut,'-movflags','+faststart','-y','/output.mp4');progress('Đang xuất MP4 cục bộ…');const code=await ffmpeg.exec(args,-1,{signal});if(code!==0)throw Error(tail.join(' ').slice(-900)||'FFmpeg không xử lý được video.');
+   const result=await ffmpeg.readFile('/output.mp4','binary',{signal});if(!result.length)throw Error('Video kết quả trống.');return {blob:new Blob([result],{type:'video/mp4'}),duration:outputDuration,width:w,height:h,report};
+  }catch(error){if(signal?.aborted)throw new DOMException('Đã dừng.','AbortError');throw error;}finally{signal?.removeEventListener('abort',abort);ffmpeg?.terminate();release();}
+ }
+ globalThis.WorkflowStudio={definitions,effects,finite,parseSrt,srt,tempo,sceneDurations,speak,transcribe,process};
+})();

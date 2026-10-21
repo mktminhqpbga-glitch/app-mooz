@@ -19,3 +19,9 @@ The bundled FFmpeg core includes FFmpeg n5.1.4 and codec libraries including x26
 - Source: https://github.com/ffmpegwasm/ffmpeg.wasm/tree/v0.12.15/packages/ffmpeg
 - Package: https://www.npmjs.com/package/@ffmpeg/ffmpeg/v/0.12.15
 - Package integrity: `sha512-1C8Obr4GsN3xw+/1Ww6PFM84wSQAGsdoTuTWPOj2OizsRDLT4CXTaVjPhkw6ARyDus1B9X/L2LiXHqYYsGnRFw==`
+
+## DejaVu Sans
+
+`vendor/fonts/DejaVuSans.ttf` is bundled for Vietnamese subtitle rendering by FFmpeg/libass.
+Copyright and license notices (Bitstream Vera / DejaVu) are reproduced in
+`vendor/fonts/LICENSE-DejaVu.txt`. The font is distributed without modifications.
