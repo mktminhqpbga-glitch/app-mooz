@@ -25,6 +25,17 @@
     return candidates.find(el=>/message|消息/i.test(el.getAttribute('placeholder')||''))||candidates[0]||null;
   }
 
+  function composerScope(el){
+    const history='[data-message-author-role], [class*="hatch-chat-groupable-bubble"], [class*="chat-user-bubble"]';
+    const form=el.closest('form');if(form&&!form.querySelector(history))return form;
+    let best=el.parentElement;
+    for(let node=el.parentElement;node&&node!==document.body&&node.tagName!=='MAIN';node=node.parentElement){
+      if(node.querySelector(history))break;best=node;
+      if(node.querySelector('[data-testid="hatch-composer-send-button"],button[aria-label*="send" i]'))break;
+    }
+    return best;
+  }
+
   function visible(el) { return Boolean(el && el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden'); }
   const delay = (ms,signal) => new Promise((resolve,reject)=>{
     if(signal?.aborted){reject(new DOMException('Generation stopped by user.','AbortError'));return;}
@@ -114,16 +125,16 @@
     if(!String(prompt||'').trim())throw new Error('Prompt is empty.');
     await waitHydrated(15000,signal);
     throwIfAborted();
-    const composer=findComposer();
+    let composer=findComposer();
     if(!visible(composer))throw new Error('Muse message box is not visible. Open the chat composer and retry.');
-    const draftRoot=composer.closest('form')||composer.parentElement;
+    const draftRoot=composerScope(composer);
     const removeDraft=()=>[...draftRoot.querySelectorAll('button')].filter(el=>visible(el)&&/remove.*(?:file|image|attachment)|delete.*attachment|xóa.*(?:tệp|ảnh)/i.test(`${el.getAttribute('aria-label')||''} ${el.title||''}`));
     removeDraft().forEach(button=>button.click());
     for(let i=0;i<50&&removeDraft().length;i++)await delay(100,signal);
     if(removeDraft().length)throw new Error('Không xóa được tệp cũ trong Muse. Xóa tệp trong ô chat trước khi chạy lại.');
-    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set.call(composer,'');composer.dispatchEvent(new Event('input',{bubbles:true}));
     const referenceList=Array.isArray(referenceImages)&&referenceImages.length?referenceImages:referenceImage?[referenceImage]:[];
     if(referenceList.length)await attachReferences(referenceList,signal);
+    composer=findComposer();if(!composer?.isConnected)throw new Error('Ô nhập Muse đã thay đổi. Hãy tải lại tab Muse rồi thử lại.');
     throwIfAborted();
     const baseline=new Set(attachments().map(a=>a.src));
     const priorBubbleTexts=new Map(assistantMessageElements().map(el=>[el,(el.innerText||el.textContent||'').replace(/\s+/g,' ').trim()]));
@@ -136,7 +147,7 @@
     let sendButton=null;
     for(let i=0;i<900;i++){
       throwIfAborted();
-      sendButton=[...document.querySelectorAll('button,[role="button"]')].filter(visible).find(b=>/send|发送/i.test(`${b.getAttribute('aria-label')||''} ${b.getAttribute('data-testid')||''} ${b.innerText||''}`));
+      sendButton=[...composerScope(findComposer()).querySelectorAll('button,[role="button"]')].filter(visible).find(b=>/send|gửi|发送/i.test(`${b.getAttribute('aria-label')||''} ${b.getAttribute('data-testid')||''} ${b.innerText||''}`));
       if(sendButton&&!sendButton.disabled)break;
       await delay(100,signal);
     }
@@ -150,7 +161,7 @@
     let accepted=false;
     for(let i=0;i<30;i++){
       throwIfAborted();
-      if(!composer.isConnected||!composer.value.trim()||bubbleCount()>beforeSendCount||document.querySelector('[data-testid="hatch-composer-stop-button"],button[aria-label*="Stop" i],button[aria-label*="停止"]')){accepted=true;break;}
+      if(bubbleCount()>beforeSendCount||document.querySelector('[data-testid="hatch-composer-stop-button"],button[aria-label*="Stop" i],button[aria-label*="停止"]')){accepted=true;break;}
       await delay(100,signal);
     }
     if(!submitted||!accepted)throw new Error('Muse did not confirm the prompt submission. Check the chat box and try again; MuseFlow will not resubmit automatically.');
@@ -193,8 +204,7 @@
       const currentContext=readNewAssistantContext(priorBubbleTexts),refusal=isRefusalContext(currentContext);
       if(refusal){
         if(currentContext!==refusalContext){refusalContext=currentContext;refusalContextSince=Date.now();}
-        const clearRefusal=inability.test(currentContext)&&sceneContext.test(currentContext)&&offerAlternative.test(currentContext);
-        if(clearRefusal||Date.now()-refusalContextSince>=1200){
+        if(Date.now()-refusalContextSince>=1200){
           if(stop)clickMuseStop();
           const error=new Error(`Muse could not generate this scene: ${currentContext.slice(-700)}`);error.code='SCENE_REFUSED';throw error;
         }
@@ -222,11 +232,7 @@
       return new File([blob],`museflow-reference-${String(index+1).padStart(2,'0')}.${extension}`,{type:blob.type});
     }));
     const composer=findComposer();
-    let composerRoot=composer.closest('form')||composer.parentElement;
-    for(let i=0;i<8&&composerRoot?.parentElement;i++){
-      if(composerRoot.querySelector('input[type="file"]'))break;
-      composerRoot=composerRoot.parentElement;
-    }
+    const composerRoot=composerScope(composer);
     const acceptsImage=input=>{
       const accept=(input.accept||'').toLowerCase();
       return !accept||accept.includes('image')||accept.includes('*/*')||/\.(png|jpe?g|webp|gif|bmp|avif)/.test(accept);
@@ -246,7 +252,7 @@
     }
     if(!input)throw new Error('Muse image upload control was not found near the chat composer; the prompt was not submitted.');
     const previewSelector='img,[role="img"],[data-testid*="attachment" i],[data-testid*="upload" i],[class*="attachment" i],[class*="upload" i]';
-    const previewElements=()=>[...document.querySelectorAll(previewSelector)].filter(visible);
+    const previewElements=()=>[...composerScope(findComposer()).querySelectorAll(previewSelector)].filter(visible);
     const previewKey=el=>{
       const src=el.matches('img')?(el.currentSrc||el.src||''):/url\(["']?(blob:|data:image\/|https?:)[^)]*\)/i.exec(getComputedStyle(el).backgroundImage)?.[0]||'';
       return `${src}|${el.getAttribute('data-testid')||''}|${el.getAttribute('class')||''}|${el.getAttribute('aria-label')||''}|${el.getAttribute('title')||''}`;

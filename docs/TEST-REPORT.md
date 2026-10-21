@@ -18,3 +18,17 @@ Mã được sửa sau khi kiểm tra bổ sung phát hiện nút Dừng tạo k
 - DOM giả lập kiểm tra logic chờ/gửi/hủy nhưng không chứng minh selector khớp giao diện AI đang triển khai ngoài thực tế.
 
 Không kết luận hoàn tất cả 17 yêu cầu chỉ dựa trên các kiểm thử trên.
+
+
+## Sửa lỗi Run / dọn dẹp trong 0.6.3
+
+Báo lỗi thực tế của người dùng cho thấy các fixture trước thiếu lịch sử chat và dùng form đơn giản, nên đã bỏ sót lỗi phạm vi composer. Đã tái hiện đúng lỗi “Không dọn được tệp đính kèm cũ” bằng mã 0.6.2 khi composer không có form, cùng nằm trong main với lịch sử có tệp. Test dùng mã cũ thất bại trước sửa.
+
+- Gemini/ChatGPT không còn lấy main làm vùng composer; chỉ dọn tệp trong vùng nhập tin và bỏ qua wrapper đính kèm rỗng.
+- Không xóa trắng prompt trước khi chạy. Tải tệp trước, lấy lại composer sau khi trang dựng lại ô nhập, rồi thay nội dung một lần bằng thao tác chỉnh sửa native cho contenteditable.
+- Fixture bổ sung mô phỏng editor xóa input tổng hợp và dựng lại sau upload. Xác nhận native input, prompt gửi đi đúng nội dung, mỗi lần chỉ gửi một lần, không xóa tệp trong lịch sử.
+- Ô nhập trống sau nhấn Gửi không còn được coi riêng là bằng chứng gửi thành công; phải có tin nhắn mới hoặc dấu hiệu AI đang trả lời.
+- Muse cũng giới hạn cleanup, preview và nút Gửi vào composer; không bấm nút lịch sử. Sửa biến ngoài phạm vi trong xử lý phản hồi từ chối.
+- `node tests/muse-smoke.cjs` đạt với tệp trong lịch sử, composer bị dựng lại sau upload, ảnh trả về và phản hồi từ chối.
+
+Các kiểm tra này vẫn dùng DOM giả lập. Cần tải lại các tab AI sau khi thay bản extension, vì content script cũ có thể còn trong tab đã mở. Chưa xác minh trực tiếp trên phiên đăng nhập của người dùng.

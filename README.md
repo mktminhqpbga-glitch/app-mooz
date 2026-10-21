@@ -1,4 +1,4 @@
-# Workflow · MuseFlow 0.6.2
+# Workflow · MuseFlow 0.6.3
 
 Extension Chrome/Edge dựa trên [MuseFlow / 26Flow](https://github.com/bynne2602/museflow), mở rộng canvas/timeline để làm việc với Muse.ai, Gemini, ChatGPT và API Google, OpenAI, fal.ai. Giữ nguyên giấy phép GPL-2.0-or-later của nguồn gốc và thông báo FFmpeg đi kèm.
 
@@ -68,9 +68,10 @@ Không cần npm/build để cài extension. Tạo lại gói cài bằng `pytho
 
 ```sh
 node --test tests/*.test.mjs
-# Cần Playwright, Chromium, ffmpeg và ffprobe cho hai harness trình duyệt:
+# Cần Playwright, Chromium, ffmpeg và ffprobe cho các harness trình duyệt:
 node tests/browser-smoke.cjs
 node tests/bridge-smoke.cjs
+node tests/muse-smoke.cjs
 ```
 
 Harness chạy DOM Chromium thật với `chrome.*` và dịch vụ AI giả lập. Kiểm tra luồng node, lưu/nhập workflow, dữ liệu video gốc, dọn tệp, chờ upload, gửi đúng một lần và hủy. **Không thay thế kiểm thử trên tài khoản AI thật.** Môi trường phát triển chặn cài extension qua tự động hóa; chưa xác minh Load unpacked tự động, API tạo nội dung trả phí, chat AI đăng nhập và Motion Control đầu cuối. Đã chạy xuất MP4 thật bằng FFmpeg WASM trong Chromium: ghép hai clip khác kích thước, đầu ra H.264 + AAC khoảng 2 giây. Chưa xác minh trên Chrome/Edge cài extension thật hoặc timeline dài. Xem [báo cáo kiểm thử lại](docs/TEST-REPORT.md).
