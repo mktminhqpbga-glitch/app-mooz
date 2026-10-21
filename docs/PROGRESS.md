@@ -41,3 +41,7 @@ Thêm lựa chọn tab/cuộc trò chuyện, chặn đổi chat; node tạo văn
 ### 0.8.1
 
 Sửa báo nhận prompt sai khi lịch sử Muse hydrate, bổ sung nhận diện mũi tên và đường gửi Enter có xác nhận; nhận thẻ video ChatGPT dạng tên tệp rút gọn; đưa ID nhỏ lên cạnh tên node. Kiểm thử hồi quy mô phỏng, chưa xác minh phiên AI thật.
+
+### 0.8.2
+
+Sửa xác nhận và thu kết quả ChatGPT: turn assistant/writing block, composer bị thay/ẩn, draft còn lưu nhưng có user echo khớp prompt; nhận diện Stop streaming và kéo dài chờ xác nhận lên 90 giây, không gửi trùng. Kiểm thử DOM mô phỏng, chưa xác minh phiên ChatGPT thật.

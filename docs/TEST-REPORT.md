@@ -98,3 +98,18 @@ Không có phiên đăng nhập Muse/Gemini/ChatGPT thật. Tính năng chọn n
 - UI: ID nằm trong header thay vì body, cỡ chữ không quá 10px. Giữ kiểm thử ánh xạ thứ tự hai ảnh, chọn chat, lưu và xuất MP4 thật.
 
 Không có tài khoản Muse/ChatGPT/Gemini đăng nhập thật trong môi trường này; các fixture được mở rộng theo ảnh lỗi nhưng không thay cho kiểm thử giao diện thật.
+
+## 0.8.2 — ChatGPT đã trả lời nhưng Workflow báo chưa nhận prompt
+
+`node tests/gpt-response-smoke.cjs` kiểm tra trên Chromium với đồng hồ ảo:
+
+- Writing block/turn assistant không có `data-message-author-role`, nội dung có thể chỉnh sửa: vẫn lấy đúng nội dung, không lấy tiêu đề/nút Copy và không coi đây là composer.
+- Composer biến mất sau gửi: vẫn xác nhận và nhận kết quả.
+- Bắt đầu phản hồi sau 25 giây: không thất bại ở mốc 15 giây.
+- ChatGPT giữ draft nhưng có user turn mới khớp prompt: không gửi thêm lần nữa.
+- Chờ đoạn writing đang streaming kết thúc trước khi trả kết quả.
+- Click không gửi, chỉ lịch sử cũ thay đổi: không báo thành công, hết 90 giây báo chưa xác nhận, chỉ click một lần.
+
+Bộ unit 17 ca và các harness bridge, staged-send, UI/FFmpeg được chạy hồi quy. Đây là kiểm thử mô phỏng DOM, chưa có phiên ChatGPT đăng nhập thật.
+
+Kiểm chứng hồi quy: chạy cùng fixture bằng `ai-bridge.js` của 0.8.1 tái hiện đúng lỗi “Chưa xác nhận AI nhận prompt” dù writing block đã xuất hiện; fixture đạt với mã sửa 0.8.2.

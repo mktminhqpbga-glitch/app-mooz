@@ -10,7 +10,7 @@
       : 'rich-textarea [contenteditable="true"],[contenteditable="true"][role="textbox"],textarea';
     const score=el=>(!isGPT&&el.closest('rich-textarea')?40:0)+(el.id==='prompt-textarea'?100:0)+(el.closest('#composer-background,[data-testid="composer"],form')?30:0)+(el.getAttribute('role')==='textbox'?10:0)+(/hỏi chatgpt|ask chatgpt|ask anything|message|gửi|nhắn|prompt/i.test([el.getAttribute('placeholder'),el.getAttribute('aria-label'),el.getAttribute('data-placeholder')].join(' '))?20:0);
     const candidates=[...document.querySelectorAll(selectors)].filter(el=>
-      (el instanceof HTMLTextAreaElement||el.isContentEditable)&&visible(el)&&!el.matches(':disabled')&&!el.readOnly&&el.getAttribute('aria-disabled')!=='true'&&el.getAttribute('aria-readonly')!=='true'&&!el.closest('[data-message-author-role],model-response,user-query,pre,code,[role="dialog"],[role="search"],nav,header')&&score(el)>0
+      (el instanceof HTMLTextAreaElement||el.isContentEditable)&&visible(el)&&!el.matches(':disabled')&&!el.readOnly&&el.getAttribute('aria-disabled')!=='true'&&el.getAttribute('aria-readonly')!=='true'&&!el.closest('[data-message-author-role],[data-turn],[data-testid*="writing-block"],[data-type="writing-block"],.writing-block,[data-testid="canvas-editor"],[data-testid="canvas"],model-response,user-query,pre,code,[role="dialog"],[role="search"],nav,header')&&score(el)>0
     );
     return candidates.sort((a,b)=>score(b)-score(a))[0]||null;
   }
@@ -31,15 +31,21 @@
   }
   const buttons=(scope=document)=>[...scope.querySelectorAll('button,[role="button"]')].filter(visible);
   const label=el=>`${el.getAttribute('aria-label')||''} ${el.getAttribute('data-testid')||''} ${el.getAttribute('title')||''} ${el.textContent||''}`;
-  const stopped=()=>buttons().find(el=>!el.disabled&&el.getAttribute('aria-disabled')!=='true'&&(/stop generating|stop response|dừng phản hồi|dừng trả lời|dừng tạo|stop-button/i.test(label(el))||el.matches('.stop-button,[data-testid="stop-button"]')));
+  const stopped=()=>buttons().find(el=>!el.disabled&&el.getAttribute('aria-disabled')!=='true'&&(/stop generating|stop streaming|stop response|dừng phát trực tuyến|dừng phản hồi|dừng trả lời|dừng tạo|stop-button/i.test(label(el))||el.matches('.stop-button,[data-testid="stop-button"]')));
   const send=()=>WorkflowComposer.findSend(root(composer()));
+  const writingSelector='[data-testid="writing-block"],[data-testid^="writing-block-"],[data-type="writing-block"],.writing-block';
   function replies(){
-    const candidates=[...document.querySelectorAll(isGPT?'[data-message-author-role="assistant"]':'model-response,.model-response-text,.markdown-main-panel,message-content')].filter(el=>!el.closest('user-query,[data-message-author-role="user"]'));
-    // Some Gemini releases use display:contents on custom response wrappers.
+    const selector=isGPT?'[data-message-author-role="assistant"],[data-turn="assistant"],'+writingSelector:'model-response,.model-response-text,.markdown-main-panel,message-content';
+    const candidates=[...document.querySelectorAll(selector)].filter(el=>!el.closest('user-query,[data-message-author-role="user"],[data-turn="user"]')&&(!composer()||!el.contains(composer())));
     const rendered=candidates.filter(el=>visible(el)||[...el.querySelectorAll('p,div,img,pre')].some(visible));
     return rendered.filter(el=>!rendered.some(parent=>parent!==el&&parent.contains(el)));
   }
-  function replyText(el){const content=el.querySelector('message-content,.model-response-text,.markdown-main-panel,.markdown')||el;return String(content.innerText||content.textContent||'').trim();}
+  function replyText(el){
+    const writing=el.matches(writingSelector)?el:el.querySelector(writingSelector);
+    const content=writing?(writing.querySelector('[data-testid="writing-block-content"],[data-writing-block-content],.ProseMirror,[contenteditable="true"],.markdown')||writing):(el.querySelector('message-content,.model-response-text,.markdown-main-panel,.markdown')||el);
+    if(writing&&content===writing){const copy=content.cloneNode(true);copy.querySelectorAll('button,header,[role="toolbar"]').forEach(node=>node.remove());return String(copy.textContent||'').trim();}
+    return String(content.innerText||content.textContent||'').trim();
+  }
   function report(request,text){if(chrome.runtime.sendMessage)void chrome.runtime.sendMessage({type:'WORKFLOW_AI_PROGRESS',requestId:request.requestId,text}).catch(()=>{});}
 
   const uploadedNames=new Set();
@@ -99,10 +105,21 @@
     const checkConversation=()=>{if(location.origin+location.pathname!==conversation)throw new Error('Cuộc trò chuyện đã thay đổi. Đã dừng để tránh gửi nhầm chat.');};
     await clearDraft(signal);
     const before=new Map(replies().map(el=>[el,replyText(el)]));
-    const users=()=>[...document.querySelectorAll(isGPT?'[data-message-author-role="user"]':'user-query,.user-query-container')];
+    const users=()=>[...document.querySelectorAll(isGPT?'[data-message-author-role="user"],[data-turn="user"]':'user-query,.user-query-container')];
     const priorUsers=new Set(users());
     let prepared=false;
-    const submitted=()=>prepared&&!!composer()&&!String(composer()?.value??composer()?.innerText??'').trim()&&(!!stopped()||replies().some(el=>!before.has(el))||users().some(el=>!priorUsers.has(el)));
+    const normalize=value=>String(value||'').replace(/\s+/g,' ').trim();
+    const echo=()=>users().some(el=>!priorUsers.has(el)&&normalize(el.innerText||el.textContent).includes(normalize(request.prompt)));
+    const freshReplies=()=>replies().filter(el=>!before.has(el)||before.get(el)!==replyText(el));
+    const submitted=()=>{
+      if(!prepared)return false;
+      if(echo())return true;
+      const input=composer(),draft=input?normalize(input.value??input.innerText):'';
+      // Composer may be hidden/replaced while ChatGPT opens a writing block.
+      // A retained, different draft is not evidence that this request failed.
+      const ownDraft=draft&&draft===normalize([request.rules,request.prompt].filter(Boolean).join('\n\n'));
+      return !ownDraft&&(!!stopped()||freshReplies().length>0);
+    };
     report(request,'Đang đưa tài liệu vào cuộc trò chuyện. Chờ tải tệp hoàn tất…');
     await attach([...(request.referenceImages||[]),...(request.referenceVideos||[])],signal);
     checkConversation();
@@ -130,13 +147,14 @@
         if(button!==true){checkConversation();button.click();report(request,'Đã bấm Gửi. Đang xác nhận AI nhận yêu cầu…');}
       }
     }
-    await wait(submitted,15000,signal,'Chưa xác nhận AI nhận prompt. Không tự gửi lại để tránh trùng lặp.');
+    report(request,'Đang xác nhận AI nhận yêu cầu; không gửi lại prompt…');
+    await wait(submitted,90000,signal,'Chưa xác nhận AI nhận prompt sau 90 giây. Kiểm tra tab AI; không tự gửi lại để tránh trùng lặp.');
     report(request,'AI đã nhận yêu cầu. Đang chờ phản hồi…');
     let last='',since=Date.now(),reportedReply=false;
     const result=await wait(()=>{
-      const fresh=replies().filter(el=>!before.has(el)||before.get(el)!==replyText(el));const reply=fresh.at(-1);if(!reply)return false;
+      const fresh=freshReplies();const reply=fresh.at(-1);if(!reply)return false;
       const text=replyText(reply);if(!reportedReply&&text){reportedReply=true;report(request,'Đã thấy phản hồi. Đang đợi AI hoàn tất…');}if(text!==last){last=text;since=Date.now();}
-      if(stopped()||reply.querySelector('[aria-busy="true"],[data-is-streaming="true"]')||Date.now()-since<3500)return false;
+      if(stopped()||reply.matches('[aria-busy="true"],[data-is-streaming="true"]')||reply.querySelector('[aria-busy="true"],[data-is-streaming="true"]')||Date.now()-since<3500)return false;
       if(request.mediaType==='text')return text?{ok:true,text}:false;
       const image=[...reply.querySelectorAll('img')].filter(visible).find(img=>img.naturalWidth>=256&&img.naturalHeight>=256);
       return image?{ok:true,url:image.currentSrc||image.src}:false;
@@ -147,7 +165,7 @@
   chrome.runtime.onMessage.addListener((request,sender,respond)=>{
     if(sender.id!==chrome.runtime.id)return false;
     if(request.type==='WORKFLOW_AI_CHECK'){
-      wait(composer,3500,null,'Không nhận diện được ô nhập trên trang AI đang mở.').then(()=>respond({ok:true,signedIn:true,composer:true,bridgeVersion:'0.8.1'}),()=>respond({ok:true,signedIn:false,composer:false,bridgeVersion:'0.8.1',error:'Tab AI đã kết nối nhưng chưa nhận diện được ô nhập đang chỉnh sửa. Mở cuộc trò chuyện và tải lại tab AI.'}));return true;
+      wait(composer,3500,null,'Không nhận diện được ô nhập trên trang AI đang mở.').then(()=>respond({ok:true,signedIn:true,composer:true,bridgeVersion:'0.8.2'}),()=>respond({ok:true,signedIn:false,composer:false,bridgeVersion:'0.8.2',error:'Tab AI đã kết nối nhưng chưa nhận diện được ô nhập đang chỉnh sửa. Mở cuộc trò chuyện và tải lại tab AI.'}));return true;
     }
     if(request.type==='WORKFLOW_AI_SEND_NOW'){const pending=active.has(request.requestId);if(pending)earlySend.add(request.requestId);respond({ok:pending});return false;}
     if(request.type==='WORKFLOW_AI_STOP'){const controller=active.get(request.requestId);if(controller){controller.abort();stopped()?.click();}respond({ok:true,stopped:!!controller});return false;}
