@@ -1,4 +1,4 @@
-# Workflow · MuseFlow 0.7.1
+# Workflow · MuseFlow 0.7.2
 
 Extension Chrome/Edge dựa trên [MuseFlow / 26Flow](https://github.com/bynne2602/museflow), mở rộng canvas/timeline để làm việc với Muse.ai, Gemini, ChatGPT và API Google, OpenAI, fal.ai. Giữ nguyên giấy phép GPL-2.0-or-later của nguồn gốc và thông báo FFmpeg đi kèm.
 
@@ -73,6 +73,8 @@ Canvas tự lưu cùng media cục bộ trong IndexedDB. Có thể xuất/nhập
 **Cập nhật dữ liệu** mở bộ cập nhật GitHub, tải danh sách `data/index.json` và các tệp trong đó từ cùng commit, rồi thay thế bản dữ liệu nguyên tử trong `chrome.storage.local.snapshot`. Dữ liệu này độc lập với canvas; nút không tải mã từ xa để chạy. Chi tiết tại [DATA-UPDATER.md](docs/DATA-UPDATER.md).
 
 ## Kiểm thử và giới hạn đã biết
+
+ChatGPT: bộ kết nối hỗ trợ textarea và contenteditable/textbox (kể cả nhãn Hỏi ChatGPT), bỏ qua editor ẩn/readonly và đợi ô nhập dựng xong. Khi chạy node, tab AI được mở trước khi kiểm tra composer. Nếu trang đã đăng nhập mà báo không tìm thấy ô nhập, đó là vấn đề nhận diện giao diện, không phải bằng chứng tài khoản mất đăng nhập.
 
 Không cần npm/build để cài extension. Tạo lại gói cài bằng `python tools/package.py`. Kiểm thử tự động:
 

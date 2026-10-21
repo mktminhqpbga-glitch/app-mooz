@@ -117,7 +117,7 @@
     const ordered=[...tabs].sort((a,b)=>Number(!!b.active)-Number(!!a.active));let chosen=null,lastError='';
     for(const tab of ordered){
       checkAbort();
-      try{await chrome.scripting.executeScript({target:{tabId:tab.id},files:['composer-controls.js','ai-bridge.js']});const check=await sendMuseTabMessage(tab.id,{type:'WORKFLOW_AI_CHECK'},signal);if(check?.ok&&check.composer&&check.signedIn!==false){chosen=tab;break;}lastError='Chưa tìm thấy ô chat; có thể cần đăng nhập hoặc tải lại tab AI.';}
+      try{if(message.type==='WORKFLOW_AI_GENERATE'&&chrome.tabs.update){await chrome.tabs.update(tab.id,{active:true});if(tab.windowId&&chrome.windows?.update)await chrome.windows.update(tab.windowId,{focused:true});}await chrome.scripting.executeScript({target:{tabId:tab.id},files:['composer-controls.js','ai-bridge.js']});const check=await sendMuseTabMessage(tab.id,{type:'WORKFLOW_AI_CHECK'},signal);if(check?.ok&&check.composer&&check.signedIn!==false){chosen=tab;break;}lastError=check?.error||'Chưa tìm thấy ô chat. Nếu trang đã đăng nhập, hãy tải lại tab AI để cập nhật bộ kết nối.';}
       catch(error){if(error.name==='AbortError')throw error;lastError=error.message;}
     }
     if(!chosen)throw new Error(`${WorkflowAI.providers[provider].name}: ${lastError||'không kết nối được'}`);
@@ -599,7 +599,7 @@
       [['1:1','Square'],['16:9','Landscape 16:9'],['9:16','Portrait 9:16'],['4:3','Landscape 4:3'],['3:4','Portrait 3:4']].forEach(([v,label]) => { const o=document.createElement('option'); o.value=v; o.textContent=label; size.appendChild(o); });
       size.value = ['1:1','16:9','9:16','4:3','3:4'].includes(n.data.size)?n.data.size:'1:1'; size.onchange = () => n.data.size = size.value;
       const model = document.createElement('input'); model.value = n.data.model || 'muse-image'; model.placeholder = 'muse-image'; model.oninput = () => n.data.model = model.value;
-      controls.append(size, model); body.appendChild(controls);
+      controls.append(size);if((n.data.provider||'muse')==='muse')controls.append(model); body.appendChild(controls);
       const st = document.createElement('div'); st.className = `status ${n.data.status || 'idle'}`; st.textContent = `${n.data.status || 'idle'}${n.data.error ? ' · ' + n.data.error : ''}`; body.appendChild(st);
       if(n.data.asset?.width&&n.data.asset?.height){const dimensions=document.createElement('div');dimensions.className=`hint ${n.data.asset.sizeMismatch?'error':''}`;dimensions.textContent=`Yêu cầu ${n.data.asset.requestedSize||n.data.size} · thực tế ${n.data.asset.width} × ${n.data.asset.height}${n.data.asset.actualDuration?' · '+n.data.asset.actualDuration.toFixed(1)+' giây':''}${n.data.asset.sizeMismatch?' (AI trả về tỷ lệ khác)':''}`;body.appendChild(dimensions);}
       if (n.data.asset?.url) { const a=document.createElement('a'); a.href=n.data.asset.url; a.target='_blank'; a.className='image-link'; const img=document.createElement('img'); img.src=n.data.asset.url; a.appendChild(img); body.appendChild(a); }

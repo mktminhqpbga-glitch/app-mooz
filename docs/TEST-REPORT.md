@@ -66,3 +66,17 @@ Kiểm thử đạt: 17 test Node; browser-smoke; bridge-smoke với icon-only S
 Kiểm tra bổ sung gửi thủ công: một video MP4 thật do ffmpeg tạo được phục vụ qua HTTP giả lập, trong wrapper group/msg không có marker cũ và video preload=none. Người dùng giả lập bấm Gửi một lần; bridge trả đúng bytes video về. Kiểm tra node nhận MP4, đọc 160×90, lưu kết quả và trích khung cuối đạt. FFmpeg WASM xuất timeline vẫn đạt.
 
 Giao diện/response server Muse thật chưa được điều khiển trong môi trường này; các thay đổi dựa trên ảnh người dùng và fixture tái hiện các trạng thái tương ứng, không xác nhận phiên đăng nhập thật.
+
+
+## 0.7.2 — Nhận diện ô Hỏi ChatGPT
+
+Ảnh người dùng cho thấy ô nhập ChatGPT hiện hữu nhưng node báo không tìm thấy. Mã cũ chỉ tìm `#prompt-textarea` và `textarea[data-id=root]`, có thể bỏ qua biến thể UI khác hoặc kiểm tra quá sớm khi tab chưa dựng editor. Không suy luận người dùng chưa đăng nhập từ kết quả này.
+
+- Thêm contenteditable, role textbox và nhãn Hỏi ChatGPT; ưu tiên vùng composer/form và loại textarea ẩn, readonly, search/history.
+- Kiểm tra chờ tối đa 3,5 giây; chuyển tab AI lên trước khi xác minh cho yêu cầu tạo. Khi bắt đầu chạy hoặc sau upload, đợi lại editor nếu DOM vừa dựng lại.
+- Nhận ChatGPT trên chatgpt.com, www.chatgpt.com và địa chỉ chat.openai.com cũ. Đây không phải hỗ trợ website ChatGPT bên thứ ba.
+- Hiển thị lỗi nhận diện ô nhập thay thông báo chung suy đoán đăng nhập; ẩn ô model muse-image khi node đã chọn AI khác.
+- Bridge smoke đạt trên fixture ChatGPT hiện đại: không có ID editor cũ, ID cũ là textarea ẩn, textarea readonly giả, textbox xuất hiện trễ và placeholder tiếng Việt. Gửi/nhận văn bản đúng ô trên cả canonical và www. Gemini/native textarea/icon-only Send/rerun/cancel vẫn đạt.
+- Browser smoke xác minh tab phải được kích hoạt mới trả composer sẵn sàng. 17 test Node và đường MP4/video node đạt trong lần kiểm tra này.
+
+Chưa có kết nối điều khiển trình duyệt với phiên ChatGPT thật của người dùng. Không coi fixture là xác nhận DOM thật trong ảnh.

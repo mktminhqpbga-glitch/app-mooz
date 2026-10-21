@@ -1,10 +1,19 @@
 /* Isolated-world bridge: only extension messages, no page-supplied commands. */
 (() => {
   if(globalThis.__workflowAIBridge)return;globalThis.__workflowAIBridge=true;
-  const isGPT=location.hostname==='chatgpt.com';
+  const isGPT=/(^|\.)chatgpt\.com$/.test(location.hostname)||location.hostname==='chat.openai.com';
   const active=new Map();let busy=false;
   const visible=el=>el&&el.getClientRects().length&&getComputedStyle(el).visibility!=='hidden';
-  const composer=()=>[...document.querySelectorAll(isGPT?'#prompt-textarea,textarea[data-id="root"]':'rich-textarea [contenteditable="true"],textarea')].find(el=>visible(el)&&!el.disabled&&el.getAttribute('aria-disabled')!=='true');
+  function composer(){
+    const selectors=isGPT
+      ? '#prompt-textarea,textarea[data-id="root"],#composer-background [contenteditable="true"],form [contenteditable="true"],[contenteditable="true"][role="textbox"],main [contenteditable="true"],textarea[placeholder],textarea[aria-label]'
+      : 'rich-textarea [contenteditable="true"],[contenteditable="true"][role="textbox"],textarea';
+    const score=el=>(!isGPT&&el.closest('rich-textarea')?40:0)+(el.id==='prompt-textarea'?100:0)+(el.closest('#composer-background,[data-testid="composer"],form')?30:0)+(el.getAttribute('role')==='textbox'?10:0)+(/hỏi chatgpt|ask chatgpt|ask anything|message|gửi|nhắn|prompt/i.test([el.getAttribute('placeholder'),el.getAttribute('aria-label'),el.getAttribute('data-placeholder')].join(' '))?20:0);
+    const candidates=[...document.querySelectorAll(selectors)].filter(el=>
+      (el instanceof HTMLTextAreaElement||el.isContentEditable)&&visible(el)&&!el.matches(':disabled')&&!el.readOnly&&el.getAttribute('aria-disabled')!=='true'&&el.getAttribute('aria-readonly')!=='true'&&!el.closest('[data-message-author-role],model-response,user-query,pre,code,[role="dialog"],[role="search"],nav,header')&&score(el)>0
+    );
+    return candidates.sort((a,b)=>score(b)-score(a))[0]||null;
+  }
   const historySelector='model-response,user-query,[data-message-author-role],[data-testid^="conversation-turn-"]';
   // Never use <main>: Gemini keeps the conversation and composer under it.
   function root(el){
@@ -45,7 +54,7 @@
     }
   }
   async function clearDraft(signal){
-    const el=composer();if(!el)throw new Error('Mở trang chat AI và đăng nhập trước.');
+    const el=await wait(composer,5000,signal,'Ô nhập AI đang tải hoặc chưa được nhận diện. Tải lại tab AI rồi thử lại.');
     if(stopped())throw new Error('AI đang trả lời. Hãy đợi hoặc dừng câu trả lời hiện tại.');
     const scope=root(el);const remove=()=>WorkflowComposer.removeButtons(root(composer()),composer());
     for(const b of remove())b.click();
@@ -79,7 +88,8 @@
     const before=new Map(replies().map(el=>[el,replyText(el)]));
     await attach([...(request.referenceImages||[]),...(request.referenceVideos||[])],signal);
     const text=[request.rules,request.prompt].filter(Boolean).join('\n\n');
-    setText(composer(),text);
+    const editor=await wait(composer,5000,signal,'Ô nhập AI vừa thay đổi. Tải lại tab AI rồi thử lại.');
+    setText(editor,text);
     await new Promise(resolve=>setTimeout(resolve,300));
     const normalized=value=>String(value||'').replace(/\s+/g,' ').trim();
     if(normalized(composer()?.value??composer()?.innerText)!==normalized(text))throw new Error('AI không giữ được prompt trong ô nhập. Chưa gửi yêu cầu; hãy tải lại tab AI.');
@@ -102,7 +112,9 @@
   }
   chrome.runtime.onMessage.addListener((request,sender,respond)=>{
     if(sender.id!==chrome.runtime.id)return false;
-    if(request.type==='WORKFLOW_AI_CHECK'){respond({ok:true,signedIn:!!composer(),composer:!!composer()});return false;}
+    if(request.type==='WORKFLOW_AI_CHECK'){
+      wait(composer,3500,null,'Không nhận diện được ô nhập trên trang AI đang mở.').then(()=>respond({ok:true,signedIn:true,composer:true,bridgeVersion:'0.7.2'}),()=>respond({ok:true,signedIn:false,composer:false,bridgeVersion:'0.7.2',error:'Tab AI đã kết nối nhưng chưa nhận diện được ô nhập đang chỉnh sửa. Mở cuộc trò chuyện và tải lại tab AI.'}));return true;
+    }
     if(request.type==='WORKFLOW_AI_STOP'){const controller=active.get(request.requestId);if(controller){controller.abort();stopped()?.click();}respond({ok:true,stopped:!!controller});return false;}
     if(request.type!=='WORKFLOW_AI_GENERATE')return false;
     if(busy){respond({ok:false,error:'Tab AI đang xử lý một yêu cầu khác.'});return false;}
