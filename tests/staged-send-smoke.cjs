@@ -11,7 +11,7 @@ const path=require('node:path');
    await page.evaluate(()=>{
     window.sent=[];window.progress=[];window.chrome={runtime:{id:'test',sendMessage:async m=>progress.push(m.text),onMessage:{addListener:f=>window.handler=f}}};
     window.call=r=>new Promise(resolve=>handler(r,{id:'test'},resolve));
-    document.querySelector('input').onchange=()=>{const preview=document.createElement('div');preview.className='attachment-preview';preview.innerHTML='<span role="progressbar"></span>video.mp4';document.querySelector('form').append(preview);};
+    document.querySelector('input').onchange=event=>{const preview=document.createElement('div');preview.innerHTML='<span role="progressbar"></span><span></span>';preview.lastElementChild.textContent=event.target.files[0].name.slice(0,17)+'…';document.querySelector('form').append(preview);};
     window.finishUpload=()=>document.querySelector('[role="progressbar"]')?.remove();
     document.querySelector('button').onclick=()=>{sent.push({text:document.querySelector('textarea').value,uploading:!!document.querySelector('[role="progressbar"]')});document.querySelector('textarea').value='';const reply=document.createElement('div');reply.dataset.messageAuthorRole='assistant';reply.textContent='Video analysis';document.querySelector('main').append(reply);};
     window.begin=()=>{window.result=null;call({type:'WORKFLOW_AI_GENERATE',requestId:'stage',mediaType:'text',stageBeforeSend:true,prompt:'Analyze original video',referenceVideos:['data:video/mp4;base64,AQID']}).then(r=>window.result=r);};

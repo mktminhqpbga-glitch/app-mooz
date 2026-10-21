@@ -140,7 +140,7 @@
     if(referenceList.length){report(requestId,'Muse: đang tải ảnh tham chiếu…');await attachReferences(referenceList,signal);}
     composer=findComposer();if(!composer?.isConnected)throw new Error('Ô nhập Muse đã thay đổi. Hãy tải lại tab Muse rồi thử lại.');
     throwIfAborted();
-    const baseline=new Set([...attachments().map(a=>a.src),...assistantMessageElements().flatMap(el=>[...el.querySelectorAll('img')].map(img=>img.currentSrc||img.src))]);
+    const baseline=new Set([...attachments().map(a=>a.src),...[...document.querySelectorAll('img,video,source,a[download],[data-video-url],[data-video-src]')].filter(el=>!composerScope(composer).contains(el)&&!el.closest('[data-message-author-role="user"],user-query,[class*="chat-user-bubble"]')).flatMap(el=>[el.currentSrc,el.src,el.href,el.getAttribute('data-video-url'),el.getAttribute('data-video-src')]).filter(Boolean),...assistantMessageElements().flatMap(el=>[...el.querySelectorAll('img')].map(img=>img.currentSrc||img.src))]);
     const priorBubbleTexts=new Map(assistantMessageElements().map(el=>[el,(el.innerText||el.textContent||'').replace(/\s+/g,' ').trim()]));
     composer.scrollIntoView({block:'center'});composer.focus();
     const setter=Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value')?.set;
@@ -150,22 +150,29 @@
     composer.dispatchEvent(new Event('change',{bubbles:true}));
     const bubbleCount=()=>new Set(document.querySelectorAll('div[class*="hatch-chat-groupable-bubble"],[data-message-author-role],user-query,[class*="chat-user-bubble"]')).size;
     const beforeSendCount=bubbleCount(),previousTexts=new Set(priorBubbleTexts.values());
-    const activity=()=>bubbleCount()>beforeSendCount||attachments().some(item=>!baseline.has(item.src))||assistantMessageElements().some(el=>{const text=(el.innerText||el.textContent||'').replace(/\s+/g,' ').trim();return text&&!previousTexts.has(text);})||[...document.querySelectorAll('[data-testid="hatch-composer-stop-button"],button[aria-label*="Stop" i],button[aria-label*="停止"]')].some(visible);
+    const activity=()=>!!findComposer()&&!findComposer().value.trim()&&(bubbleCount()>beforeSendCount||attachments().some(item=>!baseline.has(item.src))||assistantMessageElements().some(el=>{const text=(el.innerText||el.textContent||'').replace(/\s+/g,' ').trim();return text&&!previousTexts.has(text);})||[...document.querySelectorAll('[data-testid="hatch-composer-stop-button"],button[aria-label*="Stop" i],button[aria-label*="停止"]')].some(visible));
     report(requestId,'Muse: đã điền prompt, đang chờ nút Gửi…');
-    let sendButton=null,submitted=false;
+    let sendButton=null,submitted=false,keyboardSend=false;
     for(let i=0;i<900;i++){
       throwIfAborted();
       // A user may press Send while our selector is still waiting. Never send twice.
       if(activity()){submitted=true;break;}
       sendButton=WorkflowComposer.findSend(composerScope(findComposer()));
       if(sendButton)break;
+      const scope=composerScope(findComposer());
+      if(i>=30&&!scope.querySelector('[role="progressbar"],[aria-busy="true"],button:disabled,[aria-disabled="true"]')){keyboardSend=true;break;}
       await delay(100,signal);
     }
     throwIfAborted();
     if(!submitted){
       if(!findComposer()?.value.trim())throw new Error('Muse không giữ được prompt. Chưa xác nhận gửi yêu cầu.');
-      if(!sendButton)throw new Error('Không nhận diện được nút Gửi đang sẵn sàng của Muse.');
-      sendButton.click();submitted=true;
+      if(!sendButton&&!keyboardSend)throw new Error('Không nhận diện được nút Gửi đang sẵn sàng của Muse.');
+      // Ignore history/media which finished hydrating while the Send button was pending.
+      for(const item of attachments())baseline.add(item.src);
+      for(const el of assistantMessageElements())priorBubbleTexts.set(el,(el.innerText||el.textContent||'').replace(/\s+/g,' ').trim());
+      if(sendButton){sendButton.click();report(requestId,'Muse: đã bấm Gửi, đang xác nhận…');}
+      else{const input=findComposer();input.focus();for(const type of ['keydown','keyup'])input.dispatchEvent(new KeyboardEvent(type,{key:'Enter',code:'Enter',keyCode:13,which:13,bubbles:true,cancelable:true}));report(requestId,'Muse: đã yêu cầu gửi bằng Enter, đang xác nhận…');}
+      submitted=true;
     }
     let accepted=false;
     for(let i=0;i<150;i++){throwIfAborted();if(activity()){accepted=true;break;}await delay(100,signal);}

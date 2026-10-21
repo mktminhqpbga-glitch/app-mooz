@@ -42,7 +42,20 @@
   function replyText(el){const content=el.querySelector('message-content,.model-response-text,.markdown-main-panel,.markdown')||el;return String(content.innerText||content.textContent||'').trim();}
   function report(request,text){if(chrome.runtime.sendMessage)void chrome.runtime.sendMessage({type:'WORKFLOW_AI_PROGRESS',requestId:request.requestId,text}).catch(()=>{});}
 
-  const attachments=scope=>[...scope.querySelectorAll('[data-testid*="attachment"], [data-testid*="file-thumbnail"], .file-preview, .file-preview-container, .file-preview-chip, .attachment-preview, .image-preview-container, .attachment-container, .uploaded-file, .file-chip, .image-preview')].filter(el=>visible(el)&&!el.closest(historySelector)&&(el.innerText.trim()||el.querySelector('img[src],video[src],[data-file-name],[role="progressbar"]')||buttons(el).some(b=>/remove|xóa|xoá/i.test(label(b)))));
+  const uploadedNames=new Set();
+  function attachments(scope){
+    const selectors='[data-testid*="attachment"],[data-testid*="file-thumbnail"],[data-file-name],.file-preview,.file-preview-container,.file-preview-chip,.attachment-preview,.image-preview-container,.attachment-container,.uploaded-file,.file-chip,.image-preview';
+    const candidates=new Set(scope.querySelectorAll(selectors));
+    // ChatGPT may render a generic document/video card with no attachment classes.
+    // Match only file labels inside the composer, never FileList selection or history.
+    for(const el of scope.querySelectorAll('div,span,a,button')){
+      if(el.contains(composer())||el.isContentEditable||el.closest('[contenteditable="true"]'))continue;
+      const text=[el.getAttribute('title'),el.getAttribute('aria-label'),el.getAttribute('data-file-name'),el.childElementCount? '':el.textContent].filter(Boolean).join(' ');
+      if([...uploadedNames].some(name=>text.includes(name)||text.includes(name.slice(0,17)))||/workflow-[a-f0-9-]{8,}|\S+\.(?:mp4|webm|mov|m4v|png|jpe?g|pdf)(?:$|\s)/i.test(text))candidates.add(el);
+    }
+    return [...candidates].filter(el=>visible(el)&&!el.closest(historySelector)&&(String(el.innerText||el.textContent||'').trim()||el.querySelector('img[src],video[src],[data-file-name],[role="progressbar"]')||buttons(el).some(b=>/remove|xóa|xoá/i.test(label(b)))));
+  }
+  const uploading=()=>root(composer()).querySelector('[role="progressbar"],[aria-busy="true"],[data-state="uploading"],[data-status="uploading"],.animate-spin');
   async function wait(check,ms,signal,message){const end=Date.now()+ms;while(Date.now()<end){if(signal?.aborted)throw new DOMException('Đã dừng.','AbortError');const result=check();if(result)return result;await new Promise(resolve=>setTimeout(resolve,180));}throw new Error(message);}
   function setText(el,text){
     el.focus();
@@ -74,10 +87,10 @@
         if(!input()){const menu=buttons().find(b=>/upload files|upload from computer|tải.*máy|tải tệp/i.test(label(b)));if(menu)menu.click();}
       }
       const field=await wait(input,5000,signal,'Không tìm thấy ô tải tệp của AI. Giao diện có thể đã thay đổi.');
-      const before=new Set(attachments(scope));const dt=new DataTransfer();dt.items.add(new File([blob],`workflow-${crypto.randomUUID()}.${blob.type.split('/')[1].replace(/[^a-z0-9]/gi,'')}`,{type:blob.type}));field.files=dt.files;field.dispatchEvent(new Event('change',{bubbles:true}));
+      const before=new Set(attachments(scope));const dt=new DataTransfer();const name=`workflow-${crypto.randomUUID()}.${blob.type.split('/')[1].replace(/[^a-z0-9]/gi,'')}`;uploadedNames.add(name);dt.items.add(new File([blob],name,{type:blob.type}));field.files=dt.files;field.dispatchEvent(new Event('change',{bubbles:true}));
       // A FileList only proves selection, not a completed remote upload.
-      await wait(()=>attachments(scope).some(el=>!before.has(el)),30000,signal,'AI chưa xác nhận tệp đính kèm; chưa gửi prompt.');
-      await wait(()=>!root(composer()).querySelector('[role="progressbar"], [aria-busy="true"]'),600000,signal,'Tệp chưa tải xong; chưa gửi prompt.');
+      await wait(()=>attachments(root(composer())).some(el=>!before.has(el)),120000,signal,'AI chưa xác nhận tệp đính kèm; chưa gửi prompt.');
+      await wait(()=>!uploading(),600000,signal,'Tệp chưa tải xong; chưa gửi prompt.');
     }
   }
   async function generate(request,signal){
@@ -88,14 +101,17 @@
     const before=new Map(replies().map(el=>[el,replyText(el)]));
     const users=()=>[...document.querySelectorAll(isGPT?'[data-message-author-role="user"]':'user-query,.user-query-container')];
     const priorUsers=new Set(users());
-    const submitted=()=>!!stopped()||replies().some(el=>!before.has(el))||users().some(el=>!priorUsers.has(el));
+    let prepared=false;
+    const submitted=()=>prepared&&!!composer()&&!String(composer()?.value??composer()?.innerText??'').trim()&&(!!stopped()||replies().some(el=>!before.has(el))||users().some(el=>!priorUsers.has(el)));
     report(request,'Đang đưa tài liệu vào cuộc trò chuyện. Chờ tải tệp hoàn tất…');
     await attach([...(request.referenceImages||[]),...(request.referenceVideos||[])],signal);
     checkConversation();
     if(!submitted()){
+      before.clear();for(const el of replies())before.set(el,replyText(el));
+      priorUsers.clear();for(const el of users())priorUsers.add(el);
       const text=[request.rules,request.prompt].filter(Boolean).join('\n\n');
       const editor=await wait(composer,5000,signal,'Ô nhập AI vừa thay đổi. Tải lại tab AI rồi thử lại.');
-      setText(editor,text);
+      setText(editor,text);prepared=true;
       await new Promise(resolve=>setTimeout(resolve,300));
       const normalized=value=>String(value||'').replace(/\s+/g,' ').trim();
       if(normalized(composer()?.value??composer()?.innerText)!==normalized(text))throw new Error('AI không giữ được prompt trong ô nhập. Chưa gửi yêu cầu; hãy tải lại tab AI.');
@@ -110,7 +126,7 @@
       }
       checkConversation();
       if(!submitted()){
-        const button=await wait(()=>{checkConversation();return submitted()||(!root(composer()).querySelector('[role="progressbar"],[aria-busy="true"]')&&send());},600000,signal,'Không tìm thấy nút Gửi sẵn sàng. Prompt chưa được gửi.');
+        const button=await wait(()=>{checkConversation();return submitted()||(!uploading()&&send());},600000,signal,'Không tìm thấy nút Gửi sẵn sàng. Prompt chưa được gửi.');
         if(button!==true){checkConversation();button.click();report(request,'Đã bấm Gửi. Đang xác nhận AI nhận yêu cầu…');}
       }
     }
@@ -131,7 +147,7 @@
   chrome.runtime.onMessage.addListener((request,sender,respond)=>{
     if(sender.id!==chrome.runtime.id)return false;
     if(request.type==='WORKFLOW_AI_CHECK'){
-      wait(composer,3500,null,'Không nhận diện được ô nhập trên trang AI đang mở.').then(()=>respond({ok:true,signedIn:true,composer:true,bridgeVersion:'0.8.0'}),()=>respond({ok:true,signedIn:false,composer:false,bridgeVersion:'0.8.0',error:'Tab AI đã kết nối nhưng chưa nhận diện được ô nhập đang chỉnh sửa. Mở cuộc trò chuyện và tải lại tab AI.'}));return true;
+      wait(composer,3500,null,'Không nhận diện được ô nhập trên trang AI đang mở.').then(()=>respond({ok:true,signedIn:true,composer:true,bridgeVersion:'0.8.1'}),()=>respond({ok:true,signedIn:false,composer:false,bridgeVersion:'0.8.1',error:'Tab AI đã kết nối nhưng chưa nhận diện được ô nhập đang chỉnh sửa. Mở cuộc trò chuyện và tải lại tab AI.'}));return true;
     }
     if(request.type==='WORKFLOW_AI_SEND_NOW'){const pending=active.has(request.requestId);if(pending)earlySend.add(request.requestId);respond({ok:pending});return false;}
     if(request.type==='WORKFLOW_AI_STOP'){const controller=active.get(request.requestId);if(controller){controller.abort();stopped()?.click();}respond({ok:true,stopped:!!controller});return false;}

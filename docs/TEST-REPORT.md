@@ -90,3 +90,11 @@ Chưa có kết nối điều khiển trình duyệt với phiên ChatGPT thật
 - Các harness bridge/Muse cũ vẫn dùng DOM giả lập. ChatGPT không còn bị cấm video ở adapter tab; nếu input không nhận video thì báo lỗi và không gửi. Khả năng model hiểu video thật chưa xác minh.
 
 Không có phiên đăng nhập Muse/Gemini/ChatGPT thật. Tính năng chọn nút Muse cần người dùng chọn trên giao diện thật; không khẳng định lỗi Muse đã được xác minh hết.
+
+## 0.8.1 — hồi quy theo ảnh lỗi thực tế
+
+- Muse: lịch sử thay đổi trong lúc nút Gửi đang chờ; vẫn phải bấm Gửi. Nút được bấm nhưng không gửi, đồng thời xuất hiện thêm nội dung lịch sử: trả lỗi sau thời gian xác nhận, không phát thông báo “đã nhận yêu cầu”, không bấm lần hai. Thử đường gửi qua handler Enter khi nút không nhận diện được. Thêm SVG mũi tên có tọa độ khác fixture cũ.
+- ChatGPT: fixture thẻ video không class attachment, chỉ có tên `workflow-XXXXXXXX…` và thanh tiến trình. Nhận diện được tệp, điền prompt, chờ upload, gửi sớm/tự gửi 120 giây, gửi thủ công không trùng, đổi chat và hủy đều được kiểm tra bằng đồng hồ ảo.
+- UI: ID nằm trong header thay vì body, cỡ chữ không quá 10px. Giữ kiểm thử ánh xạ thứ tự hai ảnh, chọn chat, lưu và xuất MP4 thật.
+
+Không có tài khoản Muse/ChatGPT/Gemini đăng nhập thật trong môi trường này; các fixture được mở rộng theo ảnh lỗi nhưng không thay cho kiểm thử giao diện thật.

@@ -37,3 +37,7 @@ Tình trạng dựa trên mã nguồn ZIP được cung cấp, không kế thừ
 ### 0.8.0
 
 Thêm lựa chọn tab/cuộc trò chuyện, chặn đổi chat; node tạo văn bản qua tab chuẩn bị tệp trước rồi tự gửi sau 2 phút hoặc nhận lệnh Gửi ngay có chờ upload. Mỗi node có ID ổn định và prompt có bảng ánh xạ ID ảnh theo thứ tự đính kèm. Bổ sung công cụ chẩn đoán và ghi nhớ nút Gửi Muse do người dùng chọn. Chưa xác minh với tài khoản AI đăng nhập thật.
+
+### 0.8.1
+
+Sửa báo nhận prompt sai khi lịch sử Muse hydrate, bổ sung nhận diện mũi tên và đường gửi Enter có xác nhận; nhận thẻ video ChatGPT dạng tên tệp rút gọn; đưa ID nhỏ lên cạnh tên node. Kiểm thử hồi quy mô phỏng, chưa xác minh phiên AI thật.

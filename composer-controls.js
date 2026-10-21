@@ -2,8 +2,33 @@
 (() => {
   const visible=el=>!!el?.getClientRects().length&&getComputedStyle(el).visibility!=='hidden';
   function label(el){return [el.getAttribute('aria-label'),el.getAttribute('data-testid'),el.getAttribute('title'),el.textContent,...(el.getAttribute('aria-labelledby')||'').split(/\s+/).map(id=>document.getElementById(id)?.textContent)].filter(Boolean).join(' ');}
+  function upArrow(svg){
+    const segments=[];
+    for(const line of svg.querySelectorAll('line'))segments.push(['x1','y1','x2','y2'].map(attr=>Number(line.getAttribute(attr))));
+    for(const poly of svg.querySelectorAll('polyline')){const points=(poly.getAttribute('points')||'').match(/-?\d*\.?\d+/g)?.map(Number)||[];for(let i=2;i+1<points.length;i+=2)segments.push([points[i-2],points[i-1],points[i],points[i+1]]);}
+    for(const path of svg.querySelectorAll('path')){
+      const tokens=(path.getAttribute('d')||'').match(/[a-zA-Z]|[-+]?(?:\d*\.)?\d+(?:e[-+]?\d+)?/g)||[];let command='',x=0,y=0,startX=0,startY=0;
+      for(let i=0;i<tokens.length;){
+        if(/^[a-z]$/i.test(tokens[i]))command=tokens[i++];
+        if(!/^[mMlLhHvVzZ]$/.test(command))break;
+        if(/[zZ]/.test(command)){x=startX;y=startY;command='';continue;}
+        const count=/[hHvV]/.test(command)?1:2;if(i+count>tokens.length||tokens.slice(i,i+count).some(v=>/^[a-z]$/i.test(v)))break;
+        const values=tokens.slice(i,i+count).map(Number);i+=count;const relative=command===command.toLowerCase();let nx=x,ny=y;
+        if(/[hH]/.test(command))nx=values[0]+(relative?x:0);else if(/[vV]/.test(command))ny=values[0]+(relative?y:0);else{nx=values[0]+(relative?x:0);ny=values[1]+(relative?y:0);}
+        if(/[mM]/.test(command)){startX=nx;startY=ny;command=relative?'l':'L';}else segments.push([x,y,nx,ny]);x=nx;y=ny;
+      }
+    }
+    return segments.some(([x1,y1,x2,y2])=>{
+      if(Math.abs(x1-x2)>.5||Math.abs(y1-y2)<4)return false;
+      const topX=(x1+x2)/2,topY=Math.min(y1,y2),height=Math.abs(y1-y2);
+      const wings=segments.flatMap(([ax,ay,bx,by])=>Math.hypot(ax-topX,ay-topY)<.8?[[bx,by]]:Math.hypot(bx-topX,by-topY)<.8?[[ax,ay]]:[]).filter(([x,y])=>y-topY>1&&y-topY<=height+1&&Math.abs(x-topX)>1);
+      return wings.some(([x])=>x<topX)&&wings.some(([x])=>x>topX);
+    });
+  }
   function icon(el,kind){
     const markup=[...el.querySelectorAll('svg,[data-icon]')].map(svg=>[svg.getAttribute('class'),svg.getAttribute('data-icon'),svg.getAttribute('data-lucide'),svg.getAttribute('data-testid')].join(' ')).join(' ');
+    if(kind==='send'&&[...el.querySelectorAll('svg use')].some(use=>/arrow[-_]?up|send/i.test(use.getAttribute('href')||use.getAttribute('xlink:href')||'')))return true;
+    if(kind==='send'&&[...el.querySelectorAll('svg')].some(upArrow))return true;
     if(kind==='send'&&/arrow[-_ ]?up(?:\s|$)|send|paper[-_ ]?plane/i.test(markup))return true;
     if(kind==='remove'&&/(?:lucide-x(?:\s|$)|close|x-mark|xmark)/i.test(markup))return true;
     const paths=[...el.querySelectorAll('svg path')].map(path=>(path.getAttribute('d')||'').replace(/[\s,]+/g,'').toLowerCase());
@@ -53,7 +78,7 @@
       // An unlabeled X belongs to a file only when its small wrapper contains media.
       for(let node=el.parentElement,depth=0;node&&node!==scope&&depth<3;node=node.parentElement,depth++){
         if(node.contains(composer))return false;
-        if(node.querySelector('img[src],video[src],[data-file-name]'))return true;
+        if(node.querySelector('img[src],video[src],[data-file-name]')||/workflow-[a-f0-9-]{8,}|\S+\.(?:mp4|webm|mov|pdf)(?:$|\s)/i.test(node.textContent||''))return true;
       }
       return false;
     });

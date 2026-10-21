@@ -99,3 +99,10 @@ Harness chạy DOM Chromium thật với `chrome.*` và dịch vụ AI giả l�
 - Nếu Muse vẫn không bấm Gửi: dừng workflow, vào Cài đặt → **Chọn nút Gửi trên Muse**, rồi bấm đúng mũi tên Gửi tại tab Muse. Lần chọn đó chỉ lưu nút, không gửi bản nháp. Chạy lại node. **Chẩn đoán Muse** tạo báo cáo cấu trúc nút, không đọc nội dung prompt/phản hồi hay URL ảnh.
 
 Sau khi tải và giải nén gói mới, ở `chrome://extensions` hoặc `edge://extensions`, bấm tải lại extension và tải lại các tab AI đang mở. Kiểm thử môi trường hiện tại dùng DOM AI giả lập; chưa xác minh trên phiên AI đăng nhập thật.
+
+### 0.8.1 — sửa nhận diện gửi và thẻ video
+
+- ID nằm cùng hàng với tên node, chữ nhỏ, vẫn bấm sao chép được.
+- Muse không báo nhận yêu cầu khi prompt còn trong ô nhập. Lịch sử chat tải thêm không còn làm bỏ qua bước gửi; bổ sung nhận diện SVG mũi tên hướng lên và gửi bằng Enter một lần nếu nút không nhận diện được, không có điều khiển đang bị vô hiệu hóa và không còn upload. Nếu chưa xác nhận được gửi, báo lỗi thay vì tự gửi lại.
+- ChatGPT nhận diện cả thẻ tệp/video chỉ hiển thị tên rút gọn, không có class attachment. Chỉ xác nhận tệp từ thẻ trong composer, không dùng FileList làm bằng chứng upload. Giữ chờ upload, 2 phút và Gửi ngay như trước.
+- Sau cập nhật, tải lại extension, Workflow và các tab AI. Các lỗi được kiểm thử hồi quy bằng DOM mô phỏng; vẫn cần xác minh trên phiên AI thật.

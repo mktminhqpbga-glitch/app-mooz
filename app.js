@@ -601,7 +601,7 @@
 
     const body = document.createElement('div');
     body.className = 'node-body';
-    const identity=document.createElement('button');identity.type='button';identity.className='node-component-id';identity.textContent=`ID: ${n.data.componentId}`;identity.title='Bấm để sao chép ID vào prompt';identity.onclick=()=>void navigator.clipboard.writeText(n.data.componentId).then(()=>setRunStatus('Đã sao chép '+n.data.componentId,'ok')).catch(()=>setRunStatus('ID: '+n.data.componentId,'warn'));body.append(identity);
+    const identity=document.createElement('button');identity.type='button';identity.className='node-component-id';identity.textContent=`ID: ${n.data.componentId}`;identity.title='Bấm để sao chép ID vào prompt';identity.onclick=()=>void navigator.clipboard.writeText(n.data.componentId).then(()=>setRunStatus('Đã sao chép '+n.data.componentId,'ok')).catch(()=>setRunStatus('ID: '+n.data.componentId,'warn'));head.insertBefore(identity,rename);
     if(['generateImage','generateVideo','generateText'].includes(n.type)){const refs=resolveReferences(n.id);if(refs.length){const list=document.createElement('div');list.className='reference-id-list';list.textContent=refs.map((ref,index)=>`Ảnh ${index+1}: ${ref.componentId}`).join(' · ');body.append(list);}}
 
 
