@@ -45,3 +45,7 @@ Sửa báo nhận prompt sai khi lịch sử Muse hydrate, bổ sung nhận di�
 ### 0.8.2
 
 Sửa xác nhận và thu kết quả ChatGPT: turn assistant/writing block, composer bị thay/ẩn, draft còn lưu nhưng có user echo khớp prompt; nhận diện Stop streaming và kéo dài chờ xác nhận lên 90 giây, không gửi trùng. Kiểm thử DOM mô phỏng, chưa xác minh phiên ChatGPT thật.
+
+### 0.8.3
+
+Mở rộng nhận diện câu trả lời theo turn/nút sao chép ChatGPT. Thêm chọn kết quả trực tiếp trên tab, xem trước và xác nhận; hoàn tất lượt đang chờ hoặc nhập vào node đã kết thúc mà không gửi prompt lại. Chưa xác minh DOM phiên AI thật.

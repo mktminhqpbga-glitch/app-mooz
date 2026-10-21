@@ -2,7 +2,7 @@
 (() => {
   if(globalThis.__workflowAIBridge)return;globalThis.__workflowAIBridge=true;
   const isGPT=/(^|\.)chatgpt\.com$/.test(location.hostname)||location.hostname==='chat.openai.com';
-  const active=new Map(),earlySend=new Set();let busy=false;
+  const active=new Map(),earlySend=new Set(),manualResults=new Map();let busy=false;
   const visible=el=>el&&el.getClientRects().length&&getComputedStyle(el).visibility!=='hidden';
   function composer(){
     const selectors=isGPT
@@ -10,7 +10,7 @@
       : 'rich-textarea [contenteditable="true"],[contenteditable="true"][role="textbox"],textarea';
     const score=el=>(!isGPT&&el.closest('rich-textarea')?40:0)+(el.id==='prompt-textarea'?100:0)+(el.closest('#composer-background,[data-testid="composer"],form')?30:0)+(el.getAttribute('role')==='textbox'?10:0)+(/hỏi chatgpt|ask chatgpt|ask anything|message|gửi|nhắn|prompt/i.test([el.getAttribute('placeholder'),el.getAttribute('aria-label'),el.getAttribute('data-placeholder')].join(' '))?20:0);
     const candidates=[...document.querySelectorAll(selectors)].filter(el=>
-      (el instanceof HTMLTextAreaElement||el.isContentEditable)&&visible(el)&&!el.matches(':disabled')&&!el.readOnly&&el.getAttribute('aria-disabled')!=='true'&&el.getAttribute('aria-readonly')!=='true'&&!el.closest('[data-message-author-role],[data-turn],[data-testid*="writing-block"],[data-type="writing-block"],.writing-block,[data-testid="canvas-editor"],[data-testid="canvas"],model-response,user-query,pre,code,[role="dialog"],[role="search"],nav,header')&&score(el)>0
+      (el instanceof HTMLTextAreaElement||el.isContentEditable)&&visible(el)&&!el.matches(':disabled')&&!el.readOnly&&el.getAttribute('aria-disabled')!=='true'&&el.getAttribute('aria-readonly')!=='true'&&!el.closest('article,[data-message-author-role],[data-turn],[data-testid*="writing-block"],[data-type="writing-block"],.writing-block,[data-testid="canvas-editor"],[data-testid="canvas"],model-response,user-query,pre,code,[role="dialog"],[role="search"],nav,header')&&score(el)>0
     );
     return candidates.sort((a,b)=>score(b)-score(a))[0]||null;
   }
@@ -36,7 +36,10 @@
   const writingSelector='[data-testid="writing-block"],[data-testid^="writing-block-"],[data-type="writing-block"],.writing-block';
   function replies(){
     const selector=isGPT?'[data-message-author-role="assistant"],[data-turn="assistant"],'+writingSelector:'model-response,.model-response-text,.markdown-main-panel,message-content';
-    const candidates=[...document.querySelectorAll(selector)].filter(el=>!el.closest('user-query,[data-message-author-role="user"],[data-turn="user"]')&&(!composer()||!el.contains(composer())));
+    const nodes=[...document.querySelectorAll(selector)];
+    if(isGPT)for(const turn of document.querySelectorAll('article[data-testid^="conversation-turn-"],[data-testid^="conversation-turn-"]')){if(!turn.matches('[data-turn="user"]')&&!turn.querySelector('[data-message-author-role="user"],[data-turn="user"]')&&turn.querySelector('[data-testid="copy-turn-action-button"],'+writingSelector+',.markdown.prose'))nodes.push(turn);}
+    if(isGPT)for(const copy of document.querySelectorAll('[data-testid="copy-turn-action-button"]')){const turn=copy.closest('article,[data-testid^="conversation-turn-"]');if(turn&&!turn.querySelector('[data-message-author-role="user"],[data-turn="user"]'))nodes.push(turn);}
+    const candidates=[...new Set(nodes)].filter(el=>!el.closest('user-query,[data-message-author-role="user"],[data-turn="user"]')&&(!composer()||!el.contains(composer())));
     const rendered=candidates.filter(el=>visible(el)||[...el.querySelectorAll('p,div,img,pre')].some(visible));
     return rendered.filter(el=>!rendered.some(parent=>parent!==el&&parent.contains(el)));
   }
@@ -165,13 +168,15 @@
   chrome.runtime.onMessage.addListener((request,sender,respond)=>{
     if(sender.id!==chrome.runtime.id)return false;
     if(request.type==='WORKFLOW_AI_CHECK'){
-      wait(composer,3500,null,'Không nhận diện được ô nhập trên trang AI đang mở.').then(()=>respond({ok:true,signedIn:true,composer:true,bridgeVersion:'0.8.2'}),()=>respond({ok:true,signedIn:false,composer:false,bridgeVersion:'0.8.2',error:'Tab AI đã kết nối nhưng chưa nhận diện được ô nhập đang chỉnh sửa. Mở cuộc trò chuyện và tải lại tab AI.'}));return true;
+      wait(composer,3500,null,'Không nhận diện được ô nhập trên trang AI đang mở.').then(()=>respond({ok:true,signedIn:true,composer:true,bridgeVersion:'0.8.3'}),()=>respond({ok:true,signedIn:false,composer:false,bridgeVersion:'0.8.3',error:'Tab AI đã kết nối nhưng chưa nhận diện được ô nhập đang chỉnh sửa. Mở cuộc trò chuyện và tải lại tab AI.'}));return true;
     }
+    if(request.type==='WORKFLOW_AI_USE_RESULT'){const resolve=manualResults.get(request.requestId);if(!resolve||typeof request.text!=='string'||!request.text.trim()){respond({ok:false});return false;}resolve({ok:true,text:request.text.trim()});respond({ok:true});return false;}
     if(request.type==='WORKFLOW_AI_SEND_NOW'){const pending=active.has(request.requestId);if(pending)earlySend.add(request.requestId);respond({ok:pending});return false;}
     if(request.type==='WORKFLOW_AI_STOP'){const controller=active.get(request.requestId);if(controller){controller.abort();stopped()?.click();}respond({ok:true,stopped:!!controller});return false;}
     if(request.type!=='WORKFLOW_AI_GENERATE')return false;
     if(busy){respond({ok:false,error:'Tab AI đang xử lý một yêu cầu khác.'});return false;}
     busy=true;const controller=new AbortController();active.set(request.requestId,controller);
-    generate(request,controller.signal).then(respond,error=>respond({ok:false,error:error.message})).finally(()=>{busy=false;active.delete(request.requestId);earlySend.delete(request.requestId);});return true;
+    const manual=new Promise(resolve=>manualResults.set(request.requestId,resolve));
+    Promise.race([generate(request,controller.signal),manual]).then(respond,error=>respond({ok:false,error:error.message})).finally(()=>{controller.abort();busy=false;active.delete(request.requestId);earlySend.delete(request.requestId);manualResults.delete(request.requestId);});return true;
   });
 })();

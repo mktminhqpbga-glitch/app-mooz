@@ -113,3 +113,12 @@ Không có tài khoản Muse/ChatGPT/Gemini đăng nhập thật trong môi trư
 Bộ unit 17 ca và các harness bridge, staged-send, UI/FFmpeg được chạy hồi quy. Đây là kiểm thử mô phỏng DOM, chưa có phiên ChatGPT đăng nhập thật.
 
 Kiểm chứng hồi quy: chạy cùng fixture bằng `ai-bridge.js` của 0.8.1 tái hiện đúng lỗi “Chưa xác nhận AI nhận prompt” dù writing block đã xuất hiện; fixture đạt với mã sửa 0.8.2.
+
+## 0.8.3 — lựa chọn kết quả có xem trước
+
+- `tests/gpt-response-smoke.cjs`: thêm turn không có role assistant/writing marker, chỉ có nút `copy-turn-action-button`; tự nhận nội dung markdown và đợi kết thúc streaming.
+- `tests/result-picker-smoke.cjs`: chọn kết quả có xem trước, chưa xác nhận thì chưa nhập; xác nhận hoàn tất lượt đang chờ qua đúng request ID, chỉ có một lần gửi ban đầu, request ID sai bị từ chối; sau 120 giây không gửi thêm.
+- `tests/browser-smoke.cjs`: mock thao tác chọn trả kết quả từ tab vào đúng node đang chờ qua promise cũ, không tạo yêu cầu AI mới; giữ kiểm tra FFmpeg và UI hiện có.
+- Các bridge và staged-send giữ kiểm tra gửi, upload, dừng và không gửi trùng.
+
+Đây là cơ chế khôi phục có người dùng chọn rõ câu trả lời và xác nhận nội dung. Tự nhận diện vẫn cần xác minh trên phiên ChatGPT thật; ảnh chụp không cung cấp cấu trúc DOM.

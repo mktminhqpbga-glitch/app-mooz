@@ -110,3 +110,15 @@ Sau khi tải và giải nén gói mới, ở `chrome://extensions` hoặc `edge
 ### 0.8.2 — nhận kết quả ChatGPT dạng “Viết”
 
 Sửa bước xác nhận gửi khi ChatGPT ẩn/thay ô nhập hoặc giữ draft nhưng đã có tin nhắn người dùng khớp prompt. Bổ sung phản hồi dạng turn assistant và writing block, đọc phần nội dung thay vì nút Copy/tiêu đề, không nhầm phần văn bản đang chỉnh sửa thành ô chat. Chờ xác nhận tối đa 90 giây thay cho 15 giây; không tự gửi lại, đợi kết thúc streaming rồi chuyển kết quả về node. Tải lại extension, Workflow và tab ChatGPT sau cập nhật.
+
+### 0.8.3 — lấy kết quả khi tự nhận diện bị kẹt
+
+Bổ sung nhận diện turn hội thoại qua nút sao chép của ChatGPT khi thiếu marker assistant/writing. Vì chưa có DOM từ phiên thật của người dùng, không khẳng định đã khớp mọi giao diện.
+
+Node **Tạo văn bản** qua Gemini/ChatGPT có nút **Chọn kết quả trên tab AI**, dùng được cả khi đang chờ và khi đã báo lỗi:
+
+1. Bấm nút này trên node. Workflow mở đúng tab đã chọn.
+2. Bấm vào câu trả lời cần lấy (hoặc bôi đen đoạn muốn lấy rồi bấm trong câu trả lời).
+3. Kiểm tra/sửa nội dung trong khung xem trước, bấm **Đưa về Workflow**.
+
+Thao tác này không gửi prompt mới, không bấm Copy hoặc nút trong câu trả lời. Khi lượt đang chờ còn kết nối, kết quả hoàn tất chính lượt đó để chuỗi node có thể tiếp tục. Nếu lượt đã kết thúc, nội dung được nhập vào node và lưu. Hủy hoặc hết 5 phút không nhập nội dung. Sau cập nhật cần tải lại extension, Workflow và các tab AI.

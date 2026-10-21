@@ -115,6 +115,28 @@
     if(reply?.ok){node.data.progress='Đã yêu cầu gửi sớm. Vẫn đợi tệp tải xong trước khi gửi.';const status=document.querySelector(`.node[data-id="${CSS.escape(node.id)}"] .status`);if(status)status.textContent=node.data.progress;}
   }
 
+  async function pickTextResult(node){
+    const provider=node.data.provider||'gemini';
+    const requestId=state.activeGenerationId===node.id?state.generationRequestId:null;
+    const tabs=await chrome.tabs.query({url:WorkflowAI.providers[provider].urls});
+    const runningTab=requestId?aiTabs.get(requestId):null;
+    const tab=runningTab?tabs.find(item=>item.id===runningTab):chooseChat(provider,tabs,node.data.chatTarget||aiChatTargets[provider]);
+    if(!tab)throw new Error('Tab AI của lượt chạy đã đóng.');
+    await chrome.scripting.executeScript({target:{tabId:tab.id},files:['result-picker.js']});
+    await chrome.tabs.update(tab.id,{active:true});if(tab.windowId&&chrome.windows?.update)await chrome.windows.update(tab.windowId,{focused:true});
+    const results=await chrome.scripting.executeScript({target:{tabId:tab.id},func:()=>WorkflowResultPicker.pick()});
+    const result=results[0]?.result;if(!result?.ok)throw new Error(result?.error||'Chưa chọn kết quả.');
+    if(nodeById(node.id)!==node)throw new Error('Node đã thay đổi hoặc bị xóa. Chọn kết quả lại trên node hiện tại.');
+    const current=chooseChat(provider,await chrome.tabs.query({url:WorkflowAI.providers[provider].urls}),{tabId:tab.id,url:chatKey(tab.url)});
+    if(requestId&&state.activeGenerationId===node.id&&node.data.status==='running'){
+      const reply=await chrome.tabs.sendMessage(current.id,{type:'WORKFLOW_AI_USE_RESULT',requestId,text:result.text});
+      if(reply?.ok)return;
+      throw new Error('Lượt chạy không còn kết nối. Bấm Dừng rồi chọn kết quả lại; không cần gửi lại prompt.');
+    }
+    if(node.data.status==='running')throw new Error('Lượt chạy đã thay đổi. Chọn kết quả lại.');
+    node.data.text=result.text;node.data.status='success';node.data.error='';node.data.progress='';render();saveState();setRunStatus('Đã nhập kết quả bạn chọn; không gửi lại prompt.','ok');
+  }
+
   chrome.runtime.onMessage?.addListener((message,sender)=>{
     if(sender.id!==chrome.runtime.id||message?.type!=='WORKFLOW_AI_PROGRESS'||typeof message.requestId!=='string'||aiTabs.get(message.requestId)!==sender.tab?.id||typeof message.text!=='string')return false;
     if(message.requestId.startsWith('script-'))$('#scriptAIStatus').textContent=message.text;
@@ -709,7 +731,9 @@
       button.textContent=`▶ Run ${node.type==='generateVideo'?'Video':node.type==='generateText'?'Văn bản':'Ảnh'}`;button.disabled=state.isRunning;
       button.onclick=event=>{event.stopPropagation();runSingleNode(node.id);};
     }
-    actions.appendChild(button);if(node.type==='generateText'&&node.data.status==='running'&&['chatgpt','gemini'].includes(node.data.provider||'gemini')){const now=document.createElement('button');now.type='button';now.className='node-send-now';now.textContent='Gửi ngay';now.onclick=()=>void sendTextNow(node).catch(error=>setRunStatus(error.message,'error'));actions.append(now);}
+    actions.appendChild(button);
+    if(node.type==='generateText'&&['chatgpt','gemini'].includes(node.data.provider||'gemini')){const pick=document.createElement('button');pick.type='button';pick.className='node-pick-result';pick.textContent='Chọn kết quả trên tab AI';pick.onclick=()=>void pickTextResult(node).catch(error=>setRunStatus(error.message,'error'));actions.append(pick);}
+    if(node.type==='generateText'&&node.data.status==='running'&&['chatgpt','gemini'].includes(node.data.provider||'gemini')){const now=document.createElement('button');now.type='button';now.className='node-send-now';now.textContent='Gửi ngay';now.onclick=()=>void sendTextNow(node).catch(error=>setRunStatus(error.message,'error'));actions.append(now);}
     if(node.type==='generateVideo'){
       const again=document.createElement('button');again.type='button';again.className='node-run-button again';again.textContent='↻ Again';again.title='Regenerate this video with stronger adherence to the connected prompt and references';again.disabled=state.isRunning;
       again.onclick=event=>{event.stopPropagation();executeGenerationNode(node.id,{again:true});};actions.appendChild(again);
