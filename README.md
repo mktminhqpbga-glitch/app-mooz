@@ -128,3 +128,7 @@ Thao tác này không gửi prompt mới, không bấm Copy hoặc nút trong c�
 Thêm Khóa nhân vật, Gán vai trò ảnh, Phân tích video, Chia cảnh tự động, Duyệt trước khi chạy, Kiểm tra kết quả, Biến thể prompt và Lưu theo bộ trong menu Thêm node. Hướng dẫn nối cổng, mẫu kịch bản và giới hạn: [docs/PRODUCTION-TOOLS.md](docs/PRODUCTION-TOOLS.md).
 
 Kiểm thử khóa/lưu/tải lại, vai trò, chặn gửi trước duyệt, hủy duyệt, chia cảnh, chọn biến thể, video gốc và tải theo bộ qua Chromium; kiểm tra FFprobe trên video thật có audio. Các phản hồi AI vẫn giả lập; chưa xác minh chất lượng AI trên tài khoản đăng nhập thật.
+
+### 0.9.1 — prompt ảnh ngắn gọn
+
+Giữ nguyên yêu cầu, chỉ thêm `Tạo 1 ảnh, tỷ lệ ….` và negative prompt nếu có. Một ảnh tham chiếu thông thường không thêm bảng ID hoặc đoạn hướng dẫn dài. Nhiều ảnh, ID được nhắc rõ, vai trò và khóa nhân vật vẫn có đối chiếu ngắn theo thứ tự tệp. Prompt video giữ luồng hiện có.

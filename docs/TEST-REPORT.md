@@ -131,3 +131,7 @@ Kiểm chứng hồi quy: chạy cùng fixture bằng `ai-bridge.js` của 0.8.1
 - Giữ harness UI cũ gồm xuất MP4 thật và kiểm tra bằng ffprobe hệ thống.
 
 Không có phiên AI đăng nhập thật. Kiểm thử vận chuyển video/rules/ảnh không chứng minh chất lượng phân tích, khóa nhân vật hoặc AI làm đúng prompt. Có luồng âm thanh không đồng nghĩa có tiếng nghe rõ. Tải theo bộ kiểm tra yêu cầu downloads và dữ liệu tệp, không xác minh đường dẫn đĩa Downloads thật trong môi trường này.
+
+## 0.9.1 — rút gọn prompt ảnh
+
+22 kiểm thử unit đạt: giữ nguyên nội dung yêu cầu, tỷ lệ/negative; bỏ bảng ID không dùng cho một ảnh; giữ ID khi nhiều ảnh, được nhắc trong prompt, có vai trò/khóa. Harness UI kiểm tra chính xác prompt gửi với một ảnh là yêu cầu gốc + một dòng ngắn và vẫn nhận đúng tệp; harness tám công cụ giữ kiểm tra vai trò và khóa. Phản hồi AI vẫn giả lập; đây là kiểm thử nội dung gửi đi, không xác minh chất lượng model thật.

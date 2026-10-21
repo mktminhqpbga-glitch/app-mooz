@@ -53,3 +53,7 @@ Mở rộng nhận diện câu trả lời theo turn/nút sao chép ChatGPT. Th�
 ### 0.9.0
 
 Thêm đủ tám công cụ trong menu: snapshot khóa nhân vật, vai trò ảnh theo cổng + ID, phân tích video gốc, chia cảnh thành graph/Timeline, cổng duyệt có sửa prompt và xem media, kiểm tra kỹ thuật bằng FFprobe, biến thể có chọn một đầu ra, tải tệp/prompt theo bộ. Bổ sung lưu snapshot vào IndexedDB riêng theo node và bố trí cảnh tránh đè node nguồn. Phần AI chưa có kiểm thử tài khoản thật.
+
+### 0.9.1
+
+Bỏ phần hướng dẫn ảnh mặc định dài và bảng ID khi chỉ có một ảnh không gán vai trò/khóa/nhắc ID. Giữ nguyên yêu cầu người dùng, dòng tạo ảnh/tỷ lệ ngắn và negative có cấu hình. Giữ ánh xạ ID cần thiết, metadata vai trò và khóa.

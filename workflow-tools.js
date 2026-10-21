@@ -34,5 +34,13 @@
   const headings=[...raw.matchAll(/^\s*(?:#{1,6}\s*)?(?:Biến thể\s*)?\d+[.):]\s+/gim)];if(headings.length<2)return [];
   return headings.slice(0,10).map((m,i)=>raw.slice(m.index+m[0].length,headings[i+1]?.index??raw.length).trim()).filter(Boolean);
  }
- globalThis.WorkflowTools={definitions,aliases,rules,assess,safeName,variants};
+ function imagePrompt(prompt,size,negative=''){
+  return [String(prompt||''),`Tạo 1 ảnh, tỷ lệ ${size||'1:1'}.`,negative?`Tránh: ${negative}`:''].filter(Boolean).join('\n');
+ }
+ function referenceNote(references,prompt){
+  const needed=references.length>1||references.some(ref=>ref.roles?.length||ref.instructions||[ref.componentId,...(ref.aliases||[])].some(id=>id&&String(prompt).includes(id)));
+  if(!needed)return '';
+  return references.map((ref,index)=>`Attached image ${index+1} = [${ref.componentId}]${ref.aliases?.length?' (also '+ref.aliases.map(id=>'['+id+']').join(', ')+')':''}${ref.roles?.length?' — ROLE: '+ref.roles.join(', '):''}${ref.instructions?'\n'+ref.instructions:''}`).join('\n');
+ }
+ globalThis.WorkflowTools={definitions,aliases,rules,assess,safeName,variants,imagePrompt,referenceNote};
 })();
