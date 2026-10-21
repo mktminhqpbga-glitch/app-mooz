@@ -138,3 +138,9 @@ Giữ nguyên yêu cầu, chỉ thêm `Tạo 1 ảnh, tỷ lệ ….` và negati
 Sửa trường hợp tên tab mới nhưng địa chỉ chat vẫn cũ: trên node, bấm **Làm mới danh sách chat** để chấp nhận cuộc trò chuyện hiện tại của đúng tab đã chọn, rồi chạy lại. Chọn tab từ danh sách sẽ đọc địa chỉ mới trực tiếp thay vì dùng bản lưu. Tab đóng không tự chuyển sang tab khác; đổi chat giữa lượt đang chạy vẫn bị chặn. Đang cập nhật lựa chọn thì chưa gửi yêu cầu.
 
 Bản 0.9.2 cũng bỏ nút Buy me a coffee, hộp VietQR và các liên kết/ảnh ủng hộ khỏi ứng dụng.
+
+### 0.10.0 — chạy thêm nhánh AI độc lập
+
+Khi một node đang chạy, có thể bấm **Chạy** trên node khác. Tab AI khác nhau chạy đồng thời; yêu cầu dùng cùng một tab được xếp FIFO, không ghi đè prompt. Node dùng đầu ra chưa có sẽ đợi node đầu vào, không gọi lại producer đang chạy. **Dừng** trên node dừng nhánh của nó; nút trên cùng **Dừng tất cả** hủy mọi nhánh đang chạy/chờ. Tiến độ, Gửi ngay và chọn kết quả được gắn đúng request/node.
+
+Nút Run workflow giữ thứ tự chạy đã chọn; để chạy thêm một nhánh trong lúc đó, bấm Chạy trên node độc lập. Đổi chat khi đang chờ vẫn bị chặn; có thể làm mới tab của node chưa chạy trong khi nhánh khác hoạt động. AI phía dịch vụ vẫn có giới hạn riêng; chưa kiểm chứng các phiên đăng nhập thật chạy đồng thời.

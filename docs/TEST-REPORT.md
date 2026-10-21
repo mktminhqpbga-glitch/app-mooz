@@ -141,3 +141,11 @@ Không có phiên AI đăng nhập thật. Kiểm thử vận chuyển video/rul
 Harness UI kiểm tra: đổi URL trong cùng ID tab bị chặn trước gửi; bấm Làm mới ở node thì cập nhật URL, chạy đúng tab và lưu URL mới. Chọn tab khác khi URL thực đã đổi so với cache vẫn dùng URL truy vấn trực tiếp. Tab đã chọn đóng thì báo lỗi, không gửi sang tab khác. Harness staged-send giữ kiểm tra đổi chat trong lúc chờ làm dừng gửi. Phản hồi AI và chrome.* vẫn giả lập.
 
 Kiểm tra UI xác nhận không còn nút/modal ủng hộ và nhấn Escape không phát sinh lỗi; giữ kiểm tra tải lại node, đổi chat, chọn lại URL mới và tab đóng. Đã chạy lại harness UI đầy đủ, gồm xuất MP4 FFmpeg thật.
+
+## 0.10.0 — nhánh độc lập và hàng đợi tab
+
+- `node --test tests/*.test.mjs`: 25 ca. Thêm mutex FIFO theo tab, hủy waiter không cho người sau vượt chủ sở hữu đang chạy; tab khác độc lập; hủy chờ không hủy promise producer.
+- `node tests/parallel-smoke.cjs`: Chromium + chrome.* và AI giả lập. Hai tab có hai yêu cầu đang chờ đồng thời; tiến độ/Gửi ngay đúng request; dừng một nhánh vẫn giữ nhánh khác. Gemini và Muse cùng tab chỉ gửi từng lượt; hủy waiter không kẹt hàng đợi. Bridge còn busy sau hủy thì đợi trước khi gửi tiếp. Hai nhánh dùng chung producer chỉ gọi producer một lần; hủy nhánh đợi chưa có request không phát lệnh Muse stop-all. Dừng tất cả dừng cả hai nhánh.
+- Harness UI cũ vẫn xác minh chọn chat, gửi, khôi phục kết quả, lưu, tạo ảnh hàng loạt, video đầu ra và xuất FFmpeg WASM thật. Harness tám công cụ giữ khóa, vai trò, duyệt/hủy, chia cảnh, biến thể, lưu theo bộ và FFprobe trên tệp thật.
+
+Không có phiên Muse/Gemini/ChatGPT đăng nhập thật, nên chưa xác minh khả năng chạy đồng thời của dịch vụ hoặc hành vi focus/streaming trên giao diện thật. Nút Run workflow vẫn tuần tự theo danh sách; tính năng mới cho phép chủ động chạy thêm nhánh bằng nút Chạy của node.

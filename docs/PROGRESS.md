@@ -63,3 +63,7 @@ Bỏ phần hướng dẫn ảnh mặc định dài và bảng ID khi chỉ có 
 Sửa cấu hình chat theo ID tab giữ URL cũ. Refresh tại node là thao tác xác nhận dùng chat hiện tại của tab đó; dropdown đọc URL trực tiếp, hiện lựa chọn trống khi phát hiện cache lệch URL. Giữ chặn đổi chat giữa lượt và tab đã đóng, không tự tìm tab thay thế.
 
 Theo yêu cầu người dùng, loại bỏ nút ủng hộ, modal VietQR, CSS và các handler liên quan; không tải ảnh QR trong giao diện nữa.
+
+### 0.10.0
+
+Thay khóa thực thi toàn canvas bằng context từng nhánh, sở hữu công việc từng node và hàng đợi theo tab. Hỗ trợ chạy thêm node độc lập khi nhánh khác bận; chờ producer chung, tái dùng kết quả mới hoàn tất, không gọi lại producer. Tiến độ, Gửi ngay, chọn kết quả và dừng theo request riêng; Dừng tất cả hủy toàn bộ. Không phát lệnh Muse stop-all khi nhánh chưa có request ID. Chờ bridge hết bận sau hủy trước khi gửi yêu cầu kế tiếp.

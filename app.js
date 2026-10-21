@@ -90,6 +90,11 @@
   const aiKeys={};
   let scriptAIController=null;
   const aiTabs=new Map();
+  const activeRuns=new Map(),nodeClaims=new Map(),nodeOutcomes=new Map(),tabQueue=WorkflowRuntime.queue();let completionSequence=0;
+  const runForNode=id=>nodeClaims.get(id)?.run||[...activeRuns.values()].find(run=>run.activeNodeId===id||run.targetId===id);
+  function syncRuns(){const last=[...activeRuns.values()].at(-1);state.isRunning=activeRuns.size>0;state.activeGenerationId=last?.activeNodeId||null;state.generationRequestId=last?.requestId||null;state.generationAbortController=last?.controller||null;$('#runBtn').disabled=false;$('#runBtn').textContent=state.isRunning?`■ Dừng tất cả (${activeRuns.size})`:'▶ Run workflow';$('#runBtn').title=state.isRunning?'Dừng tất cả nhánh đang chạy và đang chờ':'Chạy workflow';}
+  function progressNode(node,text){if(!node)return;node.data.progress=text;const status=document.querySelector(`.node[data-id="${CSS.escape(node.id)}"] .status`);if(status)status.textContent=text;}
+
   const aiChatTabs={},aiChatTargets={};let pendingChatSelections=0;
   const chatKey=url=>{try{const value=new URL(url);return value.origin+value.pathname.replace(/\/$/,'');}catch{return '';}};
   async function refreshChatTabs(){
@@ -117,16 +122,17 @@
     if(tabs.length!==1)throw new Error('Có nhiều tab AI. Hãy chọn đúng cuộc trò chuyện trong node hoặc Kết nối AI trước khi chạy.');return tabs[0];
   }
   async function sendTextNow(node){
-    const requestId=state.generationRequestId,tabId=aiTabs.get(requestId);
-    if(state.activeGenerationId!==node.id||!tabId)return;
+    const run=runForNode(node.id),requestId=run?.requestId,tabId=aiTabs.get(requestId);
+    if(!run)return;if(!tabId){setRunStatus('Node đang chuẩn bị hoặc đợi tab AI. Bấm Gửi ngay khi đến lượt; chưa gửi thêm yêu cầu.','warn');return;}
     const reply=await chrome.tabs.sendMessage(tabId,{type:'WORKFLOW_AI_SEND_NOW',requestId});
     if(reply?.ok){node.data.progress='Đã yêu cầu gửi sớm. Vẫn đợi tệp tải xong trước khi gửi.';const status=document.querySelector(`.node[data-id="${CSS.escape(node.id)}"] .status`);if(status)status.textContent=node.data.progress;}
   }
 
   async function pickTextResult(node){
     const provider=node.data.provider||'gemini';
-    const requestId=state.activeGenerationId===node.id?state.generationRequestId:null;
+    const selectedRun=runForNode(node.id),requestId=selectedRun?.requestId;
     const tabs=await chrome.tabs.query({url:WorkflowAI.providers[provider].urls});
+    if(requestId&&!aiTabs.has(requestId))throw new Error('Node đang chuẩn bị hoặc đợi tab AI. Đợi gửi xong, hoặc dừng nhánh rồi chọn kết quả.');
     const runningTab=requestId?aiTabs.get(requestId):null;
     const tab=runningTab?tabs.find(item=>item.id===runningTab):chooseChat(provider,tabs,node.data.chatTarget||aiChatTargets[provider]);
     if(!tab)throw new Error('Tab AI của lượt chạy đã đóng.');
@@ -136,7 +142,7 @@
     const result=results[0]?.result;if(!result?.ok)throw new Error(result?.error||'Chưa chọn kết quả.');
     if(nodeById(node.id)!==node)throw new Error('Node đã thay đổi hoặc bị xóa. Chọn kết quả lại trên node hiện tại.');
     const current=chooseChat(provider,await chrome.tabs.query({url:WorkflowAI.providers[provider].urls}),{tabId:tab.id,url:chatKey(tab.url)});
-    if(requestId&&state.activeGenerationId===node.id&&node.data.status==='running'){
+    if(requestId&&runForNode(node.id)===selectedRun&&selectedRun.requestId===requestId&&node.data.status==='running'){
       const reply=await chrome.tabs.sendMessage(current.id,{type:'WORKFLOW_AI_USE_RESULT',requestId,text:result.text});
       if(reply?.ok)return;
       throw new Error('Lượt chạy không còn kết nối. Bấm Dừng rồi chọn kết quả lại; không cần gửi lại prompt.');
@@ -148,7 +154,7 @@
   chrome.runtime.onMessage?.addListener((message,sender)=>{
     if(sender.id!==chrome.runtime.id||message?.type!=='WORKFLOW_AI_PROGRESS'||typeof message.requestId!=='string'||aiTabs.get(message.requestId)!==sender.tab?.id||typeof message.text!=='string')return false;
     if(message.requestId.startsWith('script-'))$('#scriptAIStatus').textContent=message.text;
-    else{setRunStatus(message.text,'warn');const node=nodeById(state.activeGenerationId);if(node?.data.status==='running'){node.data.progress=message.text;const status=document.querySelector(`.node[data-id="${CSS.escape(node.id)}"] .status`);if(status)status.textContent=message.text;}}
+    else{setRunStatus(message.text,'warn');const run=[...activeRuns.values()].find(item=>item.requestId===message.requestId);const node=nodeById(run?.activeNodeId);if(node?.data.status==='running'){node.data.progress=message.text;const status=document.querySelector(`.node[data-id="${CSS.escape(node.id)}"] .status`);if(status)status.textContent=message.text;}}
     return false;
   });
   async function runMuseSupport(mode){
@@ -182,7 +188,7 @@
     select.value=n.data.provider||(kind==='text'?'gemini':'muse');
     select.onchange=()=>{n.data.provider=select.value;n.data.apiModel='';n.data.chatTarget=null;scheduleAutoSave();render();};wrap.appendChild(select);
     const provider=select.value;if(WorkflowAI.providers[provider]?.urls){const target=n.data.chatTarget||aiChatTargets[provider];wrap.appendChild(chatSelector(provider,target,value=>{n.data.chatTarget=value;if(n.data.error?.includes('cuộc trò chuyện')){n.data.error='';n.data.status='idle';}scheduleAutoSave();}));const refresh=document.createElement('button');refresh.type='button';refresh.textContent='Làm mới danh sách chat';refresh.onclick=async()=>{
-      if(state.isRunning){setRunStatus('Dừng lượt đang chạy trước khi đổi cuộc trò chuyện.','warn');return;}
+      if(runForNode(n.id)){setRunStatus('Dừng lượt đang chạy của node này trước khi đổi cuộc trò chuyện.','warn');return;}
       const selected=n.data.chatTarget||aiChatTargets[provider];await refreshChatTabs();
       const tab=(aiChatTabs[provider]||[]).find(tab=>tab.id===selected?.tabId);
       if(tab){n.data.chatTarget={tabId:tab.id,url:chatKey(tab.url)};if(n.data.error?.includes('cuộc trò chuyện')){n.data.error='';n.data.status='idle';}scheduleAutoSave();setRunStatus('Đã chọn cuộc trò chuyện hiện tại của tab: '+(tab.title||tab.url),'ok');}
@@ -191,6 +197,16 @@
     if(WorkflowAI.models[provider]){const model=document.createElement('input');model.placeholder=WorkflowAI.models[provider][kind]||'Model';model.value=n.data.apiModel||'';model.setAttribute('aria-label','Model API');model.onchange=()=>{n.data.apiModel=model.value.trim();scheduleAutoSave();};wrap.appendChild(model);}
     if(kind==='video'){const hint=document.createElement('small');hint.textContent=provider==='fal'?'Motion Control: nối đúng 1 ảnh nhân vật + 1 video chuyển động. Thời lượng theo video nguồn.':provider==='google'?'Veo: clip 4/6/8 giây, cần API key có quyền model.':'15–60 giây là thời lượng yêu cầu; kết quả phụ thuộc Muse.ai.';wrap.appendChild(hint);}
     return wrap;
+  }
+  async function waitTabIdle(tabId,type,requestId,signal,first){
+    let result=first;const end=Date.now()+600000;
+    while(true){
+      if(signal?.aborted)throw new DOMException('Đã dừng.','AbortError');
+      result=result||await sendMuseTabMessage(tabId,{type},signal);if(!result?.busy)return result;
+      if(Date.now()>end)throw new Error('Tab AI vẫn đang xử lý yêu cầu trước. Chưa gửi thêm prompt.');
+      const run=[...activeRuns.values()].find(item=>item.requestId===requestId);progressNode(nodeById(run?.activeNodeId),'Đang đợi tab AI hoàn tất yêu cầu trước…');
+      await WorkflowRuntime.waitFor(new Promise(resolve=>setTimeout(resolve,500)),signal);result=null;
+    }
   }
   async function otherTabMessage(provider,message,signal){
     const checkAbort=()=>{if(signal?.aborted)throw new DOMException('Đã dừng.','AbortError');};
@@ -201,7 +217,7 @@
     const target=message.chatTarget||aiChatTargets[provider];const ordered=message.type==='WORKFLOW_AI_CHECK'&&!target?tabs:[chooseChat(provider,tabs,target)];let chosen=null,lastError='';
     for(const tab of ordered){
       checkAbort();
-      try{if(message.type==='WORKFLOW_AI_GENERATE'&&chrome.tabs.update){await chrome.tabs.update(tab.id,{active:true});if(tab.windowId&&chrome.windows?.update)await chrome.windows.update(tab.windowId,{focused:true});}await chrome.scripting.executeScript({target:{tabId:tab.id},files:['composer-controls.js','ai-bridge.js']});const check=await sendMuseTabMessage(tab.id,{type:'WORKFLOW_AI_CHECK'},signal);if(check?.ok&&check.composer&&check.signedIn!==false){chosen=tab;break;}lastError=check?.error||'Chưa tìm thấy ô chat. Nếu trang đã đăng nhập, hãy tải lại tab AI để cập nhật bộ kết nối.';}
+      try{if(message.type==='WORKFLOW_AI_GENERATE'&&chrome.tabs.update){await chrome.tabs.update(tab.id,{active:true});if(tab.windowId&&chrome.windows?.update)await chrome.windows.update(tab.windowId,{focused:true});}await chrome.scripting.executeScript({target:{tabId:tab.id},files:['composer-controls.js','ai-bridge.js']});let check=await sendMuseTabMessage(tab.id,{type:'WORKFLOW_AI_CHECK'},signal);if(message.type==='WORKFLOW_AI_GENERATE'&&check?.busy)check=await waitTabIdle(tab.id,'WORKFLOW_AI_CHECK',message.requestId,signal,check);if(check?.ok&&check.composer&&check.signedIn!==false){chosen=tab;break;}lastError=check?.error||'Chưa tìm thấy ô chat. Nếu trang đã đăng nhập, hãy tải lại tab AI để cập nhật bộ kết nối.';}
       catch(error){if(error.name==='AbortError')throw error;lastError=error.message;}
     }
     if(!chosen)throw new Error(`${WorkflowAI.providers[provider].name}: ${lastError||'không kết nối được'}`);
@@ -222,11 +238,21 @@
     const referenceNote=WorkflowTools.referenceNote(references,request.prompt);if(referenceNote)request={...request,prompt:request.prompt+'\n'+referenceNote};
     const provider=n.data.provider||(n.type==='generateText'?'gemini':'muse');request={...request,chatTarget:n.data.chatTarget||aiChatTargets[provider]};
     WorkflowAI.validate(provider,request);
-    if(provider==='muse'){if(request.referenceVideos?.length)throw new Error('Muse bridge chưa hỗ trợ video tham chiếu. Chọn fal.ai cho Motion Control.');const referenceImages=await Promise.all((request.referenceImages||[]).map(url=>blobAsDataUrlFromUrl(url)));return museTabMessage({...request,referenceImages,type:'MUSEFLOW_GENERATE'},preferredMuseTabId,signal);}
+    let release;
+    if(['muse','chatgpt','gemini'].includes(provider)){
+      const tabs=await chrome.tabs.query({url:WorkflowAI.providers[provider].urls});const tab=chooseChat(provider,tabs,request.chatTarget);
+      request={...request,chatTarget:{tabId:tab.id,url:chatKey(tab.url)}};
+      release=await tabQueue.acquire('tab:'+tab.id,signal,()=>progressNode(n,'Đang đợi lượt dùng tab AI này. Bạn có thể chạy nhánh ở tab khác.'));
+    }
+    try{
+
+    if(release){const tabs=await chrome.tabs.query({url:WorkflowAI.providers[provider].urls});chooseChat(provider,tabs,request.chatTarget);if(signal?.aborted)throw new DOMException('Đã dừng.','AbortError');}
+    if(provider==='muse'){if(request.referenceVideos?.length)throw new Error('Muse bridge chưa hỗ trợ video tham chiếu. Chọn fal.ai cho Motion Control.');const referenceImages=await Promise.all((request.referenceImages||[]).map(url=>blobAsDataUrlFromUrl(url)));return await museTabMessage({...request,referenceImages,type:'MUSEFLOW_GENERATE'},preferredMuseTabId,signal);}
     if(provider==='chatgpt'||provider==='gemini'){
       const safe={...request};safe.referenceImages=await Promise.all((request.referenceImages||[]).map(url=>blobAsDataUrlFromUrl(url)));safe.referenceVideos=await Promise.all((request.referenceVideos||[]).map(url=>blobAsDataUrlFromUrl(url)));
       try{const reply=await otherTabMessage(provider,{...safe,type:'WORKFLOW_AI_GENERATE'},signal);if(reply.chatTarget){n.data.chatTarget=reply.chatTarget;if(aiChatTargets[provider]?.tabId===reply.chatTarget.tabId)aiChatTargets[provider]=reply.chatTarget;}return reply;}finally{aiTabs.delete(request.requestId);}
     }
+    }finally{release?.();}
     return WorkflowAI.api(provider,request,aiKeys[provider],signal);
   }
   async function blobAsDataUrlFromUrl(url){if(url.startsWith('data:'))return url;const r=await fetch(url);if(!r.ok)throw new Error('Không tải được tệp nguồn để chuyển sang AI.');return blobAsDataUrl(await r.blob());}
@@ -835,14 +861,14 @@
     if(node.data.status==='running'){
       button.classList.add('stop');button.textContent='■ Stop';button.disabled=false;button.title='Stop this generation';button.dataset.stopGeneration=node.id;
     }else{
-      button.textContent=`▶ Run ${node.type==='generateVideo'?'Video':node.type==='generateText'?'Văn bản':'Ảnh'}`;button.disabled=state.isRunning;
+      button.textContent=`▶ Run ${node.type==='generateVideo'?'Video':node.type==='generateText'?'Văn bản':'Ảnh'}`;button.disabled=false;
       button.onclick=event=>{event.stopPropagation();runSingleNode(node.id);};
     }
     actions.appendChild(button);
     if(node.type==='generateText'&&['chatgpt','gemini'].includes(node.data.provider||'gemini')){const pick=document.createElement('button');pick.type='button';pick.className='node-pick-result';pick.textContent='Chọn kết quả trên tab AI';pick.onclick=()=>void pickTextResult(node).catch(error=>setRunStatus(error.message,'error'));actions.append(pick);}
     if(node.type==='generateText'&&node.data.status==='running'&&['chatgpt','gemini'].includes(node.data.provider||'gemini')){const now=document.createElement('button');now.type='button';now.className='node-send-now';now.textContent='Gửi ngay';now.onclick=()=>void sendTextNow(node).catch(error=>setRunStatus(error.message,'error'));actions.append(now);}
     if(node.type==='generateVideo'){
-      const again=document.createElement('button');again.type='button';again.className='node-run-button again';again.textContent='↻ Again';again.title='Regenerate this video with stronger adherence to the connected prompt and references';again.disabled=state.isRunning;
+      const again=document.createElement('button');again.type='button';again.className='node-run-button again';again.textContent='↻ Again';again.title='Regenerate this video with stronger adherence to the connected prompt and references';again.disabled=node.data.status==='running';
       again.onclick=event=>{event.stopPropagation();executeGenerationNode(node.id,{again:true});};actions.appendChild(again);
     }
     return actions;
@@ -1292,7 +1318,7 @@
     const preferred=preferredTabId??preferredMuseTabId;
     if(preferred){const index=tabs.findIndex(tab=>tab.id===preferred);if(index>0)tabs.unshift(tabs.splice(index,1)[0]);}
     let lastError='';
-    if(message.type==='MUSEFLOW_GENERATE'){const tab=chooseChat('muse',tabs,message.chatTarget||aiChatTargets.muse);await chrome.scripting.executeScript({target:{tabId:tab.id},files:['composer-controls.js','muse-bridge.js']});preferredMuseTabId=tab.id;aiTabs.set(message.requestId,tab.id);try{return await sendMuseTabMessage(tab.id,message,signal);}finally{aiTabs.delete(message.requestId);}}
+    if(message.type==='MUSEFLOW_GENERATE'){const tab=chooseChat('muse',tabs,message.chatTarget||aiChatTargets.muse);await chrome.scripting.executeScript({target:{tabId:tab.id},files:['composer-controls.js','muse-bridge.js']});preferredMuseTabId=tab.id;await waitTabIdle(tab.id,'MUSEFLOW_CHECK_SESSION',message.requestId,signal);aiTabs.set(message.requestId,tab.id);try{return await sendMuseTabMessage(tab.id,message,signal);}finally{aiTabs.delete(message.requestId);}}
     for(const tab of tabs){
       if(signal?.aborted)throw new DOMException('Generation stopped by user.','AbortError');
       if(!tab.id)continue;
@@ -1318,20 +1344,13 @@
   }
 
   function stopGeneration(nodeId=state.activeGenerationId){
-    if(!nodeId)return;
-    const node=nodeById(nodeId);
-    if(!node||node.data.status!=='running')return;
-    const requestId=state.activeGenerationId===nodeId?state.generationRequestId:null;
-    if(state.activeGenerationId===nodeId)state.generationAbortController?.abort();
-    if(node){node.data.status='stopped';node.data.error='Generation stopped by user.';}
-    setRunStatus(`Stopped ${node?.type==='generateVideo'?'video':'image'} generation: ${nodeId}`,'warn');
-    render();
-    // Cancellation is best-effort for Muse, but never wait for its response to unlock the UI.
-    void sendMuseStop(requestId);
-    try{clearTimeout(autoSaveTimer);void queueWorkflowSave();}catch{}
+    const run=runForNode(nodeId);if(!run)return;
+    run.controller.abort();void sendMuseStop(run.requestId);setRunStatus('Đã dừng nhánh của node '+nodeId,'warn');render();
   }
+  function stopAllRuns(){for(const run of activeRuns.values()){run.controller.abort();void sendMuseStop(run.requestId);}setRunStatus('Đang dừng tất cả các nhánh…','warn');}
 
   async function sendMuseStop(requestId){
+    if(!requestId)return; // A null ID means stop all in the Muse bridge.
     try{
       const tabs=await chrome.tabs.query({url:['https://muse.ai/*','https://*.muse.ai/*']});
       const ordered=preferredMuseTabId?tabs.sort((a,b)=>(b.id===preferredMuseTabId)-(a.id===preferredMuseTabId)):tabs;
@@ -1363,22 +1382,22 @@
   }
 
   async function execute(targetId=null,{again=false,generationOrder=null}={}) {
-    if(state.isRunning)return;
+    if(!targetId&&activeRuns.size){setRunStatus('Có nhánh đang chạy. Bấm Chạy trên node độc lập để chạy thêm.','warn');return;}
     // Keep runtime graph references valid even if an older saved workflow or
     // an interrupted UI action left stale node IDs behind.
     normalizeSavedGraph();
     // A persisted "running" flag can survive a tab reload even though the old
     // request no longer exists. Normalize it before starting a fresh run.
-    for(const node of state.nodes)if(['generateImage','generateVideo','generateText'].includes(node.type)&&node.data.status==='running'){
+    for(const node of state.nodes)if(['generateImage','generateVideo','generateText'].includes(node.type)&&node.data.status==='running'&&!runForNode(node.id)){
       node.data.status=(node.type==='generateText'?node.data.text?.trim():node.data.asset?.url)?'success':'idle';
       if(node.data.status==='idle')node.data.error='Previous run was interrupted; ready to retry.';
     }
-    const abortController=new AbortController();state.generationAbortController=abortController;state.activeGenerationId=targetId;state.isRunning=true;$('#runBtn').disabled=false;$('#runBtn').textContent='■ Stop workflow';$('#runBtn').title='Stop the running workflow and its remaining nodes';
+    const abortController=new AbortController(),run={id:uid('run'),controller:abortController,activeNodeId:targetId,targetId,requestId:null,startSequence:completionSequence};activeRuns.set(run.id,run);const pendingTarget=nodeById(targetId);if(pendingTarget){pendingTarget.data.status='running';pendingTarget.data.progress='Đang chuẩn bị nhánh…';}syncRuns();
     setRunStatus(targetId?(again?'Regenerating video with stronger prompt adherence…':'Running selected generation node…'):'Running workflow...','warn');
     try{
       if(targetId&&['generateText','generateImage','generateVideo'].includes(nodeById(targetId)?.type)&&!getIncoming(targetId,'prompt').some(edge=>requiredNodeOrder(edge.source).some(id=>nodeById(id)?.type==='generateText')))validateTargetPrompt(targetId);
       const selectedGenerations=generationOrder?new Set(generationOrder):null;
-      const order=targetId?requiredNodeOrder(targetId).filter(id=>{const prerequisite=nodeById(id);return id===targetId||!['generateImage','generateVideo','generateText'].includes(prerequisite?.type)||!(prerequisite.type==='generateText'?prerequisite.data?.text?.trim():prerequisite.data?.asset?.url);}):topoOrder(generationOrder).filter(id=>{const node=nodeById(id);return !selectedGenerations||!['generateImage','generateVideo','generateText'].includes(node?.type)||selectedGenerations.has(id);});
+      const order=targetId?requiredNodeOrder(targetId).filter(id=>{const prerequisite=nodeById(id);return id===targetId||!['generateImage','generateVideo','generateText'].includes(prerequisite?.type)||runForNode(id)||!(prerequisite.type==='generateText'?prerequisite.data?.text?.trim():prerequisite.data?.asset?.url);}):topoOrder(generationOrder).filter(id=>{const node=nodeById(id);return !selectedGenerations||!['generateImage','generateVideo','generateText'].includes(node?.type)||selectedGenerations.has(id);});
       for(const n of state.nodes){
         if(['imageInput','videoInput'].includes(n.type)&&n.data.localDataUrl)n.data.asset={id:n.data.asset?.id||uid('asset'),kind:n.type==='videoInput'?'video':'image',url:n.data.localDataUrl,sourceNodeId:n.id};
       }
@@ -1387,8 +1406,17 @@
       for(const id of order){
         if(abortController.signal.aborted)throw new DOMException('Generation stopped by user.','AbortError');
         const n=nodeById(id); if(!n)continue;
+        const work=WorkflowTools.definitions[n.type]||['generateText','generateImage','generateVideo','imageResize'].includes(n.type);
+        if(work){
+          const owner=nodeClaims.get(id);
+          if(owner){const pending=nodeById(targetId);if(pending&&pending.id!==id){pending.data.status='running';pending.data.progress='Đang đợi node đầu vào…';render();}progressNode(nodeById(targetId),`Đang đợi kết quả từ node ${n.data.componentId||id}…`);const result=await WorkflowRuntime.waitFor(owner.done,abortController.signal);if(!result.ok)throw new Error('Node đầu vào không hoàn tất: '+result.error);continue;}
+          const prior=nodeOutcomes.get(id);if(id!==targetId&&prior?.sequence>run.startSequence){if(!prior.ok)throw new Error('Node đã chạy trong nhánh khác nhưng không hoàn tất: '+prior.error);continue;}
+        }
+        let claim,stepError;if(work){let finish;const done=new Promise(resolve=>finish=resolve);claim={run,done,finish};nodeClaims.set(id,claim);run.activeNodeId=id;run.requestId=null;syncRuns();}
+        try{
+
         if(WorkflowTools.definitions[n.type]){
-          state.activeGenerationId=n.id;n.data.status='running';n.data.error='';render();
+          run.activeNodeId=n.id;n.data.status='running';n.data.error='';render();
           try{
             if(n.type==='characterLock'&&!n.data.lockedAsset)throw new Error('Node nhân vật chưa khóa ảnh chuẩn.');
             if(n.type==='review')await reviewTool(n,abortController.signal);
@@ -1406,11 +1434,11 @@
           state.edges.filter(e=>e.source===n.id).forEach(e=>{const target=nodeById(e.target);if(target?.type==='preview')target.data.asset=n.data.asset;});render();continue;
         }
         if(n.type==='generateText'){
-          state.activeGenerationId=n.id;n.data.status='running';n.data.text='';n.data.progress='';n.data.error='';render();
+          run.activeNodeId=n.id;n.data.status='running';n.data.text='';n.data.progress='';n.data.error='';render();
           try{
             if(n.data.toolKind==='videoAnalysis'&&!resolveVideos(n.id).length)throw new Error('Nối video gốc trước khi phân tích.');
             const prompt=resolvePrompt(n.id);if(!prompt.trim())throw new Error('Nối node yêu cầu vào cổng Prompt trước.');
-            const request={requestId:uid('text'),mediaType:'text',stageBeforeSend:true,prompt,rules:[WorkflowTools.rules(n.data),...getIncoming(n.id,'rules').map(sourceFor).filter(Boolean).map(source=>resolveText(source.id))].filter(Boolean).join('\n'),referenceImages:resolveReferences(n.id).map(item=>item.url),referenceVideos:resolveVideos(n.id),model:n.data.apiModel};state.generationRequestId=request.requestId;
+            const request={requestId:uid('text'),mediaType:'text',stageBeforeSend:true,prompt,rules:[WorkflowTools.rules(n.data),...getIncoming(n.id,'rules').map(sourceFor).filter(Boolean).map(source=>resolveText(source.id))].filter(Boolean).join('\n'),referenceImages:resolveReferences(n.id).map(item=>item.url),referenceVideos:resolveVideos(n.id),model:n.data.apiModel};run.requestId=request.requestId;
             const reply=await generateWithProvider(n,request,abortController.signal);if(!reply?.ok||!reply.text)throw new Error(reply?.error||'AI không trả về văn bản.');
             if(abortController.signal.aborted)throw new DOMException('Đã dừng.','AbortError');n.data.text=reply.text;if(n.data.toolKind==='promptVariants'&&!WorkflowTools.variants(reply.text).length)throw new Error('AI chưa trả các biến thể tách biệt. Xem kết quả và chạy lại; chưa chuyển sang node tạo ảnh.');n.data.status='success';render();continue;
           }catch(error){n.data.status=abortController.signal.aborted?'stopped':'error';n.data.error=error.message;render();throw error;}
@@ -1423,21 +1451,21 @@
           const continuityPrevious=isVideo&&n.data.continuity?timelinePredecessor(n.id):null,continuityStartFrame=continuityPrevious?.data?.endFrame?.url?continuityPrevious.data.endFrame:null;
           if(isVideo&&n.data.continuity&&!continuityStartFrame)throw new Error(`End-frame continuity for ${n.id} needs the previous Timeline clip to be generated successfully with an extractable final frame. Put clips in order and run the previous clip first.`);
           const referenceImages=resolveReferences(n.id);
-          state.activeGenerationId=n.id;n.data.status='running';n.data.progress='';n.data.error='';n.data.asset=null;n.data.endFrame=null;state.edges.filter(edge=>edge.source===n.id).forEach(edge=>{const target=nodeById(edge.target);if(target?.type==='preview')target.data.asset=null;});render();setRunStatus(`${targetId?'Selected node':`Generation ${generationStep}/${totalGenerations}`} · generating ${isVideo?'video':'image'}: ${n.id}`,'warn');
+          run.activeNodeId=n.id;n.data.status='running';n.data.progress='';n.data.error='';n.data.asset=null;n.data.endFrame=null;state.edges.filter(edge=>edge.source===n.id).forEach(edge=>{const target=nodeById(edge.target);if(target?.type==='preview')target.data.asset=null;});render();setRunStatus(`${targetId?'Selected node':`Generation ${generationStep}/${totalGenerations}`} · generating ${isVideo?'video':'image'}: ${n.id}`,'warn');
           try{
             const sizeInstruction=`Output aspect ratio: ${n.data.size}. Match this frame shape exactly. ${n.data.size==='16:9'?'Use a wide landscape composition.':n.data.size==='9:16'?'Use a tall portrait composition.':n.data.size==='1:1'?'Use a square composition.':n.data.size==='4:3'?'Use a standard landscape composition.':'Use a standard portrait composition.'}`;
             const continuityInstruction=continuityStartFrame?'CONTINUITY LOCK: Attached image 1 is the exact final frame of the previous Timeline clip. Use image 1 as the exact first frame of this video: preserve its subject identity, pose, position, camera angle, crop, lighting, and background. Continue motion naturally from that precise moment. No reset, jump, flash, dissolve, or scene change at the start.':'';
             const audioRequirement=isVideo?'AUDIO IS REQUIRED: Return a video with audible, synchronized sound; do not make a silent clip. Follow the requested audio direction and make its music and sound effects clearly audible. Do not add spoken dialogue unless the prompt asks for it.':'';
             const fidelityInstruction=isVideo&&again?'\n\nPROMPT FIDELITY: Follow the provided prompt closely and depict its requested characters, actions, setting, sequence, mood, and visual details. Keep the main action clear and recognizable throughout the clip. Do not substitute a different scene, omit requested actions, or add unrelated events. Use the connected reference images to preserve subject identity and appearance.':'';
             const musePrompt=isVideo?`Create a ${n.data.size} aspect ratio video clip, ${n.data.duration} seconds long. ${sizeInstruction}\n\n${audioRequirement}${continuityInstruction?`\n\n${continuityInstruction}`:''}${referenceImages.length?`\n\nUse the attached reference image${referenceImages.length===1?'':'s'} as visual guidance${continuityStartFrame?' while keeping image 1 as the exact opening frame.':'.'}`:''}\n\nPrompt: ${prompt}${negativePrompt?`\n\nAvoid: ${negativePrompt}`:''}${fidelityInstruction}`:WorkflowTools.imagePrompt(prompt,n.data.size,negativePrompt);
-            const generationRequest={type:'MUSEFLOW_GENERATE',requestId:uid('generation'),prompt:musePrompt,negativePrompt,size:n.data.size,model:n.data.model,duration:n.data.duration,mediaType:isVideo?'video':'image',referenceImages:referenceImages.map(item=>item.url),timeoutSec:600};state.generationRequestId=generationRequest.requestId;
+            const generationRequest={type:'MUSEFLOW_GENERATE',requestId:uid('generation'),prompt:musePrompt,negativePrompt,size:n.data.size,model:n.data.model,duration:n.data.duration,mediaType:isVideo?'video':'image',referenceImages:referenceImages.map(item=>item.url),timeoutSec:600};run.requestId=generationRequest.requestId;
             generationRequest.referenceVideos=resolveVideos(n.id);generationRequest.model=n.data.apiModel;
             let reply=await generateWithProvider(n,generationRequest,abortController.signal);
             if(abortController.signal.aborted)throw new DOMException('Generation stopped by user.','AbortError');
             if((n.data.provider||'muse')==='muse'&&!reply?.ok&&reply?.code==='SCENE_REFUSED'){
               setRunStatus(`Muse could not create ${n.data.sceneLabel||'this scene'}; retrying once with a close, safe alternative…`,'warn');
               const retryRequest={...generationRequest,prompt:`${musePrompt}\n\nSAFE EQUIVALENT RETRY: The previous version could not be generated. Create a close, allowed alternative for the same scene now. Stay faithful to the script's story purpose, characters, relationship, setting, action, mood, visual style, framing, continuity, and requested duration/aspect ratio. Change only the specific detail that prevents generation, replacing it with the nearest safe equivalent. Keep this scene in the story; do not skip it or change what it needs to accomplish. Do not ask a follow-up question or ask permission; generate the alternative in this attempt. Follow all content and safety rules.`};
-              reply=await museTabMessage(retryRequest,preferredMuseTabId,abortController.signal);
+              retryRequest.requestId=uid('retry');run.requestId=retryRequest.requestId;reply=await generateWithProvider(n,retryRequest,abortController.signal);
             }
             if(abortController.signal.aborted)throw new DOMException('Generation stopped by user.','AbortError');
             if(!reply?.ok)throw new Error(reply?.error||`Muse.ai did not return a generated ${isVideo?'video':'image'}.`);
@@ -1456,6 +1484,9 @@
             state.edges.filter(e=>e.source===n.id).forEach(e=>{const target=nodeById(e.target);if(target?.type==='preview')target.data.asset=e.sourcePort==='endFrame'?n.data.endFrame:n.data.asset;});render();
           }catch(err){if(err?.name==='AbortError'||abortController.signal.aborted){n.data.status='stopped';n.data.error='Generation stopped by user.';render();throw new DOMException('Generation stopped by user.','AbortError');}n.data.status='error';n.data.error=err?.message||String(err);render();throw err;}
         }
+        }catch(error){stepError=error;throw error;}finally{
+          if(claim){const ok=!stepError&&!abortController.signal.aborted;const result={ok,error:stepError?.message||'Lượt chạy đã dừng.'};nodeOutcomes.set(id,{...result,sequence:++completionSequence});claim.finish(result);if(nodeClaims.get(id)===claim)nodeClaims.delete(id);}
+        }
       }
       const technicalFailures=order.map(nodeById).filter(node=>node?.type==='qualityCheck'&&node.data.status==='error');
       clearTimeout(autoSaveTimer);setRunStatus(technicalFailures.length?`${technicalFailures.length} tệp chưa đạt kiểm tra kỹ thuật; xem báo cáo trong node.`:targetId?'Node generation completed.':'Workflow completed.',technicalFailures.length?'warn':'ok');
@@ -1463,19 +1494,20 @@
       // Never keep generation controls locked while IndexedDB/storage finishes.
       void queueWorkflowSave().catch(saveError=>{if(!state.isRunning)setRunStatus(`Generation completed, but workflow could not be saved: ${saveError?.message||String(saveError)}`,'warn');});
     }catch(err){
+      run.error=err?.message||String(err);
       if(err?.name==='AbortError'||abortController.signal.aborted){
-        const active=state.nodes.find(n=>n.id===state.activeGenerationId);
+        const active=state.nodes.find(n=>n.id===run.activeNodeId);
         if(active&&active.data.status==='running'){active.data.status='stopped';active.data.error='Generation stopped by user.';render();}
         clearTimeout(autoSaveTimer);void queueWorkflowSave().catch(()=>{});
         return;
       }
-      const failed=state.nodes.find(n=>['generateImage','generateVideo','generateText'].includes(n.type)&&n.data.status==='running');
-      if(failed){failed.data.status='error';failed.data.error=err?.message||String(err);render();}
+      const failed=nodeById(run.activeNodeId);
+      if(failed?.data.status==='running'){failed.data.status='error';failed.data.error=err?.message||String(err);render();}
       const message=err?.message||String(err);
       setRunStatus(/failed to fetch/i.test(message)?`Muse connection failed. Reload MuseFlow ${appVersion}, then check the Muse session.`:`MuseFlow ${appVersion} · ${message}`,'error');
       clearTimeout(autoSaveTimer);void queueWorkflowSave().catch(saveError=>{if(!state.isRunning)setRunStatus(`${runStatus.textContent} · Auto-save failed: ${saveError?.message||String(saveError)}`,'error');});
     }
-    finally{state.isRunning=false;state.activeGenerationId=null;state.generationAbortController=null;state.generationRequestId=null;$('#runBtn').disabled=false;$('#runBtn').textContent='▶ Run workflow';$('#runBtn').title='Run every node in the workflow in dependency order';render();}
+    finally{const pending=nodeById(targetId);if(pending?.data.status==='running'&&!nodeClaims.has(targetId)){pending.data.status=abortController.signal.aborted?'stopped':'error';pending.data.error=run.error||'Lượt chạy đã dừng.';}activeRuns.delete(run.id);syncRuns();if(activeRuns.size)setRunStatus(`${activeRuns.size} nhánh vẫn đang chạy…`,'warn');render();}
   }
 
   function executeWorkflow(){return openRunOrderModal();}
@@ -1500,7 +1532,7 @@
   function missingGenerationPrerequisites(selectedOrder){const selected=new Set(selectedOrder),missing=new Set(),visited=new Set();const visit=id=>{if(visited.has(id))return;visited.add(id);for(const edge of state.edges.filter(item=>item.target===id)){const source=nodeById(edge.source);if(!source)continue;if(['generateImage','generateVideo','generateText'].includes(source.type)){if(selected.has(source.id))visit(source.id);else if(!(source.type==='generateText'?source.data?.text?.trim():source.data?.asset?.url))missing.add(source.id);}else visit(source.id);}const node=nodeById(id),previous=node?.type==='generateVideo'&&node.data?.continuity?timelinePredecessor(id):null;if(previous){if(selected.has(previous.id))visit(previous.id);else if(!previous.data?.endFrame?.url)missing.add(previous.id);}};selectedOrder.forEach(visit);return[...missing];}
   function validateRunOrderSelection(){const warning=$('#runOrderWarning'),confirm=$('#confirmRunOrderBtn'),ordered=(pendingGenerationOrder||[]).filter(id=>pendingGenerationSelection.has(id)),count=ordered.length,total=pendingGenerationOrder?.length||0;$('#runOrderSubtitle').textContent=`${count}/${total} node được chọn · kéo để sắp xếp thứ tự`;document.querySelectorAll('.run-order-row').forEach(row=>{const selected=pendingGenerationSelection.has(row.dataset.nodeId),rank=row.querySelector('.run-order-rank'),position=ordered.indexOf(row.dataset.nodeId);row.classList.toggle('excluded',!selected);if(rank)rank.textContent=selected?String(position+1):'–';});confirm.textContent=`▶ Chạy ${count} node`;confirm.disabled=!count;warning.classList.add('hidden');warning.textContent='';if(!count){warning.textContent='Chọn ít nhất một node để chạy.';warning.classList.remove('hidden');confirm.disabled=true;return;}const missing=missingGenerationPrerequisites(ordered);if(missing.length){warning.textContent=`Node đã chọn cần đầu ra từ: ${missing.map(id=>generationNodeTitle(nodeById(id))).join(', ')}. Hãy chọn thêm node nguồn hoặc tạo đầu ra trước.`;warning.classList.remove('hidden');confirm.disabled=true;return;}try{topoOrder(ordered);}catch(error){warning.textContent='Thứ tự này xung đột với kết nối phụ thuộc giữa các node. Hãy đưa node tạo nguồn lên trước.';warning.classList.remove('hidden');confirm.disabled=true;}}
   function closeRunOrderModal(){if($('#runOrderModal').classList.contains('hidden'))return;$('#runOrderModal').classList.add('hidden');pendingGenerationOrder=null;pendingGenerationSelection.clear();draggedGenerationId=null;}
-  function onWorkflowRunButtonClick(event){if(event.detail>1)return;if(state.isRunning)stopGeneration(state.activeGenerationId);else executeWorkflow();}
+  function onWorkflowRunButtonClick(event){if(event.detail>1)return;if(state.isRunning)stopAllRuns();else executeWorkflow();}
 
   function setRunStatus(text, cls=''){runStatus.className=cls;runStatus.textContent=text;}
 

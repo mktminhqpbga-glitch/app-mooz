@@ -41,3 +41,9 @@ Audio: Tiếng gió.
 Khóa/ID/vai trò là hướng dẫn cho AI, không bảo đảm model giữ khuôn mặt tuyệt đối. Phân tích nội dung và chất lượng ảnh/video cần dịch vụ AI có khả năng tương ứng; chưa kiểm chứng trên phiên AI thật trong môi trường phát triển. Kiểm tra kỹ thuật không đánh giá diễn xuất hay độ giống nhân vật; có luồng âm thanh không chứng minh có tiếng nghe rõ hoặc đúng nội dung.
 
 Kiểm tra video tải FFmpeg WASM và tối đa 100 MB/tệp. Các node cảnh mới có thể cần chỉnh provider/thời lượng theo quyền dịch vụ. Hai bước gửi, giới hạn model và tính năng chọn kết quả của các bản trước vẫn áp dụng.
+
+## Chạy nhánh đồng thời từ 0.10.0
+
+Trong lúc Muse đang làm video, có thể bấm Chạy trên node ChatGPT/Gemini độc lập. Các tab khác nhau không dùng chung khóa canvas. Hai node cùng tab phải đợi lượt; muốn tách, mở hai tab/cuộc trò chuyện và chọn đúng tab cho mỗi node. Nếu node B dùng văn bản/ảnh của node A đang tạo, B chờ A; A chỉ chạy một lần. Hủy một nhánh độc lập không dừng nhánh khác, nhưng hủy producer làm các nhánh đang cần kết quả đó không thể tiếp tục.
+
+Dừng trên node hủy cả lượt nhánh chứa node đó và phần còn lại của nhánh. Dừng tất cả trên thanh công cụ hủy toàn bộ các lượt đang chạy và chờ. Không dùng import/reset/undo giữa các lượt đang chạy. Nút Run workflow giữ thứ tự đã chọn; chạy thêm nhánh bằng nút Chạy của node.
