@@ -89,12 +89,60 @@
   const aiKeys={};
   let scriptAIController=null;
   const aiTabs=new Map();
+  const aiChatTabs={},aiChatTargets={};
+  const chatKey=url=>{try{const value=new URL(url);return value.origin+value.pathname.replace(/\/$/,'');}catch{return '';}};
+  async function refreshChatTabs(){
+    await Promise.all(Object.entries(WorkflowAI.providers).filter(([,provider])=>provider.urls).map(async([id,provider])=>{try{aiChatTabs[id]=await chrome.tabs.query({url:provider.urls});if(!aiChatTargets[id]&&aiChatTabs[id].length===1){const tab=aiChatTabs[id][0];aiChatTargets[id]={tabId:tab.id,url:chatKey(tab.url)};}}catch{aiChatTabs[id]=[];}}));
+    const host=$('#aiChatTargets');if(host){host.replaceChildren();for(const id of ['muse','gemini','chatgpt']){const label=document.createElement('label');label.textContent=WorkflowAI.providers[id].name;const select=chatSelector(id,aiChatTargets[id],target=>{if(target)aiChatTargets[id]=target;else delete aiChatTargets[id];void chrome.storage.local.set({workflowAIChatTargets:aiChatTargets});});label.append(select);host.append(label);}}
+  }
+  function chatSelector(provider,current,onChange){
+    const select=document.createElement('select');select.setAttribute('aria-label','Cuộc trò chuyện AI');
+    const empty=document.createElement('option');empty.value='';empty.textContent='Chọn tab cuộc trò chuyện…';select.append(empty);
+    for(const tab of aiChatTabs[provider]||[]){const option=document.createElement('option');option.value=String(tab.id);option.textContent=tab.title||tab.url||`Tab ${tab.id}`;select.append(option);}
+    if(current&&!select.querySelector(`option[value="${current.tabId}"]`)){const missing=document.createElement('option');missing.value=String(current.tabId);missing.textContent='Tab đã chọn không còn mở — chọn lại';select.append(missing);}
+    select.value=current?String(current.tabId):'';
+    select.onchange=()=>{const tab=(aiChatTabs[provider]||[]).find(tab=>String(tab.id)===select.value);onChange(tab?{tabId:tab.id,url:chatKey(tab.url)}:null);};
+    return select;
+  }
+  function chooseChat(provider,tabs,target){
+    if(target){const tab=tabs.find(tab=>tab.id===target.tabId);if(!tab)throw new Error('Tab cuộc trò chuyện đã chọn đã đóng. Chọn lại trong node hoặc Kết nối AI.');const actual=chatKey(tab.url),expected=chatKey(target.url);if(expected&&actual!==expected)throw new Error('Tab đã chuyển sang cuộc trò chuyện khác. Chọn lại cuộc trò chuyện trong node trước khi chạy.');return tab;}
+    if(tabs.length!==1)throw new Error('Có nhiều tab AI. Hãy chọn đúng cuộc trò chuyện trong node hoặc Kết nối AI trước khi chạy.');return tabs[0];
+  }
+  async function sendTextNow(node){
+    const requestId=state.generationRequestId,tabId=aiTabs.get(requestId);
+    if(state.activeGenerationId!==node.id||!tabId)return;
+    const reply=await chrome.tabs.sendMessage(tabId,{type:'WORKFLOW_AI_SEND_NOW',requestId});
+    if(reply?.ok){node.data.progress='Đã yêu cầu gửi sớm. Vẫn đợi tệp tải xong trước khi gửi.';const status=document.querySelector(`.node[data-id="${CSS.escape(node.id)}"] .status`);if(status)status.textContent=node.data.progress;}
+  }
+
   chrome.runtime.onMessage?.addListener((message,sender)=>{
     if(sender.id!==chrome.runtime.id||message?.type!=='WORKFLOW_AI_PROGRESS'||typeof message.requestId!=='string'||aiTabs.get(message.requestId)!==sender.tab?.id||typeof message.text!=='string')return false;
     if(message.requestId.startsWith('script-'))$('#scriptAIStatus').textContent=message.text;
-    else setRunStatus(message.text,'warn');
+    else{setRunStatus(message.text,'warn');const node=nodeById(state.activeGenerationId);if(node?.data.status==='running'){node.data.progress=message.text;const status=document.querySelector(`.node[data-id="${CSS.escape(node.id)}"] .status`);if(status)status.textContent=message.text;}}
     return false;
   });
+  async function runMuseSupport(mode){
+    const status=$('#museSupportStatus'),buttons=[$('#diagnoseMuseBtn'),$('#bindMuseSendBtn')];
+    if(mode==='bind'&&state.isRunning){status.textContent='Bấm Dừng workflow trước, rồi chọn lại nút Gửi. Bản nháp trong Muse được giữ để bạn chọn nút.';return;}
+    buttons.forEach(button=>button.disabled=true);status.textContent=mode==='bind'?'Đang mở Muse. Hãy bấm đúng mũi tên Gửi theo hướng dẫn trên tab Muse.':'Đang đọc thông tin nút trên tab Muse…';
+    try{
+      const tabs=await chrome.tabs.query({url:['https://muse.ai/*','https://*.muse.ai/*']});
+      const tab=tabs.find(t=>t.id===preferredMuseTabId)||tabs.find(t=>t.active)||tabs[0];
+      if(!tab?.id)throw new Error('Mở trang chat Muse trước khi chẩn đoán hoặc chọn nút Gửi.');
+      const existing=await chrome.scripting.executeScript({target:{tabId:tab.id},func:()=>!!globalThis.WorkflowComposer?.scopeFor});
+      if(!existing[0]?.result)await chrome.scripting.executeScript({target:{tabId:tab.id},files:['composer-controls.js']});
+      await chrome.scripting.executeScript({target:{tabId:tab.id},files:['muse-support.js']});
+      if(mode==='bind'){await chrome.tabs.update(tab.id,{active:true});if(tab.windowId&&chrome.windows?.update)await chrome.windows.update(tab.windowId,{focused:true});}
+      const results=await chrome.scripting.executeScript({target:{tabId:tab.id},func:mode=>mode==='bind'?WorkflowMuseSupport.bindSend():WorkflowMuseSupport.diagnostics(),args:[mode]});
+      const result=results[0]?.result;if(!result)throw new Error('Không nhận được báo cáo từ tab Muse.');
+      if(mode==='bind'){if(!result.ok)throw new Error(result.error||'Chưa ghi nhớ được nút Gửi.');status.textContent='Đã ghi nhớ nút Gửi trên Muse. Quay lại Workflow và chạy lại node.';}
+      else{$('#museSupportReport').value=JSON.stringify({extensionVersion:appVersion,capturedAt:new Date().toISOString(),...result},null,2);$('#museSupportDetails').open=true;status.textContent='Đã có báo cáo. Sao chép báo cáo để gửi khi cần hỗ trợ; không chứa prompt hoặc nội dung chat.';}
+    }catch(error){status.textContent=error.message;}finally{buttons.forEach(button=>button.disabled=false);}
+  }
+  $('#diagnoseMuseBtn').onclick=()=>runMuseSupport('diagnostics');
+  $('#bindMuseSendBtn').onclick=()=>runMuseSupport('bind');
+  $('#copyMuseReportBtn').onclick=async()=>{try{await navigator.clipboard.writeText($('#museSupportReport').value);$('#museSupportStatus').textContent='Đã sao chép báo cáo chẩn đoán.';}catch{$('#museSupportReport').focus();$('#museSupportReport').select();$('#museSupportStatus').textContent='Hãy nhấn Ctrl+C để sao chép báo cáo đã chọn.';}};
+
   function resolveVideos(id){return getIncoming(id,'video').map(sourceFor).filter(Boolean).map(n=>n.data.localDataUrl||n.data.asset?.url).filter(Boolean);}
   function providerControls(n){
     const wrap=document.createElement('div');wrap.className='provider-controls';
@@ -102,8 +150,8 @@
     const select=document.createElement('select');select.setAttribute('aria-label','AI thực hiện');
     for(const [id,p] of Object.entries(WorkflowAI.providers)){if(!p.types.includes(kind))continue;const option=document.createElement('option');option.value=id;option.textContent=p.name;select.appendChild(option);}
     select.value=n.data.provider||(kind==='text'?'gemini':'muse');
-    select.onchange=()=>{n.data.provider=select.value;n.data.apiModel='';scheduleAutoSave();render();};wrap.appendChild(select);
-    const provider=select.value;
+    select.onchange=()=>{n.data.provider=select.value;n.data.apiModel='';n.data.chatTarget=null;scheduleAutoSave();render();};wrap.appendChild(select);
+    const provider=select.value;if(WorkflowAI.providers[provider]?.urls){const target=n.data.chatTarget||aiChatTargets[provider];wrap.appendChild(chatSelector(provider,target,value=>{n.data.chatTarget=value;scheduleAutoSave();}));const refresh=document.createElement('button');refresh.type='button';refresh.textContent='Làm mới danh sách chat';refresh.onclick=async()=>{await refreshChatTabs();render();};wrap.append(refresh);if(kind==='text'){const hint=document.createElement('small');hint.textContent='Lần 1 tải tệp và điền prompt. Tự gửi sau 2 phút, hoặc bấm Gửi ngay; luôn đợi tải tệp xong.';wrap.append(hint);}}
     if(WorkflowAI.models[provider]){const model=document.createElement('input');model.placeholder=WorkflowAI.models[provider][kind]||'Model';model.value=n.data.apiModel||'';model.setAttribute('aria-label','Model API');model.onchange=()=>{n.data.apiModel=model.value.trim();scheduleAutoSave();};wrap.appendChild(model);}
     if(kind==='video'){const hint=document.createElement('small');hint.textContent=provider==='fal'?'Motion Control: nối đúng 1 ảnh nhân vật + 1 video chuyển động. Thời lượng theo video nguồn.':provider==='google'?'Veo: clip 4/6/8 giây, cần API key có quyền model.':'15–60 giây là thời lượng yêu cầu; kết quả phụ thuộc Muse.ai.';wrap.appendChild(hint);}
     return wrap;
@@ -114,7 +162,7 @@
     checkAbort();progress(`Đang tìm tab ${WorkflowAI.providers[provider].name}…`);
     const tabs=await chrome.tabs.query({url:WorkflowAI.providers[provider].urls});
     if(!tabs.length)throw new Error(`Chưa mở tab ${WorkflowAI.providers[provider].name}. Mở trang chat, đăng nhập rồi bấm lại.`);
-    const ordered=[...tabs].sort((a,b)=>Number(!!b.active)-Number(!!a.active));let chosen=null,lastError='';
+    const target=message.chatTarget||aiChatTargets[provider];const ordered=message.type==='WORKFLOW_AI_CHECK'&&!target?tabs:[chooseChat(provider,tabs,target)];let chosen=null,lastError='';
     for(const tab of ordered){
       checkAbort();
       try{if(message.type==='WORKFLOW_AI_GENERATE'&&chrome.tabs.update){await chrome.tabs.update(tab.id,{active:true});if(tab.windowId&&chrome.windows?.update)await chrome.windows.update(tab.windowId,{focused:true});}await chrome.scripting.executeScript({target:{tabId:tab.id},files:['composer-controls.js','ai-bridge.js']});const check=await sendMuseTabMessage(tab.id,{type:'WORKFLOW_AI_CHECK'},signal);if(check?.ok&&check.composer&&check.signedIn!==false){chosen=tab;break;}lastError=check?.error||'Chưa tìm thấy ô chat. Nếu trang đã đăng nhập, hãy tải lại tab AI để cập nhật bộ kết nối.';}
@@ -128,16 +176,16 @@
     checkAbort();
     const cancel=()=>{void chrome.tabs.sendMessage(chosen.id,{type:'WORKFLOW_AI_STOP',requestId:message.requestId}).catch(()=>{});};
     if(message.requestId)aiTabs.set(message.requestId,chosen.id);signal?.addEventListener('abort',cancel,{once:true});
-    try{return await sendMuseTabMessage(chosen.id,message,signal);}finally{signal?.removeEventListener('abort',cancel);aiTabs.delete(message.requestId);}
+    try{const reply=await sendMuseTabMessage(chosen.id,message,signal);const latest=chrome.tabs.get?await chrome.tabs.get(chosen.id):chosen;return {...reply,chatTarget:{tabId:chosen.id,url:chatKey(latest.url)}};}finally{signal?.removeEventListener('abort',cancel);aiTabs.delete(message.requestId);}
   }
   async function generateWithProvider(n,request,signal){
-    const provider=n.data.provider||(n.type==='generateText'?'gemini':'muse');
+    const references=n.id?resolveReferences(n.id):[];if(references.length)request={...request,prompt:request.prompt+'\n\nREFERENCE ID MAP (attachment order; these IDs identify images, not text to draw):\n'+references.map((ref,index)=>`Attached image ${index+1} = [${ref.componentId}]`).join('\n')+'\nFollow the roles assigned to these IDs in the prompt. Do not swap source and destination images.'};
+    const provider=n.data.provider||(n.type==='generateText'?'gemini':'muse');request={...request,chatTarget:n.data.chatTarget||aiChatTargets[provider]};
     WorkflowAI.validate(provider,request);
     if(provider==='muse'){if(request.referenceVideos?.length)throw new Error('Muse bridge chưa hỗ trợ video tham chiếu. Chọn fal.ai cho Motion Control.');const referenceImages=await Promise.all((request.referenceImages||[]).map(url=>blobAsDataUrlFromUrl(url)));return museTabMessage({...request,referenceImages,type:'MUSEFLOW_GENERATE'},preferredMuseTabId,signal);}
     if(provider==='chatgpt'||provider==='gemini'){
-      if(provider==='chatgpt'&&request.referenceVideos?.length)throw new Error('Chọn Gemini để phân tích video gốc. ChatGPT tab adapter chưa hỗ trợ video gốc.');
       const safe={...request};safe.referenceImages=await Promise.all((request.referenceImages||[]).map(url=>blobAsDataUrlFromUrl(url)));safe.referenceVideos=await Promise.all((request.referenceVideos||[]).map(url=>blobAsDataUrlFromUrl(url)));
-      try{return await otherTabMessage(provider,{...safe,type:'WORKFLOW_AI_GENERATE'},signal);}finally{aiTabs.delete(request.requestId);}
+      try{const reply=await otherTabMessage(provider,{...safe,type:'WORKFLOW_AI_GENERATE'},signal);if(reply.chatTarget){n.data.chatTarget=reply.chatTarget;if(aiChatTargets[provider]?.tabId===reply.chatTarget.tabId)aiChatTargets[provider]=reply.chatTarget;}return reply;}finally{aiTabs.delete(request.requestId);}
     }
     return WorkflowAI.api(provider,request,aiKeys[provider],signal);
   }
@@ -155,7 +203,8 @@
     }
   }
   async function setupAISettings(){
-    $('#refreshAIBtn').onclick=refreshConnections;
+    $('#refreshAIBtn').onclick=async()=>{await refreshChatTabs();render();await refreshConnections();};
+    $('#refreshChatTabsBtn').onclick=async()=>{await refreshChatTabs();render();};
     $('#scriptAIButton').onclick=async()=>{
       if(scriptAIController){scriptAIController.abort();return;}if(state.isRunning){$('#scriptAIStatus').textContent='Dừng workflow đang chạy trước khi gọi AI viết kịch bản.';return;}
       const button=$('#scriptAIButton'),status=$('#scriptAIStatus');scriptAIController=new AbortController();button.textContent='Dừng tạo kịch bản';status.className='warn';status.textContent='Đang chuẩn bị yêu cầu…';
@@ -165,6 +214,7 @@
       }catch(error){status.className=error.name==='AbortError'?'warn':'error';status.textContent=error.name==='AbortError'?'Đã dừng tạo kịch bản.':error.message;$('#scriptImportStatus').textContent=status.textContent;}finally{scriptAIController=null;button.textContent='Tạo kịch bản bằng AI';}
     };
     $('#dataUpdateBtn').onclick=()=>chrome.tabs.create({url:chrome.runtime.getURL('extension/popup.html')});
+    try{Object.assign(aiChatTargets,(await chrome.storage.local.get('workflowAIChatTargets')).workflowAIChatTargets||{});}catch{}await refreshChatTabs();render();
     try{Object.assign(aiKeys,(await chrome.storage.session.get('workflowApiKeys')).workflowApiKeys||{});}catch{/* Keep tab-based generation available if session storage is unavailable. */}
     for(const id of ['google','openai','fal']){const label=document.createElement('label');label.textContent=WorkflowAI.providers[id].name;const input=document.createElement('input');input.type='password';input.autocomplete='off';input.placeholder='API key (chỉ lưu trong phiên)';input.value=aiKeys[id]||'';input.onchange=async()=>{aiKeys[id]=input.value.trim();try{await chrome.storage.session.set({workflowApiKeys:aiKeys});}catch{setRunStatus('Khóa chỉ được giữ trong tab hiện tại vì bộ nhớ phiên không khả dụng.','warn');}};label.appendChild(input);$('#apiSettings').appendChild(label);}
 
@@ -551,6 +601,9 @@
 
     const body = document.createElement('div');
     body.className = 'node-body';
+    const identity=document.createElement('button');identity.type='button';identity.className='node-component-id';identity.textContent=`ID: ${n.data.componentId}`;identity.title='Bấm để sao chép ID vào prompt';identity.onclick=()=>void navigator.clipboard.writeText(n.data.componentId).then(()=>setRunStatus('Đã sao chép '+n.data.componentId,'ok')).catch(()=>setRunStatus('ID: '+n.data.componentId,'warn'));body.append(identity);
+    if(['generateImage','generateVideo','generateText'].includes(n.type)){const refs=resolveReferences(n.id);if(refs.length){const list=document.createElement('div');list.className='reference-id-list';list.textContent=refs.map((ref,index)=>`Ảnh ${index+1}: ${ref.componentId}`).join(' · ');body.append(list);}}
+
 
     if (['prompt','negativePrompt','textAppend'].includes(n.type)) {
       const ta = document.createElement('textarea');
@@ -591,7 +644,7 @@
     if(['generateImage','generateVideo','generateText'].includes(n.type))body.appendChild(providerControls(n));
     if(n.type==='generateText'){
       const output=document.createElement('textarea');output.readOnly=true;output.value=n.data.text||'';output.placeholder='Kết quả văn bản sẽ xuất hiện tại đây';body.appendChild(output);
-      const st=document.createElement('div');st.className=`status ${n.data.status||'idle'}`;st.textContent=n.data.error||n.data.status||'Sẵn sàng';body.appendChild(st);body.appendChild(createNodeRunActions(n));const use=document.createElement('button');use.textContent='Dùng kết quả làm kịch bản';use.disabled=!n.data.text;use.onclick=()=>{$('#scriptInput').value=n.data.text;$('#scriptModal').classList.remove('hidden');};body.appendChild(use);
+      const st=document.createElement('div');st.className=`status ${n.data.status||'idle'}`;st.textContent=n.data.error||(n.data.status==='running'?n.data.progress||'Đang chuẩn bị…':n.data.status)||'Sẵn sàng';body.appendChild(st);body.appendChild(createNodeRunActions(n));const use=document.createElement('button');use.textContent='Dùng kết quả làm kịch bản';use.disabled=!n.data.text;use.onclick=()=>{$('#scriptInput').value=n.data.text;$('#scriptModal').classList.remove('hidden');};body.appendChild(use);
     }
     if (n.type === 'generateImage') {
       const controls = document.createElement('div'); controls.className = 'gen-controls';
@@ -600,7 +653,7 @@
       size.value = ['1:1','16:9','9:16','4:3','3:4'].includes(n.data.size)?n.data.size:'1:1'; size.onchange = () => n.data.size = size.value;
       const model = document.createElement('input'); model.value = n.data.model || 'muse-image'; model.placeholder = 'muse-image'; model.oninput = () => n.data.model = model.value;
       controls.append(size);if((n.data.provider||'muse')==='muse')controls.append(model); body.appendChild(controls);
-      const st = document.createElement('div'); st.className = `status ${n.data.status || 'idle'}`; st.textContent = `${n.data.status || 'idle'}${n.data.error ? ' · ' + n.data.error : ''}`; body.appendChild(st);
+      const st = document.createElement('div'); st.className = `status ${n.data.status || 'idle'}`; st.textContent = n.data.status==='running'&&n.data.progress?n.data.progress:`${n.data.status || 'idle'}${n.data.error ? ' · ' + n.data.error : ''}`; body.appendChild(st);
       if(n.data.asset?.width&&n.data.asset?.height){const dimensions=document.createElement('div');dimensions.className=`hint ${n.data.asset.sizeMismatch?'error':''}`;dimensions.textContent=`Yêu cầu ${n.data.asset.requestedSize||n.data.size} · thực tế ${n.data.asset.width} × ${n.data.asset.height}${n.data.asset.actualDuration?' · '+n.data.asset.actualDuration.toFixed(1)+' giây':''}${n.data.asset.sizeMismatch?' (AI trả về tỷ lệ khác)':''}`;body.appendChild(dimensions);}
       if (n.data.asset?.url) { const a=document.createElement('a'); a.href=n.data.asset.url; a.target='_blank'; a.className='image-link'; const img=document.createElement('img'); img.src=n.data.asset.url; a.appendChild(img); body.appendChild(a); }
       const promptCount=getIncoming(n.id,'prompt').length;if(promptCount>1){const b=document.createElement('span');b.className='ref-badge';b.textContent=`${promptCount} prompt sources combined`;body.appendChild(b);}
@@ -615,7 +668,7 @@
       controls.append(ratio,duration);body.appendChild(controls);
       const continuityLabel=document.createElement('label');continuityLabel.className='continuity-toggle';continuityLabel.htmlFor=`continuity-${n.id}`;continuityLabel.onpointerdown=event=>event.stopPropagation();const continuity=document.createElement('input');continuity.id=`continuity-${n.id}`;continuity.type='checkbox';continuity.checked=Boolean(n.data.continuity);continuity.onchange=()=>{n.data.continuity=continuity.checked;scheduleAutoSave();};continuityLabel.append(continuity,document.createTextNode('Use previous clip end frame as start reference'));body.appendChild(continuityLabel);
       if(n.data.endFrame?.url){const frame=document.createElement('img');frame.className='end-frame-thumb';frame.src=n.data.endFrame.url;frame.alt='Extracted final frame for continuity';frame.title='Video end frame · connect “end frame” to the next video reference';body.appendChild(frame);}
-      const status=document.createElement('div');status.className=`status ${n.data.status||'idle'}`;status.textContent=`${n.data.status||'idle'}${n.data.error?' · '+n.data.error:''}`;body.appendChild(status);
+      const status=document.createElement('div');status.className=`status ${n.data.status||'idle'}`;status.textContent=n.data.status==='running'&&n.data.progress?n.data.progress:`${n.data.status||'idle'}${n.data.error?' · '+n.data.error:''}`;body.appendChild(status);
       if(n.data.asset?.width&&n.data.asset?.height){const dimensions=document.createElement('div');dimensions.className=`hint ${n.data.asset.sizeMismatch?'error':''}`;dimensions.textContent=`Yêu cầu ${n.data.asset.requestedSize||n.data.size} · thực tế ${n.data.asset.width} × ${n.data.asset.height}${n.data.asset.actualDuration?' · '+n.data.asset.actualDuration.toFixed(1)+' giây':''}${n.data.asset.sizeMismatch?' (AI trả về tỷ lệ khác)':''}`;body.appendChild(dimensions);}
       if(n.data.asset?.url){const video=document.createElement('video');video.controls=true;video.preload='metadata';video.src=n.data.asset.url;body.appendChild(video);}
       const timelineDrag=document.createElement('button');timelineDrag.type='button';timelineDrag.className='video-timeline-drag';timelineDrag.draggable=true;timelineDrag.innerHTML='<span aria-hidden="true">⠿</span> Drag output to Timeline';timelineDrag.title='Drag this output to the timeline';timelineDrag.ondragstart=event=>{event.dataTransfer.setData('application/x-museflow-video-node',n.id);event.dataTransfer.setData('text/plain',n.id);event.dataTransfer.effectAllowed='copy';};timelineDrag.onclick=event=>{event.stopPropagation();addTimelineClip(ensureDockTimeline(),n.id);};body.appendChild(timelineDrag);
@@ -656,7 +709,7 @@
       button.textContent=`▶ Run ${node.type==='generateVideo'?'Video':node.type==='generateText'?'Văn bản':'Ảnh'}`;button.disabled=state.isRunning;
       button.onclick=event=>{event.stopPropagation();runSingleNode(node.id);};
     }
-    actions.appendChild(button);
+    actions.appendChild(button);if(node.type==='generateText'&&node.data.status==='running'&&['chatgpt','gemini'].includes(node.data.provider||'gemini')){const now=document.createElement('button');now.type='button';now.className='node-send-now';now.textContent='Gửi ngay';now.onclick=()=>void sendTextNow(node).catch(error=>setRunStatus(error.message,'error'));actions.append(now);}
     if(node.type==='generateVideo'){
       const again=document.createElement('button');again.type='button';again.className='node-run-button again';again.textContent='↻ Again';again.title='Regenerate this video with stronger adherence to the connected prompt and references';again.disabled=state.isRunning;
       again.onclick=event=>{event.stopPropagation();executeGenerationNode(node.id,{again:true});};actions.appendChild(again);
@@ -906,7 +959,12 @@
     state.edgeFrame = requestAnimationFrame(() => { state.edgeFrame = 0; drawEdges(); });
   }
 
+  function ensureComponentIds(){
+    const used=new Set();
+    for(const node of state.nodes){const data=node.data||(node.data={});if(!data.componentId||used.has(data.componentId)){const prefix=['imageInput','generateImage','imageResize'].includes(node.type)?'IMG':node.type==='videoInput'||node.type==='generateVideo'?'VID':'NODE';do{data.componentId=prefix+'-'+crypto.randomUUID().slice(0,8).toUpperCase();}while(used.has(data.componentId));}used.add(data.componentId);}
+  }
   function render() {
+    ensureComponentIds();
     syncPreviewOutputs();canvas.innerHTML='';state.groups.forEach(group=>canvas.appendChild(renderCanvasGroup(group)));state.notes.forEach(note=>canvas.appendChild(renderCanvasNote(note)));state.nodes.filter(n=>!n.data?.dockOnly).forEach(n => canvas.appendChild(renderNode(n)));applyCanvasTransform();requestAnimationFrame(drawEdges);syncTimelineDock();scheduleAutoSave();
   }
 
@@ -1045,9 +1103,9 @@
   function timelinePredecessor(nodeId){const timeline=state.nodes.find(item=>item.type==='timeline'),order=timeline?.data?.clipOrder||[],index=order.indexOf(nodeId);return index>0?nodeById(order[index-1]):null;}
   function resolveReferences(nodeId){
     const references=[],seen=new Set();
-    const add=(url,name)=>{if(url&&!seen.has(url)){seen.add(url);references.push({url,name:name||`Reference ${references.length+1}`});}};
-    const visit=(source,sourcePort,visited=new Set())=>{if(!source||visited.has(source.id))return;visited.add(source.id);if(source.type==='references'){for(const edge of getIncoming(source.id))visit(nodeById(edge.source),edge.sourcePort,visited);return;}if(sourcePort==='endFrame'){add(source.data?.endFrame?.url,source.data?.endFrame?.name);return;}if(source.type==='imageInput'&&source.data?.localDataUrl){add(source.data.localDataUrl,'Input image');return;}if(source.data?.asset?.kind==='image')add(source.data.asset.url,source.data.asset.name);};
-    const node=nodeById(nodeId),previous=node?.type==='generateVideo'&&node.data?.continuity?timelinePredecessor(nodeId):null;if(previous)add(previous.data?.endFrame?.url,`CONTINUITY START FRAME · ${previous.data?.endFrame?.name||'previous clip end'}`);
+    const add=(url,name,componentId)=>{if(url&&!seen.has(url)){seen.add(url);references.push({url,name:name||`Reference ${references.length+1}`,componentId});}};
+    const visit=(source,sourcePort,visited=new Set())=>{if(!source||visited.has(source.id))return;visited.add(source.id);if(source.type==='references'){for(const edge of getIncoming(source.id))visit(nodeById(edge.source),edge.sourcePort,visited);return;}if(sourcePort==='endFrame'){add(source.data?.endFrame?.url,source.data?.endFrame?.name,source.data.componentId+'-END');return;}if(source.type==='imageInput'&&source.data?.localDataUrl){add(source.data.localDataUrl,'Input image',source.data.componentId);return;}if(source.data?.asset?.kind==='image')add(source.data.asset.url,source.data.asset.name,source.data.componentId);};
+    const node=nodeById(nodeId),previous=node?.type==='generateVideo'&&node.data?.continuity?timelinePredecessor(nodeId):null;if(previous)add(previous.data?.endFrame?.url,`CONTINUITY START FRAME · ${previous.data?.endFrame?.name||'previous clip end'}`,previous.data.componentId+'-END');
     for(const edge of getIncoming(nodeId,'reference'))visit(nodeById(edge.source),edge.sourcePort);
     return references;
   }
@@ -1090,7 +1148,7 @@
     const preferred=preferredTabId??preferredMuseTabId;
     if(preferred){const index=tabs.findIndex(tab=>tab.id===preferred);if(index>0)tabs.unshift(tabs.splice(index,1)[0]);}
     let lastError='';
-    if(message.type==='MUSEFLOW_GENERATE'){const tab=tabs[0];await chrome.scripting.executeScript({target:{tabId:tab.id},files:['composer-controls.js','muse-bridge.js']});preferredMuseTabId=tab.id;aiTabs.set(message.requestId,tab.id);try{return await sendMuseTabMessage(tab.id,message,signal);}finally{aiTabs.delete(message.requestId);}}
+    if(message.type==='MUSEFLOW_GENERATE'){const tab=chooseChat('muse',tabs,message.chatTarget||aiChatTargets.muse);await chrome.scripting.executeScript({target:{tabId:tab.id},files:['composer-controls.js','muse-bridge.js']});preferredMuseTabId=tab.id;aiTabs.set(message.requestId,tab.id);try{return await sendMuseTabMessage(tab.id,message,signal);}finally{aiTabs.delete(message.requestId);}}
     for(const tab of tabs){
       if(signal?.aborted)throw new DOMException('Generation stopped by user.','AbortError');
       if(!tab.id)continue;
@@ -1193,10 +1251,10 @@
           state.edges.filter(e=>e.source===n.id).forEach(e=>{const target=nodeById(e.target);if(target?.type==='preview')target.data.asset=n.data.asset;});render();continue;
         }
         if(n.type==='generateText'){
-          state.activeGenerationId=n.id;n.data.status='running';n.data.text='';n.data.error='';render();
+          state.activeGenerationId=n.id;n.data.status='running';n.data.text='';n.data.progress='';n.data.error='';render();
           try{
             const prompt=resolvePrompt(n.id);if(!prompt.trim())throw new Error('Nối node yêu cầu vào cổng Prompt trước.');
-            const request={requestId:uid('text'),mediaType:'text',prompt,rules:getIncoming(n.id,'rules').map(sourceFor).filter(Boolean).map(source=>resolveText(source.id)).join('\n'),referenceImages:resolveReferences(n.id).map(item=>item.url),referenceVideos:resolveVideos(n.id),model:n.data.apiModel};state.generationRequestId=request.requestId;
+            const request={requestId:uid('text'),mediaType:'text',stageBeforeSend:true,prompt,rules:getIncoming(n.id,'rules').map(sourceFor).filter(Boolean).map(source=>resolveText(source.id)).join('\n'),referenceImages:resolveReferences(n.id).map(item=>item.url),referenceVideos:resolveVideos(n.id),model:n.data.apiModel};state.generationRequestId=request.requestId;
             const reply=await generateWithProvider(n,request,abortController.signal);if(!reply?.ok||!reply.text)throw new Error(reply?.error||'AI không trả về văn bản.');
             if(abortController.signal.aborted)throw new DOMException('Đã dừng.','AbortError');n.data.text=reply.text;n.data.status='success';render();continue;
           }catch(error){n.data.status=abortController.signal.aborted?'stopped':'error';n.data.error=error.message;render();throw error;}
@@ -1209,7 +1267,7 @@
           const continuityPrevious=isVideo&&n.data.continuity?timelinePredecessor(n.id):null,continuityStartFrame=continuityPrevious?.data?.endFrame?.url?continuityPrevious.data.endFrame:null;
           if(isVideo&&n.data.continuity&&!continuityStartFrame)throw new Error(`End-frame continuity for ${n.id} needs the previous Timeline clip to be generated successfully with an extractable final frame. Put clips in order and run the previous clip first.`);
           const referenceImages=resolveReferences(n.id);
-          state.activeGenerationId=n.id;n.data.status='running';n.data.error='';n.data.asset=null;n.data.endFrame=null;state.edges.filter(edge=>edge.source===n.id).forEach(edge=>{const target=nodeById(edge.target);if(target?.type==='preview')target.data.asset=null;});render();setRunStatus(`${targetId?'Selected node':`Generation ${generationStep}/${totalGenerations}`} · generating ${isVideo?'video':'image'}: ${n.id}`,'warn');
+          state.activeGenerationId=n.id;n.data.status='running';n.data.progress='';n.data.error='';n.data.asset=null;n.data.endFrame=null;state.edges.filter(edge=>edge.source===n.id).forEach(edge=>{const target=nodeById(edge.target);if(target?.type==='preview')target.data.asset=null;});render();setRunStatus(`${targetId?'Selected node':`Generation ${generationStep}/${totalGenerations}`} · generating ${isVideo?'video':'image'}: ${n.id}`,'warn');
           try{
             const sizeInstruction=`Output aspect ratio: ${n.data.size}. Match this frame shape exactly. ${n.data.size==='16:9'?'Use a wide landscape composition.':n.data.size==='9:16'?'Use a tall portrait composition.':n.data.size==='1:1'?'Use a square composition.':n.data.size==='4:3'?'Use a standard landscape composition.':'Use a standard portrait composition.'}`;
             const continuityInstruction=continuityStartFrame?'CONTINUITY LOCK: Attached image 1 is the exact final frame of the previous Timeline clip. Use image 1 as the exact first frame of this video: preserve its subject identity, pose, position, camera angle, crop, lighting, and background. Continue motion naturally from that precise moment. No reset, jump, flash, dissolve, or scene change at the start.':'';

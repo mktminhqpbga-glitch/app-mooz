@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Workflow · MuseFlow 0.7.2</title>
+  <title>Workflow · MuseFlow 0.8.0</title>
   <link rel="icon" type="image/png" sizes="128x128" href="icons/icon128.png" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <header class="toolbar">
-    <div class="brand"><img class="brand-logo" src="icons/26flow.svg" alt="26Flow" /><strong class="brand-name">Flow</strong><span class="brand-version">0.7.2</span></div>
+    <div class="brand"><img class="brand-logo" src="icons/26flow.svg" alt="26Flow" /><strong class="brand-name">Flow</strong><span class="brand-version">0.8.0</span></div>
     <div class="toolbar-tools" aria-label="Add workflow nodes">
       <button id="batchImagesBtn" type="button">＋ Tạo ảnh hàng loạt</button><button id="scriptImportBtn" type="button">＋ Script → Nodes</button>
       <button id="addNodeMenuBtn" type="button" aria-haspopup="true" aria-expanded="false">＋ Add node</button>
@@ -103,8 +103,9 @@
 
   <div id="settingsModal" class="modal-backdrop hidden">
     <section class="modal">
-      <h2>Kết nối AI</h2><p>Dùng tab AI đã đăng nhập không cần API key. Mỗi node có bộ chọn AI riêng. Màu xanh: ô chat sẵn sàng; đỏ: kiểm tra thất bại; xám: chưa có tab/khóa.</p><div id="aiConnections"></div><button id="refreshAIBtn" type="button">Kiểm tra kết nối</button><p>API key chỉ giữ trong phiên trình duyệt, không đưa vào workflow xuất ra. Đóng trình duyệt cần nhập lại. Yêu cầu API có thể phát sinh phí.</p><div id="apiSettings"></div>
+      <h2>Kết nối AI</h2><p>Dùng tab AI đã đăng nhập không cần API key. Mỗi node có bộ chọn AI riêng. Màu xanh: ô chat sẵn sàng; đỏ: kiểm tra thất bại; xám: chưa có tab/khóa.</p><p>Mở cuộc trò chuyện muốn dùng trong một tab, rồi chọn đúng tab. Workflow không tự chuyển sang cuộc trò chuyện khác.</p><div id="aiChatTargets"></div><button id="refreshChatTabsBtn" type="button">Làm mới danh sách chat</button><div id="aiConnections"></div><button id="refreshAIBtn" type="button">Kiểm tra kết nối</button><p>API key chỉ giữ trong phiên trình duyệt, không đưa vào workflow xuất ra. Đóng trình duyệt cần nhập lại. Yêu cầu API có thể phát sinh phí.</p><div id="apiSettings"></div>
       <p>MuseFlow uses your signed-in Muse.ai browser tab directly. Keep the Muse chat tab open while a workflow runs.</p>
+      <div class="muse-support-controls"><button id="diagnoseMuseBtn" type="button">Chẩn đoán Muse</button><button id="bindMuseSendBtn" type="button">Chọn nút Gửi trên Muse</button><p>Bấm Dừng workflow trước khi chọn nút. Sau đó bấm mũi tên Gửi trên tab Muse để ghi nhớ; lần chọn không gửi bản nháp. Chỉ cần chọn một lần nếu giao diện chưa đổi.</p><p id="museSupportStatus" role="status" aria-live="polite"></p><details id="museSupportDetails"><summary>Báo cáo hỗ trợ</summary><textarea id="museSupportReport" readonly aria-label="Báo cáo chẩn đoán Muse"></textarea><button id="copyMuseReportBtn" type="button">Sao chép báo cáo</button></details></div>
       <div class="connection-check"><button id="testMuseBtn" type="button">Check Muse session</button><span id="connectionStatus" role="status"></span></div>
       <div class="modal-actions">
         <button id="closeSettingsBtn">Cancel</button>

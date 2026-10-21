@@ -10,8 +10,28 @@
     return kind==='send'?paths.some(d=>d==='m1219v5'||d==='m1219v-14'||d==='m5127-777'||d==='m512l125l1912'):
       paths.some(d=>d==='m186618'||d==='m66l1818'||d==='m186l618'||d==='m661212');
   }
+  let preferred=null;
+  function scopeFor(editor){
+    if(!editor)return null;
+    const history='[data-message-author-role],model-response,user-query,[class*="hatch-chat-groupable-bubble"],[class*="chat-user-bubble"]';
+    const form=editor.closest('form');if(form&&!form.querySelector(history))return form;
+    let best=editor.parentElement;if(!best||best===document.body||best.tagName==='MAIN')return editor;
+    for(let el=editor.parentElement;el&&el!==document.body&&el.tagName!=='MAIN';el=el.parentElement){if(el.querySelector(history))break;best=el;}
+    return best;
+  }
+  function fingerprint(el){return JSON.stringify({tag:el.tagName,type:el.getAttribute('type')||'',aria:el.getAttribute('aria-label')||'',testId:el.getAttribute('data-testid')||'',svg:[...el.querySelectorAll('svg')].map(svg=>({viewBox:svg.getAttribute('viewBox')||'',shapes:[...svg.querySelectorAll('path,polyline,polygon,line,circle')].map(shape=>({tag:shape.tagName,...Object.fromEntries(['d','points','x1','y1','x2','y2','cx','cy','r'].filter(a=>shape.hasAttribute(a)).map(a=>[a,shape.getAttribute(a)]))}))}))});}
+  function describe(el){const rect=el.getBoundingClientRect();return {tag:el.tagName,id:(el.id||'').slice(0,100),type:el.getAttribute('type'),role:el.getAttribute('role'),ariaLabel:(el.getAttribute('aria-label')||'').slice(0,120),title:(el.getAttribute('title')||'').slice(0,120),testId:(el.getAttribute('data-testid')||'').slice(0,120),disabled:el.matches(':disabled'),ariaDisabled:el.getAttribute('aria-disabled'),visible:visible(el),pointerEvents:getComputedStyle(el).pointerEvents,rect:{x:Math.round(rect.x),y:Math.round(rect.y),width:Math.round(rect.width),height:Math.round(rect.height)},icon:JSON.parse(fingerprint(el)).svg};}
+  function bindTarget(scope,button){
+    let selector=null;
+    for(const attr of ['id','data-testid','aria-label','title']){const value=button.getAttribute(attr);if(!value||value.length>120)continue;const candidate=`${button.tagName.toLowerCase()}[${attr}=${CSS.escape(value)}]`;if(scope.querySelectorAll(candidate).length===1){selector=candidate;break;}}
+    if(!selector){const parts=[];for(let el=button;el&&el!==scope;el=el.parentElement){const siblings=[...el.parentElement.children].filter(sibling=>sibling.tagName===el.tagName);parts.unshift(`${el.tagName.toLowerCase()}:nth-of-type(${siblings.indexOf(el)+1})`);}selector=':scope > '+parts.join(' > ');}
+    return {origin:location.origin,selector,fingerprint:fingerprint(button)};
+  }
+  function setPreferred(record){preferred=record&&record.origin===location.origin&&typeof record.selector==='string'&&typeof record.fingerprint==='string'?record:null;}
+
   function findSend(scope){
     if(!scope)return null;
+    if(preferred){try{const matches=[...scope.querySelectorAll(preferred.selector)];const el=matches.length===1?matches[0]:null;if(el&&visible(el)&&!el.matches(':disabled')&&el.getAttribute('aria-disabled')!=='true'&&fingerprint(el)===preferred.fingerprint)return el;}catch{/* A stale selector never authorizes a different button. */}}
     const ranked=[...scope.querySelectorAll('button,[role="button"],input[type="submit"]')].filter(el=>visible(el)&&!el.matches(':disabled')&&el.getAttribute('aria-disabled')!=='true').map(el=>{
       const text=label(el);
       if(icon(el,'remove')||/remove|delete|attach|upload|stop|cancel|close|xóa|xoá|đính kèm|tải lên|dừng|hủy/i.test(text))return null;
@@ -38,5 +58,5 @@
       return false;
     });
   }
-  globalThis.WorkflowComposer={findSend,removeButtons};
+  globalThis.WorkflowComposer={findSend,removeButtons,scopeFor,describe,bindTarget,setPreferred};
 })();

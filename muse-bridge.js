@@ -25,16 +25,7 @@
     return candidates.find(el=>/message|消息/i.test(el.getAttribute('placeholder')||''))||candidates[0]||null;
   }
 
-  function composerScope(el){
-    const history='[data-message-author-role], [class*="hatch-chat-groupable-bubble"], [class*="chat-user-bubble"]';
-    const form=el.closest('form');if(form&&!form.querySelector(history))return form;
-    let best=el.parentElement;
-    for(let node=el.parentElement;node&&node!==document.body&&node.tagName!=='MAIN';node=node.parentElement){
-      if(node.querySelector(history))break;best=node;
-      if(node.querySelector('[data-testid="hatch-composer-send-button"],button[aria-label*="send" i]'))break;
-    }
-    return best;
-  }
+  function composerScope(el){return WorkflowComposer.scopeFor(el);}
 
   function visible(el) { return Boolean(el && el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden'); }
   const delay = (ms,signal) => new Promise((resolve,reject)=>{
@@ -136,6 +127,7 @@
     const throwIfAborted=()=>{if(signal?.aborted)throw new DOMException('Generation stopped by user.','AbortError');};
     throwIfAborted();
     if(!String(prompt||'').trim())throw new Error('Prompt is empty.');
+    try{const saved=await chrome.storage?.local?.get('workflowMuseSendTarget');WorkflowComposer.setPreferred(saved?.workflowMuseSendTarget);}catch{WorkflowComposer.setPreferred(null);}
     await waitHydrated(15000,signal);
     throwIfAborted();
     let composer=findComposer();

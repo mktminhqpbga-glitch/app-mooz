@@ -4,7 +4,7 @@ from zipfile import ZipFile, ZIP_DEFLATED
 
 root = Path(__file__).resolve().parents[1]
 files = [
-    'manifest.json', 'app.html', 'app.js', 'background.js', 'muse-bridge.js',
+    'manifest.json', 'app.html', 'app.js', 'background.js', 'muse-bridge.js', 'muse-support.js',
     'ai-bridge.js', 'composer-controls.js', 'ai-providers.js', 'batch-images.js', 'i18n.js', 'styles.css', 'README.md',
     'LICENSE', 'THIRD_PARTY_NOTICES.md',
 ]

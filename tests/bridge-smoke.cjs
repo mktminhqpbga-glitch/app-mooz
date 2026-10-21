@@ -54,7 +54,7 @@ const assert=require('node:assert/strict');
    await modern.addScriptTag({path:require('node:path').resolve(__dirname,'../composer-controls.js')});await modern.addScriptTag({path:process.env.WORKFLOW_BRIDGE_PATH||require('node:path').resolve(__dirname,'../ai-bridge.js')});const ready=await modern.evaluate(()=>call({type:'WORKFLOW_AI_CHECK'}));assert.equal(ready.composer,true,`${host}: modern editor must be found after hydration`);const result=await modern.evaluate(()=>call({type:'WORKFLOW_AI_GENERATE',requestId:'modern-text',mediaType:'text',prompt:'Nhập đúng ô Hỏi ChatGPT'}));assert.equal(result.text,'Modern ChatGPT result');assert.deepEqual(await modern.evaluate(()=>sent),['Nhập đúng ô Hỏi ChatGPT']);assert.equal(await modern.locator('textarea[readonly]').inputValue(),'Not a composer');
   }
   console.log('PASS modern ChatGPT: editor without legacy ID, hidden textarea, readonly decoy, delayed rendering, localized placeholder and www host.');
-  console.log('PASS ChatGPT DOM: native textarea, new text/image results, persisted image bytes, video rejected before send, untrusted sender rejected.');
+  console.log('PASS ChatGPT DOM: native textarea, new text/image results, persisted image bytes, video rejected when no compatible file input exists, untrusted sender rejected.');
   console.log('PASS bridge DOM: clears old draft/attachments, transports original video, waits for upload completion, sends once, captures new reply, reruns cleanly, cancels.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1});

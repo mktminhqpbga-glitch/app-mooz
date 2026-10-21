@@ -33,3 +33,7 @@ Tình trạng dựa trên mã nguồn ZIP được cung cấp, không kế thừ
 7. Thử API bằng khóa của người dùng: văn bản trước, ảnh sau; Veo/Motion Control cuối cùng vì có chi phí và yêu cầu quyền model.
 8. Xuất/nhập workflow, đóng/mở lại canvas; xác nhận media và đầu ra văn bản còn, khóa không có trong JSON xuất.
 9. Xuất một timeline ngắn WebM/MP4 và kiểm tra âm thanh/thời lượng; MP4 hai clip ngắn đã được kiểm tra tự động bằng FFmpeg WASM và ffprobe; WebM và timeline dài chưa kiểm thử.
+
+### 0.8.0
+
+Thêm lựa chọn tab/cuộc trò chuyện, chặn đổi chat; node tạo văn bản qua tab chuẩn bị tệp trước rồi tự gửi sau 2 phút hoặc nhận lệnh Gửi ngay có chờ upload. Mỗi node có ID ổn định và prompt có bảng ánh xạ ID ảnh theo thứ tự đính kèm. Bổ sung công cụ chẩn đoán và ghi nhớ nút Gửi Muse do người dùng chọn. Chưa xác minh với tài khoản AI đăng nhập thật.

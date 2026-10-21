@@ -80,3 +80,13 @@ Giao diện/response server Muse thật chưa được điều khiển trong mô
 - Browser smoke xác minh tab phải được kích hoạt mới trả composer sẵn sàng. 17 test Node và đường MP4/video node đạt trong lần kiểm tra này.
 
 Chưa có kết nối điều khiển trình duyệt với phiên ChatGPT thật của người dùng. Không coi fixture là xác nhận DOM thật trong ảnh.
+
+## 0.8.0 — chat cố định, gửi hai bước, ID tham chiếu và chẩn đoán Muse
+
+- `node --test tests/*.test.mjs`: 17/17 đạt, API giả lập.
+- `node tests/staged-send-smoke.cjs`: Chromium, đồng hồ ảo. Video gốc được chọn qua input `video/*`; không gửi trước 120 giây; yêu cầu gửi sớm trong lúc upload không gửi thiếu tệp; hoàn tất upload mới gửi. Tự bấm Gửi trên trang không gây gửi trùng; đổi đường dẫn chat và Dừng đều chặn gửi.
+- `node tests/muse-support-smoke.cjs`: chọn nút có SVG chưa nhận diện, lần chọn không gửi draft, ghi nhớ đúng nút, từ chối nút bị vô hiệu hóa, báo cáo không chứa prompt.
+- `node tests/browser-smoke.cjs`: bổ sung ID độc nhất được lưu; hai ảnh được gửi đúng thứ tự và bảng đối chiếu ID; từ chối chạy khi tab đổi cuộc trò chuyện. Giữ kiểm tra xuất FFmpeg WASM thật và đọc MP4 bằng ffprobe.
+- Các harness bridge/Muse cũ vẫn dùng DOM giả lập. ChatGPT không còn bị cấm video ở adapter tab; nếu input không nhận video thì báo lỗi và không gửi. Khả năng model hiểu video thật chưa xác minh.
+
+Không có phiên đăng nhập Muse/Gemini/ChatGPT thật. Tính năng chọn nút Muse cần người dùng chọn trên giao diện thật; không khẳng định lỗi Muse đã được xác minh hết.

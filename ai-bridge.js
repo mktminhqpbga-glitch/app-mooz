@@ -2,7 +2,7 @@
 (() => {
   if(globalThis.__workflowAIBridge)return;globalThis.__workflowAIBridge=true;
   const isGPT=/(^|\.)chatgpt\.com$/.test(location.hostname)||location.hostname==='chat.openai.com';
-  const active=new Map();let busy=false;
+  const active=new Map(),earlySend=new Set();let busy=false;
   const visible=el=>el&&el.getClientRects().length&&getComputedStyle(el).visibility!=='hidden';
   function composer(){
     const selectors=isGPT
@@ -65,7 +65,6 @@
       const response=await fetch(urls[i],{signal});if(!response.ok)throw new Error('Không đọc được tệp tham chiếu.');const blob=await response.blob();
       if(!/^(image|video)\//.test(blob.type)||!blob.size)throw new Error('Tệp tham chiếu không phải ảnh/video có thể đọc.');
       if(blob.size>100*1024*1024)throw new Error('Tệp tải qua tab vượt 100 MB.');
-      if(isGPT&&blob.type.startsWith('video/'))throw new Error('ChatGPT tab adapter chưa xác minh hỗ trợ video gốc. Chọn Gemini.');
       const scope=root(composer());
       const accepts=input=>!input.accept||input.accept.includes('*/*')||input.accept.includes(blob.type.split('/')[0])||input.accept.includes(blob.type)||input.accept.includes('.'+blob.type.split('/')[1]);
       const input=()=>{const all=[...document.querySelectorAll('input[type="file"]')].filter(el=>!el.disabled&&accepts(el));return all.find(el=>scope.contains(el))||all[0];};
@@ -78,25 +77,44 @@
       const before=new Set(attachments(scope));const dt=new DataTransfer();dt.items.add(new File([blob],`workflow-${crypto.randomUUID()}.${blob.type.split('/')[1].replace(/[^a-z0-9]/gi,'')}`,{type:blob.type}));field.files=dt.files;field.dispatchEvent(new Event('change',{bubbles:true}));
       // A FileList only proves selection, not a completed remote upload.
       await wait(()=>attachments(scope).some(el=>!before.has(el)),30000,signal,'AI chưa xác nhận tệp đính kèm; chưa gửi prompt.');
-      await wait(()=>!root(composer()).querySelector('[role="progressbar"], [aria-busy="true"]'),90000,signal,'Tệp chưa tải xong.');
+      await wait(()=>!root(composer()).querySelector('[role="progressbar"], [aria-busy="true"]'),600000,signal,'Tệp chưa tải xong; chưa gửi prompt.');
     }
   }
   async function generate(request,signal){
     if(!String(request.prompt||'').trim())throw new Error('Yêu cầu trống.');
-    if(isGPT&&request.referenceVideos?.length)throw new Error('ChatGPT tab chưa hỗ trợ video gốc. Chọn Gemini.');
+    const deadline=Date.now()+120000,conversation=location.origin+location.pathname;
+    const checkConversation=()=>{if(location.origin+location.pathname!==conversation)throw new Error('Cuộc trò chuyện đã thay đổi. Đã dừng để tránh gửi nhầm chat.');};
     await clearDraft(signal);
     const before=new Map(replies().map(el=>[el,replyText(el)]));
+    const users=()=>[...document.querySelectorAll(isGPT?'[data-message-author-role="user"]':'user-query,.user-query-container')];
+    const priorUsers=new Set(users());
+    const submitted=()=>!!stopped()||replies().some(el=>!before.has(el))||users().some(el=>!priorUsers.has(el));
+    report(request,'Đang đưa tài liệu vào cuộc trò chuyện. Chờ tải tệp hoàn tất…');
     await attach([...(request.referenceImages||[]),...(request.referenceVideos||[])],signal);
-    const text=[request.rules,request.prompt].filter(Boolean).join('\n\n');
-    const editor=await wait(composer,5000,signal,'Ô nhập AI vừa thay đổi. Tải lại tab AI rồi thử lại.');
-    setText(editor,text);
-    await new Promise(resolve=>setTimeout(resolve,300));
-    const normalized=value=>String(value||'').replace(/\s+/g,' ').trim();
-    if(normalized(composer()?.value??composer()?.innerText)!==normalized(text))throw new Error('AI không giữ được prompt trong ô nhập. Chưa gửi yêu cầu; hãy tải lại tab AI.');
-    const button=await wait(()=>!root(composer()).querySelector('[role="progressbar"],[aria-busy="true"]')&&send(),90000,signal,'Không tìm thấy nút Gửi sẵn sàng. Prompt chưa được gửi.');
-    const priorUsers=new Set(document.querySelectorAll(isGPT?'[data-message-author-role="user"]':'user-query,.user-query-container'));button.click();report(request,'Đã bấm Gửi. Đang xác nhận AI nhận yêu cầu…');
-    // An empty editor alone can mean the framework discarded our text, not a successful send.
-    await wait(()=>stopped()||replies().some(el=>!before.has(el))||[...document.querySelectorAll(isGPT?'[data-message-author-role="user"]':'user-query,.user-query-container')].some(el=>!priorUsers.has(el)),15000,signal,'Chưa xác nhận AI nhận prompt. Không tự gửi lại để tránh trùng lặp.');
+    checkConversation();
+    if(!submitted()){
+      const text=[request.rules,request.prompt].filter(Boolean).join('\n\n');
+      const editor=await wait(composer,5000,signal,'Ô nhập AI vừa thay đổi. Tải lại tab AI rồi thử lại.');
+      setText(editor,text);
+      await new Promise(resolve=>setTimeout(resolve,300));
+      const normalized=value=>String(value||'').replace(/\s+/g,' ').trim();
+      if(normalized(composer()?.value??composer()?.innerText)!==normalized(text))throw new Error('AI không giữ được prompt trong ô nhập. Chưa gửi yêu cầu; hãy tải lại tab AI.');
+      if(request.stageBeforeSend&&request.mediaType==='text'){
+        let lastSecond=-1;
+        await wait(()=>{
+          checkConversation();
+          const seconds=Math.max(0,Math.ceil((deadline-Date.now())/1000));
+          if(seconds!==lastSecond){lastSecond=seconds;report(request,`Tệp đã tải xong. Tự gửi sau ${seconds} giây; có thể bấm Gửi ngay.`);}
+          return submitted()||earlySend.has(request.requestId)||seconds===0;
+        },Math.max(1000,deadline-Date.now()+2000),signal,'Hết thời gian chuẩn bị gửi.');
+      }
+      checkConversation();
+      if(!submitted()){
+        const button=await wait(()=>{checkConversation();return submitted()||(!root(composer()).querySelector('[role="progressbar"],[aria-busy="true"]')&&send());},600000,signal,'Không tìm thấy nút Gửi sẵn sàng. Prompt chưa được gửi.');
+        if(button!==true){checkConversation();button.click();report(request,'Đã bấm Gửi. Đang xác nhận AI nhận yêu cầu…');}
+      }
+    }
+    await wait(submitted,15000,signal,'Chưa xác nhận AI nhận prompt. Không tự gửi lại để tránh trùng lặp.');
     report(request,'AI đã nhận yêu cầu. Đang chờ phản hồi…');
     let last='',since=Date.now(),reportedReply=false;
     const result=await wait(()=>{
@@ -113,12 +131,13 @@
   chrome.runtime.onMessage.addListener((request,sender,respond)=>{
     if(sender.id!==chrome.runtime.id)return false;
     if(request.type==='WORKFLOW_AI_CHECK'){
-      wait(composer,3500,null,'Không nhận diện được ô nhập trên trang AI đang mở.').then(()=>respond({ok:true,signedIn:true,composer:true,bridgeVersion:'0.7.2'}),()=>respond({ok:true,signedIn:false,composer:false,bridgeVersion:'0.7.2',error:'Tab AI đã kết nối nhưng chưa nhận diện được ô nhập đang chỉnh sửa. Mở cuộc trò chuyện và tải lại tab AI.'}));return true;
+      wait(composer,3500,null,'Không nhận diện được ô nhập trên trang AI đang mở.').then(()=>respond({ok:true,signedIn:true,composer:true,bridgeVersion:'0.8.0'}),()=>respond({ok:true,signedIn:false,composer:false,bridgeVersion:'0.8.0',error:'Tab AI đã kết nối nhưng chưa nhận diện được ô nhập đang chỉnh sửa. Mở cuộc trò chuyện và tải lại tab AI.'}));return true;
     }
+    if(request.type==='WORKFLOW_AI_SEND_NOW'){const pending=active.has(request.requestId);if(pending)earlySend.add(request.requestId);respond({ok:pending});return false;}
     if(request.type==='WORKFLOW_AI_STOP'){const controller=active.get(request.requestId);if(controller){controller.abort();stopped()?.click();}respond({ok:true,stopped:!!controller});return false;}
     if(request.type!=='WORKFLOW_AI_GENERATE')return false;
     if(busy){respond({ok:false,error:'Tab AI đang xử lý một yêu cầu khác.'});return false;}
     busy=true;const controller=new AbortController();active.set(request.requestId,controller);
-    generate(request,controller.signal).then(respond,error=>respond({ok:false,error:error.message})).finally(()=>{busy=false;active.delete(request.requestId);});return true;
+    generate(request,controller.signal).then(respond,error=>respond({ok:false,error:error.message})).finally(()=>{busy=false;active.delete(request.requestId);earlySend.delete(request.requestId);});return true;
   });
 })();

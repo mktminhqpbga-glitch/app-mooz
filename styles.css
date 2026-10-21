@@ -213,3 +213,10 @@ body{grid-template-rows:58px auto minmax(0,1fr) auto}
 .batch-images-modal textarea { resize: vertical; }
 .batch-options label { display: grid; gap: 6px; }
 #scriptAIProvider { width: auto; max-width: 100%; margin-right: 8px; }
+.muse-support-controls { margin-top: 16px; padding: 12px; border: 1px solid #393c49; border-radius: 8px; }
+.muse-support-controls p { line-height: 1.5; }
+#museSupportReport { width: 100%; min-height: 180px; margin: 8px 0; background: #0e1017; color: #eee; font: 12px/1.4 monospace; }
+.node .status.running { max-height: none; overflow-wrap: anywhere; }
+.node-component-id{font:11px ui-monospace,monospace;color:#c4b5fd;text-align:left;padding:4px 6px;user-select:all}
+.reference-id-list{font:10px/1.5 ui-monospace,monospace;color:#a5d8ff;overflow-wrap:anywhere}
+#aiChatTargets{display:grid;gap:8px}#aiChatTargets label{display:grid;gap:4px}.node-send-now{background:#296b49}
