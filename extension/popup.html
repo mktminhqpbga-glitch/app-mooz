@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="vi">
+<head><meta charset="utf-8"><title>Workflow</title><link rel="stylesheet" href="popup.css"></head>
+<body>
+  <h1>Dữ liệu Workflow</h1>
+  <p>Tải phiên bản dữ liệu mới nhất từ GitHub và lưu trên trình duyệt này.</p>
+  <form id="settings">
+    <label>Repository<input id="repository" required placeholder="owner/repository"></label>
+    <label>Nhánh<input id="branch" required value="main"></label>
+    <button id="update" type="submit">Cập nhật</button>
+  </form>
+  <p id="status" role="status" aria-live="polite"></p>
+  <p id="details"></p>
+  <ul id="files"></ul>
+  <script type="module" src="popup.js"></script>
+</body>
+</html>
