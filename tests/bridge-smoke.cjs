@@ -25,6 +25,7 @@ const assert=require('node:assert/strict');
    };
    window.call=request=>new Promise(resolve=>handler(request,{id:'test'},resolve));
   });
+  await page.addScriptTag({path:require('node:path').resolve(__dirname,'../composer-controls.js')});
   await page.addScriptTag({path:process.env.WORKFLOW_BRIDGE_PATH||require('node:path').resolve(__dirname,'../ai-bridge.js')});
   for(let i=0;i<2;i++){
    const result=await page.evaluate(async i=>call({type:'WORKFLOW_AI_GENERATE',requestId:'r'+i,mediaType:'text',prompt:'Phân tích video '+i,...(i===0?{referenceVideos:['data:video/mp4;base64,AQID']}:{referenceImages:['data:image/png;base64,AQID']})}),i);
@@ -39,8 +40,9 @@ const assert=require('node:assert/strict');
   const pending=page.evaluate(()=>call({type:'WORKFLOW_AI_GENERATE',requestId:'cancel',mediaType:'text',prompt:'Stop me'}));
   await page.waitForFunction(()=>sent.length===3);const unknown=await page.evaluate(()=>call({type:'WORKFLOW_AI_STOP',requestId:'unrelated'}));assert.equal(unknown.stopped,false);assert.equal(await page.evaluate(()=>stopClicks),0);await page.evaluate(()=>call({type:'WORKFLOW_AI_STOP',requestId:'cancel'}));assert.equal((await pending).ok,false);assert.equal(await page.evaluate(()=>stopClicks),1);
   const gpt=await browser.newPage();
-  await gpt.route('https://chatgpt.com/**',route=>route.fulfill({contentType:'text/html',body:'<form><textarea id="prompt-textarea"></textarea><button type="button" data-testid="send-button">Send</button></form><main></main>'}));await gpt.goto('https://chatgpt.com/');
+  await gpt.route('https://chatgpt.com/**',route=>route.fulfill({contentType:'text/html',body:'<form><textarea id="prompt-textarea"></textarea><button type="button"><svg class="lucide-send" width="24" height="24"><path d="m22 2-7 20-4-9-9-4Z"/></svg></button></form><main></main>'}));await gpt.goto('https://chatgpt.com/');
   await gpt.evaluate(()=>{window.sent=0;window.kind='text';window.chrome={runtime:{id:'test',onMessage:{addListener:fn=>window.handler=fn}}};window.call=request=>new Promise(resolve=>handler(request,{id:'test'},resolve));document.querySelector('button').onclick=()=>{sent++;document.querySelector('textarea').value='';const reply=document.createElement('div');reply.setAttribute('data-message-author-role','assistant');if(kind==='image'){const canvas=document.createElement('canvas');canvas.width=canvas.height=256;canvas.getContext('2d').fillRect(0,0,256,256);const img=new Image();img.src=canvas.toDataURL();reply.appendChild(img);}else reply.textContent='ChatGPT response';document.querySelector('main').appendChild(reply);};});
+  await gpt.addScriptTag({path:require('node:path').resolve(__dirname,'../composer-controls.js')});
   await gpt.addScriptTag({path:process.env.WORKFLOW_BRIDGE_PATH||require('node:path').resolve(__dirname,'../ai-bridge.js')});
   const text=await gpt.evaluate(()=>call({type:'WORKFLOW_AI_GENERATE',requestId:'gpt-text',mediaType:'text',prompt:'Write text'}));assert.equal(text.text,'ChatGPT response');
   await gpt.evaluate(()=>{kind='image';});const image=await gpt.evaluate(()=>call({type:'WORKFLOW_AI_GENERATE',requestId:'gpt-image',mediaType:'image',prompt:'Draw image'}));assert.equal(image.ok,true);assert.ok(image.url.startsWith('data:image/png;base64,'));

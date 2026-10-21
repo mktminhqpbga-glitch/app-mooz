@@ -1,4 +1,4 @@
-# Workflow · MuseFlow 0.7.0
+# Workflow · MuseFlow 0.7.1
 
 Extension Chrome/Edge dựa trên [MuseFlow / 26Flow](https://github.com/bynne2602/museflow), mở rộng canvas/timeline để làm việc với Muse.ai, Gemini, ChatGPT và API Google, OpenAI, fal.ai. Giữ nguyên giấy phép GPL-2.0-or-later của nguồn gốc và thông báo FFmpeg đi kèm.
 
@@ -48,6 +48,8 @@ Mỗi node có bộ chọn AI riêng. Danh sách chỉ hiển thị AI hỗ tr�
 | Google API | Có | Có với model tạo ảnh | Veo, cần quyền API | Ảnh/video cho văn bản; ảnh cho ảnh; một ảnh khởi đầu cho Veo |
 | OpenAI API | Có | Có | Chưa hỗ trợ | Ảnh cho văn bản; adapter tạo ảnh hiện chưa nhận ảnh tham chiếu |
 | fal.ai API | Không | Không | Kling Motion Control | Đúng một ảnh nhân vật + một video chuyển động |
+
+Nút Gửi dạng mũi tên hoặc máy bay giấy cũng được nhận diện trong composer; bỏ qua nút disabled. Với Muse, nếu bạn bấm Gửi thủ công khi Workflow đang chờ nút, bộ kết nối nhận dấu hiệu tin nhắn/kết quả mới và tiếp tục lấy kết quả, không gửi lại. Video được đọc qua thẻ video/source hoặc liên kết tải, không chỉ marker cũ; clip được chuyển về bộ nhớ Workflow nếu tải được.
 
 Các adapter tab sử dụng ô chat hiện có, dọn bản nháp và tệp chưa gửi trước mỗi lần chạy, đợi xác nhận tải lên và nút Gửi sẵn sàng, chỉ gửi một lần. Không gửi khi chưa xác nhận tệp; lỗi cần kiểm tra tab AI. Giao diện của nhà cung cấp có thể thay đổi. Giữ các tab mở và tránh thao tác thủ công trong lúc node chạy. Nội dung bản nháp chưa gửi trong ô chat AI được thay thế khi chạy node.
 

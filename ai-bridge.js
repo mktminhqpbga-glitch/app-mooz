@@ -23,7 +23,7 @@
   const buttons=(scope=document)=>[...scope.querySelectorAll('button,[role="button"]')].filter(visible);
   const label=el=>`${el.getAttribute('aria-label')||''} ${el.getAttribute('data-testid')||''} ${el.getAttribute('title')||''} ${el.textContent||''}`;
   const stopped=()=>buttons().find(el=>!el.disabled&&el.getAttribute('aria-disabled')!=='true'&&(/stop generating|stop response|dừng phản hồi|dừng trả lời|dừng tạo|stop-button/i.test(label(el))||el.matches('.stop-button,[data-testid="stop-button"]')));
-  const send=()=>buttons(root(composer())).find(el=>(el.matches('.send-button,[data-testid="send-button"],button[aria-label="Gửi"],button[aria-label="Send"]')||/send-button|send message|send prompt|gửi tin nhắn|gửi lời nhắc|^\s*(send|gửi)\s*$/i.test(label(el)))&&!el.disabled&&el.getAttribute('aria-disabled')!=='true');
+  const send=()=>WorkflowComposer.findSend(root(composer()));
   function replies(){
     const candidates=[...document.querySelectorAll(isGPT?'[data-message-author-role="assistant"]':'model-response,.model-response-text,.markdown-main-panel,message-content')].filter(el=>!el.closest('user-query,[data-message-author-role="user"]'));
     // Some Gemini releases use display:contents on custom response wrappers.
@@ -47,7 +47,7 @@
   async function clearDraft(signal){
     const el=composer();if(!el)throw new Error('Mở trang chat AI và đăng nhập trước.');
     if(stopped())throw new Error('AI đang trả lời. Hãy đợi hoặc dừng câu trả lời hiện tại.');
-    const scope=root(el);const remove=()=>buttons(scope).filter(b=>/remove attachment|remove file|delete attachment|xóa tệp|xoá tệp|xóa ảnh|remove image|remove upload/i.test(label(b)));
+    const scope=root(el);const remove=()=>WorkflowComposer.removeButtons(root(composer()),composer());
     for(const b of remove())b.click();
     await wait(()=>!remove().length&&!attachments(scope).length,10000,signal,'Không dọn được tệp đính kèm cũ. Hãy xóa tệp trong ô chat rồi chạy lại.');
   }

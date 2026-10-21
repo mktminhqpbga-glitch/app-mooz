@@ -117,7 +117,7 @@
     const ordered=[...tabs].sort((a,b)=>Number(!!b.active)-Number(!!a.active));let chosen=null,lastError='';
     for(const tab of ordered){
       checkAbort();
-      try{await chrome.scripting.executeScript({target:{tabId:tab.id},files:['ai-bridge.js']});const check=await sendMuseTabMessage(tab.id,{type:'WORKFLOW_AI_CHECK'},signal);if(check?.ok&&check.composer&&check.signedIn!==false){chosen=tab;break;}lastError='Chưa tìm thấy ô chat; có thể cần đăng nhập hoặc tải lại tab AI.';}
+      try{await chrome.scripting.executeScript({target:{tabId:tab.id},files:['composer-controls.js','ai-bridge.js']});const check=await sendMuseTabMessage(tab.id,{type:'WORKFLOW_AI_CHECK'},signal);if(check?.ok&&check.composer&&check.signedIn!==false){chosen=tab;break;}lastError='Chưa tìm thấy ô chat; có thể cần đăng nhập hoặc tải lại tab AI.';}
       catch(error){if(error.name==='AbortError')throw error;lastError=error.message;}
     }
     if(!chosen)throw new Error(`${WorkflowAI.providers[provider].name}: ${lastError||'không kết nối được'}`);
@@ -1090,13 +1090,13 @@
     const preferred=preferredTabId??preferredMuseTabId;
     if(preferred){const index=tabs.findIndex(tab=>tab.id===preferred);if(index>0)tabs.unshift(tabs.splice(index,1)[0]);}
     let lastError='';
-    if(message.type==='MUSEFLOW_GENERATE'){const tab=tabs[0];await chrome.scripting.executeScript({target:{tabId:tab.id},files:['muse-bridge.js']});preferredMuseTabId=tab.id;return sendMuseTabMessage(tab.id,message,signal);}
+    if(message.type==='MUSEFLOW_GENERATE'){const tab=tabs[0];await chrome.scripting.executeScript({target:{tabId:tab.id},files:['composer-controls.js','muse-bridge.js']});preferredMuseTabId=tab.id;aiTabs.set(message.requestId,tab.id);try{return await sendMuseTabMessage(tab.id,message,signal);}finally{aiTabs.delete(message.requestId);}}
     for(const tab of tabs){
       if(signal?.aborted)throw new DOMException('Generation stopped by user.','AbortError');
       if(!tab.id)continue;
       try{const response=await sendMuseTabMessage(tab.id,message,signal);preferredMuseTabId=tab.id;return response;}catch(error){if(error?.name==='AbortError')throw error;lastError=error?.message||String(error);}
       try{
-        await chrome.scripting.executeScript({target:{tabId:tab.id},files:['muse-bridge.js']});
+        await chrome.scripting.executeScript({target:{tabId:tab.id},files:['composer-controls.js','muse-bridge.js']});
         const response=await sendMuseTabMessage(tab.id,message,signal);preferredMuseTabId=tab.id;return response;
       }catch(error){if(error?.name==='AbortError')throw error;lastError=error?.message||String(error);}
     }

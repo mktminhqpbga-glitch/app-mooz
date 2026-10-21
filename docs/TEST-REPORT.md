@@ -49,3 +49,20 @@ Kiểm thử bổ sung đã đạt:
 - Đường xuất MP4 FFmpeg WASM thật vẫn đạt với hai clip ngắn.
 
 Không diễn giải các kết quả giả lập thành xác nhận Gemini/ChatGPT/Muse hay API trả phí hoạt động trên tài khoản thật.
+
+
+## 0.7.1 — Nút Gửi và nhận video Muse
+
+Người dùng cung cấp hai ảnh: prompt/ảnh đã nằm trong composer nhưng chưa Gửi; sau khi tự bấm Gửi, Muse có video nhưng node vẫn chờ. Đây là hai đường cần xử lý riêng, không coi việc điền prompt là đã gửi.
+
+- Bộ nhận diện dùng chung cho Muse/Gemini/ChatGPT hỗ trợ tên nút, SVG mũi tên/Send và nút submit trong composer. Lọc nút disabled/aria-disabled trước khi lựa chọn; không nhầm nút X, tải tệp hoặc nút trong lịch sử.
+- Dọn nút X không có aria-label nếu nó nằm trong khung ảnh tham chiếu. Muse chỉ phát change cho input file, tránh hai handler input/change cùng tải một ảnh. Dedupe ảnh tham chiếu bằng SHA-256 của nội dung.
+- Trong khi chờ nút Gửi, Muse theo dõi tin nhắn/kết quả mới. Khi người dùng tự gửi, tiếp tục lấy kết quả và không click thêm.
+- Đọc video không cần data-testid cũ, không loại bỏ cả nhóm group/msg. Hỗ trợ video/source, data-video-src/data-video-url và liên kết MP4/WebM. Không bắt buộc metadata preload; node Workflow xác minh khả năng đọc media sau khi nhận. Không coi poster ảnh là lỗi trả sai media quá sớm khi video còn đang sinh.
+- Có tiến trình đang chờ nút Gửi / Muse nhận yêu cầu / đang chuyển kết quả về Workflow.
+
+Kiểm thử đạt: 17 test Node; browser-smoke; bridge-smoke với icon-only Send; muse-smoke với nút mũi tên không nhãn, nút Send disabled đặt trước, aria-disabled chuyển sang sẵn sàng, nút X không nhãn, một ảnh có hai URL/yêu cầu trùng và hai handler input/change. Chỉ một ảnh được tải và một prompt được gửi.
+
+Kiểm tra bổ sung gửi thủ công: một video MP4 thật do ffmpeg tạo được phục vụ qua HTTP giả lập, trong wrapper group/msg không có marker cũ và video preload=none. Người dùng giả lập bấm Gửi một lần; bridge trả đúng bytes video về. Kiểm tra node nhận MP4, đọc 160×90, lưu kết quả và trích khung cuối đạt. FFmpeg WASM xuất timeline vẫn đạt.
+
+Giao diện/response server Muse thật chưa được điều khiển trong môi trường này; các thay đổi dựa trên ảnh người dùng và fixture tái hiện các trạng thái tương ứng, không xác nhận phiên đăng nhập thật.

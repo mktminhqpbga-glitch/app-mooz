@@ -77,14 +77,25 @@
   }
 
   function attachments() {
-    return [...document.querySelectorAll(attachmentSelector)].filter(el=>!el.closest('form,[class*="chat-user-bubble"],[class*="group/msg"]')&&!el.closest('[data-testid="hatch-composer-placeholder-overlay"]')).map(el=>{
-      const tid=el.getAttribute('data-testid')||'',video=el.querySelector('video'),image=el.querySelector('img');
-      const urls=[...el.querySelectorAll('a[href],video source[src],source[src],[data-video-src],[data-download-url]')].map(item=>({url:item.href||item.src||item.getAttribute('data-video-src')||item.getAttribute('data-download-url')||'',download:item.getAttribute('download')||'',type:item.getAttribute('type')||''})).filter(item=>item.url);
-      const videoLink=urls.find(item=>/video\//i.test(item.type)||/\.(?:mp4|webm|mov|m4v)(?:$|[?#])/i.test(item.url)||/\.(?:mp4|webm|mov|m4v)$/i.test(item.download))?.url||'';
-      const videoUrl=video?.currentSrc||video?.src||videoLink||'';
-      const media=video||image;
-      return {el,tid,src:videoUrl||media?.currentSrc||media?.src||'',videoUrl,isVideo:Boolean(videoUrl)||video instanceof HTMLVideoElement||/video/i.test(tid),width:video?.videoWidth||image?.naturalWidth||0,height:video?.videoHeight||image?.naturalHeight||0};
-    }).filter(a=>a.src);
+    const composer=findComposer(),scope=composer&&composerScope(composer);
+    const candidates=new Set(document.querySelectorAll(attachmentSelector));
+    const tile=el=>el.closest(`${attachmentSelector},figure,[data-video-src],[data-video-url],[data-download-url]`)||el;
+    for(const el of document.querySelectorAll('video,[data-video-src],[data-video-url],[data-download-url],a[download],a[href]')){
+      if(el.matches('video,[data-video-src],[data-video-url]')||/\.(mp4|webm|mov|m4v)(?:$|[?#])/i.test(el.href||el.getAttribute('download')||el.getAttribute('data-download-url')||''))candidates.add(tile(el));
+    }
+    for(const bubble of assistantMessageElements())for(const img of bubble.querySelectorAll('img'))if(img.naturalWidth>=128&&img.naturalHeight>=128)candidates.add(tile(img));
+    const found=new Map();
+    for(const el of candidates){
+      if(scope?.contains(el)||el.closest('[class*="chat-user-bubble"],[data-message-author-role="user"],user-query,[data-testid="hatch-composer-placeholder-overlay"]'))continue;
+      const tid=el.getAttribute('data-testid')||'',video=el.matches('video')?el:el.querySelector('video'),image=el.matches('img')?el:el.querySelector('img');
+      const nodes=[el,...el.querySelectorAll('a[href],source[src],[data-video-src],[data-video-url],[data-download-url]')];
+      const urls=nodes.map(item=>({url:item.getAttribute('data-video-src')||item.getAttribute('data-video-url')||item.getAttribute('data-download-url')||item.href||item.src||'',download:item.getAttribute('download')||'',type:item.getAttribute('type')||'',explicitVideo:item.hasAttribute('data-video-src')||item.hasAttribute('data-video-url')})).filter(item=>item.url);
+      const videoLink=urls.find(item=>item.explicitVideo||/video\//i.test(item.type)||/\.(mp4|webm|mov|m4v)(?:$|[?#])/i.test(item.url)||/\.(mp4|webm|mov|m4v)$/i.test(item.download))?.url||'';
+      const videoUrl=video?.currentSrc||video?.src||video?.querySelector('source')?.src||videoLink||'';
+      const src=videoUrl||image?.currentSrc||image?.src||'';
+      if(src)found.set(src,{el,tid,src,videoUrl,isVideo:!!videoUrl||!!video||/video/i.test(tid),width:video?.videoWidth||image?.naturalWidth||0,height:video?.videoHeight||image?.naturalHeight||0});
+    }
+    return [...found.values()];
   }
 
   function waitForAttachmentChange(timeoutMs,signal){
@@ -92,7 +103,7 @@
       let timer;
       const observer=new MutationObserver(()=>finish());
       const finish=()=>{observer.disconnect();clearTimeout(timer);signal?.removeEventListener('abort',finish);resolve();};
-      observer.observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:['src','poster','href','download','type','data-testid','data-video-src','data-download-url']});
+      observer.observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:['src','poster','href','download','type','data-testid','data-video-src','data-video-url','data-download-url']});
       timer=setTimeout(finish,timeoutMs);
       signal?.addEventListener('abort',finish,{once:true});
     });
@@ -119,6 +130,8 @@
     return explicit.test(text)||inability.test(text)&&(sceneContext.test(text)||offerAlternative.test(text));
   }
 
+  function report(requestId,text){if(chrome.runtime.sendMessage)void chrome.runtime.sendMessage({type:'WORKFLOW_AI_PROGRESS',requestId,text}).catch(()=>{});}
+
   async function generate({prompt,timeoutSec=600,mediaType='image',referenceImage='',referenceImages=[],size='1:1',requestId},signal) {
     const throwIfAborted=()=>{if(signal?.aborted)throw new DOMException('Generation stopped by user.','AbortError');};
     throwIfAborted();
@@ -127,16 +140,15 @@
     throwIfAborted();
     let composer=findComposer();
     if(!visible(composer))throw new Error('Muse message box is not visible. Open the chat composer and retry.');
-    const draftRoot=composerScope(composer);
-    const removeDraft=()=>[...draftRoot.querySelectorAll('button')].filter(el=>visible(el)&&/remove.*(?:file|image|attachment)|delete.*attachment|xóa.*(?:tệp|ảnh)/i.test(`${el.getAttribute('aria-label')||''} ${el.title||''}`));
+    const removeDraft=()=>WorkflowComposer.removeButtons(composerScope(findComposer()),findComposer());
     removeDraft().forEach(button=>button.click());
     for(let i=0;i<50&&removeDraft().length;i++)await delay(100,signal);
     if(removeDraft().length)throw new Error('Không xóa được tệp cũ trong Muse. Xóa tệp trong ô chat trước khi chạy lại.');
     const referenceList=Array.isArray(referenceImages)&&referenceImages.length?referenceImages:referenceImage?[referenceImage]:[];
-    if(referenceList.length)await attachReferences(referenceList,signal);
+    if(referenceList.length){report(requestId,'Muse: đang tải ảnh tham chiếu…');await attachReferences(referenceList,signal);}
     composer=findComposer();if(!composer?.isConnected)throw new Error('Ô nhập Muse đã thay đổi. Hãy tải lại tab Muse rồi thử lại.');
     throwIfAborted();
-    const baseline=new Set(attachments().map(a=>a.src));
+    const baseline=new Set([...attachments().map(a=>a.src),...assistantMessageElements().flatMap(el=>[...el.querySelectorAll('img')].map(img=>img.currentSrc||img.src))]);
     const priorBubbleTexts=new Map(assistantMessageElements().map(el=>[el,(el.innerText||el.textContent||'').replace(/\s+/g,' ').trim()]));
     composer.scrollIntoView({block:'center'});composer.focus();
     const setter=Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value')?.set;
@@ -144,27 +156,29 @@
     setter.call(composer,String(prompt));
     composer.dispatchEvent(new Event('input',{bubbles:true}));
     composer.dispatchEvent(new Event('change',{bubbles:true}));
-    let sendButton=null;
+    const bubbleCount=()=>new Set(document.querySelectorAll('div[class*="hatch-chat-groupable-bubble"],[data-message-author-role],user-query,[class*="chat-user-bubble"]')).size;
+    const beforeSendCount=bubbleCount(),previousTexts=new Set(priorBubbleTexts.values());
+    const activity=()=>bubbleCount()>beforeSendCount||attachments().some(item=>!baseline.has(item.src))||assistantMessageElements().some(el=>{const text=(el.innerText||el.textContent||'').replace(/\s+/g,' ').trim();return text&&!previousTexts.has(text);})||[...document.querySelectorAll('[data-testid="hatch-composer-stop-button"],button[aria-label*="Stop" i],button[aria-label*="停止"]')].some(visible);
+    report(requestId,'Muse: đã điền prompt, đang chờ nút Gửi…');
+    let sendButton=null,submitted=false;
     for(let i=0;i<900;i++){
       throwIfAborted();
-      sendButton=[...composerScope(findComposer()).querySelectorAll('button,[role="button"]')].filter(visible).find(b=>/send|gửi|发送/i.test(`${b.getAttribute('aria-label')||''} ${b.getAttribute('data-testid')||''} ${b.innerText||''}`));
-      if(sendButton&&!sendButton.disabled)break;
+      // A user may press Send while our selector is still waiting. Never send twice.
+      if(activity()){submitted=true;break;}
+      sendButton=WorkflowComposer.findSend(composerScope(findComposer()));
+      if(sendButton)break;
       await delay(100,signal);
     }
-    if(!composer.value.trim())throw new Error('Muse did not accept the prompt into its message box. Nothing was submitted.');
-    const bubbleCount=()=>document.querySelectorAll('div[class*="hatch-chat-groupable-bubble"]').length;
-    const beforeSendCount=bubbleCount();
-    let submitted=false;
     throwIfAborted();
-    if(sendButton&&!sendButton.disabled){sendButton.click();submitted=true;}
-    else throw new Error('Nút Gửi của Muse chưa sẵn sàng sau 90 giây. Prompt chưa được gửi.');
-    let accepted=false;
-    for(let i=0;i<30;i++){
-      throwIfAborted();
-      if(bubbleCount()>beforeSendCount||document.querySelector('[data-testid="hatch-composer-stop-button"],button[aria-label*="Stop" i],button[aria-label*="停止"]')){accepted=true;break;}
-      await delay(100,signal);
+    if(!submitted){
+      if(!findComposer()?.value.trim())throw new Error('Muse không giữ được prompt. Chưa xác nhận gửi yêu cầu.');
+      if(!sendButton)throw new Error('Không nhận diện được nút Gửi đang sẵn sàng của Muse.');
+      sendButton.click();submitted=true;
     }
-    if(!submitted||!accepted)throw new Error('Muse did not confirm the prompt submission. Check the chat box and try again; MuseFlow will not resubmit automatically.');
+    let accepted=false;
+    for(let i=0;i<150;i++){throwIfAborted();if(activity()){accepted=true;break;}await delay(100,signal);}
+    if(!accepted)throw new Error('Chưa xác nhận Muse nhận prompt. Không tự gửi lại để tránh trùng lặp.');
+    report(requestId,'Muse đã nhận yêu cầu. Đang tìm video/ảnh kết quả mới…');
     const deadline=Date.now()+Math.min(900,Math.max(30,Number(timeoutSec)||600))*1000;
     let lastProgress=Date.now(),firstWrongRatioAt=0,wrongMediaSince=0;
     let refusalContext='',refusalContextSince=0;
@@ -173,7 +187,7 @@
       const fresh=attachments().filter(a=>!baseline.has(a.src));
       const matching=fresh.filter(a=>mediaType==='video'?a.isVideo:!a.isVideo);
       const wrongMedia=fresh.find(a=>mediaType==='image'?a.isVideo:!a.isVideo);
-      if(wrongMedia){if(!wrongMediaSince)wrongMediaSince=Date.now();if(Date.now()-wrongMediaSince>=1800){const expected=mediaType==='image'?'image':'video',actual=mediaType==='image'?'video':'image';const error=new Error(`Muse returned a ${actual} for a Generate ${expected==='image'?'Image':'Video'} node. Switch the Muse composer to ${expected} generation, then retry.`);error.code='MEDIA_TYPE_MISMATCH';throw error;}}
+      if(wrongMedia&&mediaType!=='video'){if(!wrongMediaSince)wrongMediaSince=Date.now();if(Date.now()-wrongMediaSince>=1800){const expected=mediaType==='image'?'image':'video',actual=mediaType==='image'?'video':'image';const error=new Error(`Muse returned a ${actual} for a Generate ${expected==='image'?'Image':'Video'} node. Switch the Muse composer to ${expected} generation, then retry.`);error.code='MEDIA_TYPE_MISMATCH';throw error;}}
       else wrongMediaSince=0;
       const [ratioW,ratioH]=String(size||'1:1').split(':').map(Number),expectedRatio=ratioW>0&&ratioH>0?ratioW/ratioH:1;
       const measured=matching.filter(a=>a.width>0&&a.height>0).sort((a,b)=>{
@@ -184,14 +198,14 @@
       const best=measured[0],bestRatioError=best?Math.abs(Math.log((best.width/best.height)/expectedRatio)):Infinity;
       if(best&&bestRatioError<=.09)firstWrongRatioAt=0;
       else if(best&&!firstWrongRatioAt)firstWrongRatioAt=Date.now();
-      const result=best&&(bestRatioError<=.09||Date.now()-firstWrongRatioAt>=3500)?best:null;
+      const result=(best&&(bestRatioError<=.09||Date.now()-firstWrongRatioAt>=3500)?best:null)||(mediaType==='video'?matching.find(item=>item.videoUrl):null);
       if(result){
-        const media=mediaType==='video'?(result.el.querySelector('video')||null):(result.el.querySelector('img')||null);
+        report(requestId,'Đã tìm thấy kết quả Muse. Đang chuyển về Workflow…');
+        const media=mediaType==='video'?(result.el.matches('video')?result.el:result.el.querySelector('video')):(result.el.matches('img')?result.el:result.el.querySelector('img'));
         const src=mediaType==='video'?(result.videoUrl||media?.currentSrc||media?.src||''):(media?.currentSrc||media?.src||'');
         // Muse may first render a poster and attach the playable/download URL after
         // hydration. Keep waiting for that URL instead of rejecting a completed clip.
         if(!src){firstWrongRatioAt=firstWrongRatioAt||Date.now();await waitForAttachmentChange(Math.min(500,deadline-Date.now()),signal);continue;}
-        if(mediaType==='video'&&!src.startsWith('blob:')&&!src.startsWith('data:'))return {ok:true,url:src};
         if(src.startsWith('data:'))return {ok:true,url:src};
         try{
           const response=await fetch(src,{credentials:'include'});
@@ -221,7 +235,7 @@
   }
 
   async function attachReferences(references,signal){
-    const files=await Promise.all(references.map(async(reference,index)=>{
+    const rawFiles=await Promise.all(references.map(async(reference,index)=>{
       const url=typeof reference==='string'?reference:reference?.url;
       if(!url)throw new Error(`Reference image ${index+1} has no URL.`);
       const response=await fetch(url,{credentials:'include'});
@@ -231,6 +245,8 @@
       const extension=(blob.type.split('/')[1]||'png').replace('jpeg','jpg').replace(/[^a-z0-9]/gi,'')||'png';
       return new File([blob],`museflow-reference-${String(index+1).padStart(2,'0')}.${extension}`,{type:blob.type});
     }));
+    const fingerprints=new Set(),files=[];
+    for(const file of rawFiles){const hash=[...new Uint8Array(await crypto.subtle.digest('SHA-256',await file.arrayBuffer()))].map(b=>b.toString(16).padStart(2,'0')).join('');if(!fingerprints.has(hash)){fingerprints.add(hash);files.push(file);}}
     const composer=findComposer();
     const composerRoot=composerScope(composer);
     const acceptsImage=input=>{
@@ -264,7 +280,6 @@
       const transfer=new DataTransfer();batch.forEach(file=>transfer.items.add(file));
       if(batch.length>1)input.multiple=true;
       setter.call(input,transfer.files);
-      input.dispatchEvent(new Event('input',{bubbles:true,composed:true}));
       input.dispatchEvent(new Event('change',{bubbles:true,composed:true}));
       const started=Date.now(),deadline=started+90000;
 
@@ -272,7 +287,7 @@
         const key=previewKey(el),src=el.matches('img')?(el.currentSrc||el.src||''):key.split('|',1)[0];
         return !previousPreviews.has(key)&&Boolean(src);
       });
-      while(Date.now()<deadline){if(signal?.aborted)throw new DOMException('Generation stopped by user.','AbortError');if(previewSeen()&&!composerRoot.querySelector('[role="progressbar"],[aria-busy="true"]')&&Date.now()-started>1500)return;await delay(160,signal);}
+      while(Date.now()<deadline){if(signal?.aborted)throw new DOMException('Generation stopped by user.','AbortError');if(previewSeen()&&!composerScope(findComposer()).querySelector('[role="progressbar"],[aria-busy="true"]')&&Date.now()-started>1500)return;await delay(160,signal);}
       throw new Error(`Muse did not confirm ${batch.length} reference image${batch.length===1?'':'s'} in the chat composer (upload input accepts: ${input.accept||'any file'}); the prompt was not submitted.`);
     };
     if(files.length>1&&!input.multiple){
