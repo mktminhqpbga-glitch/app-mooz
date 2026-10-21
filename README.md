@@ -122,3 +122,9 @@ Node **Tạo văn bản** qua Gemini/ChatGPT có nút **Chọn kết quả trên
 3. Kiểm tra/sửa nội dung trong khung xem trước, bấm **Đưa về Workflow**.
 
 Thao tác này không gửi prompt mới, không bấm Copy hoặc nút trong câu trả lời. Khi lượt đang chờ còn kết nối, kết quả hoàn tất chính lượt đó để chuỗi node có thể tiếp tục. Nếu lượt đã kết thúc, nội dung được nhập vào node và lưu. Hủy hoặc hết 5 phút không nhập nội dung. Sau cập nhật cần tải lại extension, Workflow và các tab AI.
+
+### 0.9.0 — tám node sản xuất
+
+Thêm Khóa nhân vật, Gán vai trò ảnh, Phân tích video, Chia cảnh tự động, Duyệt trước khi chạy, Kiểm tra kết quả, Biến thể prompt và Lưu theo bộ trong menu Thêm node. Hướng dẫn nối cổng, mẫu kịch bản và giới hạn: [docs/PRODUCTION-TOOLS.md](docs/PRODUCTION-TOOLS.md).
+
+Kiểm thử khóa/lưu/tải lại, vai trò, chặn gửi trước duyệt, hủy duyệt, chia cảnh, chọn biến thể, video gốc và tải theo bộ qua Chromium; kiểm tra FFprobe trên video thật có audio. Các phản hồi AI vẫn giả lập; chưa xác minh chất lượng AI trên tài khoản đăng nhập thật.

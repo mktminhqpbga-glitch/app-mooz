@@ -49,3 +49,7 @@ Sửa xác nhận và thu kết quả ChatGPT: turn assistant/writing block, com
 ### 0.8.3
 
 Mở rộng nhận diện câu trả lời theo turn/nút sao chép ChatGPT. Thêm chọn kết quả trực tiếp trên tab, xem trước và xác nhận; hoàn tất lượt đang chờ hoặc nhập vào node đã kết thúc mà không gửi prompt lại. Chưa xác minh DOM phiên AI thật.
+
+### 0.9.0
+
+Thêm đủ tám công cụ trong menu: snapshot khóa nhân vật, vai trò ảnh theo cổng + ID, phân tích video gốc, chia cảnh thành graph/Timeline, cổng duyệt có sửa prompt và xem media, kiểm tra kỹ thuật bằng FFprobe, biến thể có chọn một đầu ra, tải tệp/prompt theo bộ. Bổ sung lưu snapshot vào IndexedDB riêng theo node và bố trí cảnh tránh đè node nguồn. Phần AI chưa có kiểm thử tài khoản thật.

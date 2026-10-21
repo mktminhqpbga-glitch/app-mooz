@@ -122,3 +122,12 @@ Kiểm chứng hồi quy: chạy cùng fixture bằng `ai-bridge.js` của 0.8.1
 - Các bridge và staged-send giữ kiểm tra gửi, upload, dừng và không gửi trùng.
 
 Đây là cơ chế khôi phục có người dùng chọn rõ câu trả lời và xác nhận nội dung. Tự nhận diện vẫn cần xác minh trên phiên ChatGPT thật; ảnh chụp không cung cấp cấu trúc DOM.
+
+## 0.9.0 — tám node sản xuất
+
+- `node --test tests/*.test.mjs`: 20 kiểm thử, thêm đánh giá kỹ thuật sai tỷ lệ/thời lượng/âm thanh, cấu hình không hợp lệ, đọc biến thể JSON/đánh số và tên thư mục không đi xuyên đường dẫn.
+- `node tests/tools-smoke.cjs`: Chromium với chrome.* và phản hồi AI mô phỏng. Kiểm tra đủ tám mục menu; khóa ảnh giữ nguyên khi thay nguồn; metadata khóa và vai trò vào đúng ảnh; duyệt sửa prompt và chặn gửi trước duyệt; hủy không gửi; khóa vẫn đúng byte sau lưu IndexedDB/tải lại. Chia hai cảnh thành bốn node tạo, chặn tạo trùng. Bộ tải có tệp + manifest đúng thư mục/ID/prompt; chọn biến thể thứ hai làm prompt đầu ra; phân tích nhận đúng byte video gốc.
+- Trong cùng harness, tạo MP4 thật 160×90, dài 1 giây có AAC bằng ffmpeg hệ thống; node kiểm tra gọi FFprobe WASM đi kèm và xác nhận kích thước/thời lượng/luồng audio. Thư viện WASM trả trạng thái -1 mặc định nhưng JSON thăm dò hợp lệ; dùng dữ liệu JSON, kiểm tra luồng video/kích thước và lỗi cấu trúc thay cho kết luận từ mã trả về. Ảnh vuông thật được báo chưa đạt tỷ lệ 16:9.
+- Giữ harness UI cũ gồm xuất MP4 thật và kiểm tra bằng ffprobe hệ thống.
+
+Không có phiên AI đăng nhập thật. Kiểm thử vận chuyển video/rules/ảnh không chứng minh chất lượng phân tích, khóa nhân vật hoặc AI làm đúng prompt. Có luồng âm thanh không đồng nghĩa có tiếng nghe rõ. Tải theo bộ kiểm tra yêu cầu downloads và dữ liệu tệp, không xác minh đường dẫn đĩa Downloads thật trong môi trường này.
