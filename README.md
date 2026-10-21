@@ -1,4 +1,4 @@
-# Workflow · MuseFlow 0.7.2
+# Workflow · MuseFlow 0.11.0
 
 Extension Chrome/Edge dựa trên [MuseFlow / 26Flow](https://github.com/bynne2602/museflow), mở rộng canvas/timeline để làm việc với Muse.ai, Gemini, ChatGPT và API Google, OpenAI, fal.ai. Giữ nguyên giấy phép GPL-2.0-or-later của nguồn gốc và thông báo FFmpeg đi kèm.
 
@@ -93,7 +93,7 @@ Harness chạy DOM Chromium thật với `chrome.*` và dịch vụ AI giả l�
 ### 0.8.0 — chọn chat, chuẩn bị trước khi gửi và ID ảnh
 
 - Mở sẵn cuộc trò chuyện cần dùng trong tab AI. Trong node hoặc Cài đặt → Kết nối AI, chọn **Cuộc trò chuyện AI**. Bấm làm mới nếu vừa mở tab. Khi tab đã chọn đóng hoặc chuyển sang chat khác, chọn lại; Workflow không tự tìm chat thay thế.
-- Với node **Tạo văn bản** dùng Gemini/ChatGPT tab: bấm chạy để đưa tệp và prompt vào chat. Tự gửi sau ít nhất 2 phút kể từ khi bridge bắt đầu xử lý, đồng thời phải hoàn tất tải tệp. Bấm **Gửi ngay** trên node để yêu cầu gửi sớm; vẫn đợi upload. Bấm Gửi trên trang AI cũng được nhận diện để tránh gửi hai lần. Bấm Dừng hủy lượt đang chờ. API và tạo ảnh/video giữ cách gửi trực tiếp.
+- Với node **Tạo văn bản** dùng Gemini/ChatGPT tab: bấm chạy để đưa tệp và prompt vào chat. Mặc định tự gửi ngay khi tải tệp xong. Có thể chọn **Chờ 2 phút trước khi gửi** nếu muốn kiểm tra prompt trước. Bấm **Gửi ngay** trên node để yêu cầu gửi sớm; vẫn đợi upload. Bấm Gửi trên trang AI cũng được nhận diện để tránh gửi hai lần. Bấm Dừng hủy lượt đang chờ. API và tạo ảnh/video giữ cách gửi trực tiếp.
 - ChatGPT chỉ nhận video gốc nếu ô tải tệp trên trang cho phép loại tệp đó; tải được tệp không chứng minh model có khả năng phân tích video. Dùng Gemini nếu ChatGPT không nhận video.
 - Mỗi node có **ID** riêng, bấm để sao chép. ID được lưu cùng workflow, node sao chép được cấp ID khác. Node nhận ảnh liệt kê thứ tự ảnh và ID nguồn; prompt gửi AI có bảng đối chiếu cùng thứ tự tệp. Ví dụ: `Lấy nhân vật từ [IMG-…], đặt vào bối cảnh [IMG-…], giữ nguyên khuôn mặt.` Khung cuối video có hậu tố `-END`. Đây là chỉ dẫn cho model, không bảo đảm model luôn làm đúng.
 - Nếu Muse vẫn không bấm Gửi: dừng workflow, vào Cài đặt → **Chọn nút Gửi trên Muse**, rồi bấm đúng mũi tên Gửi tại tab Muse. Lần chọn đó chỉ lưu nút, không gửi bản nháp. Chạy lại node. **Chẩn đoán Muse** tạo báo cáo cấu trúc nút, không đọc nội dung prompt/phản hồi hay URL ảnh.
@@ -144,3 +144,14 @@ Bản 0.9.2 cũng bỏ nút Buy me a coffee, hộp VietQR và các liên kết/�
 Khi một node đang chạy, có thể bấm **Chạy** trên node khác. Tab AI khác nhau chạy đồng thời; yêu cầu dùng cùng một tab được xếp FIFO, không ghi đè prompt. Node dùng đầu ra chưa có sẽ đợi node đầu vào, không gọi lại producer đang chạy. **Dừng** trên node dừng nhánh của nó; nút trên cùng **Dừng tất cả** hủy mọi nhánh đang chạy/chờ. Tiến độ, Gửi ngay và chọn kết quả được gắn đúng request/node.
 
 Nút Run workflow giữ thứ tự chạy đã chọn; để chạy thêm một nhánh trong lúc đó, bấm Chạy trên node độc lập. Đổi chat khi đang chờ vẫn bị chặn; có thể làm mới tab của node chưa chạy trong khi nhánh khác hoạt động. AI phía dịch vụ vẫn có giới hạn riêng; chưa kiểm chứng các phiên đăng nhập thật chạy đồng thời.
+
+
+### 0.11.0 — Run All tự động và thanh trạng thái AI
+
+**Run All** chạy ngay, tự gửi yêu cầu sau khi tải xong tệp, nhận văn bản và chuyển sang node kế tiếp. Các nhánh đủ đầu vào ở tab khác chạy song song; cùng tab xếp hàng. Mỗi node xử lý một lần trong lượt, dùng kết quả mới thay vì đầu ra cũ. Nhánh lỗi chặn các node phụ thuộc; các nhánh độc lập vẫn tiếp tục. **Dừng tất cả** hủy cả tác vụ đang chạy và đang chờ. **Chọn node** vẫn cho chọn một nhóm và thứ tự chạy riêng. Node Duyệt trước khi chạy vẫn yêu cầu duyệt theo thiết kế.
+
+Tạo văn bản mặc định **Tự gửi khi sẵn sàng**, thay cho chờ 2 phút ở các bản trước. Chế độ chờ 2 phút và **Gửi ngay** vẫn chọn được. Bridge thêm dấu mốc riêng cho từng phản hồi văn bản rồi bỏ dấu mốc khi đưa về node; vẫn nhận diện các phản hồi không có dấu mốc qua cấu trúc trang AI. **Chọn kết quả trên tab AI** chỉ là phương án dự phòng trong **Khôi phục thủ công**, không cần bấm trong luồng bình thường.
+
+Thanh trên cùng hiển thị Muse / Gemini / GPT và API được dùng: **xanh = kết nối, rảnh; vàng = đang làm; xám = lỗi; tím = cần kiểm tra**. Di chuột xem chi tiết; bấm tên AI hoặc ↻ để kiểm tra lại. Tự kiểm tra tab mỗi 15 giây khi rảnh; API chỉ xác minh bằng tác vụ thật, không tự gọi tính phí để thử kết nối.
+
+Kiểm thử Chromium với phản hồi giả lập: tải video xong mới gửi, tự nhận văn bản khi cấu trúc phản hồi thay đổi, không lấy prompt/đoạn đang viết làm kết quả; Run All nhiều nhánh, đợi đầu vào, FIFO, lỗi nhánh, Dừng tất cả và màu trạng thái. Chưa xác minh trên phiên AI đăng nhập thật. Sau cập nhật cần Reload extension rồi tải lại Workflow và các tab AI để thay bridge cũ.

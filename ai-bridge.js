@@ -105,6 +105,17 @@
   async function generate(request,signal){
     if(!String(request.prompt||'').trim())throw new Error('Yêu cầu trống.');
     const deadline=Date.now()+120000,conversation=location.origin+location.pathname;
+    const markerId=crypto.randomUUID().replaceAll('-',''),opening=`[[WF:${markerId}]]`,closing=`[[/WF:${markerId}]]`;
+    const format=request.mediaType==='text'?`Dòng đầu chỉ ghi ${opening}; dòng cuối chỉ ghi ${closing}. Đặt toàn bộ kết quả ở giữa, không thêm lời dẫn.`:'';
+    const wireText=[request.rules,format,request.prompt].filter(Boolean).join('\n\n');
+    const escape=value=>value.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+    const markedResult=()=>{
+      if(request.mediaType!=='text')return '';
+      const text=document.body?.innerText||'';
+      const match=new RegExp('(?:^|\\n)[ \\t]*'+escape(opening)+'[ \\t]*\\n([\\s\\S]*?)\\n[ \\t]*'+escape(closing)+'[ \\t]*(?:\\n|$)').exec(text);
+      return match?.[1]?.trim()||'';
+    };
+
     const checkConversation=()=>{if(location.origin+location.pathname!==conversation)throw new Error('Cuộc trò chuyện đã thay đổi. Đã dừng để tránh gửi nhầm chat.');};
     await clearDraft(signal);
     const before=new Map(replies().map(el=>[el,replyText(el)]));
@@ -116,11 +127,11 @@
     const freshReplies=()=>replies().filter(el=>!before.has(el)||before.get(el)!==replyText(el));
     const submitted=()=>{
       if(!prepared)return false;
-      if(echo())return true;
+      if(markedResult()||echo())return true;
       const input=composer(),draft=input?normalize(input.value??input.innerText):'';
       // Composer may be hidden/replaced while ChatGPT opens a writing block.
       // A retained, different draft is not evidence that this request failed.
-      const ownDraft=draft&&draft===normalize([request.rules,request.prompt].filter(Boolean).join('\n\n'));
+      const ownDraft=draft&&draft===normalize(wireText);
       return !ownDraft&&(!!stopped()||freshReplies().length>0);
     };
     report(request,'Đang đưa tài liệu vào cuộc trò chuyện. Chờ tải tệp hoàn tất…');
@@ -129,7 +140,7 @@
     if(!submitted()){
       before.clear();for(const el of replies())before.set(el,replyText(el));
       priorUsers.clear();for(const el of users())priorUsers.add(el);
-      const text=[request.rules,request.prompt].filter(Boolean).join('\n\n');
+      const text=wireText;
       const editor=await wait(composer,5000,signal,'Ô nhập AI vừa thay đổi. Tải lại tab AI rồi thử lại.');
       setText(editor,text);prepared=true;
       await new Promise(resolve=>setTimeout(resolve,300));
@@ -155,10 +166,11 @@
     report(request,'AI đã nhận yêu cầu. Đang chờ phản hồi…');
     let last='',since=Date.now(),reportedReply=false;
     const result=await wait(()=>{
+      const marked=markedResult();if(marked){if(marked!==last){last=marked;since=Date.now();}if(!stopped()&&Date.now()-since>=750)return {ok:true,text:marked};return false;}
       const fresh=freshReplies();const reply=fresh.at(-1);if(!reply)return false;
       const text=replyText(reply);if(!reportedReply&&text){reportedReply=true;report(request,'Đã thấy phản hồi. Đang đợi AI hoàn tất…');}if(text!==last){last=text;since=Date.now();}
       if(stopped()||reply.matches('[aria-busy="true"],[data-is-streaming="true"]')||reply.querySelector('[aria-busy="true"],[data-is-streaming="true"]')||Date.now()-since<3500)return false;
-      if(request.mediaType==='text')return text?{ok:true,text}:false;
+      if(request.mediaType==='text'){if(text.includes(opening)&&!text.includes(closing))return false;const clean=text.replaceAll(opening,'').replaceAll(closing,'').trim();return clean?{ok:true,text:clean}:false;}
       const image=[...reply.querySelectorAll('img')].filter(visible).find(img=>img.naturalWidth>=256&&img.naturalHeight>=256);
       return image?{ok:true,url:image.currentSrc||image.src}:false;
     },600000,signal,'Hết thời gian chờ kết quả AI. Kiểm tra tab AI; không tự gửi lại prompt.');
@@ -168,7 +180,7 @@
   chrome.runtime.onMessage.addListener((request,sender,respond)=>{
     if(sender.id!==chrome.runtime.id)return false;
     if(request.type==='WORKFLOW_AI_CHECK'){
-      wait(composer,3500,null,'Không nhận diện được ô nhập trên trang AI đang mở.').then(()=>respond({ok:true,signedIn:true,composer:true,busy:busy||!!stopped(),bridgeVersion:'0.10.0'}),()=>respond({ok:true,signedIn:false,composer:false,bridgeVersion:'0.10.0',error:'Tab AI đã kết nối nhưng chưa nhận diện được ô nhập đang chỉnh sửa. Mở cuộc trò chuyện và tải lại tab AI.'}));return true;
+      wait(composer,3500,null,'Không nhận diện được ô nhập trên trang AI đang mở.').then(()=>respond({ok:true,signedIn:true,composer:true,busy:busy||!!stopped(),bridgeVersion:'0.11.0'}),()=>respond({ok:true,signedIn:false,composer:false,bridgeVersion:'0.11.0',error:'Tab AI đã kết nối nhưng chưa nhận diện được ô nhập đang chỉnh sửa. Mở cuộc trò chuyện và tải lại tab AI.'}));return true;
     }
     if(request.type==='WORKFLOW_AI_USE_RESULT'){const resolve=manualResults.get(request.requestId);if(!resolve||typeof request.text!=='string'||!request.text.trim()){respond({ok:false});return false;}resolve({ok:true,text:request.text.trim()});respond({ok:true});return false;}
     if(request.type==='WORKFLOW_AI_SEND_NOW'){const pending=active.has(request.requestId);if(pending)earlySend.add(request.requestId);respond({ok:pending});return false;}
