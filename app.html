@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Workflow · MuseFlow 0.6.0</title>
+  <title>Workflow · MuseFlow 0.6.1</title>
   <link rel="icon" type="image/png" sizes="128x128" href="icons/icon128.png" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <header class="toolbar">
-    <div class="brand"><img class="brand-logo" src="icons/26flow.svg" alt="26Flow" /><strong class="brand-name">Flow</strong><span class="brand-version">0.6.0</span></div>
+    <div class="brand"><img class="brand-logo" src="icons/26flow.svg" alt="26Flow" /><strong class="brand-name">Flow</strong><span class="brand-version">0.6.1</span></div>
     <div class="toolbar-tools" aria-label="Add workflow nodes">
       <button id="scriptImportBtn" type="button">＋ Script → Nodes</button>
       <button id="addNodeMenuBtn" type="button" aria-haspopup="true" aria-expanded="false">＋ Add node</button>
@@ -19,7 +19,7 @@
       <button id="workflowExportBtn" type="button" title="Save workflow as a reusable JSON file">Save workflow</button>
       <button id="workflowImportBtn" type="button" title="Import a saved MuseFlow workflow">Import workflow</button>
       <input id="workflowFileInput" type="file" accept=".json,application/json" hidden />
-      <button id="dataUpdateBtn">Cập nhật dữ liệu</button><button id="settingsBtn">Kết nối AI</button>
+      <button id="packageUpdateBtn">Cập nhật extension</button><button id="dataUpdateBtn">Cập nhật dữ liệu</button><button id="settingsBtn">Kết nối AI</button>
       <button id="resetBtn" class="danger">Reset</button>
       <button id="runBtn" class="primary" title="Run every node in the workflow in dependency order">▶ Run workflow</button>
       <button id="buyCoffeeBtn" class="buy-coffee-btn" type="button" title="Support MuseFlow via VietQR">☕ Buy me a coffee</button>
@@ -172,6 +172,7 @@
     </section>
   </div>
 
+  <script src="extension/package-update.js"></script>
   <script src="i18n.js"></script>
   <script src="vendor/ffmpeg/ffmpeg.js"></script>
   <script src="ai-providers.js"></script>

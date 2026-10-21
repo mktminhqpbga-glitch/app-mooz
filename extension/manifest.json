@@ -1,9 +1,17 @@
 {
   "manifest_version": 3,
   "name": "Workflow Data Updater",
-  "version": "0.1.0",
+  "version": "0.6.1",
   "description": "Tải và lưu dữ liệu mới nhất từ GitHub.",
-  "permissions": ["storage"],
-  "host_permissions": ["https://api.github.com/*", "https://raw.githubusercontent.com/*"],
-  "action": { "default_popup": "popup.html" }
+  "permissions": [
+    "storage",
+    "downloads"
+  ],
+  "host_permissions": [
+    "https://api.github.com/*",
+    "https://raw.githubusercontent.com/*"
+  ],
+  "action": {
+    "default_popup": "popup.html"
+  }
 }

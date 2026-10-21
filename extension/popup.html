@@ -2,16 +2,17 @@
 <html lang="vi">
 <head><meta charset="utf-8"><title>Workflow</title><link rel="stylesheet" href="popup.css"></head>
 <body>
-  <h1>Dữ liệu Workflow</h1>
+  <h1>Cập nhật Workflow</h1><button id="packageUpdateBtn" type="button">Cập nhật extension</button><p>Tải ZIP mới nhất, giải nén đè vào thư mục cài đặt rồi bấm Tải lại trong trang quản lý extension.</p>
   <p>Tải phiên bản dữ liệu mới nhất từ GitHub và lưu trên trình duyệt này.</p>
   <form id="settings">
     <label>Repository<input id="repository" required placeholder="owner/repository"></label>
     <label>Nhánh<input id="branch" required value="main"></label>
-    <button id="update" type="submit">Cập nhật</button>
+    <button id="update" type="submit">Cập nhật dữ liệu</button>
   </form>
   <p id="status" role="status" aria-live="polite"></p>
   <p id="details"></p>
   <ul id="files"></ul>
+  <script src="package-update.js"></script>
   <script type="module" src="popup.js"></script>
 </body>
 </html>

@@ -15,12 +15,12 @@ const assert=require('node:assert/strict');
  const page=await browser.newPage({viewport:{width:1500,height:950}});const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept());
  await page.route('https://**/*',route=>route.fulfill({status:404,body:''}));
  await page.addInitScript(()=>{
-  const store={};window.testStore=store;window.testMessages=[];
+  const store={};window.testStore=store;window.testMessages=[];window.testDownloads=[];
   const storage={get:async key=>({[key]:structuredClone(store[key])}),set:async value=>Object.assign(store,structuredClone(value))};
-  window.chrome={runtime:{id:'test',getManifest:()=>({version:'0.6.0'}),getURL:p=>location.origin+'/'+p},storage:{local:storage,session:{get:async()=>({}),set:async()=>{}}},scripting:{executeScript:async()=>{}},tabs:{query:async()=>[{id:1,active:true,url:'https://gemini.google.com/app'}],sendMessage:async(id,msg)=>{window.testMessages.push(msg);if(msg.type.includes('CHECK'))return {ok:true,signedIn:true,composer:true};return {ok:true,text:'Kịch bản mới từ video gốc'};},create:async()=>{},onUpdated:{addListener(){}},onCreated:{addListener(){}}}};
+  window.chrome={downloads:{download:async options=>{testDownloads.push(options);return 1;}},runtime:{id:'test',getManifest:()=>({version:'0.6.0'}),getURL:p=>location.origin+'/'+p},storage:{local:storage,session:{get:async()=>({}),set:async()=>{}}},scripting:{executeScript:async()=>{}},tabs:{query:async()=>[{id:1,active:true,url:'https://gemini.google.com/app'}],sendMessage:async(id,msg)=>{window.testMessages.push(msg);if(msg.type.includes('CHECK'))return {ok:true,signedIn:true,composer:true};return {ok:true,text:'Kịch bản mới từ video gốc'};},create:async()=>{},onUpdated:{addListener(){}},onCreated:{addListener(){}}}};
  });
  await page.goto(origin+'/app.html');await page.waitForSelector('.node');
- assert.equal(await page.locator('.node').count(),3);
+ assert.equal(await page.locator('.node').count(),3);await page.click('#packageUpdateBtn');const downloads=await page.evaluate(()=>testDownloads);assert.equal(downloads.length,1);assert.ok(downloads[0].url.startsWith('https://raw.githubusercontent.com/mktminhqpbga-glitch/workflow/main/downloads/Workflow-extension.zip'));assert.equal(downloads[0].saveAs,true);
  for(const type of ['generateText','videoInput','generateVideo']){await page.click('#addNodeMenuBtn');await page.click(`[data-add="${type}"]`);}
  assert.equal(await page.locator('.node').count(),6);
  assert.deepEqual(await page.locator('.video-controls select').nth(1).locator('option').allTextContents(),['4s','5s','6s','8s','10s','15s','20s','30s','60s']);
