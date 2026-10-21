@@ -809,10 +809,9 @@
       const label = document.createElement('label');
       label.className = 'small-btn'; label.textContent = n.type==='videoInput'?'Chọn video gốc':'Chọn ảnh';
       const input = document.createElement('input'); input.type = 'file'; input.accept = n.type==='videoInput'?'video/*':'image/*';
-      input.onchange = () => {
-        const f = input.files && input.files[0]; if (!f) return; if(f.size>100*1024*1024){setRunStatus('Tệp vượt giới hạn 100 MB.','error');return;}
-        const r = new FileReader(); r.onload = () => { n.data.fileName=f.name; n.data.localDataUrl = String(r.result || ''); render(); }; r.readAsDataURL(f);
-      };
+      input.onchange=()=>{if(input.files?.length)void importMediaFiles([...input.files],{node:n}).catch(error=>setRunStatus(error.message,'error'));};
+      body.classList.add('media-input-zone');body.tabIndex=0;body.setAttribute('aria-label',n.type==='videoInput'?'Thả hoặc dán video':'Thả hoặc dán ảnh');
+      const dropHint=document.createElement('small');dropHint.className='media-drop-hint';dropHint.textContent=n.type==='videoInput'?'Kéo video vào đây hoặc chọn tệp':'Kéo ảnh vào đây hoặc bấm vào node rồi Ctrl+V';body.append(dropHint);
       label.appendChild(input); body.appendChild(label);
       const hint = document.createElement('div'); hint.className = 'hint'; hint.textContent = n.type==='videoInput'?'Nối video vào cổng Video gốc của Tạo văn bản hoặc Video chuyển động của Tạo video.':'Nối ảnh vào cổng Ảnh tham chiếu của node tạo.'; body.appendChild(hint);
     }
@@ -976,6 +975,43 @@
     zone.ondragover=event=>{event.preventDefault();zone.classList.add('drag-over');};zone.ondragleave=()=>zone.classList.remove('drag-over');
     zone.ondrop=event=>{event.preventDefault();zone.classList.remove('drag-over');addTimelineClip(node,event.dataTransfer.getData('application/x-museflow-video-node')||event.dataTransfer.getData('text/plain'));};return zone;
   }
+
+  function mediaDestination(target,files,{paste=false}={}){
+    if(target?.closest?.('textarea,[contenteditable="true"],input:not([type="file"])')&&paste)return null;
+    const field=target?.closest?.('label')?.querySelector('input[type="file"][accept*="image"],input[type="file"][accept*="video"]');
+    const element=target?.closest?.('.node'),node=nodeById(element?.dataset.id|| (paste?state.selectedNodeId:null));
+    if(field&&!node)return {field};
+    if(target?.closest?.('#timelineDock'))return {timeline:true};
+    if(!node)return null;
+    if(['imageInput','videoInput'].includes(node.type))return {node};
+    const port=target?.closest?.('.port.in'),kind=files[0]?.type?.startsWith('video/')?'video':'image';
+    const input=port?(nodeDefs[node.type].inputs||[]).find(p=>p.id===port.dataset.port):(nodeDefs[node.type].inputs||[]).find(p=>p.type===kind||p.type==='media');
+    return input&&['image','video','media'].includes(input.type)?{node,port:input}:null;
+  }
+  async function importMediaFiles(files,destination){
+    if(!files.length)return;
+    const {node,port,field,timeline}=destination;
+    if(node&&runForNode(node.id))throw new Error('Node đang chạy; đợi hoàn tất rồi thay tệp.');
+    const accept=field?.accept||(port?.type==='media'||timeline?'image/,video/':port?.type==='video'||node?.type==='videoInput'?'video/':'image/');
+    for(const file of files){if(!/^(image|video)\//.test(file.type)||!accept.split(',').some(type=>file.type.startsWith(type.trim().replace('*',''))))throw new Error('Sai loại tệp: ô này cần '+accept+'.');if(!file.size||file.size>100*1024*1024)throw new Error('Tệp phải có dung lượng từ 1 byte đến 100 MB.');}
+    if(field){if(!field.multiple&&files.length>1)throw new Error('Ô này chỉ nhận một tệp.');const dt=new DataTransfer();const all=field.multiple?[...field.files,...files]:files;if(field.id==='batchReferences'&&(all.length>8||all.reduce((sum,f)=>sum+f.size,0)>20*1024*1024))throw new Error('Tối đa 8 ảnh, tổng 20 MB.');all.forEach(file=>dt.items.add(file));field.files=dt.files;field.dispatchEvent(new Event('change',{bubbles:true}));setRunStatus('Đã thêm tệp.','ok');return;}
+    if(node&&!port&&files.length>1||port&&!isMultiInput(node.type,port.id)&&files.length>1)throw new Error('Ô này chỉ nhận một tệp mỗi lần.');
+    const loaded=await Promise.all(files.map(async file=>({file,url:await blobAsDataUrl(file)})));
+    if(node&&(nodeById(node.id)!==node||runForNode(node.id)))throw new Error('Node đã thay đổi hoặc đang chạy; chưa thay tệp.');
+    createUndoSnapshot('Nhập ảnh/video');
+    for(const [index,{file,url}] of loaded.entries()){
+      const kind=file.type.startsWith('video/')?'video':'image';let source=node;
+      if(port||timeline){source=makeNode(kind==='video'?'videoInput':'imageInput',Math.max(20,(node?.x||350)-330),(node?.y||80)+index*250);state.nodes.push(source);}
+      source.data.fileName=file.name;source.data.localDataUrl=url;source.data.asset={id:uid('asset'),kind,url,name:file.name,sourceNodeId:source.id};
+      if(port){if(!isMultiInput(node.type,port.id))state.edges=state.edges.filter(e=>!(e.target===node.id&&e.targetPort===port.id));state.edges.push({id:uid('edge'),source:source.id,sourcePort:kind,target:node.id,targetPort:port.id});}
+      if(timeline){const tl=ensureDockTimeline();tl.data.clipOrder.push(source.id);}
+    }
+    render();scheduleAutoSave();setRunStatus(`Đã thêm ${files.length} tệp.`,'ok');
+  }
+  document.addEventListener('dragover',event=>{if(!event.dataTransfer?.types.includes('Files'))return;event.preventDefault();const destination=mediaDestination(event.target,[...(event.dataTransfer.items||[])].filter(i=>i.kind==='file'));document.querySelectorAll('.media-drag-over').forEach(el=>el.classList.remove('media-drag-over'));if(destination){(event.target.closest('.node,.timeline-dock,label'))?.classList.add('media-drag-over');event.dataTransfer.dropEffect='copy';}});
+  document.addEventListener('dragleave',event=>{if(!event.target.contains?.(event.relatedTarget))event.target.classList?.remove('media-drag-over');});
+  document.addEventListener('drop',event=>{if(!event.dataTransfer?.files.length)return;event.preventDefault();document.querySelectorAll('.media-drag-over').forEach(el=>el.classList.remove('media-drag-over'));const files=[...event.dataTransfer.files],destination=mediaDestination(event.target,files);if(destination)void importMediaFiles(files,destination).catch(error=>setRunStatus(error.message,'error'));else setRunStatus('Thả tệp vào node ảnh/video hoặc cổng đầu vào tương ứng.','warn');},true);
+  document.addEventListener('paste',event=>{const files=[...(event.clipboardData?.files||[])];if(!files.length)return;const destination=mediaDestination(event.target,files,{paste:true});if(!destination)return;event.preventDefault();void importMediaFiles(files,destination).catch(error=>setRunStatus(error.message,'error'));});
 
   function ensureDockTimeline(){let timeline=state.nodes.find(item=>item.type==='timeline');if(!timeline){timeline={id:uid('timeline'),type:'timeline',x:0,y:0,data:{clipOrder:[],durations:{},dockOnly:true}};state.nodes.push(timeline);}timeline.data=timeline.data||{};timeline.data.clipOrder=timeline.data.clipOrder||[];timeline.data.durations=timeline.data.durations||{};return timeline;}
 

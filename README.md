@@ -1,4 +1,4 @@
-# Workflow · MuseFlow 0.12.0
+# Workflow · MuseFlow 0.13.0
 
 Extension Chrome/Edge dựa trên [MuseFlow / 26Flow](https://github.com/bynne2602/museflow), mở rộng canvas/timeline để làm việc với Muse.ai, Gemini, ChatGPT và API Google, OpenAI, fal.ai. Giữ nguyên giấy phép GPL-2.0-or-later của nguồn gốc và thông báo FFmpeg đi kèm.
 
@@ -167,3 +167,13 @@ Kiểm thử Chromium với phản hồi giả lập: tải video xong mới g�
 - **Dừng** hủy xuất hiện tại và các clip còn lại trong đợt xuất riêng. Trình duyệt có thể yêu cầu cho phép tải nhiều tệp khi xuất riêng.
 
 MP4 dùng FFmpeg cục bộ; WebM ảnh/cảnh hỗn hợp và xuất riêng cũng dùng FFmpeg. Kiểm thử Chromium + FFmpeg WASM thật, dùng FFprobe kiểm tra codec, âm thanh và tổng thời lượng, lấy khung hình để xác minh thứ tự ảnh, cùng kiểm thử dừng đợt xuất. Sửa menu thêm clip bị che bởi vùng canvas.
+
+
+### 0.13.0 — kéo thả và dán tệp vào đầu vào
+
+- Kéo tệp ảnh/video từ máy vào node **Ảnh đầu vào / Video đầu vào** để thêm hoặc thay tệp. Bấm vùng nội dung node ảnh rồi **Ctrl+V / Cmd+V** để dán ảnh đã sao chép vào clipboard.
+- Thả tệp lên cổng ảnh/video của node tạo: tự tạo node nguồn, gắn ID và nối đúng cổng. Cổng ảnh tham chiếu nhận nhiều ảnh; cổng đơn nhận một tệp mỗi lần. Thả lên thân node tạo sẽ chọn cổng theo loại tệp. Dán ảnh vào vùng node cũng dùng cách này.
+- Kéo nhiều tệp vào dòng thời gian để thêm các cảnh; ô ảnh tham chiếu trong Tạo ảnh hàng loạt cũng nhận kéo thả/dán, tối đa 8 ảnh và tổng 20 MB.
+- Mỗi tệp không quá 100 MB; sai loại tệp bị từ chối và giữ nguyên dữ liệu cũ. Khi con trỏ ở ô văn bản, dán vẫn theo cách bình thường. Không tự gửi AI sau khi nhập tệp.
+
+Kiểm thử Chromium: kéo/dán, thay tệp, từ chối sai loại, tạo nối nguồn ảnh/video, nhiều ảnh tham chiếu, thêm cảnh và lưu workflow; các sự kiện clipboard/drop dùng tệp giả lập.

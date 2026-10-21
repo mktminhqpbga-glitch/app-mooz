@@ -210,3 +210,5 @@ body{grid-template-rows:58px auto minmax(0,1fr) auto}
 
 #timelineStill{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000;z-index:3}#timelineStill[hidden]{display:none}
 #timelineDock{overflow:visible}.timeline-output-menu{max-height:260px;overflow-y:auto}
+
+.media-input-zone:focus{outline:1px solid #a68bff;outline-offset:2px}.media-drop-hint{display:block;color:#a5a0bc;font-size:10px;margin:6px 0}.media-drag-over{outline:2px dashed #b29aff!important;background-color:#30264e!important}
