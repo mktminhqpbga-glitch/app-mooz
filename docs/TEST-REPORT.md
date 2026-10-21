@@ -135,3 +135,9 @@ Không có phiên AI đăng nhập thật. Kiểm thử vận chuyển video/rul
 ## 0.9.1 — rút gọn prompt ảnh
 
 22 kiểm thử unit đạt: giữ nguyên nội dung yêu cầu, tỷ lệ/negative; bỏ bảng ID không dùng cho một ảnh; giữ ID khi nhiều ảnh, được nhắc trong prompt, có vai trò/khóa. Harness UI kiểm tra chính xác prompt gửi với một ảnh là yêu cầu gốc + một dòng ngắn và vẫn nhận đúng tệp; harness tám công cụ giữ kiểm tra vai trò và khóa. Phản hồi AI vẫn giả lập; đây là kiểm thử nội dung gửi đi, không xác minh chất lượng model thật.
+
+## 0.9.2 — URL chat cũ trong cùng tab
+
+Harness UI kiểm tra: đổi URL trong cùng ID tab bị chặn trước gửi; bấm Làm mới ở node thì cập nhật URL, chạy đúng tab và lưu URL mới. Chọn tab khác khi URL thực đã đổi so với cache vẫn dùng URL truy vấn trực tiếp. Tab đã chọn đóng thì báo lỗi, không gửi sang tab khác. Harness staged-send giữ kiểm tra đổi chat trong lúc chờ làm dừng gửi. Phản hồi AI và chrome.* vẫn giả lập.
+
+Kiểm tra UI xác nhận không còn nút/modal ủng hộ và nhấn Escape không phát sinh lỗi; giữ kiểm tra tải lại node, đổi chat, chọn lại URL mới và tab đóng. Đã chạy lại harness UI đầy đủ, gồm xuất MP4 FFmpeg thật.

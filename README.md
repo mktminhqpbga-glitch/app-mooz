@@ -132,3 +132,9 @@ Kiểm thử khóa/lưu/tải lại, vai trò, chặn gửi trước duyệt, h�
 ### 0.9.1 — prompt ảnh ngắn gọn
 
 Giữ nguyên yêu cầu, chỉ thêm `Tạo 1 ảnh, tỷ lệ ….` và negative prompt nếu có. Một ảnh tham chiếu thông thường không thêm bảng ID hoặc đoạn hướng dẫn dài. Nhiều ảnh, ID được nhắc rõ, vai trò và khóa nhân vật vẫn có đối chiếu ngắn theo thứ tự tệp. Prompt video giữ luồng hiện có.
+
+### 0.9.2 — đổi chat trong cùng tab
+
+Sửa trường hợp tên tab mới nhưng địa chỉ chat vẫn cũ: trên node, bấm **Làm mới danh sách chat** để chấp nhận cuộc trò chuyện hiện tại của đúng tab đã chọn, rồi chạy lại. Chọn tab từ danh sách sẽ đọc địa chỉ mới trực tiếp thay vì dùng bản lưu. Tab đóng không tự chuyển sang tab khác; đổi chat giữa lượt đang chạy vẫn bị chặn. Đang cập nhật lựa chọn thì chưa gửi yêu cầu.
+
+Bản 0.9.2 cũng bỏ nút Buy me a coffee, hộp VietQR và các liên kết/ảnh ủng hộ khỏi ứng dụng.

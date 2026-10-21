@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Workflow · MuseFlow 0.9.1</title>
+  <title>Workflow · MuseFlow 0.9.2</title>
   <link rel="icon" type="image/png" sizes="128x128" href="icons/icon128.png" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <header class="toolbar">
-    <div class="brand"><img class="brand-logo" src="icons/26flow.svg" alt="26Flow" /><strong class="brand-name">Flow</strong><span class="brand-version">0.9.1</span></div>
+    <div class="brand"><img class="brand-logo" src="icons/26flow.svg" alt="26Flow" /><strong class="brand-name">Flow</strong><span class="brand-version">0.9.2</span></div>
     <div class="toolbar-tools" aria-label="Add workflow nodes">
       <button id="batchImagesBtn" type="button">＋ Tạo ảnh hàng loạt</button><button id="scriptImportBtn" type="button">＋ Script → Nodes</button>
       <button id="addNodeMenuBtn" type="button" aria-haspopup="true" aria-expanded="false">＋ Add node</button>
@@ -22,7 +22,6 @@
       <button id="packageUpdateBtn">Cập nhật extension</button><button id="dataUpdateBtn">Cập nhật dữ liệu</button><button id="settingsBtn">Kết nối AI</button>
       <button id="resetBtn" class="danger">Reset</button>
       <button id="runBtn" class="primary" title="Run every node in the workflow in dependency order">▶ Run workflow</button>
-      <button id="buyCoffeeBtn" class="buy-coffee-btn" type="button" title="Support MuseFlow via VietQR">☕ Buy me a coffee</button>
     </div>
   </header>
 
@@ -123,17 +122,6 @@
         <button id="cancelNodeRenameBtn" class="hidden" type="button">Cancel</button>
         <button id="confirmGroupNameBtn" type="button" class="primary">OK</button>
       </div>
-    </section>
-  </div>
-
-  <div id="donationModal" class="modal-backdrop hidden">
-    <section class="modal donation-modal" role="dialog" aria-modal="true" aria-labelledby="donationModalTitle">
-      <header class="donation-header"><div><h2 id="donationModalTitle">Buy me a coffee</h2><p>Ủng hộ MuseFlow qua VietQR</p></div><button id="closeDonationBtn" type="button" aria-label="Close">×</button></header>
-      <img id="donationQrImage" class="donation-qr" src="https://img.vietqr.io/image/VCB-0331000500621-compact2.png?addInfo=BUY%20ME%20A%20COFFEE&amp;accountName=NGUYEN%20TAN%20THANH" alt="VietQR for Nguyen Tan Thanh at Vietcombank" />
-      <div id="donationQrFallback" class="donation-qr-fallback hidden">QR preview could not be loaded. Open the VietQR image directly below.</div>
-      <div class="donation-details"><span>Vietcombank</span><strong>0331000500621</strong><span>NGUYEN TAN THANH</span></div>
-      <a class="donation-open-link" href="https://img.vietqr.io/image/VCB-0331000500621-compact2.png?addInfo=BUY%20ME%20A%20COFFEE&amp;accountName=NGUYEN%20TAN%20THANH" target="_blank" rel="noopener noreferrer">Open VietQR in a new tab</a>
-      <a class="donation-bmac-link" href="https://buymeacoffee.com/bynne2602i" target="_blank" rel="noopener noreferrer">Buy Me a Coffee ↗</a>
     </section>
   </div>
 

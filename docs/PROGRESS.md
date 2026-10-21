@@ -57,3 +57,9 @@ Thêm đủ tám công cụ trong menu: snapshot khóa nhân vật, vai trò ả
 ### 0.9.1
 
 Bỏ phần hướng dẫn ảnh mặc định dài và bảng ID khi chỉ có một ảnh không gán vai trò/khóa/nhắc ID. Giữ nguyên yêu cầu người dùng, dòng tạo ảnh/tỷ lệ ngắn và negative có cấu hình. Giữ ánh xạ ID cần thiết, metadata vai trò và khóa.
+
+### 0.9.2
+
+Sửa cấu hình chat theo ID tab giữ URL cũ. Refresh tại node là thao tác xác nhận dùng chat hiện tại của tab đó; dropdown đọc URL trực tiếp, hiện lựa chọn trống khi phát hiện cache lệch URL. Giữ chặn đổi chat giữa lượt và tab đã đóng, không tự tìm tab thay thế.
+
+Theo yêu cầu người dùng, loại bỏ nút ủng hộ, modal VietQR, CSS và các handler liên quan; không tải ảnh QR trong giao diện nữa.

@@ -90,7 +90,7 @@
   const aiKeys={};
   let scriptAIController=null;
   const aiTabs=new Map();
-  const aiChatTabs={},aiChatTargets={};
+  const aiChatTabs={},aiChatTargets={};let pendingChatSelections=0;
   const chatKey=url=>{try{const value=new URL(url);return value.origin+value.pathname.replace(/\/$/,'');}catch{return '';}};
   async function refreshChatTabs(){
     await Promise.all(Object.entries(WorkflowAI.providers).filter(([,provider])=>provider.urls).map(async([id,provider])=>{try{aiChatTabs[id]=await chrome.tabs.query({url:provider.urls});if(!aiChatTargets[id]&&aiChatTabs[id].length===1){const tab=aiChatTabs[id][0];aiChatTargets[id]={tabId:tab.id,url:chatKey(tab.url)};}}catch{aiChatTabs[id]=[];}}));
@@ -101,12 +101,19 @@
     const empty=document.createElement('option');empty.value='';empty.textContent='Chọn tab cuộc trò chuyện…';select.append(empty);
     for(const tab of aiChatTabs[provider]||[]){const option=document.createElement('option');option.value=String(tab.id);option.textContent=tab.title||tab.url||`Tab ${tab.id}`;select.append(option);}
     if(current&&!select.querySelector(`option[value="${current.tabId}"]`)){const missing=document.createElement('option');missing.value=String(current.tabId);missing.textContent='Tab đã chọn không còn mở — chọn lại';select.append(missing);}
-    select.value=current?String(current.tabId):'';
-    select.onchange=()=>{const tab=(aiChatTabs[provider]||[]).find(tab=>String(tab.id)===select.value);onChange(tab?{tabId:tab.id,url:chatKey(tab.url)}:null);};
+    const cached=(aiChatTabs[provider]||[]).find(tab=>tab.id===current?.tabId);
+    const stale=current&&cached&&chatKey(current.url)!==chatKey(cached.url);
+    if(stale)empty.textContent='Chat đã đổi — chọn lại hoặc bấm Làm mới';
+    select.value=current&&!stale?String(current.tabId):'';
+    select.onchange=async()=>{
+      const chosen=select.value;if(!chosen){onChange(null);return;}
+      pendingChatSelections++;try{const tabs=await chrome.tabs.query({url:WorkflowAI.providers[provider].urls});if(select.value!==chosen||!select.isConnected)return;const tab=tabs.find(tab=>String(tab.id)===chosen);if(!tab)throw new Error('Tab đã đóng. Bấm Làm mới danh sách chat.');onChange({tabId:tab.id,url:chatKey(tab.url)});}
+      catch(error){setRunStatus(error.message,'error');}finally{pendingChatSelections--;}
+    };
     return select;
   }
   function chooseChat(provider,tabs,target){
-    if(target){const tab=tabs.find(tab=>tab.id===target.tabId);if(!tab)throw new Error('Tab cuộc trò chuyện đã chọn đã đóng. Chọn lại trong node hoặc Kết nối AI.');const actual=chatKey(tab.url),expected=chatKey(target.url);if(expected&&actual!==expected)throw new Error('Tab đã chuyển sang cuộc trò chuyện khác. Chọn lại cuộc trò chuyện trong node trước khi chạy.');return tab;}
+    if(target){const tab=tabs.find(tab=>tab.id===target.tabId);if(!tab)throw new Error('Tab cuộc trò chuyện đã chọn đã đóng. Chọn lại trong node hoặc Kết nối AI.');const actual=chatKey(tab.url),expected=chatKey(target.url);if(expected&&actual!==expected)throw new Error('Tab đã chuyển sang cuộc trò chuyện khác. Bấm “Làm mới danh sách chat” trong node để dùng chat hiện tại, hoặc chọn tab khác.');return tab;}
     if(tabs.length!==1)throw new Error('Có nhiều tab AI. Hãy chọn đúng cuộc trò chuyện trong node hoặc Kết nối AI trước khi chạy.');return tabs[0];
   }
   async function sendTextNow(node){
@@ -174,7 +181,13 @@
     for(const [id,p] of Object.entries(WorkflowAI.providers)){if(!p.types.includes(kind))continue;const option=document.createElement('option');option.value=id;option.textContent=p.name;select.appendChild(option);}
     select.value=n.data.provider||(kind==='text'?'gemini':'muse');
     select.onchange=()=>{n.data.provider=select.value;n.data.apiModel='';n.data.chatTarget=null;scheduleAutoSave();render();};wrap.appendChild(select);
-    const provider=select.value;if(WorkflowAI.providers[provider]?.urls){const target=n.data.chatTarget||aiChatTargets[provider];wrap.appendChild(chatSelector(provider,target,value=>{n.data.chatTarget=value;scheduleAutoSave();}));const refresh=document.createElement('button');refresh.type='button';refresh.textContent='Làm mới danh sách chat';refresh.onclick=async()=>{await refreshChatTabs();render();};wrap.append(refresh);if(kind==='text'){const hint=document.createElement('small');hint.textContent='Lần 1 tải tệp và điền prompt. Tự gửi sau 2 phút, hoặc bấm Gửi ngay; luôn đợi tải tệp xong.';wrap.append(hint);}}
+    const provider=select.value;if(WorkflowAI.providers[provider]?.urls){const target=n.data.chatTarget||aiChatTargets[provider];wrap.appendChild(chatSelector(provider,target,value=>{n.data.chatTarget=value;if(n.data.error?.includes('cuộc trò chuyện')){n.data.error='';n.data.status='idle';}scheduleAutoSave();}));const refresh=document.createElement('button');refresh.type='button';refresh.textContent='Làm mới danh sách chat';refresh.onclick=async()=>{
+      if(state.isRunning){setRunStatus('Dừng lượt đang chạy trước khi đổi cuộc trò chuyện.','warn');return;}
+      const selected=n.data.chatTarget||aiChatTargets[provider];await refreshChatTabs();
+      const tab=(aiChatTabs[provider]||[]).find(tab=>tab.id===selected?.tabId);
+      if(tab){n.data.chatTarget={tabId:tab.id,url:chatKey(tab.url)};if(n.data.error?.includes('cuộc trò chuyện')){n.data.error='';n.data.status='idle';}scheduleAutoSave();setRunStatus('Đã chọn cuộc trò chuyện hiện tại của tab: '+(tab.title||tab.url),'ok');}
+      render();
+    };wrap.append(refresh);if(kind==='text'){const hint=document.createElement('small');hint.textContent='Lần 1 tải tệp và điền prompt. Tự gửi sau 2 phút, hoặc bấm Gửi ngay; luôn đợi tải tệp xong.';wrap.append(hint);}}
     if(WorkflowAI.models[provider]){const model=document.createElement('input');model.placeholder=WorkflowAI.models[provider][kind]||'Model';model.value=n.data.apiModel||'';model.setAttribute('aria-label','Model API');model.onchange=()=>{n.data.apiModel=model.value.trim();scheduleAutoSave();};wrap.appendChild(model);}
     if(kind==='video'){const hint=document.createElement('small');hint.textContent=provider==='fal'?'Motion Control: nối đúng 1 ảnh nhân vật + 1 video chuyển động. Thời lượng theo video nguồn.':provider==='google'?'Veo: clip 4/6/8 giây, cần API key có quyền model.':'15–60 giây là thời lượng yêu cầu; kết quả phụ thuộc Muse.ai.';wrap.appendChild(hint);}
     return wrap;
@@ -202,6 +215,7 @@
     try{const reply=await sendMuseTabMessage(chosen.id,message,signal);const latest=chrome.tabs.get?await chrome.tabs.get(chosen.id):chosen;return {...reply,chatTarget:{tabId:chosen.id,url:chatKey(latest.url)}};}finally{signal?.removeEventListener('abort',cancel);aiTabs.delete(message.requestId);}
   }
   async function generateWithProvider(n,request,signal){
+    if(pendingChatSelections)throw new Error('Đang cập nhật cuộc trò chuyện đã chọn. Đợi một chút rồi chạy lại.');
     const references=[],canonical=new Map();
     for(const ref of n.id?resolveReferences(n.id):[]){const url=await blobAsDataUrlFromUrl(ref.url);if(signal?.aborted)throw new DOMException('Đã dừng.','AbortError');if(canonical.has(url)){const old=canonical.get(url);old.roles=[...new Set([...old.roles,...ref.roles])];old.aliases=[...new Set([...(old.aliases||[]),ref.componentId,...(ref.aliases||[])])];if(ref.instructions&&!old.instructions.includes(ref.instructions))old.instructions+='\n'+ref.instructions;}else{const copy={...ref,url,roles:[...ref.roles]};canonical.set(url,copy);references.push(copy);}}
     if(references.length)request={...request,referenceImages:references.map(ref=>ref.url)};
@@ -1627,10 +1641,6 @@
   $('#workflowImportBtn').onclick=()=>$('#workflowFileInput').click();
   $('#workflowFileInput').onchange=event=>{const file=event.target.files?.[0];event.target.value='';if(file)void importWorkflowFile(file);};
   $('#settingsBtn').onclick=()=>{ $('#settingsModal').classList.remove('hidden');void refreshConnections(); };
-  $('#buyCoffeeBtn').onclick=()=>$('#donationModal').classList.remove('hidden');
-  $('#closeDonationBtn').onclick=()=>$('#donationModal').classList.add('hidden');
-  $('#donationModal').onclick=event=>{if(event.target.id==='donationModal')$('#donationModal').classList.add('hidden');};
-  $('#donationQrImage').onerror=()=>{$('#donationQrImage').classList.add('hidden');$('#donationQrFallback').classList.remove('hidden');};
   $('#testMuseBtn').onclick=()=>testMuseSession();
   $('#closeSettingsBtn').onclick=()=>$('#settingsModal').classList.add('hidden');
   $('#saveSettingsBtn').onclick=async()=>{$('#settingsModal').classList.add('hidden');await saveState();};
@@ -1678,7 +1688,7 @@
       if(!e.repeat){state.spaceDown=true;applyCanvasTransform();if(document.activeElement?.matches?.('button'))document.activeElement.blur();}
       return;
     }
-    if(e.key==='Escape'){if(!addNodeMenu.classList.contains('hidden')){e.preventDefault();closeAddNodeMenu();addNodeMenuBtn.focus();return;}if(!$('#runOrderModal').classList.contains('hidden')){e.preventDefault();closeRunOrderModal();return;}if(state.pendingGroup){e.preventDefault();commitPendingGroup(state.pendingGroup.defaultName);return;}closeCanvasMenu();endSelectionMarquee();cancelGroupMarquee();$('#donationModal').classList.add('hidden');}
+    if(e.key==='Escape'){if(!addNodeMenu.classList.contains('hidden')){e.preventDefault();closeAddNodeMenu();addNodeMenuBtn.focus();return;}if(!$('#runOrderModal').classList.contains('hidden')){e.preventDefault();closeRunOrderModal();return;}if(state.pendingGroup){e.preventDefault();commitPendingGroup(state.pendingGroup.defaultName);return;}closeCanvasMenu();endSelectionMarquee();cancelGroupMarquee();}
     if((e.key==='Delete'||e.key==='Backspace')&&!isTextEntry(e.target)){e.preventDefault();if(state.selectedEdgeIds.length){const ids=new Set(state.selectedEdgeIds);createUndoSnapshot(`Delete ${ids.size} connection${ids.size===1?'':'s'}`);state.edges=state.edges.filter(edge=>!ids.has(edge.id));state.selectedEdgeIds=[];render();saveState();setRunStatus('Selected connections deleted.','ok');}else removeSelectedNodes();}
     if(e.key.toLowerCase()==='h'&&!isTextEntry(e.target)){state.handMode=!state.handMode;$('#handTool').classList.toggle('active',state.handMode);applyCanvasTransform();}
     if(!e.repeat&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&!isTextEntry(e.target)&&e.key.toLowerCase()==='g'){e.preventDefault();setGroupDrawMode(!state.groupDrawMode);}
