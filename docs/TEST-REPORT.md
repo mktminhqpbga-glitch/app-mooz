@@ -32,3 +32,20 @@ Báo lỗi thực tế của người dùng cho thấy các fixture trước thi
 - `node tests/muse-smoke.cjs` đạt với tệp trong lịch sử, composer bị dựng lại sau upload, ảnh trả về và phản hồi từ chối.
 
 Các kiểm tra này vẫn dùng DOM giả lập. Cần tải lại các tab AI sau khi thay bản extension, vì content script cũ có thể còn trong tab đã mở. Chưa xác minh trực tiếp trên phiên đăng nhập của người dùng.
+
+
+## 0.7.0 — Nhận phản hồi Gemini và tạo ảnh hàng loạt
+
+Người dùng xác nhận prompt đã gửi nhưng Workflow không nhận kết quả. Bộ đọc phản hồi được mở rộng cho các biến thể `model-response`, `.model-response-text`, `.markdown-main-panel`, `message-content`, kể cả custom wrapper có `display: contents`. Ưu tiên phần nội dung câu trả lời, bỏ vùng tin nhắn người dùng và chờ dấu hiệu kết thúc stream. Bộ kết nối báo tiến trình gửi/nhận về UI bằng request ID và tab ID đã xác nhận. Những thay đổi này chưa được kiểm tra trên phiên Gemini thật của người dùng.
+
+Kiểm thử bổ sung đã đạt:
+
+- 17 kiểm thử Node (gồm tách prompt nhiều dòng, số bản sao, giới hạn 50 ảnh).
+- DOM Gemini giả lập trả kết quả không có thẻ model-response và wrapper display:contents; Workflow lấy được nội dung.
+- Chọn tab chat sẵn sàng khi tab đang active không có composer; khi không có tab sẵn sàng, báo lỗi ngay cạnh nút, giữ kịch bản cũ và không gửi yêu cầu tạo.
+- Nút gọi AI vẫn được gắn sự kiện khi đọc session storage thất bại (`FAIL_SESSION_STORAGE=1 node tests/browser-smoke.cjs`).
+- Đợt hai prompt × hai ảnh: tạo bốn node Gemini tỷ lệ 16:9, dùng chung ảnh tham chiếu/loại trừ, chỉ chọn bốn node mới, chạy bốn yêu cầu tuần tự qua phản hồi AI giả lập, lưu bốn kết quả.
+- Nhập hai cảnh chứa cả prompt ảnh/video với chế độ Chỉ ảnh: tạo hai node ảnh bằng AI đã chọn, không tạo video.
+- Đường xuất MP4 FFmpeg WASM thật vẫn đạt với hai clip ngắn.
+
+Không diễn giải các kết quả giả lập thành xác nhận Gemini/ChatGPT/Muse hay API trả phí hoạt động trên tài khoản thật.

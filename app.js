@@ -89,6 +89,12 @@
   const aiKeys={};
   let scriptAIController=null;
   const aiTabs=new Map();
+  chrome.runtime.onMessage?.addListener((message,sender)=>{
+    if(sender.id!==chrome.runtime.id||message?.type!=='WORKFLOW_AI_PROGRESS'||typeof message.requestId!=='string'||aiTabs.get(message.requestId)!==sender.tab?.id||typeof message.text!=='string')return false;
+    if(message.requestId.startsWith('script-'))$('#scriptAIStatus').textContent=message.text;
+    else setRunStatus(message.text,'warn');
+    return false;
+  });
   function resolveVideos(id){return getIncoming(id,'video').map(sourceFor).filter(Boolean).map(n=>n.data.localDataUrl||n.data.asset?.url).filter(Boolean);}
   function providerControls(n){
     const wrap=document.createElement('div');wrap.className='provider-controls';
@@ -104,16 +110,25 @@
   }
   async function otherTabMessage(provider,message,signal){
     const checkAbort=()=>{if(signal?.aborted)throw new DOMException('Đã dừng.','AbortError');};
-    checkAbort();
+    const progress=text=>{if(message.requestId?.startsWith('script-'))$('#scriptAIStatus').textContent=text;};
+    checkAbort();progress(`Đang tìm tab ${WorkflowAI.providers[provider].name}…`);
     const tabs=await chrome.tabs.query({url:WorkflowAI.providers[provider].urls});
-    const tab=tabs.find(t=>t.active)||tabs[0];if(!tab?.id)throw new Error(`Mở tab ${WorkflowAI.providers[provider].name} và đăng nhập trước.`);
-    // Install before sending; never retry a generation after an ambiguous send failure.
-    await chrome.scripting.executeScript({target:{tabId:tab.id},files:['ai-bridge.js']});
+    if(!tabs.length)throw new Error(`Chưa mở tab ${WorkflowAI.providers[provider].name}. Mở trang chat, đăng nhập rồi bấm lại.`);
+    const ordered=[...tabs].sort((a,b)=>Number(!!b.active)-Number(!!a.active));let chosen=null,lastError='';
+    for(const tab of ordered){
+      checkAbort();
+      try{await chrome.scripting.executeScript({target:{tabId:tab.id},files:['ai-bridge.js']});const check=await sendMuseTabMessage(tab.id,{type:'WORKFLOW_AI_CHECK'},signal);if(check?.ok&&check.composer&&check.signedIn!==false){chosen=tab;break;}lastError='Chưa tìm thấy ô chat; có thể cần đăng nhập hoặc tải lại tab AI.';}
+      catch(error){if(error.name==='AbortError')throw error;lastError=error.message;}
+    }
+    if(!chosen)throw new Error(`${WorkflowAI.providers[provider].name}: ${lastError||'không kết nối được'}`);
+    if(message.type==='WORKFLOW_AI_CHECK')return {ok:true,signedIn:true,composer:true};
+    progress('Đã tìm thấy ô chat. Đang gửi yêu cầu và chờ AI trả lời…');
+    // Native editing requires an active editor. Select only a verified chat tab.
+    if(chrome.tabs.update)await chrome.tabs.update(chosen.id,{active:true});
     checkAbort();
-    const cancel=()=>{void chrome.tabs.sendMessage(tab.id,{type:'WORKFLOW_AI_STOP',requestId:message.requestId}).catch(()=>{});};
-    if(message.requestId)aiTabs.set(message.requestId,tab.id);
-    signal?.addEventListener('abort',cancel,{once:true});
-    try{return await sendMuseTabMessage(tab.id,message,signal);}finally{signal?.removeEventListener('abort',cancel);aiTabs.delete(message.requestId);}
+    const cancel=()=>{void chrome.tabs.sendMessage(chosen.id,{type:'WORKFLOW_AI_STOP',requestId:message.requestId}).catch(()=>{});};
+    if(message.requestId)aiTabs.set(message.requestId,chosen.id);signal?.addEventListener('abort',cancel,{once:true});
+    try{return await sendMuseTabMessage(chosen.id,message,signal);}finally{signal?.removeEventListener('abort',cancel);aiTabs.delete(message.requestId);}
   }
   async function generateWithProvider(n,request,signal){
     const provider=n.data.provider||(n.type==='generateText'?'gemini':'muse');
@@ -140,20 +155,56 @@
     }
   }
   async function setupAISettings(){
-    Object.assign(aiKeys,(await chrome.storage.session.get('workflowApiKeys')).workflowApiKeys||{});
-    for(const id of ['google','openai','fal']){const label=document.createElement('label');label.textContent=WorkflowAI.providers[id].name;const input=document.createElement('input');input.type='password';input.autocomplete='off';input.placeholder='API key (chỉ lưu trong phiên)';input.value=aiKeys[id]||'';input.onchange=async()=>{aiKeys[id]=input.value.trim();await chrome.storage.session.set({workflowApiKeys:aiKeys});};label.appendChild(input);$('#apiSettings').appendChild(label);}
     $('#refreshAIBtn').onclick=refreshConnections;
     $('#scriptAIButton').onclick=async()=>{
-      if(scriptAIController){scriptAIController.abort();return;}
-      const button=$('#scriptAIButton');scriptAIController=new AbortController();button.textContent='Dừng tạo kịch bản';
-      try{const template=await (await fetch(chrome.runtime.getURL('templates/museflow-scene-script-template-vi.txt'))).text();const prompt=$('#scriptAIPrompt').value.trim();if(!prompt)throw new Error('Nhập nội dung kịch bản muốn tạo.');
+      if(scriptAIController){scriptAIController.abort();return;}if(state.isRunning){$('#scriptAIStatus').textContent='Dừng workflow đang chạy trước khi gọi AI viết kịch bản.';return;}
+      const button=$('#scriptAIButton'),status=$('#scriptAIStatus');scriptAIController=new AbortController();button.textContent='Dừng tạo kịch bản';status.className='warn';status.textContent='Đang chuẩn bị yêu cầu…';
+      try{const templateResponse=await fetch(chrome.runtime.getURL('templates/museflow-scene-script-template-vi.txt'));if(!templateResponse.ok)throw new Error('Không đọc được mẫu kịch bản trong extension.');const template=await templateResponse.text();const prompt=$('#scriptAIPrompt').value.trim();if(!prompt)throw new Error('Nhập nội dung kịch bản muốn tạo.');
         const node={type:'generateText',data:{provider:$('#scriptAIProvider').value}};const reply=await generateWithProvider(node,{requestId:uid('script'),mediaType:'text',prompt,rules:'Viết kịch bản bằng tiếng Việt theo đúng mẫu dưới đây. Giữ tiêu đề CẢNH, thứ tự trường và định dạng thời gian. Chỉ trả về kịch bản hoàn chỉnh.\n'+template},scriptAIController.signal);
-        if(!reply.ok||!reply.text)throw new Error(reply.error||'AI không trả về kịch bản.');$('#scriptInput').value=reply.text;$('#scriptImportStatus').textContent='Đã tạo kịch bản. Kiểm tra rồi bấm Tạo node cảnh.';
-      }catch(error){$('#scriptImportStatus').textContent=error.name==='AbortError'?'Đã dừng tạo kịch bản.':error.message;}finally{scriptAIController=null;button.textContent='Tạo kịch bản bằng AI';}
+        if(!reply.ok||!reply.text)throw new Error(reply.error||'AI không trả về kịch bản.');$('#scriptInput').value=reply.text;status.className='ok';status.textContent='Đã nhận kịch bản từ AI. Kiểm tra nội dung bên dưới rồi tạo node.';$('#scriptImportStatus').textContent=status.textContent;
+      }catch(error){status.className=error.name==='AbortError'?'warn':'error';status.textContent=error.name==='AbortError'?'Đã dừng tạo kịch bản.':error.message;$('#scriptImportStatus').textContent=status.textContent;}finally{scriptAIController=null;button.textContent='Tạo kịch bản bằng AI';}
     };
     $('#dataUpdateBtn').onclick=()=>chrome.tabs.create({url:chrome.runtime.getURL('extension/popup.html')});
+    try{Object.assign(aiKeys,(await chrome.storage.session.get('workflowApiKeys')).workflowApiKeys||{});}catch{/* Keep tab-based generation available if session storage is unavailable. */}
+    for(const id of ['google','openai','fal']){const label=document.createElement('label');label.textContent=WorkflowAI.providers[id].name;const input=document.createElement('input');input.type='password';input.autocomplete='off';input.placeholder='API key (chỉ lưu trong phiên)';input.value=aiKeys[id]||'';input.onchange=async()=>{aiKeys[id]=input.value.trim();try{await chrome.storage.session.set({workflowApiKeys:aiKeys});}catch{setRunStatus('Khóa chỉ được giữ trong tab hiện tại vì bộ nhớ phiên không khả dụng.','warn');}};label.appendChild(input);$('#apiSettings').appendChild(label);}
+
   }
   void setupAISettings().catch(()=>setRunStatus('Không đọc được cấu hình API trong phiên.','error'));
+
+  async function createImageBatch(runAfterCreate=false){
+    const status=$('#batchImagesStatus');
+    if(state.isRunning||scriptAIController){status.textContent='Đợi hoặc dừng tác vụ AI hiện tại trước khi tạo đợt ảnh mới.';return;}
+    const buttons=[$('#createBatchImages'),$('#runBatchImages')];buttons.forEach(b=>b.disabled=true);
+    try{
+      const items=WorkflowBatch.parsePrompts($('#batchPrompts').value,Number($('#batchCopies').value));
+      const provider=$('#batchProvider').value,size=$('#batchSize').value,negative=$('#batchNegative').value.trim();
+      if(!WorkflowAI.providers[provider]?.types.includes('image'))throw new Error('AI đã chọn không hỗ trợ ảnh.');
+      const files=[...$('#batchReferences').files];if(files.reduce((total,file)=>total+file.size,0)>20*1024*1024)throw new Error('Tổng ảnh tham chiếu mỗi đợt không quá 20 MB.');if(files.length>8)throw new Error('Tối đa 8 ảnh tham chiếu chung.');
+      if(provider==='openai'&&files.length)throw new Error('OpenAI tạo ảnh chưa hỗ trợ tham chiếu trong bản này. Chọn Gemini, ChatGPT hoặc Muse.');
+      const references=[];
+      for(const file of files){if(!file.type.startsWith('image/')||!file.size||file.size>20*1024*1024)throw new Error('Mỗi ảnh tham chiếu phải đọc được và không quá 20 MB.');references.push({name:file.name,url:await blobAsDataUrl(file)});}
+      createUndoSnapshot('Tạo ảnh hàng loạt');
+      const baseY=Math.max(40,...state.nodes.filter(n=>!n.data?.dockOnly).map(n=>n.y+450)),ids=[],batchId=uid('batch');
+      const referenceNodes=references.map((ref,index)=>({id:uid('imageInput'),type:'imageInput',x:40+index*330,y:baseY,data:{localDataUrl:ref.url,fileName:ref.name}}));state.nodes.push(...referenceNodes);
+      let negativeNode=null;if(negative){negativeNode={id:uid('negativePrompt'),type:'negativePrompt',x:40,y:baseY+(references.length?350:0),data:{text:negative}};state.nodes.push(negativeNode);}
+      const startY=baseY+(references.length||negative?650:0);
+      for(const [index,item] of items.entries()){
+        const x=80+(index%3)*700,y=startY+Math.floor(index/3)*650,label=`Đợt ảnh ${item.index}.${item.copy}`;
+        const prompt={id:uid('prompt'),type:'prompt',x,y,data:{text:item.prompt}};
+        const image={id:uid('generateImage'),type:'generateImage',x:x+330,y,data:{provider,size,status:'idle',batchId,customName:label}};
+        state.nodes.push(prompt,image);ids.push(image.id);state.edges.push({id:uid('edge'),source:prompt.id,sourcePort:'text',target:image.id,targetPort:'prompt'});
+        for(const ref of referenceNodes)state.edges.push({id:uid('edge'),source:ref.id,sourcePort:'image',target:image.id,targetPort:'reference'});
+        if(negativeNode)state.edges.push({id:uid('edge'),source:negativeNode.id,sourcePort:'text',target:image.id,targetPort:'negative'});
+      }
+      state.selectedNodeIds=ids;state.selectedNodeId=ids[0];render();await saveState();$('#batchImagesModal').classList.add('hidden');
+      setRunStatus(`Đã tạo ${ids.length} node ảnh. AI: ${WorkflowAI.providers[provider].name}.`,'ok');
+      if(runAfterCreate){openRunOrderModal();pendingGenerationSelection=new Set(ids);pendingGenerationOrder=[...ids,...pendingGenerationOrder.filter(id=>!ids.includes(id))];renderRunOrderList();}
+    }catch(error){status.className='error';status.textContent=error.message;}finally{buttons.forEach(b=>b.disabled=false);}
+  }
+  $('#batchImagesBtn').onclick=()=>{$('#batchImagesStatus').textContent='';$('#batchImagesModal').classList.remove('hidden');};
+  $('#cancelBatchImages').onclick=()=>$('#batchImagesModal').classList.add('hidden');
+  $('#createBatchImages').onclick=()=>createImageBatch(false);
+  $('#runBatchImages').onclick=()=>createImageBatch(true);
 
   function uid(prefix='id') { return `${prefix}-${crypto.randomUUID()}`; }
 
@@ -375,19 +426,19 @@
     }).filter(scene=>scene.hasImagePrompt||scene.hasVideoPrompt);
   }
   function buildSceneNodesFromScript(){
-    const status=$('#scriptImportStatus'),scenes=parseSceneScript($('#scriptInput').value);
+    const status=$('#scriptImportStatus'),mode=$('#scriptOutputMode').value,scenes=parseSceneScript($('#scriptInput').value).map(scene=>({...scene,hasImagePrompt:mode==='videos'?false:scene.hasImagePrompt,hasVideoPrompt:mode==='images'?false:scene.hasVideoPrompt})).filter(scene=>scene.hasImagePrompt||scene.hasVideoPrompt);
     if(!scenes.length){status.className='error';status.textContent='No scenes found. Use headings like “CẢNH 1 (0:00–0:07): Title” or “Scene 1 (0:00–0:05): Title”, then add Prompt ảnh or Prompt video.';return;}
     createUndoSnapshot('Create nodes from script');const baseY=Math.max(40,...state.nodes.filter(node=>!node.data?.dockOnly).map(node=>node.y+360)),createdVideos=[];let made=0;
     scenes.forEach((scene,index)=>{
       const column=index%4,row=Math.floor(index/4),x=80+column*650,y=baseY+row*1100,label=`Scene ${scene.number}${scene.title?`: ${scene.title}`:''}`;
       let imageNode=null,videoNode=null;
-      if(scene.hasImagePrompt){const prompt=makeNode('prompt',x,y);prompt.data={text:scene.imagePrompt,sceneLabel:label};const image=makeNode('generateImage',x+330,y);image.data={model:'muse-image',size:scene.size,status:'idle',sceneLabel:label};state.nodes.push(prompt,image);state.edges.push({id:uid('edge'),source:prompt.id,sourcePort:'text',target:image.id,targetPort:'prompt'});imageNode=image;made+=2;}
+      if(scene.hasImagePrompt){const prompt=makeNode('prompt',x,y);prompt.data={text:scene.imagePrompt,sceneLabel:label};const image=makeNode('generateImage',x+330,y);image.data={provider:$('#scriptImageProvider').value,model:'muse-image',size:scene.size,status:'idle',sceneLabel:label};state.nodes.push(prompt,image);state.edges.push({id:uid('edge'),source:prompt.id,sourcePort:'text',target:image.id,targetPort:'prompt'});imageNode=image;made+=2;}
       if(scene.hasVideoPrompt){const prompt=makeNode('prompt',x,y+540);prompt.data={text:scene.videoPrompt,sceneLabel:label};const requestedDuration=[4,5,6,8,10,15,20,30,60].reduce((best,value)=>Math.abs(value-scene.seconds)<Math.abs(best-scene.seconds)?value:best,5);videoNode=makeNode('generateVideo',x+330,y+540);videoNode.data={model:'muse-video',size:scene.size,duration:requestedDuration,continuity:createdVideos.length>0,status:'idle',sceneLabel:label};state.nodes.push(prompt,videoNode);state.edges.push({id:uid('edge'),source:prompt.id,sourcePort:'text',target:videoNode.id,targetPort:'prompt'});if(imageNode)state.edges.push({id:uid('edge'),source:imageNode.id,sourcePort:'image',target:videoNode.id,targetPort:'reference'});made+=2;createdVideos.push({node:videoNode,seconds:requestedDuration});}
       if(scene.negative){const negative=makeNode('negativePrompt',x,y+270);negative.data={text:scene.negative,sceneLabel:label};state.nodes.push(negative);if(imageNode)state.edges.push({id:uid('edge'),source:negative.id,sourcePort:'text',target:imageNode.id,targetPort:'negative'});if(videoNode)state.edges.push({id:uid('edge'),source:negative.id,sourcePort:'text',target:videoNode.id,targetPort:'negative'});made++;}
     });
     let references=state.nodes.find(node=>node.type==='references');if(!references){const minX=Math.min(80,...state.nodes.filter(node=>!node.data?.dockOnly).map(node=>node.x));references=makeNode('references',minX-360,baseY);references.data={};state.nodes.push(references);made++;}syncReferenceFanOut(references);
-    const timeline=ensureDockTimeline();timeline.data.clipOrder=createdVideos.map(item=>item.node.id);timeline.data.durations=timeline.data.durations||{};createdVideos.forEach(({node,seconds})=>{timeline.data.durations[node.id]=seconds;});
-    $('#scriptModal').classList.add('hidden');render();saveState();if($('#timelineDock').classList.contains('collapsed'))toggleTimeline();
+    if(createdVideos.length){const timeline=ensureDockTimeline();timeline.data.clipOrder=[...timeline.data.clipOrder,...createdVideos.map(item=>item.node.id)];timeline.data.durations=timeline.data.durations||{};createdVideos.forEach(({node,seconds})=>{timeline.data.durations[node.id]=seconds;});}
+    $('#scriptModal').classList.add('hidden');render();saveState();if(createdVideos.length&&$('#timelineDock').classList.contains('collapsed'))toggleTimeline();
     setRunStatus(`Created ${scenes.length} scenes · ${made} nodes · ${createdVideos.length} video clips ordered on the Timeline.`,'ok');
   }
 

@@ -21,7 +21,7 @@ const assert=require('node:assert/strict');
    button.onclick=()=>{
     sent.push({text:form.querySelector('[contenteditable]').innerText,attachments:form.querySelectorAll('.attachment-container:not([data-permanent])').length,uploading:!!form.querySelector('[role="progressbar"]')});
     form.querySelector('[contenteditable]').replaceChildren();form.querySelectorAll('.attachment-container:not([data-permanent])').forEach(el=>el.remove());
-    const reply=document.createElement('model-response');reply.textContent='Kịch bản mới '+sent.length;document.querySelector('main').append(reply);
+    const reply=document.createElement(sent.length===1?'div':'model-response');if(sent.length===1)reply.className='model-response-text';else reply.style.display='contents';const content=document.createElement('div');content.className='markdown-main-panel';content.textContent='Kịch bản mới '+sent.length;reply.append(content);document.querySelector('main').append(reply);
    };
    window.call=request=>new Promise(resolve=>handler(request,{id:'test'},resolve));
   });

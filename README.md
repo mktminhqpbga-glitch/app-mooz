@@ -1,4 +1,4 @@
-# Workflow · MuseFlow 0.6.3
+# Workflow · MuseFlow 0.7.0
 
 Extension Chrome/Edge dựa trên [MuseFlow / 26Flow](https://github.com/bynne2602/museflow), mở rộng canvas/timeline để làm việc với Muse.ai, Gemini, ChatGPT và API Google, OpenAI, fal.ai. Giữ nguyên giấy phép GPL-2.0-or-later của nguồn gốc và thông báo FFmpeg đi kèm.
 
@@ -17,6 +17,14 @@ Bấm **Cập nhật extension** để tải gói ZIP mới nhất từ repo. Ch
 
 Khi thay mã: giải nén bản mới vào thư mục cài đặt, bấm **Reload** trong trang quản lý extension, rồi tải lại canvas và các tab AI. Nút **Cập nhật dữ liệu** chỉ tải dữ liệu; trình duyệt không cho nó tự thay mã thực thi của extension.
 
+## Tạo ảnh hàng loạt
+
+Bấm **＋ Tạo ảnh hàng loạt** trên thanh công cụ. Nhập một prompt mỗi dòng; nếu prompt có nhiều dòng, phân cách các prompt bằng một dòng trống. Chọn AI, tỷ lệ và số ảnh mỗi prompt (1–10); mỗi đợt tối đa 50 ảnh. Có thể thêm loại trừ chung và tối đa 8 ảnh tham chiếu, tổng dung lượng không quá 20 MB.
+
+**Tạo node ảnh** chỉ tạo đồ thị. **Tạo node và chọn chạy** mở danh sách chạy với riêng các node của đợt mới được chọn; xác nhận để chạy tuần tự. Các ảnh tham chiếu được dùng chung cho các node trong đợt, không gắn vào các node cũ. OpenAI adapter tạo ảnh hiện không nhận ảnh tham chiếu; chọn Gemini/Muse/ChatGPT nếu cần chức năng đó.
+
+Trong **Kịch bản → Node**, chọn **Chỉ ảnh** để lấy prompt ảnh từng cảnh mà không tạo video hoặc thay timeline cũ. Có bộ chọn AI riêng cho các node ảnh; AI viết kịch bản và AI tạo ảnh có thể khác nhau.
+
 ## Quy trình sử dụng
 
 ### Tạo văn bản và phân tích video gốc
@@ -26,7 +34,7 @@ Khi thay mã: giải nén bản mới vào thư mục cài đặt, bấm **Reloa
 - Nối ảnh vào cổng Ảnh, video vào cổng Video gốc. Video được gửi nguyên tệp, không chụp ba khung hình thay thế.
 - Chọn Gemini tab hoặc Google API để phân tích video. ChatGPT tab và OpenAI adapter trong bản này hỗ trợ văn bản/ảnh, **chưa hỗ trợ video gốc**.
 - Bấm **Tạo văn bản**. Nối đầu ra văn bản sang prompt của node tạo ảnh/video, hoặc chọn **Dùng kết quả làm kịch bản** để mở trình tạo node cảnh.
-- Cửa sổ **Kịch bản → Node** cũng có chức năng viết kịch bản trực tiếp bằng AI theo mẫu chuẩn.
+- Cửa sổ **Kịch bản → Node** cũng có chức năng viết kịch bản trực tiếp bằng AI theo mẫu chuẩn. Trạng thái gửi/nhận và lỗi hiển thị ngay cạnh nút gọi AI. Bộ kết nối kiểm tra các tab để chọn ô chat sẵn sàng; khi gửi sẽ chuyển sang tab AI để trình soạn thảo nhận thao tác nhập.
 
 ### Tạo ảnh/video
 

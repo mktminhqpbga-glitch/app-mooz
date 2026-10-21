@@ -198,3 +198,18 @@ body{grid-template-rows:58px auto minmax(0,1fr) auto}
 #apiSettings label { display: grid; gap: 6px; margin: 12px 0; }
 .script-modal { max-height: 90vh; overflow-y: auto; }
 #scriptAIPrompt { min-height: 72px; height: 72px; }
+.batch-images-modal { width: min(850px, 90vw); max-height: 90vh; overflow-y: auto; }
+.batch-images-modal label { display: grid; gap: 6px; margin: 12px 0; }
+#batchPrompts { min-height: 200px; }
+#batchNegative { min-height: 65px; }
+.batch-options { display: flex; flex-wrap: wrap; gap: 16px; }
+.batch-options label { flex: 1; min-width: 130px; }
+#scriptAIStatus { white-space: pre-wrap; overflow-wrap: anywhere; min-height: 1.5em; }
+.batch-images-modal textarea,.batch-images-modal input,.batch-images-modal select,
+#scriptAIProvider,#scriptOutputMode,#scriptImageProvider {
+  width: 100%; background: #0e1017; color: #eee; border: 1px solid #393c49;
+  border-radius: 8px; padding: 9px; font: inherit;
+}
+.batch-images-modal textarea { resize: vertical; }
+.batch-options label { display: grid; gap: 6px; }
+#scriptAIProvider { width: auto; max-width: 100%; margin-right: 8px; }

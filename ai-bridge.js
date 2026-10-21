@@ -4,7 +4,7 @@
   const isGPT=location.hostname==='chatgpt.com';
   const active=new Map();let busy=false;
   const visible=el=>el&&el.getClientRects().length&&getComputedStyle(el).visibility!=='hidden';
-  const composer=()=>[...document.querySelectorAll(isGPT?'#prompt-textarea,textarea[data-id="root"]':'rich-textarea [contenteditable="true"],textarea')].find(el=>visible(el)&&!el.disabled);
+  const composer=()=>[...document.querySelectorAll(isGPT?'#prompt-textarea,textarea[data-id="root"]':'rich-textarea [contenteditable="true"],textarea')].find(el=>visible(el)&&!el.disabled&&el.getAttribute('aria-disabled')!=='true');
   const historySelector='model-response,user-query,[data-message-author-role],[data-testid^="conversation-turn-"]';
   // Never use <main>: Gemini keeps the conversation and composer under it.
   function root(el){
@@ -22,9 +22,17 @@
   }
   const buttons=(scope=document)=>[...scope.querySelectorAll('button,[role="button"]')].filter(visible);
   const label=el=>`${el.getAttribute('aria-label')||''} ${el.getAttribute('data-testid')||''} ${el.getAttribute('title')||''} ${el.textContent||''}`;
-  const stopped=()=>buttons().find(el=>/stop generating|stop response|dừng phản hồi|dừng tạo|stop-button/i.test(label(el)));
-  const send=()=>buttons(root(composer())).find(el=>/send-button|send message|send prompt|gửi tin nhắn|gửi lời nhắc|^\s*(send|gửi)\s*$/i.test(label(el))&&!el.disabled&&el.getAttribute('aria-disabled')!=='true');
-  const replies=()=>[...document.querySelectorAll(isGPT?'[data-message-author-role="assistant"]':'model-response')].filter(visible);
+  const stopped=()=>buttons().find(el=>!el.disabled&&el.getAttribute('aria-disabled')!=='true'&&(/stop generating|stop response|dừng phản hồi|dừng trả lời|dừng tạo|stop-button/i.test(label(el))||el.matches('.stop-button,[data-testid="stop-button"]')));
+  const send=()=>buttons(root(composer())).find(el=>(el.matches('.send-button,[data-testid="send-button"],button[aria-label="Gửi"],button[aria-label="Send"]')||/send-button|send message|send prompt|gửi tin nhắn|gửi lời nhắc|^\s*(send|gửi)\s*$/i.test(label(el)))&&!el.disabled&&el.getAttribute('aria-disabled')!=='true');
+  function replies(){
+    const candidates=[...document.querySelectorAll(isGPT?'[data-message-author-role="assistant"]':'model-response,.model-response-text,.markdown-main-panel,message-content')].filter(el=>!el.closest('user-query,[data-message-author-role="user"]'));
+    // Some Gemini releases use display:contents on custom response wrappers.
+    const rendered=candidates.filter(el=>visible(el)||[...el.querySelectorAll('p,div,img,pre')].some(visible));
+    return rendered.filter(el=>!rendered.some(parent=>parent!==el&&parent.contains(el)));
+  }
+  function replyText(el){const content=el.querySelector('message-content,.model-response-text,.markdown-main-panel,.markdown')||el;return String(content.innerText||content.textContent||'').trim();}
+  function report(request,text){if(chrome.runtime.sendMessage)void chrome.runtime.sendMessage({type:'WORKFLOW_AI_PROGRESS',requestId:request.requestId,text}).catch(()=>{});}
+
   const attachments=scope=>[...scope.querySelectorAll('[data-testid*="attachment"], [data-testid*="file-thumbnail"], .file-preview, .file-preview-container, .file-preview-chip, .attachment-preview, .image-preview-container, .attachment-container, .uploaded-file, .file-chip, .image-preview')].filter(el=>visible(el)&&!el.closest(historySelector)&&(el.innerText.trim()||el.querySelector('img[src],video[src],[data-file-name],[role="progressbar"]')||buttons(el).some(b=>/remove|xóa|xoá/i.test(label(b)))));
   async function wait(check,ms,signal,message){const end=Date.now()+ms;while(Date.now()<end){if(signal?.aborted)throw new DOMException('Đã dừng.','AbortError');const result=check();if(result)return result;await new Promise(resolve=>setTimeout(resolve,180));}throw new Error(message);}
   function setText(el,text){
@@ -68,7 +76,7 @@
     if(!String(request.prompt||'').trim())throw new Error('Yêu cầu trống.');
     if(isGPT&&request.referenceVideos?.length)throw new Error('ChatGPT tab chưa hỗ trợ video gốc. Chọn Gemini.');
     await clearDraft(signal);
-    const before=new Map(replies().map(el=>[el,el.innerText]));
+    const before=new Map(replies().map(el=>[el,replyText(el)]));
     await attach([...(request.referenceImages||[]),...(request.referenceVideos||[])],signal);
     const text=[request.rules,request.prompt].filter(Boolean).join('\n\n');
     setText(composer(),text);
@@ -76,14 +84,15 @@
     const normalized=value=>String(value||'').replace(/\s+/g,' ').trim();
     if(normalized(composer()?.value??composer()?.innerText)!==normalized(text))throw new Error('AI không giữ được prompt trong ô nhập. Chưa gửi yêu cầu; hãy tải lại tab AI.');
     const button=await wait(()=>!root(composer()).querySelector('[role="progressbar"],[aria-busy="true"]')&&send(),90000,signal,'Không tìm thấy nút Gửi sẵn sàng. Prompt chưa được gửi.');
-    const priorUsers=new Set(document.querySelectorAll(isGPT?'[data-message-author-role="user"]':'user-query'));button.click();
+    const priorUsers=new Set(document.querySelectorAll(isGPT?'[data-message-author-role="user"]':'user-query,.user-query-container'));button.click();report(request,'Đã bấm Gửi. Đang xác nhận AI nhận yêu cầu…');
     // An empty editor alone can mean the framework discarded our text, not a successful send.
-    await wait(()=>stopped()||replies().some(el=>!before.has(el))||[...document.querySelectorAll(isGPT?'[data-message-author-role="user"]':'user-query')].some(el=>!priorUsers.has(el)),15000,signal,'Chưa xác nhận AI nhận prompt. Không tự gửi lại để tránh trùng lặp.');
-    let last='',since=Date.now();
+    await wait(()=>stopped()||replies().some(el=>!before.has(el))||[...document.querySelectorAll(isGPT?'[data-message-author-role="user"]':'user-query,.user-query-container')].some(el=>!priorUsers.has(el)),15000,signal,'Chưa xác nhận AI nhận prompt. Không tự gửi lại để tránh trùng lặp.');
+    report(request,'AI đã nhận yêu cầu. Đang chờ phản hồi…');
+    let last='',since=Date.now(),reportedReply=false;
     const result=await wait(()=>{
-      const fresh=replies().filter(el=>!before.has(el)||before.get(el)!==el.innerText);const reply=fresh.at(-1);if(!reply)return false;
-      const text=reply.innerText.trim();if(text!==last){last=text;since=Date.now();}
-      if(stopped()||Date.now()-since<3500)return false;
+      const fresh=replies().filter(el=>!before.has(el)||before.get(el)!==replyText(el));const reply=fresh.at(-1);if(!reply)return false;
+      const text=replyText(reply);if(!reportedReply&&text){reportedReply=true;report(request,'Đã thấy phản hồi. Đang đợi AI hoàn tất…');}if(text!==last){last=text;since=Date.now();}
+      if(stopped()||reply.querySelector('[aria-busy="true"],[data-is-streaming="true"]')||Date.now()-since<3500)return false;
       if(request.mediaType==='text')return text?{ok:true,text}:false;
       const image=[...reply.querySelectorAll('img')].filter(visible).find(img=>img.naturalWidth>=256&&img.naturalHeight>=256);
       return image?{ok:true,url:image.currentSrc||image.src}:false;

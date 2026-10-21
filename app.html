@@ -3,15 +3,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Workflow · MuseFlow 0.6.3</title>
+  <title>Workflow · MuseFlow 0.7.0</title>
   <link rel="icon" type="image/png" sizes="128x128" href="icons/icon128.png" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <header class="toolbar">
-    <div class="brand"><img class="brand-logo" src="icons/26flow.svg" alt="26Flow" /><strong class="brand-name">Flow</strong><span class="brand-version">0.6.3</span></div>
+    <div class="brand"><img class="brand-logo" src="icons/26flow.svg" alt="26Flow" /><strong class="brand-name">Flow</strong><span class="brand-version">0.7.0</span></div>
     <div class="toolbar-tools" aria-label="Add workflow nodes">
-      <button id="scriptImportBtn" type="button">＋ Script → Nodes</button>
+      <button id="batchImagesBtn" type="button">＋ Tạo ảnh hàng loạt</button><button id="scriptImportBtn" type="button">＋ Script → Nodes</button>
       <button id="addNodeMenuBtn" type="button" aria-haspopup="true" aria-expanded="false">＋ Add node</button>
     </div>
     <div class="toolbar-actions">
@@ -136,12 +136,26 @@
     </section>
   </div>
 
+  <div id="batchImagesModal" class="modal-backdrop hidden">
+    <section class="modal batch-images-modal" role="dialog" aria-modal="true" aria-labelledby="batchImagesTitle">
+      <h2 id="batchImagesTitle">Tạo ảnh hàng loạt</h2>
+      <p>Không cần kịch bản. Mỗi dòng là một prompt; nếu prompt có nhiều dòng, cách các prompt bằng một dòng trống. Tối đa 50 ảnh mỗi đợt.</p>
+      <label for="batchPrompts">Danh sách prompt ảnh</label><textarea id="batchPrompts" placeholder="Một làng quê Việt Nam lúc bình minh&#10;Chân dung nhân vật trong trang phục cổ&#10;Cánh đồng lúa dưới ánh hoàng hôn"></textarea>
+      <div class="batch-options"><label>AI tạo ảnh<select id="batchProvider"><option value="gemini">Gemini · tab</option><option value="muse">Muse.ai · tab</option><option value="chatgpt">ChatGPT · tab</option><option value="google">Google · API</option><option value="openai">OpenAI · API</option></select></label><label>Tỷ lệ<select id="batchSize"><option>16:9</option><option>9:16</option><option>1:1</option><option>4:3</option><option>3:4</option></select></label><label>Số ảnh mỗi prompt<input id="batchCopies" type="number" min="1" max="10" value="1"></label></div>
+      <label for="batchNegative">Loại trừ chung (tùy chọn)</label><textarea id="batchNegative" placeholder="Không chữ, không logo, không watermark…"></textarea>
+      <label for="batchReferences">Ảnh tham chiếu chung (tùy chọn, tối đa 8 ảnh)<input id="batchReferences" type="file" accept="image/*" multiple></label>
+      <p id="batchImagesStatus" role="status" aria-live="polite"></p>
+      <p>Các ảnh chạy lần lượt. Đóng cửa sổ này không xóa danh sách prompt. API có thể tính phí theo từng ảnh.</p>
+      <div class="modal-actions"><button id="cancelBatchImages" type="button">Đóng</button><button id="createBatchImages" type="button">Tạo node ảnh</button><button id="runBatchImages" type="button" class="primary">Tạo node và chọn chạy</button></div>
+    </section>
+  </div>
+
   <div id="scriptModal" class="modal-backdrop hidden">
     <section class="modal script-modal" role="dialog" aria-modal="true" aria-labelledby="scriptModalTitle">
       <h2 id="scriptModalTitle">Build nodes from a scene script</h2>
       <p>Paste a scene script using the Grumbo &amp; Snowy form. MuseFlow reads each scene’s opening/ending frames, timed actions, image/video prompts, audio, shared locks and negative prompt, then connects the scene nodes and orders videos on the Timeline.</p>
       <p class="script-template-hint">Download the strict template to fill in yourself or give to an AI. Keep the headings and field order unchanged.</p>
-      <label for="scriptAIPrompt">Nội dung muốn AI viết</label><textarea id="scriptAIPrompt" placeholder="Ví dụ: Viết 6 cảnh về một chú mèo khám phá thành phố, mỗi cảnh 10 giây"></textarea><select id="scriptAIProvider"><option value="gemini">Gemini · tab</option><option value="chatgpt">ChatGPT · tab</option><option value="google">Google · API</option><option value="openai">OpenAI · API</option></select><button id="scriptAIButton" type="button">Tạo kịch bản bằng AI</button><label for="scriptInput">Kịch bản</label>
+      <label for="scriptAIPrompt">Nội dung muốn AI viết</label><textarea id="scriptAIPrompt" placeholder="Ví dụ: Viết 6 cảnh về một chú mèo khám phá thành phố, mỗi cảnh 10 giây"></textarea><select id="scriptAIProvider"><option value="gemini">Gemini · tab</option><option value="chatgpt">ChatGPT · tab</option><option value="google">Google · API</option><option value="openai">OpenAI · API</option></select><button id="scriptAIButton" type="button">Tạo kịch bản bằng AI</button><p id="scriptAIStatus" role="status" aria-live="polite"></p><div class="batch-options"><label>Tạo loại node<select id="scriptOutputMode"><option value="all">Ảnh và video</option><option value="images">Chỉ ảnh</option><option value="videos">Chỉ video</option></select></label><label>AI cho node ảnh<select id="scriptImageProvider"><option value="muse">Muse.ai · tab</option><option value="gemini">Gemini · tab</option><option value="chatgpt">ChatGPT · tab</option><option value="google">Google · API</option><option value="openai">OpenAI · API</option></select></label></div><label for="scriptInput">Kịch bản</label>
       <textarea id="scriptInput" placeholder="CẢNH 1 (0:00 đến 0:10): Scene title&#10;Khung đầu: ...&#10;Khung cuối: ...&#10;Diễn biến: 1. 0-2s: ...&#10;Prompt ảnh khung đầu: ...&#10;Prompt video: ...&#10;Audio: ..."></textarea>
       <div id="scriptImportStatus" role="status"></div>
       <div class="modal-actions">
@@ -175,6 +189,7 @@
   <script src="extension/package-update.js"></script>
   <script src="i18n.js"></script>
   <script src="vendor/ffmpeg/ffmpeg.js"></script>
+  <script src="batch-images.js"></script>
   <script src="ai-providers.js"></script>
   <script src="app.js"></script>
 </body>
