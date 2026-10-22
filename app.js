@@ -708,14 +708,42 @@
     setRunStatus(`Undid: ${previous.label}.`,'ok');
   }
 
-  function duplicateNodesForDrag(ids){
-    const selected=new Set(ids),copies=new Map(),newNodes=[];
-    for(const id of ids){const original=nodeById(id);if(!original)continue;const copy={...original,id:uid(original.type),data:{...(original.data||{})}};copies.set(id,copy.id);newNodes.push(copy);}
-    if(!newNodes.length)return[];
-    const newEdges=state.edges.filter(edge=>selected.has(edge.target)).map(edge=>({...edge,id:uid('edge'),source:copies.get(edge.source)||edge.source,target:copies.get(edge.target)}));
-    state.nodes.push(...newNodes);state.edges.push(...newEdges);
-    const newIds=newNodes.map(node=>node.id);state.selectedNodeIds=newIds;state.selectedNodeId=newIds.at(-1)||null;
-    return newIds;
+  function cloneNodeBundle(originals,edges,{dx=0,dy=0,externalInputs=false}={}){
+    const mapping=new Map(originals.map(n=>[n.id,uid(n.type)])),components=new Map(),copies=[];
+    for(const original of originals){const copy=structuredClone(original);copy.id=mapping.get(original.id);copy.x+=dx;copy.y+=dy;copy.data||={};
+      const previous=copy.data.componentId;delete copy.data.componentId;copy.data.componentId=(['imageInput','generateImage','imageResize'].includes(copy.type)?'IMG':copy.type==='videoInput'||copy.type==='generateVideo'?'VID':'NODE')+'-'+crypto.randomUUID().slice(0,8).toUpperCase();if(previous)components.set(previous,copy.data.componentId);
+      for(const key of ['error','progress','endFrame','storyApprovedAssetId','flowCardId','report','createdIds','lastSceneText','lastSceneMode'])delete copy.data[key];
+      copy.data.status='idle';copy.data.storyDirty=true;
+      if(!['imageInput','videoInput','audioInput'].includes(copy.type)){delete copy.data.asset;if(copy.type==='generateText')copy.data.text='';}else if(copy.data.asset)copy.data.asset.id=uid('asset');
+      for(const key of ['storyMasterId','storyActId','storyPartId','storySegmentId','assemblyId','filmId'])if(copy.data[key]){if(mapping.has(copy.data[key]))copy.data[key]=mapping.get(copy.data[key]);else delete copy.data[key];}
+      for(const key of ['actIds','outputOrder','clipOrder'])if(Array.isArray(copy.data[key]))copy.data[key]=copy.data[key].map(id=>mapping.get(id)).filter(Boolean);
+      if(copy.data.durations)copy.data.durations=Object.fromEntries(Object.entries(copy.data.durations).filter(([id])=>mapping.has(id)).map(([id,value])=>[mapping.get(id),value]));
+      copies.push(copy);
+    }
+    for(const copy of copies)for(const key of ['text','script','plan'])if(typeof copy.data[key]==='string')for(const [old,id] of components)copy.data[key]=copy.data[key].split(old).join(id);
+    const wires=edges.filter(e=>mapping.has(e.target)&&(externalInputs||mapping.has(e.source))).map(e=>({...e,id:uid('edge'),source:mapping.get(e.source)||e.source,target:mapping.get(e.target)}));
+    state.nodes.push(...copies);state.edges.push(...wires);state.selectedNodeIds=copies.map(n=>n.id);state.selectedNodeId=state.selectedNodeIds.at(-1)||null;state.selectedEdgeIds=[];return state.selectedNodeIds;
+  }
+  function duplicateNodesForDrag(ids){return cloneNodeBundle(ids.map(nodeById).filter(Boolean),state.edges,{externalInputs:true});}
+  function selectedNodeBundle(){const ids=new Set(state.selectedNodeIds.length?state.selectedNodeIds:[state.selectedNodeId]);return {format:'workflow-node-bundle',version:1,nodes:state.nodes.filter(n=>ids.has(n.id)&&!n.data.dockOnly).map(original=>{const n=structuredClone(original);if(!['imageInput','videoInput','audioInput'].includes(n.type))delete n.data.asset;delete n.data.endFrame;return n;}),edges:state.edges.filter(e=>ids.has(e.source)&&ids.has(e.target))};}
+  function pasteNodeBundle(bundle){
+    if(state.isRunning)throw Error('Dừng tác vụ trước khi nhân bản nhóm.');
+    if(!bundle||bundle.format!=='workflow-node-bundle'||bundle.version!==1||!Array.isArray(bundle.nodes)||!bundle.nodes.length||bundle.nodes.length>2000||!Array.isArray(bundle.edges))throw Error('Không có nhóm node hợp lệ để dán.');
+    if(bundle.nodes.some(n=>!n||!Object.hasOwn(nodeDefs,n.type)||typeof n.id!=='string'||!Number.isFinite(n.x)||!Number.isFinite(n.y)||!n.data)||new Set(bundle.nodes.map(n=>n.id)).size!==bundle.nodes.length)throw Error('Dữ liệu nhóm node không hợp lệ.');
+    createUndoSnapshot('Nhân bản nhóm node');const ids=cloneNodeBundle(bundle.nodes,bundle.edges,{dx:60,dy:80});render();
+    if(ids.length>1){const boxes=ids.map(id=>document.querySelector(`.node[data-id="${CSS.escape(id)}"]`)).filter(Boolean);const nodes=ids.map(nodeById),x=Math.min(...nodes.map(n=>n.x))-20,y=Math.min(...nodes.map(n=>n.y))-40;state.groups.push({id:uid('group'),name:'Nhóm sao chép',nodeIds:ids,x,y,width:Math.max(...nodes.map((n,i)=>n.x+(boxes[i]?.offsetWidth||320)))-x+20,height:Math.max(...nodes.map((n,i)=>n.y+(boxes[i]?.offsetHeight||300)))-y+20});render();}
+    scheduleAutoSave();setRunStatus('Đã nhân bản '+ids.length+' node và dây nối nội bộ. Kéo tiêu đề một node để di chuyển cả nhóm.','ok');
+  }
+  function clearNodeOutput(node){
+    if(!node||!['generateImage','generateVideo','generateText','preview'].includes(node.type))return;
+    if(runForNode(node.id)||autoPlan?.ids.has(node.id))throw Error('Dừng node trước khi xóa kết quả.');
+    createUndoSnapshot('Xóa kết quả cũ',{preserveRuntime:false});resetNodeOutput(node);render();scheduleAutoSave();
+  }
+  function resetNodeOutput(node){node.data.asset=null;node.data.endFrame=null;node.data.status='idle';node.data.error='';node.data.progress='';delete node.data.storyApprovedAssetId;if(node.type==='generateText')node.data.text='';storyDirtyAfter(node.id,true);syncPreviewOutputs();}
+  async function refreshEndFrame(node){
+    if(runForNode(node.id))throw Error('Đợi video hoàn tất trước.');const asset=node.data.asset;if(!asset?.url)throw Error('Chưa có video để trích khung cuối.');
+    const frame=await extractVideoEndFrame(asset.url);if(nodeById(node.id)!==node||node.data.asset!==asset||runForNode(node.id))throw Error('Video đã thay đổi; không dùng khung cuối cũ.');if(!frame)throw Error('Không đọc được khung cuối. Kiểm tra video hoặc quyền truy cập tệp.');
+    createUndoSnapshot('Trích khung cuối',{preserveRuntime:false});frame.sourceAssetId=asset.id;node.data.endFrame=frame;storyDirtyAfter(node.id,true);render();scheduleAutoSave();
   }
 
   function starter() {
@@ -1108,7 +1136,9 @@
       const duration=document.createElement('select');[4,5,6,8,10,15,20,30,60].forEach(v=>{const o=document.createElement('option');o.value=String(v);o.textContent=`${v}s`;duration.appendChild(o);});duration.value=String(n.data.duration||5);duration.onchange=()=>n.data.duration=Number(duration.value);
       controls.append(ratio,duration);body.appendChild(controls);
       const continuityLabel=document.createElement('label');continuityLabel.className='continuity-toggle';continuityLabel.htmlFor=`continuity-${n.id}`;continuityLabel.onpointerdown=event=>event.stopPropagation();const continuity=document.createElement('input');continuity.id=`continuity-${n.id}`;continuity.type='checkbox';continuity.checked=Boolean(n.data.continuity);continuity.onchange=()=>{n.data.continuity=continuity.checked;scheduleAutoSave();};continuityLabel.append(continuity,document.createTextNode('Use previous clip end frame as start reference'));body.appendChild(continuityLabel);
-      if(n.data.endFrame?.url){const frame=document.createElement('img');frame.className='end-frame-thumb';frame.src=n.data.endFrame.url;frame.alt='Extracted final frame for continuity';frame.title='Video end frame · connect “end frame” to the next video reference';body.appendChild(frame);}
+      for(const edge of getIncoming(n.id,'reference').filter(e=>e.sourcePort==='endFrame')){const source=sourceFor(edge),note=document.createElement('p');note.className='hint';note.textContent='Khung mở đầu từ '+(source?.data.componentId||edge.source)+'-END';body.append(note);if(source?.data.endFrame?.url){const inputFrame=new Image();inputFrame.className='end-frame-input';inputFrame.src=source.data.endFrame.url;inputFrame.alt=note.textContent;body.append(inputFrame);}else{note.textContent+=' · chưa có ảnh, cần chạy hoặc trích khung cuối ở video nguồn.';}}
+      if(n.data.endFrame?.url){const frame=document.createElement('img');frame.className='end-frame-thumb';frame.src=n.data.endFrame.url;frame.alt='Extracted final frame for continuity';frame.title='Khung cuối của video này · nối cổng end frame vào Ảnh tham chiếu của video tiếp theo';const caption=document.createElement('p');caption.className='hint';caption.textContent='Khung cuối của video này';body.append(caption,frame);studioButton(body,'Tải ảnh khung cuối',()=>{const link=document.createElement('a');link.href=n.data.endFrame.url;link.download=n.data.componentId+'-khung-cuoi.png';link.click();});studioButton(body,'Tách khung cuối thành node ảnh',()=>{createUndoSnapshot('Tạo node ảnh khung cuối');const image=makeNode('imageInput',n.x+360,n.y+80);image.data={...image.data,localDataUrl:n.data.endFrame.url,fileName:n.data.componentId+'-khung-cuoi.png',customName:'Khung cuối '+n.data.componentId};state.nodes.push(image);render();scheduleAutoSave();});}
+      studioButton(body,'Trích lại khung cuối',()=>refreshEndFrame(n),{disabled:!n.data.asset?.url||!!runForNode(n.id)});
       const status=document.createElement('div');status.className=`status ${n.data.status||'idle'}`;status.textContent=n.data.status==='running'&&n.data.progress?n.data.progress:`${n.data.status||'idle'}${n.data.error?' · '+n.data.error:''}`;body.appendChild(status);
       if(n.data.asset?.width&&n.data.asset?.height){const dimensions=document.createElement('div');dimensions.className=`hint ${n.data.asset.sizeMismatch?'error':''}`;dimensions.textContent=`Yêu cầu ${n.data.asset.requestedSize||n.data.size} · thực tế ${n.data.asset.width} × ${n.data.asset.height}${n.data.asset.actualDuration?' · '+n.data.asset.actualDuration.toFixed(1)+' giây':''}${n.data.asset.sizeMismatch?' (AI trả về tỷ lệ khác)':''}`;body.appendChild(dimensions);}
       if(n.data.asset?.url){const video=document.createElement('video');video.controls=true;video.preload='metadata';video.src=n.data.asset.url;body.appendChild(video);}
@@ -1137,7 +1167,8 @@
 
     el.appendChild(body);
     addPorts(el, n);
-    el.onmousedown = event => {if(event.target.closest('button,input,textarea,select,.port,.node-header'))return;selectNode(n.id,{toggle:event.shiftKey||event.ctrlKey||event.metaKey});};
+    if(['generateImage','generateVideo','generateText'].includes(n.type))studioButton(body,'Xóa kết quả cũ',()=>clearNodeOutput(n),{disabled:!!runForNode(n.id)});
+    el.onmousedown = event => {if(event.target.closest('button,input,textarea,select,.port,.node-header'))return;if(event.shiftKey||event.ctrlKey||event.metaKey)selectNode(n.id,{toggle:true});else if(!state.selectedNodeIds.includes(n.id))selectNode(n.id);};
     return el;
   }
 
@@ -1145,7 +1176,7 @@
     const actions=document.createElement('div');actions.className='node-generation-actions';
     const button=document.createElement('button');button.type='button';button.className='node-run-button primary';
     if(node.data.status==='queued'&&autoPlan?.ids.has(node.id)){button.textContent='Đợi đầu vào';button.disabled=true;}else if(node.data.status==='running'){
-      button.classList.add('stop');button.textContent='■ Stop';button.disabled=false;button.title='Stop this generation';button.dataset.stopGeneration=node.id;
+      button.classList.add('stop');button.textContent='■ Stop';button.disabled=false;button.title='Stop this generation';button.dataset.stopGeneration=node.id;button.onclick=event=>{event.stopPropagation();stopGeneration(node.id);};
     }else{
       button.textContent=`▶ Run ${node.type==='generateVideo'?'Video':node.type==='generateText'?'Văn bản':'Ảnh'}`;button.disabled=false;
       button.onclick=event=>{event.stopPropagation();runSingleNode(node.id);};
@@ -1184,14 +1215,14 @@
   function setupDrag(handle, n, el) {
     handle.onmousedown = (e) => {
       if(state.handMode||state.spaceDown)return;
-      if (e.target.classList.contains('node-close')) return;
+      if(e.target.closest('button,.node-close'))return;
       e.preventDefault();
       const altCopy=e.altKey,modified=e.shiftKey||e.ctrlKey||e.metaKey,wasSelected=state.selectedNodeIds.includes(n.id);if(modified){selectNode(n.id,{toggle:true});if(wasSelected)return;}else if(!wasSelected)selectNode(n.id);
-      const sx=e.clientX, sy=e.clientY,zoom=state.zoom;let group=state.selectedNodeIds.includes(n.id)?[...state.selectedNodeIds]:[n.id],origins=[],copied=false,undoRecorded=false,moved=false;
-      const getOrigins=()=>group.map(id=>{const node=nodeById(id);return node&&{id:node.id,x:node.x,y:node.y};}).filter(Boolean);origins=getOrigins();
-      const move=(ev)=>{const rawDx=ev.clientX-sx,rawDy=ev.clientY-sy;if(altCopy&&!copied){if(Math.hypot(rawDx,rawDy)<3)return;createUndoSnapshot(`Alt-drag copy ${group.length===1?'node':'nodes'}`);group=duplicateNodesForDrag(group);copied=true;undoRecorded=true;origins=getOrigins();render();}
+      const sx=e.clientX, sy=e.clientY,zoom=state.zoom;let group=state.selectedNodeIds.includes(n.id)?[...state.selectedNodeIds]:[n.id],origins=[],groupOrigins=[],copied=false,undoRecorded=false,moved=false;
+      const getOrigins=()=>group.map(id=>{const node=nodeById(id);return node&&{id:node.id,x:node.x,y:node.y};}).filter(Boolean);origins=getOrigins();const getGroupOrigins=()=>state.groups.filter(g=>g.nodeIds.length&&g.nodeIds.every(id=>group.includes(id))).map(g=>({id:g.id,x:g.x,y:g.y}));groupOrigins=getGroupOrigins();
+      const move=(ev)=>{const rawDx=ev.clientX-sx,rawDy=ev.clientY-sy;if(altCopy&&!copied){if(Math.hypot(rawDx,rawDy)<3)return;createUndoSnapshot(`Alt-drag copy ${group.length===1?'node':'nodes'}`);group=duplicateNodesForDrag(group);copied=true;undoRecorded=true;origins=getOrigins();groupOrigins=getGroupOrigins();render();}
         const dx=rawDx/zoom,dy=rawDy/zoom;if(Math.abs(dx)+Math.abs(dy)<.1)return;if(!undoRecorded){createUndoSnapshot(`Move ${group.length===1?'node':'nodes'}`);undoRecorded=true;}moved=true;
-        for(const origin of origins){const node=nodeById(origin.id);if(!node)continue;node.x=origin.x+dx;node.y=origin.y+dy;const nodeEl=document.querySelector(`.node[data-id="${CSS.escape(origin.id)}"]`);if(nodeEl){nodeEl.style.left=`${node.x}px`;nodeEl.style.top=`${node.y}px`;}}scheduleDrawEdges();};
+        for(const origin of origins){const node=nodeById(origin.id);if(!node)continue;node.x=origin.x+dx;node.y=origin.y+dy;const nodeEl=document.querySelector(`.node[data-id="${CSS.escape(origin.id)}"]`);if(nodeEl){nodeEl.style.left=`${node.x}px`;nodeEl.style.top=`${node.y}px`;}}for(const origin of groupOrigins){const g=state.groups.find(g=>g.id===origin.id);if(g){g.x=origin.x+dx;g.y=origin.y+dy;const el=document.querySelector(`.canvas-group[data-group-id="${CSS.escape(g.id)}"]`);if(el){el.style.left=g.x+'px';el.style.top=g.y+'px';}}}scheduleDrawEdges();};
       const up=()=>{window.removeEventListener('mousemove',move);window.removeEventListener('mouseup',up);if(moved){scheduleAutoSave();if(copied)setRunStatus('Node copy created.','ok');}};
       window.addEventListener('mousemove',move); window.addEventListener('mouseup',up);
     };
@@ -1499,9 +1530,10 @@
   function finishTextNoteMove(){if(!state.noteDrag)return;const moved=state.noteDrag.moved;state.noteDrag=null;if(moved){render();saveState();}}
 
   function renderCanvasGroup(group){
-    const frame=document.createElement('div');frame.className='canvas-group';frame.style.left=`${group.x}px`;frame.style.top=`${group.y}px`;frame.style.width=`${group.width}px`;frame.style.height=`${group.height}px`;
+    const frame=document.createElement('div');frame.className='canvas-group';frame.dataset.groupId=group.id;frame.style.left=`${group.x}px`;frame.style.top=`${group.y}px`;frame.style.width=`${group.width}px`;frame.style.height=`${group.height}px`;
     const label=document.createElement('span');label.className='canvas-group-label';label.textContent=group.name||'Group';
     const remove=document.createElement('button');remove.type='button';remove.className='canvas-group-delete';remove.textContent='×';remove.title='Delete group region';remove.setAttribute('aria-label','Delete group region');remove.onclick=event=>{event.stopPropagation();createUndoSnapshot('Delete group region');state.groups=state.groups.filter(item=>item.id!==group.id);render();saveState();};
+    const first=nodeById(group.nodeIds[0]);if(first){setupDrag(label,first,frame);const drag=label.onmousedown;label.title='Kéo để di chuyển cả nhóm';label.onmousedown=event=>{if(state.handMode||state.spaceDown)return;state.selectedNodeIds=group.nodeIds.filter(id=>nodeById(id));state.selectedNodeId=first.id;document.querySelectorAll('.node').forEach(el=>el.classList.toggle('selected',state.selectedNodeIds.includes(el.dataset.id)));drag(event);};}
     frame.append(label,remove);return frame;
   }
 
@@ -1516,7 +1548,7 @@
   function endPan(){state.panning=null;$('#viewport').classList.remove('panning');}
 
   function startSelectionMarquee(event){
-    if(event.button!==0||state.handMode||state.spaceDown||event.target.closest('.node,.canvas-note,.canvas-tools,button'))return;
+    if(event.button!==0||state.handMode||state.spaceDown||event.target.closest('.node,.canvas-note,.canvas-tools,.canvas-group-label,button'))return;
     const viewport=$('#viewport'),bounds=viewport.getBoundingClientRect(),keep=event.shiftKey||event.ctrlKey||event.metaKey;
     if(state.groupDrawMode){const box=document.createElement('div');box.className='group-marquee';viewport.appendChild(box);state.groupMarquee={startX:event.clientX,startY:event.clientY,bounds,box};try{viewport.setPointerCapture(event.pointerId);}catch{}event.preventDefault();return;}
     if(!keep){state.selectedNodeIds=[];state.selectedNodeId=null;state.selectedEdgeIds=[];document.querySelectorAll('.node.selected').forEach(node=>node.classList.remove('selected'));scheduleDrawEdges();}
@@ -1554,7 +1586,7 @@
     if(node.type==='imageResize')addAction('Download resized image','node-download-image');
     if(node.type==='preview')addAction('Download preview','node-download-preview');
     if(node.type==='prompt'||node.type==='negativePrompt'||node.type==='textAppend')addAction('Focus text field','node-focus-text');
-    addAction('Duplicate node','node-duplicate');addAction('Disconnect node','node-disconnect');addAction('Delete node','node-delete');
+    addAction('Nhân bản các node đã chọn · D','node-duplicate');if(['generateImage','generateVideo','generateText','preview'].includes(node.type))addAction('Xóa kết quả cũ','node-clear-output');addAction('Disconnect node','node-disconnect');addAction('Delete node','node-delete');
     menu.classList.remove('hidden');menu.style.left=`${Math.min(e.clientX,innerWidth-230)}px`;menu.style.top=`${Math.min(e.clientY,innerHeight-380)}px`;
   }
   function openEdgeMenu(e){
@@ -1576,7 +1608,9 @@
     if(action==='node-focus-text'){el?.querySelector('textarea')?.focus();return;}
     if(action==='node-choose-image'){el?.querySelector('input[type="file"]')?.click();return;}
     if(action==='node-download-image'||action==='node-download-preview'){const url=node.data.asset?.url;if(url){const link=document.createElement('a');link.href=url;link.download=node.data.asset.name||'museflow-output';link.click();}else setRunStatus('This node has no output to download.','warn');return;}
-    if(action==='node-duplicate'){createUndoSnapshot('Duplicate node');const copy=structuredClone(node);copy.id=uid(node.type);copy.x+=36;copy.y+=36;copy.data={...copy.data};state.nodes.push(copy);if(['generateImage','generateVideo','generateText'].includes(copy.type)){const references=state.nodes.find(item=>item.type==='references');if(references)connectReferenceNode(references,copy);}render();saveState();setRunStatus('Node duplicated.','ok');}
+    if(action==='node-clear-output'){clearNodeOutput(node);return;}
+    if(action==='node-duplicate'){const ids=state.selectedNodeIds.includes(node.id)?state.selectedNodeIds:[node.id];const selected=new Set(ids);pasteNodeBundle({format:'workflow-node-bundle',version:1,nodes:state.nodes.filter(n=>selected.has(n.id)),edges:state.edges.filter(e=>selected.has(e.source)&&selected.has(e.target))});}
+
   }
   function arrangeNodes(){
     try{
@@ -1715,11 +1749,12 @@
     });
   }
 
+  function clearStoppedRunOutput(run){const current=nodeById(run.activeNodeId);if(current&&nodeClaims.get(current.id)?.run===run&&['generateImage','generateVideo'].includes(current.type)){current.data.asset=null;current.data.endFrame=null;delete current.data.storyApprovedAssetId;current.data.status='stopped';syncPreviewOutputs();}}
   function stopGeneration(nodeId=state.activeGenerationId){
-    const run=runForNode(nodeId);if(!run)return;
-    run.controller.abort();void sendMuseStop(run.requestId);setRunStatus('Đã dừng nhánh của node '+nodeId,'warn');render();
+    const run=runForNode(nodeId);if(!run||run.controller.signal.aborted)return;
+    run.controller.abort();clearStoppedRunOutput(run);void sendMuseStop(run.requestId);setRunStatus('Đã dừng nhánh của node '+nodeId,'warn');render();
   }
-  function stopAllRuns(){autoPlan?.controller.abort();for(const run of activeRuns.values()){run.controller.abort();void sendMuseStop(run.requestId);}setRunStatus('Đang dừng tất cả các nhánh…','warn');}
+  function stopAllRuns(){autoPlan?.controller.abort();for(const run of activeRuns.values()){run.controller.abort();clearStoppedRunOutput(run);void sendMuseStop(run.requestId);}setRunStatus('Đang dừng tất cả các nhánh…','warn');}
 
   async function sendMuseStop(requestId){
     if(!requestId)return; // A null ID means stop all in the Muse bridge.
@@ -1756,6 +1791,7 @@
   async function execute(targetId=null,{again=false,generationOrder=null,sinceSequence=completionSequence}={}) {
     if(!targetId&&activeRuns.size){setRunStatus('Có nhánh đang chạy. Bấm Chạy trên node độc lập để chạy thêm.','warn');return;}
     if(targetId&&nodeById(targetId)?.data.storyMasterId){const issues=await storyPreflight(targetId);if(issues.length){WorkflowStoryDashboard.showIssues(targetId,issues);setRunStatus('Cần kiểm tra '+issues.length+' mục trước khi chạy.','warn');return;}}
+    const freshTarget=nodeById(targetId);if(freshTarget&&['generateImage','generateVideo','generateText'].includes(freshTarget.type)){if(runForNode(targetId)){setRunStatus('Node đang chạy. Dừng trước khi chạy lại.','warn');return;}resetNodeOutput(freshTarget);render();}
     // Keep runtime graph references valid even if an older saved workflow or
     // an interrupted UI action left stale node IDs behind.
     normalizeSavedGraph();
@@ -1826,7 +1862,8 @@
           const prompt=resolvePrompt(n.id); if(!String(prompt).trim()) throw new Error(`${nodeDefs[n.type].title} ${n.id}: connect a Prompt, Text Append, or Text Merge node first.`);
           const negativePrompt=resolveNegativePrompt(n.id);
           const continuityPrevious=isVideo&&n.data.continuity?timelinePredecessor(n.id):null,continuityStartFrame=continuityPrevious?.data?.endFrame?.url?continuityPrevious.data.endFrame:null;
-          if(isVideo&&n.data.continuity&&!continuityStartFrame)throw new Error(`End-frame continuity for ${n.id} needs the previous Timeline clip to be generated successfully with an extractable final frame. Put clips in order and run the previous clip first.`);
+          if(isVideo&&n.data.continuity&&(!continuityStartFrame||continuityPrevious?.data.storyDirty))throw new Error(`End-frame continuity for ${n.id} needs the previous Timeline clip to be generated successfully with an extractable final frame. Put clips in order and run the previous clip first.`);
+          for(const edge of getIncoming(n.id,'reference').filter(e=>e.sourcePort==='endFrame')){const source=sourceFor(edge);if(!source?.data.endFrame?.url||source.data.storyDirty)throw Error('Chưa có khung cuối hợp lệ từ '+(source?.data.componentId||edge.source)+'. Chạy video nguồn hoặc trích lại khung cuối trước.');}
           const referenceImages=resolveReferences(n.id);
           run.activeNodeId=n.id;n.data.status='running';n.data.progress='';n.data.error='';n.data.asset=null;n.data.endFrame=null;state.edges.filter(edge=>edge.source===n.id).forEach(edge=>{const target=nodeById(edge.target);if(target?.type==='preview')target.data.asset=null;});render();setRunStatus(`${targetId?'Selected node':`Generation ${generationStep}/${totalGenerations}`} · generating ${isVideo?'video':'image'}: ${n.id}`,'warn');
           try{
@@ -1861,10 +1898,11 @@
             n.data.asset={id:uid('asset'),kind,url,name:`${isVideo?'Video':'Image'} ${n.id}`,sourceNodeId:n.id,width:intrinsic.width,height:intrinsic.height,requestedSize:n.data.size,sizeMismatch,actualDuration:intrinsic.duration||null}; n.data.status='success';
             if(framingNote)n.data.error=framingNote;
             if(isVideo&&intrinsic.duration&&Math.abs(intrinsic.duration-Number(n.data.duration))>1)n.data.error=[framingNote,`Yêu cầu ${n.data.duration}s, AI trả về ${intrinsic.duration.toFixed(1)}s. Thời lượng clip phụ thuộc dịch vụ.`].filter(Boolean).join(' ');
-            if(isVideo)n.data.endFrame=await extractVideoEndFrame(url);
+            if(isVideo){const frame=await extractVideoEndFrame(url);if(abortController.signal.aborted)throw new DOMException('Đã dừng.','AbortError');if(frame)frame.sourceAssetId=n.data.asset.id;n.data.endFrame=frame;}
+            if(abortController.signal.aborted)throw new DOMException('Đã dừng.','AbortError');
             if(sizeMismatch)n.data.error=`Yêu cầu ${n.data.size}, AI trả ${intrinsic.width}×${intrinsic.height}. Kết quả được giữ lại với tỷ lệ thực tế.`;
             n.data.storyDirty=false;storyDirtyAfter(n.id,true);state.edges.filter(e=>e.source===n.id).forEach(e=>{const target=nodeById(e.target);if(target?.type==='preview')target.data.asset=e.sourcePort==='endFrame'?n.data.endFrame:n.data.asset;});render();
-          }catch(err){if(err?.name==='AbortError'||abortController.signal.aborted){n.data.status='stopped';n.data.error='Generation stopped by user.';render();throw new DOMException('Generation stopped by user.','AbortError');}n.data.status='error';n.data.error=err?.message||String(err);render();throw err;}
+          }catch(err){n.data.asset=null;n.data.endFrame=null;syncPreviewOutputs();if(err?.name==='AbortError'||abortController.signal.aborted){n.data.status='stopped';n.data.error='Generation stopped by user.';render();throw new DOMException('Generation stopped by user.','AbortError');}n.data.status='error';n.data.error=err?.message||String(err);render();throw err;}
         }
         }catch(error){stepError=error;throw error;}finally{
           if(claim){const ok=!stepError&&!abortController.signal.aborted;const result={ok,error:stepError?.message||'Lượt chạy đã dừng.'};nodeOutcomes.set(id,{...result,sequence:++completionSequence});claim.finish(result);if(nodeClaims.get(id)===claim)nodeClaims.delete(id);}
@@ -2082,6 +2120,7 @@
   $('#clearPromptsBtn').onclick=()=>{try{clearCanvasPrompts();}catch(error){setRunStatus(error.message,'error');}};
   $('#masterScriptBtn').onclick=()=>addNode('masterScript');
   $('#arrangeNodesBtn').onclick=arrangeNodes;
+  $('#duplicateSelectionBtn').onclick=()=>{try{pasteNodeBundle(selectedNodeBundle());}catch(error){setRunStatus(error.message,'warn');}};
   $('#runBtn').onclick=onWorkflowRunButtonClick;$('#runOptionsBtn').onclick=openRunOrderModal; $('#saveBtn').onclick=saveState; $('#resetBtn').onclick=resetState;
   $('#workflowExportBtn').onclick=exportWorkflowFile;
   $('#workflowImportBtn').onclick=()=>$('#workflowFileInput').click();
@@ -2120,8 +2159,13 @@
   document.addEventListener('pointerdown',e=>{if(!e.target.closest('#canvasMenu')){closeCanvasMenu();state.pendingConnection=null;}if(!e.target.closest('#addNodeMenu,#addNodeMenuBtn'))closeAddNodeMenu();});
   const isTextEntry=target=>Boolean(target?.closest?.('textarea,input,select,[contenteditable="true"]'));
   const isTextEditor=target=>Boolean(target?.closest?.('textarea,input:not([type="checkbox"]):not([type="number"]):not([type="file"]):not([type="range"]):not([type="color"]),[contenteditable="true"]'));
+  const canvasClipboardTarget=target=>!isTextEntry(target)&&!target.closest?.('dialog,[role="dialog"],.modal,header,nav,.toolbar-popover,.canvas-tools,#canvasMenu,#addNodeMenu');
+  document.addEventListener('copy',event=>{if(!canvasClipboardTarget(event.target)||getSelection()?.toString())return;const bundle=selectedNodeBundle();if(!bundle.nodes.length)return;event.clipboardData?.setData('text/plain',JSON.stringify(bundle));event.preventDefault();setRunStatus('Đã sao chép '+bundle.nodes.length+' node. Dán bằng ⌘V trên Mac hoặc Ctrl+V.','ok');});
+  document.addEventListener('paste',event=>{if(!canvasClipboardTarget(event.target))return;let bundle;try{bundle=JSON.parse(event.clipboardData?.getData('text/plain')||'null');}catch{return;}if(bundle?.format!=='workflow-node-bundle')return;event.preventDefault();try{pasteNodeBundle(bundle);}catch(error){setRunStatus(error.message,'error');}});
   document.addEventListener('keydown',e=>{
     if(e.target.closest?.('#flowStudioDialog,#storyDashboardDialog'))return;
+    if(!e.repeat&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&canvasClipboardTarget(e.target)&&e.key.toLowerCase()==='d'){e.preventDefault();try{pasteNodeBundle(selectedNodeBundle());}catch(error){setRunStatus(error.message,'warn');}return;}
+    if(!e.ctrlKey&&!e.metaKey&&!e.altKey&&canvasClipboardTarget(e.target)&&['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)&&state.selectedNodeIds.length){e.preventDefault();if(!e.repeat)createUndoSnapshot('Di chuyển các node');const step=e.shiftKey?50:10;for(const id of state.selectedNodeIds){const n=nodeById(id);if(n){n.x+=e.key==='ArrowLeft'?-step:e.key==='ArrowRight'?step:0;n.y+=e.key==='ArrowUp'?-step:e.key==='ArrowDown'?step:0;}}for(const g of state.groups.filter(g=>g.nodeIds.length&&g.nodeIds.every(id=>state.selectedNodeIds.includes(id)))){g.x+=e.key==='ArrowLeft'?-step:e.key==='ArrowRight'?step:0;g.y+=e.key==='ArrowUp'?-step:e.key==='ArrowDown'?step:0;}render();scheduleAutoSave();return;}
     if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'&&!e.shiftKey){
       if(isTextEditor(e.target)){
         pendingNativeUndoTarget=e.target;setTimeout(()=>{if(pendingNativeUndoTarget===e.target)pendingNativeUndoTarget=null;},0);return;
@@ -2137,7 +2181,7 @@
     }
     if(e.key==='Escape'){if(!addNodeMenu.classList.contains('hidden')){e.preventDefault();closeAddNodeMenu();addNodeMenuBtn.focus();return;}if(!$('#runOrderModal').classList.contains('hidden')){e.preventDefault();closeRunOrderModal();return;}if(state.pendingGroup){e.preventDefault();commitPendingGroup(state.pendingGroup.defaultName);return;}closeCanvasMenu();endSelectionMarquee();cancelGroupMarquee();}
     if((e.key==='Delete'||e.key==='Backspace')&&!isTextEntry(e.target)){e.preventDefault();if(state.selectedEdgeIds.length){const ids=new Set(state.selectedEdgeIds);createUndoSnapshot(`Delete ${ids.size} connection${ids.size===1?'':'s'}`);state.edges=state.edges.filter(edge=>!ids.has(edge.id));state.selectedEdgeIds=[];render();saveState();setRunStatus('Selected connections deleted.','ok');}else removeSelectedNodes();}
-    if(e.key.toLowerCase()==='h'&&!isTextEntry(e.target)){state.handMode=!state.handMode;$('#handTool').classList.toggle('active',state.handMode);applyCanvasTransform();}
+    if(!e.ctrlKey&&!e.metaKey&&!e.altKey&&e.key.toLowerCase()==='h'&&!isTextEntry(e.target)){state.handMode=!state.handMode;$('#handTool').classList.toggle('active',state.handMode);applyCanvasTransform();}
     if(!e.repeat&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&!isTextEntry(e.target)&&e.key.toLowerCase()==='g'){e.preventDefault();setGroupDrawMode(!state.groupDrawMode);}
     if(!e.repeat&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&!isTextEntry(e.target)&&e.key.toLowerCase()==='t'){e.preventDefault();setGroupDrawMode(false);const rect=$('#viewport').getBoundingClientRect();addTextNote((rect.width/2-state.panX)/state.zoom-130,(rect.height/2-state.panY)/state.zoom-80);}
   },true);

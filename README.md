@@ -1,4 +1,4 @@
-# Workflow · MuseFlow 0.23.0
+# Workflow · MuseFlow 0.24.0
 
 Extension Chrome/Edge dựa trên [MuseFlow / 26Flow](https://github.com/bynne2602/museflow), mở rộng canvas/timeline để làm việc với Muse.ai, Gemini, ChatGPT và API Google, OpenAI, fal.ai. Giữ nguyên giấy phép GPL-2.0-or-later của nguồn gốc và thông báo FFmpeg đi kèm.
 
@@ -260,3 +260,12 @@ Mở **Tạo node → Bảng điều khiển kịch bản**, hoặc nút cùng t
 Luồng mới: **Tạo ảnh còn thiếu / đã đổi → Duyệt ảnh từng cảnh hoặc tất cả ảnh hiện tại → Tạo video và ghép**. Tạo lại ảnh hoặc sửa prompt/nguồn ảnh làm mất hiệu lực duyệt của ảnh đó. Duyệt được lưu cùng dự án; tải lại trang không phải duyệt lại ảnh còn nguyên. Có nút đi tới prompt, node ảnh/video, dừng lượt tạo ảnh và tải video phạm vi đã ghép.
 
 Bản dựng mới mặc định bật Duyệt ảnh trước khi tạo video, có thể tắt trong Kịch bản tổng. Các bản dựng cũ chưa có tùy chọn giữ cách chạy tự động trước đây. Các nút Chạy trong canvas cũng kiểm tra đầu vào và chặn video chưa duyệt khi tùy chọn bật. Kiểm thử Chromium dùng AI mô phỏng và FFmpeg/ffprobe thật cho đầu ra MP4/âm thanh/thời lượng.
+
+### 0.24.0 — kết quả mới, khung cuối và nhóm node
+
+- Chạy lại một node tạo xóa kết quả/khung cuối cũ ngay khi lượt chạy được chấp nhận. Dừng hoặc lỗi không để lại kết quả dở dang; phản hồi đến muộn không được nhận. Nút Xóa kết quả cũ trên node và trong menu chuột phải giữ prompt, dây và tệp đầu vào. Bản nháp trong ô AI được làm trống trước khi tải tệp mới; không xóa lịch sử trò chuyện.
+- Video có nhãn riêng cho khung cuối của chính nó và khung mở đầu nối từ video trước. Có nút Trích lại khung cuối, Tải ảnh khung cuối và Tách khung cuối thành node ảnh. Nối cổng end frame → reference của video tiếp theo; thiếu khung cuối thì dừng và báo lỗi, không tự gửi yêu cầu thiếu ảnh.
+- Kéo chọn nhiều node khi tắt công cụ bàn tay (H); hoặc Shift-click tiêu đề để chọn thêm. Kéo tiêu đề một node đã chọn để di chuyển cả tập. Kéo tên nhóm để di chuyển tất cả node thuộc nhóm.
+- **D** hoặc **Workflow → Nhân bản nhóm** tạo nhóm mới với ID và dây nội bộ mới. Không sao chép video, kết quả tạo hay trạng thái duyệt cũ; tệp nguồn được giữ. **⌘C/⌘V** trên macOS (Ctrl+C/V trên Windows/Linux) sao chép/dán nhóm trong canvas; ô nhập văn bản vẫn sao chép/dán bình thường. **Mũi tên** dịch nhóm 10 px; **Shift + mũi tên** dịch 50 px. Không gán ⌘D, ⌘H hoặc tổ hợp Control/Option dùng cho hệ thống. Các thao tác sửa có thể hoàn tác bằng ⌘Z/Ctrl+Z.
+
+Kiểm thử Chromium gồm kéo nhiều node/nhóm, nhân bản và clipboard, xóa kết quả, hủy lượt chạy có phản hồi muộn; trích khung cuối từ MP4 thật. Chưa thử trên thiết bị macOS thật; bộ nối AI dùng phản hồi mô phỏng.

@@ -132,6 +132,8 @@
     throwIfAborted();
     let composer=findComposer();
     if(!visible(composer))throw new Error('Muse message box is not visible. Open the chat composer and retry.');
+    const draftSetter=Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value')?.set;
+    if(draftSetter){draftSetter.call(composer,'');composer.dispatchEvent(new Event('input',{bubbles:true}));}
     const removeDraft=()=>WorkflowComposer.removeButtons(composerScope(findComposer()),findComposer());
     removeDraft().forEach(button=>button.click());
     for(let i=0;i<50&&removeDraft().length;i++)await delay(100,signal);

@@ -78,6 +78,7 @@
   async function clearDraft(signal){
     const el=await wait(composer,5000,signal,'Ô nhập AI đang tải hoặc chưa được nhận diện. Tải lại tab AI rồi thử lại.');
     if(stopped())throw new Error('AI đang trả lời. Hãy đợi hoặc dừng câu trả lời hiện tại.');
+    setText(el,'');
     const scope=root(el);const remove=()=>WorkflowComposer.removeButtons(root(composer()),composer());
     for(const b of remove())b.click();
     await wait(()=>!remove().length&&!attachments(scope).length,10000,signal,'Không dọn được tệp đính kèm cũ. Hãy xóa tệp trong ô chat rồi chạy lại.');
