@@ -18,5 +18,10 @@
   const mutex=queue(),completed=new Map();let started=-Infinity;
   return {async wait(key,signal,onWait){const release=await mutex.acquire('dispatch',signal,()=>onWait?.(interval));try{const remaining=Math.max(started+interval,(completed.get(key)??-Infinity)+interval)-now();if(remaining>0){onWait?.(remaining);await sleep(remaining,signal);}if(signal?.aborted)throw aborted();started=now();let done=false;return ()=>{if(!done){done=true;completed.set(key,now());}};}finally{release();}}};
  }
- globalThis.WorkflowRuntime={waitFor,queue,pacer};
+ function tabUsage(nodes,provider,tabs,defaults={},busy=new Set()){
+  const counts=new Map(tabs.map(tab=>[tab.id,{id:tab.id,count:0,busy:0}]));
+  for(const node of nodes){if(!['generateImage','generateVideo','generateText','masterScript'].includes(node.type))continue;const actual=node.data?.provider||(['generateText','masterScript'].includes(node.type)?'gemini':'muse');if(actual!==provider)continue;const target=node.data?.chatTarget||defaults[provider]||(tabs.length===1?{tabId:tabs[0].id}:null),entry=counts.get(target?.tabId);if(entry){entry.count++;if(busy.has(node.id))entry.busy++;}}
+  return [...counts.values()];
+ }
+ globalThis.WorkflowRuntime={waitFor,queue,pacer,tabUsage};
 })();

@@ -1,4 +1,4 @@
-# Workflow · MuseFlow 0.20.0
+# Workflow · MuseFlow 0.21.0
 
 Extension Chrome/Edge dựa trên [MuseFlow / 26Flow](https://github.com/bynne2602/museflow), mở rộng canvas/timeline để làm việc với Muse.ai, Gemini, ChatGPT và API Google, OpenAI, fal.ai. Giữ nguyên giấy phép GPL-2.0-or-later của nguồn gốc và thông báo FFmpeg đi kèm.
 
@@ -228,3 +228,9 @@ Mở **Kho tài nguyên → Kho prompt** để dùng **Nhập kho prompt** và *
 ### 0.20.0 — Tạo hàng loạt bằng thẻ Flow Studio
 
 Trong nhóm **Tạo node**, bấm **Tạo hàng loạt** để mở Flow Studio. Thẻ tổng nhận mỗi prompt trên một dòng; bấm Tạo thẻ từ prompt để tạo các thẻ riêng. Từng thẻ có ảnh tham chiếu, prompt, AI, tỷ lệ, chế độ ảnh/video và nút tạo/dừng riêng. Kéo tay nắm ⠿ để đổi bố cục; Tạo tất cả gửi các thẻ độc lập qua hàng đợi theo tab và khoảng cách gửi 5 giây hiện có. Một thẻ lỗi không chặn các thẻ khác. [Hướng dẫn](docs/FLOW-STUDIO.md).
+
+### 0.21.0 — đếm node theo cửa sổ AI
+
+Danh sách chọn chat hiển thị **3 node chọn · Cửa sổ 1 · Tab 2 — Tên chat**, áp dụng Gemini, ChatGPT và Muse. Tính các node tạo ảnh/video/văn bản và Kịch bản tổng, gồm cả thẻ Flow Studio; node không chọn riêng được tính theo tab mặc định (hoặc tab duy nhất). Mỗi node chỉ tính một lần. Số node đang chạy/chờ hiện riêng; khóa đổi cửa sổ của node đang chạy.
+
+Flow Studio có bộ chọn cửa sổ ngay trong từng thẻ và nút làm mới để nhận các tab vừa mở. Số lượng cập nhật khi đổi AI/chat, thêm/xóa node hoặc đổi tab mặc định. Các cửa sổ được đánh số theo danh sách cửa sổ có tab AI; Tab là vị trí trong cửa sổ Chrome. Đây là số node được gán, không phải số lần gọi AI hay mức tải bên trong tài khoản Gemini.

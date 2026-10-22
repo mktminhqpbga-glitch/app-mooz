@@ -131,10 +131,19 @@
   const chatKey=url=>{try{const value=new URL(url);return value.origin+value.pathname.replace(/\/$/,'');}catch{return '';}};
   async function refreshChatTabs(){
     await Promise.all(Object.entries(WorkflowAI.providers).filter(([,provider])=>provider.urls).map(async([id,provider])=>{try{aiChatTabs[id]=await chrome.tabs.query({url:provider.urls});if(!aiChatTargets[id]&&aiChatTabs[id].length===1){const tab=aiChatTabs[id][0];aiChatTargets[id]={tabId:tab.id,url:chatKey(tab.url)};}}catch{aiChatTabs[id]=[];}}));
-    const host=$('#aiChatTargets');if(host){host.replaceChildren();for(const id of ['muse','gemini','chatgpt']){const label=document.createElement('label');label.textContent=WorkflowAI.providers[id].name;const select=chatSelector(id,aiChatTargets[id],target=>{if(target)aiChatTargets[id]=target;else delete aiChatTargets[id];void chrome.storage.local.set({workflowAIChatTargets:aiChatTargets});});label.append(select);host.append(label);}}
+    const host=$('#aiChatTargets');if(host){host.replaceChildren();for(const id of ['muse','gemini','chatgpt']){const label=document.createElement('label');label.textContent=WorkflowAI.providers[id].name;const select=chatSelector(id,aiChatTargets[id],target=>{if(target)aiChatTargets[id]=target;else delete aiChatTargets[id];void chrome.storage.local.set({workflowAIChatTargets:aiChatTargets});render();updateChatUsageLabels();});label.append(select);host.append(label);}}
   }
-  function chatSelector(provider,current,onChange){
-    const select=document.createElement('select');select.setAttribute('aria-label','Cuộc trò chuyện AI');
+  let chatLabelsQueued=false;
+  function scheduleChatUsageLabels(){if(chatLabelsQueued)return;chatLabelsQueued=true;queueMicrotask(()=>{chatLabelsQueued=false;updateChatUsageLabels();});}
+  function updateChatUsageLabels(){
+    const busy=new Set(state.nodes.filter(n=>runForNode(n.id)).map(n=>n.id));
+    for(const select of document.querySelectorAll('select[data-chat-provider]')){const provider=select.dataset.chatProvider,tabs=aiChatTabs[provider]||[],usage=new Map(WorkflowRuntime.tabUsage(state.nodes,provider,tabs,aiChatTargets,busy).map(x=>[x.id,x])),windows=[...new Set(Object.values(aiChatTabs).flat().map(t=>t.windowId??0))].sort((a,b)=>a-b);
+      for(const option of select.options){const tab=tabs.find(t=>String(t.id)===option.value);if(!tab)continue;const stats=usage.get(tab.id);option.textContent=`${stats.count} node chọn · Cửa sổ ${windows.indexOf(tab.windowId??0)+1} · Tab ${Number.isInteger(tab.index)?tab.index+1:tab.id} — ${tab.title||tab.url||'AI'}${stats.busy?' · '+stats.busy+' đang chạy/chờ':''}`;option.title=option.textContent;}
+      if(!select.dataset.pending){const owner=nodeById(select.dataset.chatOwner),target=owner?.data.chatTarget||aiChatTargets[provider],tab=tabs.find(t=>t.id===target?.tabId);if(target&&tab&&chatKey(target.url)===chatKey(tab.url))select.value=String(tab.id);else if(target&&tab)select.value='';}select.title=select.selectedOptions[0]?.textContent||'Chọn cửa sổ AI';
+    }
+  }
+  function chatSelector(provider,current,onChange,ownerId=null){
+    const select=document.createElement('select');select.setAttribute('aria-label','Cuộc trò chuyện AI');select.dataset.chatProvider=provider;if(ownerId){select.dataset.chatOwner=ownerId;select.disabled=!!runForNode(ownerId);}
     const empty=document.createElement('option');empty.value='';empty.textContent='Chọn tab cuộc trò chuyện…';select.append(empty);
     for(const tab of aiChatTabs[provider]||[]){const option=document.createElement('option');option.value=String(tab.id);option.textContent=tab.title||tab.url||`Tab ${tab.id}`;select.append(option);}
     if(current&&!select.querySelector(`option[value="${current.tabId}"]`)){const missing=document.createElement('option');missing.value=String(current.tabId);missing.textContent='Tab đã chọn không còn mở — chọn lại';select.append(missing);}
@@ -143,11 +152,11 @@
     if(stale)empty.textContent='Chat đã đổi — chọn lại hoặc bấm Làm mới';
     select.value=current&&!stale?String(current.tabId):'';
     select.onchange=async()=>{
-      const chosen=select.value;if(!chosen){onChange(null);return;}
+      const chosen=select.value;if(ownerId&&runForNode(ownerId)){setRunStatus('Dừng node trước khi đổi cửa sổ AI.','warn');updateChatUsageLabels();return;}if(!chosen){onChange(null);updateChatUsageLabels();return;}select.dataset.pending='true';
       pendingChatSelections++;try{const tabs=await chrome.tabs.query({url:WorkflowAI.providers[provider].urls});if(select.value!==chosen||!select.isConnected)return;const tab=tabs.find(tab=>String(tab.id)===chosen);if(!tab)throw new Error('Tab đã đóng. Bấm Làm mới danh sách chat.');onChange({tabId:tab.id,url:chatKey(tab.url)});}
-      catch(error){setRunStatus(error.message,'error');}finally{pendingChatSelections--;}
+      catch(error){setRunStatus(error.message,'error');}finally{pendingChatSelections--;delete select.dataset.pending;updateChatUsageLabels();}
     };
-    return select;
+    scheduleChatUsageLabels();return select;
   }
   function chooseChat(provider,tabs,target){
     if(target){const tab=tabs.find(tab=>tab.id===target.tabId);if(!tab)throw new Error('Tab cuộc trò chuyện đã chọn đã đóng. Chọn lại trong node hoặc Kết nối AI.');const actual=chatKey(tab.url),expected=chatKey(target.url);if(expected&&actual!==expected)throw new Error('Tab đã chuyển sang cuộc trò chuyện khác. Bấm “Làm mới danh sách chat” trong node để dùng chat hiện tại, hoặc chọn tab khác.');return tab;}
@@ -219,7 +228,7 @@
     for(const [id,p] of Object.entries(WorkflowAI.providers)){if(!p.types.includes(kind))continue;const option=document.createElement('option');option.value=id;option.textContent=p.name;select.appendChild(option);}
     select.value=n.data.provider||(kind==='text'?'gemini':'muse');
     select.onchange=()=>{n.data.provider=select.value;n.data.apiModel='';n.data.chatTarget=null;scheduleAutoSave();render();};wrap.appendChild(select);
-    const provider=select.value;if(WorkflowAI.providers[provider]?.urls){const target=n.data.chatTarget||aiChatTargets[provider];wrap.appendChild(chatSelector(provider,target,value=>{n.data.chatTarget=value;if(n.data.error?.includes('cuộc trò chuyện')){n.data.error='';n.data.status='idle';}scheduleAutoSave();}));const refresh=document.createElement('button');refresh.type='button';refresh.textContent='Làm mới danh sách chat';refresh.onclick=async()=>{
+    const provider=select.value;if(WorkflowAI.providers[provider]?.urls){const target=n.data.chatTarget||aiChatTargets[provider];wrap.appendChild(chatSelector(provider,target,value=>{n.data.chatTarget=value;if(n.data.error?.includes('cuộc trò chuyện')){n.data.error='';n.data.status='idle';}scheduleAutoSave();},n.id));const refresh=document.createElement('button');refresh.type='button';refresh.textContent='Làm mới danh sách chat';refresh.onclick=async()=>{
       if(runForNode(n.id)){setRunStatus('Dừng lượt đang chạy của node này trước khi đổi cuộc trò chuyện.','warn');return;}
       const selected=n.data.chatTarget||aiChatTargets[provider];await refreshChatTabs();
       const tab=(aiChatTabs[provider]||[]).find(tab=>tab.id===selected?.tabId);
@@ -1386,7 +1395,7 @@
   }
   function render() {
     ensureComponentIds();
-    syncPreviewOutputs();canvas.innerHTML='';state.groups.forEach(group=>canvas.appendChild(renderCanvasGroup(group)));state.notes.forEach(note=>canvas.appendChild(renderCanvasNote(note)));state.nodes.filter(n=>!n.data?.dockOnly).forEach(n => canvas.appendChild(renderNode(n)));applyCanvasTransform();requestAnimationFrame(drawEdges);syncTimelineDock();scheduleAutoSave();
+    syncPreviewOutputs();canvas.innerHTML='';state.groups.forEach(group=>canvas.appendChild(renderCanvasGroup(group)));state.notes.forEach(note=>canvas.appendChild(renderCanvasNote(note)));state.nodes.filter(n=>!n.data?.dockOnly).forEach(n => canvas.appendChild(renderNode(n)));applyCanvasTransform();requestAnimationFrame(drawEdges);syncTimelineDock();updateChatUsageLabels();scheduleAutoSave();
   }
 
   function renderCanvasNote(note){
@@ -2051,6 +2060,8 @@
   });
 
   WorkflowFlowStudio.init({
+    refreshChats:()=>refreshChatTabs(),
+    chatControl:(card,changed)=>{const n=nodeById(card.nodeId),provider=n.data.provider||'muse';if(!WorkflowAI.providers[provider]?.urls)return null;const wrap=document.createElement('div');wrap.className='flow-chat-control';const label=document.createElement('label');label.textContent='Cửa sổ / cuộc trò chuyện AI';label.append(chatSelector(provider,n.data.chatTarget||aiChatTargets[provider],value=>{n.data.chatTarget=value;scheduleAutoSave();updateChatUsageLabels();},n.id));wrap.append(label);const refresh=document.createElement('button');refresh.type='button';refresh.textContent='↻ Làm mới cửa sổ';refresh.onclick=()=>void refreshChatTabs().then(()=>{render();changed();}).catch(e=>setRunStatus(e.message,'error'));wrap.append(refresh);return wrap;},
     master:value=>{if(value===undefined)return state.settings.flowMaster||'';state.settings.flowMaster=value;scheduleAutoSave();},
     cards:()=>Array.isArray(state.settings.flowCards)?state.settings.flowCards.filter(c=>c&&nodeById(c.nodeId)&&nodeById(c.promptId)).slice(0,50):[],
     create:(prompt,options)=>{const cards=Array.isArray(state.settings.flowCards)?state.settings.flowCards.filter(c=>c&&nodeById(c.nodeId)&&nodeById(c.promptId)):[];if(cards.length>=50)throw Error('Tối đa 50 thẻ.');createUndoSnapshot('Thêm thẻ Flow Studio');const id=uid('card'),y=Math.max(40,...state.nodes.map(n=>n.y+650)),p=makeNode('prompt',40,y),n=makeNode(options.mediaType==='video'?'generateVideo':'generateImage',380,y);p.data={text:prompt,flowCardId:id};n.data={...n.data,...options,flowCardId:id,customName:'Flow · Thẻ '+(cards.length+1),status:'idle'};state.nodes.push(p,n);state.edges.push({id:uid('edge'),source:p.id,sourcePort:'text',target:n.id,targetPort:'prompt'});const card={id,nodeId:n.id,promptId:p.id};state.settings.flowCards=[...cards,card];render();scheduleAutoSave();return card;},
