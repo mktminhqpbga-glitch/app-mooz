@@ -82,9 +82,10 @@
     for(const b of remove())b.click();
     await wait(()=>!remove().length&&!attachments(scope).length,10000,signal,'Không dọn được tệp đính kèm cũ. Hãy xóa tệp trong ô chat rồi chạy lại.');
   }
-  async function attach(urls,signal){
+  async function attach(urls,signal,imageCount=0){
     for(let i=0;i<urls.length;i++){
-      const response=await fetch(urls[i],{signal});if(!response.ok)throw new Error('Không đọc được tệp tham chiếu.');const blob=await response.blob();
+      const response=await fetch(urls[i],{signal});if(!response.ok)throw new Error('Không đọc được tệp tham chiếu.');let blob=await response.blob();
+      if(i<imageCount)blob=await WorkflowComposer.prepareImage(blob,signal);
       if(!/^(image|video)\//.test(blob.type)||!blob.size)throw new Error('Tệp tham chiếu không phải ảnh/video có thể đọc.');
       if(blob.size>100*1024*1024)throw new Error('Tệp tải qua tab vượt 100 MB.');
       const scope=root(composer());
@@ -96,10 +97,11 @@
         if(!input()){const menu=buttons().find(b=>/upload files|upload from computer|tải.*máy|tải tệp/i.test(label(b)));if(menu)menu.click();}
       }
       const field=await wait(input,5000,signal,'Không tìm thấy ô tải tệp của AI. Giao diện có thể đã thay đổi.');
-      const before=new Set(attachments(scope));const dt=new DataTransfer();const name=`workflow-${crypto.randomUUID()}.${blob.type.split('/')[1].replace(/[^a-z0-9]/gi,'')}`;uploadedNames.add(name);dt.items.add(new File([blob],name,{type:blob.type}));field.files=dt.files;field.dispatchEvent(new Event('change',{bubbles:true}));
+      const before=new Set(attachments(scope));const dt=new DataTransfer();const name=`workflow-${crypto.randomUUID()}.${blob.type==='image/jpeg'?'jpg':blob.type.split('/')[1].replace(/[^a-z0-9]/gi,'')}`;uploadedNames.add(name);dt.items.add(new File([blob],name,{type:blob.type}));field.files=dt.files;field.dispatchEvent(new Event('change',{bubbles:true}));
       // A FileList only proves selection, not a completed remote upload.
-      await wait(()=>attachments(root(composer())).some(el=>!before.has(el)),120000,signal,'AI chưa xác nhận tệp đính kèm; chưa gửi prompt.');
-      await wait(()=>!uploading(),600000,signal,'Tệp chưa tải xong; chưa gửi prompt.');
+      await wait(()=>{WorkflowComposer.assertUpload(root(composer()));return attachments(root(composer())).some(el=>!before.has(el));},120000,signal,'AI chưa xác nhận tệp đính kèm; chưa gửi prompt.');
+      const appeared=Date.now();
+      await wait(()=>{WorkflowComposer.assertUpload(root(composer()));return !uploading()&&Date.now()-appeared>=1500;},600000,signal,'Tệp chưa tải xong; chưa gửi prompt.');
     }
   }
   async function generate(request,signal){
@@ -135,7 +137,7 @@
       return !ownDraft&&(!!stopped()||freshReplies().length>0);
     };
     report(request,'Đang đưa tài liệu vào cuộc trò chuyện. Chờ tải tệp hoàn tất…');
-    await attach([...(request.referenceImages||[]),...(request.referenceVideos||[])],signal);
+    await attach([...(request.referenceImages||[]),...(request.referenceVideos||[])],signal,(request.referenceImages||[]).length);
     checkConversation();
     if(!submitted()){
       before.clear();for(const el of replies())before.set(el,replyText(el));
@@ -149,15 +151,15 @@
       if(request.stageBeforeSend&&request.mediaType==='text'){
         let lastSecond=-1;
         await wait(()=>{
-          checkConversation();
+          checkConversation();WorkflowComposer.assertUpload(root(composer()));
           const seconds=Math.max(0,Math.ceil((deadline-Date.now())/1000));
           if(seconds!==lastSecond){lastSecond=seconds;report(request,`Tệp đã tải xong. Tự gửi sau ${seconds} giây; có thể bấm Gửi ngay.`);}
           return submitted()||earlySend.has(request.requestId)||seconds===0;
         },Math.max(1000,deadline-Date.now()+2000),signal,'Hết thời gian chuẩn bị gửi.');
       }
-      checkConversation();
+      checkConversation();WorkflowComposer.assertUpload(root(composer()));
       if(!submitted()){
-        const button=await wait(()=>{checkConversation();return submitted()||(!uploading()&&send());},600000,signal,'Không tìm thấy nút Gửi sẵn sàng. Prompt chưa được gửi.');
+        const button=await wait(()=>{checkConversation();if(submitted())return true;WorkflowComposer.assertUpload(root(composer()));return !uploading()&&send();},600000,signal,'Không tìm thấy nút Gửi sẵn sàng. Prompt chưa được gửi.');
         if(button!==true){checkConversation();button.click();report(request,'Đã bấm Gửi. Đang xác nhận AI nhận yêu cầu…');}
       }
     }

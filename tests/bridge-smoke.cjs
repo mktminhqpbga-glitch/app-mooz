@@ -8,7 +8,7 @@ const assert=require('node:assert/strict');
   await page.route('https://gemini.google.com/**',route=>route.fulfill({contentType:'text/html',body:'<main><section><user-query><div class="attachment-container">History file<button type="button" aria-label="Remove attachment" onclick="window.historyDeletes++">X</button></div></user-query><model-response>Old reply</model-response></section><section id="composer-shell"><div class="attachment-container" data-permanent></div><rich-textarea><div contenteditable="true">old draft</div></rich-textarea><input type="file" accept="image/*,video/*"><div class="attachment-container">old file<button type="button" aria-label="Remove attachment">X</button></div><button type="button" aria-label="Send message">Send</button></section></main>'}));
   await page.goto('https://gemini.google.com/app');
   await page.evaluate(()=>{
-   window.messages=[];window.sent=[];window.uploads=[];window.historyDeletes=0;window.nativeEditorInputs=0;
+   const canvas=document.createElement('canvas');canvas.width=canvas.height=8;window.testPNG=canvas.toDataURL();window.messages=[];window.sent=[];window.uploads=[];window.historyDeletes=0;window.nativeEditorInputs=0;
    window.chrome={runtime:{id:'test',onMessage:{addListener:fn=>window.handler=fn}}};
    const form=document.querySelector('#composer-shell'),button=form.querySelector('[aria-label="Send message"]');
    form.addEventListener('input',event=>{if(event.target.isContentEditable){if(event.isTrusted)nativeEditorInputs++;else event.target.replaceChildren();}});
@@ -28,13 +28,13 @@ const assert=require('node:assert/strict');
   await page.addScriptTag({path:require('node:path').resolve(__dirname,'../composer-controls.js')});
   await page.addScriptTag({path:process.env.WORKFLOW_BRIDGE_PATH||require('node:path').resolve(__dirname,'../ai-bridge.js')});
   for(let i=0;i<2;i++){
-   const result=await page.evaluate(async i=>call({type:'WORKFLOW_AI_GENERATE',requestId:'r'+i,mediaType:'text',prompt:'Phân tích video '+i,...(i===0?{referenceVideos:['data:video/mp4;base64,AQID']}:{referenceImages:['data:image/png;base64,AQID']})}),i);
+   const result=await page.evaluate(async i=>call({type:'WORKFLOW_AI_GENERATE',requestId:'r'+i,mediaType:'text',prompt:'Phân tích video '+i,...(i===0?{referenceVideos:['data:video/mp4;base64,AQID']}:{referenceImages:[testPNG]})}),i);
    assert.equal(result.ok,true,JSON.stringify(result));assert.equal(result.text,'Kịch bản mới '+(i+1));
   }
   assert.ok(await page.evaluate(()=>nativeEditorInputs>=2),'Editor must receive native input after upload rerender');
   assert.equal(await page.evaluate(()=>historyDeletes),0,'Must not touch files in chat history');
   const data=await page.evaluate(()=>({sent,uploads}));
-  assert.equal(data.sent.length,2);assert.ok(data.sent[0].text.endsWith('Phân tích video 0'));assert.ok(data.sent[1].text.endsWith('Phân tích video 1'));assert.ok(data.sent.every(s=>s.attachments===1&&!s.uploading&&!s.text.includes('old draft')));assert.deepEqual(data.uploads,[{type:'video/mp4',bytes:[1,2,3]},{type:'image/png',bytes:[1,2,3]}]);
+  assert.equal(data.sent.length,2);assert.ok(data.sent[0].text.endsWith('Phân tích video 0'));assert.ok(data.sent[1].text.endsWith('Phân tích video 1'));assert.ok(data.sent.every(s=>s.attachments===1&&!s.uploading&&!s.text.includes('old draft')));assert.deepEqual(data.uploads,[{type:'video/mp4',bytes:[1,2,3]},{type:'image/png',bytes:await page.evaluate(()=>[...Uint8Array.from(atob(testPNG.split(',')[1]),c=>c.charCodeAt(0))])}]);
   // Cancellation interrupts reply polling and does not submit another prompt.
   await page.evaluate(()=>{document.querySelector('[aria-label="Send message"]').onclick=()=>{sent.push({text:'cancel'});document.querySelector('[contenteditable]').replaceChildren();window.stopClicks=0;const stop=document.createElement('button');stop.type='button';stop.setAttribute('aria-label','Stop response');stop.onclick=()=>{stopClicks++;stop.remove();};document.body.appendChild(stop);};});
   const pending=page.evaluate(()=>call({type:'WORKFLOW_AI_GENERATE',requestId:'cancel',mediaType:'text',prompt:'Stop me'}));

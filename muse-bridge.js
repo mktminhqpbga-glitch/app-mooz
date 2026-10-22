@@ -157,6 +157,7 @@
       throwIfAborted();
       // A user may press Send while our selector is still waiting. Never send twice.
       if(activity()){submitted=true;break;}
+      WorkflowComposer.assertUpload(composerScope(findComposer()));
       sendButton=WorkflowComposer.findSend(composerScope(findComposer()));
       if(sendButton)break;
       const scope=composerScope(findComposer());
@@ -237,9 +238,10 @@
     const rawFiles=await Promise.all(references.map(async(reference,index)=>{
       const url=typeof reference==='string'?reference:reference?.url;
       if(!url)throw new Error(`Reference image ${index+1} has no URL.`);
-      const response=await fetch(url,{credentials:'include'});
+      const response=await fetch(url,{credentials:'include',signal});
       if(!response.ok)throw new Error(`Could not load reference image ${index+1} (${response.status}).`);
-      const blob=await response.blob();
+      let blob=await response.blob();
+      blob=await WorkflowComposer.prepareImage(blob,signal);
       if(!blob.type.startsWith('image/')||!blob.size)throw new Error(`Reference ${index+1} is not a readable image.`);
       const extension=(blob.type.split('/')[1]||'png').replace('jpeg','jpg').replace(/[^a-z0-9]/gi,'')||'png';
       return new File([blob],`museflow-reference-${String(index+1).padStart(2,'0')}.${extension}`,{type:blob.type});
@@ -286,7 +288,7 @@
         const key=previewKey(el),src=el.matches('img')?(el.currentSrc||el.src||''):key.split('|',1)[0];
         return !previousPreviews.has(key)&&Boolean(src);
       });
-      while(Date.now()<deadline){if(signal?.aborted)throw new DOMException('Generation stopped by user.','AbortError');if(previewSeen()&&!composerScope(findComposer()).querySelector('[role="progressbar"],[aria-busy="true"]')&&Date.now()-started>1500)return;await delay(160,signal);}
+      while(Date.now()<deadline){WorkflowComposer.assertUpload(composerScope(findComposer()));if(signal?.aborted)throw new DOMException('Generation stopped by user.','AbortError');if(previewSeen()&&!composerScope(findComposer()).querySelector('[role="progressbar"],[aria-busy="true"]')&&Date.now()-started>1500)return;await delay(160,signal);}
       throw new Error(`Muse did not confirm ${batch.length} reference image${batch.length===1?'':'s'} in the chat composer (upload input accepts: ${input.accept||'any file'}); the prompt was not submitted.`);
     };
     if(files.length>1&&!input.multiple){

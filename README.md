@@ -1,4 +1,4 @@
-# Workflow · MuseFlow 0.22.0
+# Workflow · MuseFlow 0.22.1
 
 Extension Chrome/Edge dựa trên [MuseFlow / 26Flow](https://github.com/bynne2602/museflow), mở rộng canvas/timeline để làm việc với Muse.ai, Gemini, ChatGPT và API Google, OpenAI, fal.ai. Giữ nguyên giấy phép GPL-2.0-or-later của nguồn gốc và thông báo FFmpeg đi kèm.
 
@@ -240,3 +240,9 @@ Flow Studio có bộ chọn cửa sổ ngay trong từng thẻ và nút làm m�
 Kéo chọn các node nguồn trên vùng trống của canvas, giữ **Shift** rồi bấm **cổng đầu vào** của node đích. Ví dụ: nhiều ảnh → Tham chiếu, nhiều prompt → Prompt, nhiều video → Các video của Output. Giữ nguyên cách Shift-click node để chọn thêm từng node.
 
 Chỉ nối nguồn tương thích, không thêm dây trùng hoặc tạo vòng lặp. Nguồn có nhiều đầu ra phù hợp cần nối thủ công để chọn đúng đầu ra. Cổng chỉ nhận một nguồn không nhận cả nhóm và không bị thay dây cũ. Dừng node đích đang chạy trước khi nối. Cả lượt nối có thể hoàn tác bằng **Ctrl+Z**; nối dây không tự chạy AI.
+
+### 0.22.1 — kiểm tra ảnh và lỗi tải tệp qua tab AI
+
+ChatGPT, Gemini và Muse kiểm tra ảnh có giải mã được trước khi đính kèm; nhận diện PNG/JPEG/GIF/WebP bằng dữ liệu thực và sửa MIME sai mà giữ nguyên nội dung. Các định dạng khác trình duyệt đọc được được chuyển thành PNG, giữ kích thước và nền trong suốt. Ảnh hỏng, trên 20 MB hoặc trên 40 triệu điểm ảnh bị chặn với thông báo cụ thể. Video không được chuyển thành ảnh.
+
+Kiểm tra thông báo lỗi tải tệp trong vùng nhập chat trong khi chờ tải và trước khi gửi; không coi thẻ lỗi là tải thành công, không tự thử gửi lại. Vẫn cần kiểm tra trên tài khoản thật để xác định lỗi máy chủ, mạng hoặc giới hạn của từng nền tảng. Sau khi cập nhật extension, tải lại các tab AI đang mở để dùng bộ kết nối mới.

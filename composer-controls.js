@@ -2,6 +2,42 @@
 (() => {
   const visible=el=>!!el?.getClientRects().length&&getComputedStyle(el).visibility!=='hidden';
   function label(el){return [el.getAttribute('aria-label'),el.getAttribute('data-testid'),el.getAttribute('title'),el.textContent,...(el.getAttribute('aria-labelledby')||'').split(/\s+/).map(id=>document.getElementById(id)?.textContent)].filter(Boolean).join(' ');}
+  // Verify actual image bytes before handing them to any site's upload control.
+  async function prepareImage(blob,signal){
+    if(signal?.aborted)throw new DOMException('Đã dừng.','AbortError');
+    if(!blob.size||blob.size>20*1024*1024)throw new Error('Ảnh trống hoặc vượt 20 MB; chưa tải lên AI.');
+    const bytes=new Uint8Array(await blob.slice(0,16).arrayBuffer());
+    const starts=values=>values.every((value,i)=>bytes[i]===value);
+    const ascii=(start,end)=>String.fromCharCode(...bytes.slice(start,end));
+    const type=starts([137,80,78,71,13,10,26,10])?'image/png':starts([255,216,255])?'image/jpeg':/^GIF8[79]a$/.test(ascii(0,6))?'image/gif':ascii(0,4)==='RIFF'&&ascii(8,12)==='WEBP'?'image/webp':null;
+    const source=new Blob([blob],{type:type||blob.type}),url=URL.createObjectURL(source),image=new Image();
+    try{
+      await new Promise((resolve,reject)=>{
+        const done=error=>{clearTimeout(timer);signal?.removeEventListener('abort',abort);image.onload=image.onerror=null;error?reject(error):resolve();};
+        const abort=()=>done(new DOMException('Đã dừng.','AbortError'));
+        const timer=setTimeout(()=>done(new Error('Quá thời gian đọc ảnh; chưa tải lên AI.')),20000);
+        image.onload=()=>done();image.onerror=()=>done(new Error('Không giải mã được ảnh. Tệp hỏng hoặc định dạng chưa được trình duyệt hỗ trợ; hãy chọn lại ảnh PNG/JPG.'));
+        signal?.addEventListener('abort',abort,{once:true});if(signal?.aborted){abort();return;}image.src=url;
+      });
+      if(!image.naturalWidth||!image.naturalHeight||image.naturalWidth*image.naturalHeight>40000000)throw new Error('Ảnh không hợp lệ hoặc vượt 40 triệu điểm ảnh; hãy giảm kích thước trước khi tải.');
+      // Preserve supported images byte-for-byte, including animation and transparency.
+      if(type)return source;
+      const canvas=document.createElement('canvas');canvas.width=image.naturalWidth;canvas.height=image.naturalHeight;canvas.getContext('2d').drawImage(image,0,0);
+      const png=await new Promise((resolve,reject)=>{try{canvas.toBlob(value=>value?resolve(value):reject(new Error('Không chuyển được ảnh sang PNG.')),'image/png');}catch(error){reject(error);}});
+      if(png.size>20*1024*1024)throw new Error('Ảnh sau chuyển sang PNG vượt 20 MB; hãy giảm kích thước trước khi tải.');
+      if(signal?.aborted)throw new DOMException('Đã dừng.','AbortError');return png;
+    }finally{image.src='';URL.revokeObjectURL(url);}
+  }
+  function assertUpload(scope){
+    if(!scope)return;
+    const explicit='[role="alert"],[data-state="error"],[data-status="error"],[data-testid*="upload-error"],[data-testid*="attachment-error"],[aria-invalid="true"]';
+    const failed=/upload failed|failed to upload|error uploading|could(?:n['’]t| not) upload|unsupported (?:file|image)|file too large|tải(?: lên)?[^.\n]{0,60}(?:thất bại|không thành công)|không thể tải|tệp[^.\n]{0,40}(?:quá lớn|không hỗ trợ)/i;
+    for(const el of scope.querySelectorAll(explicit+',span,div,[title],[aria-label]')){
+      if(!visible(el)||el.isContentEditable||el.closest('[contenteditable="true"]')||el.querySelector('textarea,[contenteditable="true"]'))continue;
+      const text=[el.getAttribute('aria-label'),el.getAttribute('title'),el.childElementCount?'':el.textContent].filter(Boolean).join(' ').trim();
+      if((el.matches('[data-state="error"],[data-status="error"],[data-testid*="upload-error"],[data-testid*="attachment-error"],[aria-invalid="true"]')&&text)||/^(?:error|upload error|lỗi tải (?:tệp|ảnh))$/i.test(text)||failed.test(text))throw new Error('AI báo lỗi tải tệp: '+(text||'Tải lên thất bại').slice(0,220)+'. Prompt chưa được gửi.');
+    }
+  }
   function upArrow(svg){
     const segments=[];
     for(const line of svg.querySelectorAll('line'))segments.push(['x1','y1','x2','y2'].map(attr=>Number(line.getAttribute(attr))));
@@ -83,5 +119,5 @@
       return false;
     });
   }
-  globalThis.WorkflowComposer={findSend,removeButtons,scopeFor,describe,bindTarget,setPreferred};
+  globalThis.WorkflowComposer={prepareImage,assertUpload,findSend,removeButtons,scopeFor,describe,bindTarget,setPreferred};
 })();
