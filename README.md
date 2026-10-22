@@ -1,4 +1,4 @@
-# Workflow · MuseFlow 0.19.0
+# Workflow · MuseFlow 0.20.0
 
 Extension Chrome/Edge dựa trên [MuseFlow / 26Flow](https://github.com/bynne2602/museflow), mở rộng canvas/timeline để làm việc với Muse.ai, Gemini, ChatGPT và API Google, OpenAI, fal.ai. Giữ nguyên giấy phép GPL-2.0-or-later của nguồn gốc và thông báo FFmpeg đi kèm.
 
@@ -224,3 +224,7 @@ Thêm node **Output · Xuất video cuối** vào menu thêm node và menu kéo 
 Mở **Kho tài nguyên → Kho prompt** để dùng **Nhập kho prompt** và **Xuất kho prompt**. Xuất toàn bộ kho ra JSON (kể cả khi đang tìm kiếm), giữ nguyên dấu tiếng Việt và xuống dòng. Nhập JSON gộp với kho hiện tại, giữ mục cũ, bỏ qua mục trùng cả tên lẫn nội dung; cùng tên nhưng khác nội dung được giữ riêng. Tệp lỗi hoặc vượt tổng 500 prompt không làm thay đổi kho.
 
 Định dạng xuất: `{ "format": "workflow-prompt-library", "version": 1, "prompts": [{ "name": "Tên", "content": "Câu lệnh" }] }` (có thêm ngày xuất). Cũng nhận mảng `{name,content}` trực tiếp. Tệp nhập tối đa 64 MB; mỗi tên tối đa 100 ký tự và nội dung tối đa 20.000 ký tự. Chỉ xuất dữ liệu Kho prompt; không kèm workflow, media hay khóa API.
+
+### 0.20.0 — Tạo hàng loạt bằng thẻ Flow Studio
+
+Trong nhóm **Tạo node**, bấm **Tạo hàng loạt** để mở Flow Studio. Thẻ tổng nhận mỗi prompt trên một dòng; bấm Tạo thẻ từ prompt để tạo các thẻ riêng. Từng thẻ có ảnh tham chiếu, prompt, AI, tỷ lệ, chế độ ảnh/video và nút tạo/dừng riêng. Kéo tay nắm ⠿ để đổi bố cục; Tạo tất cả gửi các thẻ độc lập qua hàng đợi theo tab và khoảng cách gửi 5 giây hiện có. Một thẻ lỗi không chặn các thẻ khác. [Hướng dẫn](docs/FLOW-STUDIO.md).

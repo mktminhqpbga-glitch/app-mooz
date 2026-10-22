@@ -1,0 +1,2 @@
+import test from 'node:test';import assert from 'node:assert/strict';import '../flow-studio.js';
+test('master card uses one nonempty line per prompt and preserves duplicate lines',()=>{assert.deepEqual(WorkflowFlowStudio.lines('  Cảnh một\r\n\nCảnh hai\nCảnh một '),['Cảnh một','Cảnh hai','Cảnh một']);assert.deepEqual(WorkflowFlowStudio.lines(' \n'),[]);assert.throws(()=>WorkflowFlowStudio.lines(Array(51).fill('prompt').join('\n')));assert.throws(()=>WorkflowFlowStudio.lines('x'.repeat(20001)));});
