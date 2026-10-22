@@ -225,3 +225,7 @@ body{grid-template-rows:58px auto minmax(0,1fr) auto}
 @media(max-width:620px){.toolbar.compact-toolbar{height:52px;min-height:52px;max-height:52px;padding:0 7px;gap:5px}.compact-toolbar .brand-name{display:none}.compact-toolbar .brand{margin:0;gap:4px}.compact-toolbar .brand-logo{width:25px;height:25px}.compact-toolbar .brand-version{font-size:8px;padding:2px 4px}.compact-tools{gap:1px}.toolbar .compact-toggle{width:32px;height:34px;padding:6px}.compact-toggle svg{width:19px;height:19px}.toolbar .compact-run{font-size:10px;padding:7px 8px}}
 body{grid-template-columns:minmax(0,1fr)}.toolbar.compact-toolbar{min-width:0;width:100%}
 .node .provider-controls>button,.node .node-recovery button{background:#222735;color:#c8cfdf;border:1px solid #3a4255;border-radius:7px;padding:7px 9px;font-size:11px;cursor:pointer}.node .provider-controls>button:hover,.node .node-recovery button:hover{background:#30364a}.node .provider-controls>button:disabled,.node .node-recovery button:disabled{opacity:.5;cursor:default}
+
+.output-order{padding-left:22px;max-height:240px;overflow:auto;font-size:11px}.output-order li{padding:5px 0}.output-order li span{display:inline-block;width:calc(100% - 58px);vertical-align:middle;overflow-wrap:anywhere}.output-order button{background:#282d3e;color:#d9d8ef;border:1px solid #454a61;border-radius:4px;margin-left:3px;cursor:pointer}.output-order button:disabled{opacity:.3}
+
+.final-output-body{max-height:610px;overflow-y:auto;overscroll-behavior:contain}

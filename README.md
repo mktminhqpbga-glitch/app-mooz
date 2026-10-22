@@ -1,4 +1,4 @@
-# Workflow · MuseFlow 0.17.0
+# Workflow · MuseFlow 0.18.0
 
 Extension Chrome/Edge dựa trên [MuseFlow / 26Flow](https://github.com/bynne2602/museflow), mở rộng canvas/timeline để làm việc với Muse.ai, Gemini, ChatGPT và API Google, OpenAI, fal.ai. Giữ nguyên giấy phép GPL-2.0-or-later của nguồn gốc và thông báo FFmpeg đi kèm.
 
@@ -214,3 +214,7 @@ Kiểm thử: hàng đợi/cooldown và hủy tác vụ; Run All thực tế đo
 Gom thao tác vào sáu nút có tooltip: Tạo node, Kho tài nguyên, Workflow, Kết nối AI, Cập nhật, Dọn canvas. Chỉ mở tùy chọn khi bấm; bấm lại, bấm ra ngoài hoặc Esc để đóng. Mỗi lần chỉ mở một nhóm. Run All/Dừng tất cả luôn hiện. Các nút chức năng và dữ liệu hiện có được giữ nguyên; Sắp xếp node và Lưu nằm trong nhóm Workflow, Xóa prompt nằm trong Dọn canvas. Hỗ trợ bàn phím và màn hình nhỏ; thanh công cụ giữ một hàng.
 
 Kiểm thử Chromium: menu đóng/mở, phím điều hướng, lưu/tạo node/mở thư viện/cài đặt, menu thêm node và bố cục ở 320, 390, 620, 900, 1500 px.
+
+### 0.18.0 — Output: ghép cảnh, chèn MP3 và tự xuất
+
+Thêm node **Output · Xuất video cuối** vào menu thêm node và menu kéo từ cổng video/âm thanh. Nối nhiều video, nhận thứ tự timeline hoặc số cảnh/tên, chỉnh bằng ↑ ↓; nhận MP3 từ Âm thanh đầu vào hoặc chọn/thả tệp trực tiếp. Run All chạy Output sau các video nguồn, ghép MP4, thay/trộn âm thanh và tự tải kết quả khi hoàn tất. Sửa nguồn/thứ tự sẽ khóa tải bản cũ cho đến khi xuất lại. [Hướng dẫn](docs/FINAL-OUTPUT.md).

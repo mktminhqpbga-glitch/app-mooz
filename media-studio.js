@@ -2,6 +2,7 @@
 (()=>{
  const video={id:'video',label:'Video',type:'video'},audio={id:'audio',label:'Âm thanh',type:'audio'},text={id:'text',label:'Văn bản',type:'text'};
  const definitions={
+  finalOutput:{title:'Output · Xuất video cuối',inputs:[{...video,label:'Các video'},{...audio,label:'Nhạc / lời đọc'}],outputs:[video]},
   audioInput:{title:'Âm thanh đầu vào',outputs:[audio]},
   audioMix:{title:'Âm thanh / nhạc nền',inputs:[video,audio],outputs:[video]},
   subtitles:{title:'Phụ đề',inputs:[video,text],outputs:[video,text]},
@@ -11,7 +12,7 @@
   speed:{title:'Điều chỉnh tốc độ',inputs:[video],outputs:[video]},
   workflowTemplate:{title:'Mẫu workflow',inputs:[],outputs:[]}
  };
- const effects=new Set(['audioMix','subtitles','voiceover','voiceSync','transition','speed']);
+ const effects=new Set(['finalOutput','audioMix','subtitles','voiceover','voiceSync','transition','speed']);
  const finite=(value,min,max,label)=>{const n=Number(value);if(!Number.isFinite(n)||n<min||n>max)throw Error(`${label}: cần số từ ${min} đến ${max}.`);return n;};
  function parseSrt(value){
   const raw=String(value||'').replace(/^\uFEFF/,'').replace(/\r/g,'').trim();if(!raw)throw Error('Chưa có phụ đề SRT.');
@@ -82,5 +83,6 @@
    const result=await ffmpeg.readFile('/output.mp4','binary',{signal});if(!result.length)throw Error('Video kết quả trống.');return {blob:new Blob([result],{type:'video/mp4'}),duration:outputDuration,width:w,height:h,report};
   }catch(error){if(signal?.aborted)throw new DOMException('Đã dừng.','AbortError');throw error;}finally{signal?.removeEventListener('abort',abort);ffmpeg?.terminate();release();}
  }
- globalThis.WorkflowStudio={definitions,effects,finite,parseSrt,srt,tempo,sceneDurations,speak,transcribe,process};
+ function outputOrder(ids,nodes,timeline=[],manual=[]){const known=new Map(nodes.map((n,i)=>[n.id,{node:n,index:i}])),collator=new Intl.Collator('vi',{numeric:true,sensitivity:'base'}),priority=manual.length?manual:timeline;return [...new Set(ids)].sort((a,b)=>{const ai=priority.indexOf(a),bi=priority.indexOf(b);if(ai>=0||bi>=0)return (ai<0?Infinity:ai)-(bi<0?Infinity:bi);const an=known.get(a),bn=known.get(b),label=n=>n?.node.data?.sceneLabel||n?.node.data?.customName||n?.node.data?.fileName||'';if(label(an)&&label(bn))return collator.compare(label(an),label(bn))||an.index-bn.index;return (an?.index??Infinity)-(bn?.index??Infinity);});}
+ globalThis.WorkflowStudio={outputOrder,definitions,effects,finite,parseSrt,srt,tempo,sceneDurations,speak,transcribe,process};
 })();
