@@ -1,4 +1,4 @@
-# Workflow · MuseFlow 0.21.0
+# Workflow · MuseFlow 0.22.0
 
 Extension Chrome/Edge dựa trên [MuseFlow / 26Flow](https://github.com/bynne2602/museflow), mở rộng canvas/timeline để làm việc với Muse.ai, Gemini, ChatGPT và API Google, OpenAI, fal.ai. Giữ nguyên giấy phép GPL-2.0-or-later của nguồn gốc và thông báo FFmpeg đi kèm.
 
@@ -234,3 +234,9 @@ Trong nhóm **Tạo node**, bấm **Tạo hàng loạt** để mở Flow Studio.
 Danh sách chọn chat hiển thị **3 node chọn · Cửa sổ 1 · Tab 2 — Tên chat**, áp dụng Gemini, ChatGPT và Muse. Tính các node tạo ảnh/video/văn bản và Kịch bản tổng, gồm cả thẻ Flow Studio; node không chọn riêng được tính theo tab mặc định (hoặc tab duy nhất). Mỗi node chỉ tính một lần. Số node đang chạy/chờ hiện riêng; khóa đổi cửa sổ của node đang chạy.
 
 Flow Studio có bộ chọn cửa sổ ngay trong từng thẻ và nút làm mới để nhận các tab vừa mở. Số lượng cập nhật khi đổi AI/chat, thêm/xóa node hoặc đổi tab mặc định. Các cửa sổ được đánh số theo danh sách cửa sổ có tab AI; Tab là vị trí trong cửa sổ Chrome. Đây là số node được gán, không phải số lần gọi AI hay mức tải bên trong tài khoản Gemini.
+
+### 0.22.0 — nối nhanh nhiều node
+
+Kéo chọn các node nguồn trên vùng trống của canvas, giữ **Shift** rồi bấm **cổng đầu vào** của node đích. Ví dụ: nhiều ảnh → Tham chiếu, nhiều prompt → Prompt, nhiều video → Các video của Output. Giữ nguyên cách Shift-click node để chọn thêm từng node.
+
+Chỉ nối nguồn tương thích, không thêm dây trùng hoặc tạo vòng lặp. Nguồn có nhiều đầu ra phù hợp cần nối thủ công để chọn đúng đầu ra. Cổng chỉ nhận một nguồn không nhận cả nhóm và không bị thay dây cũ. Dừng node đích đang chạy trước khi nối. Cả lượt nối có thể hoàn tác bằng **Ctrl+Z**; nối dây không tự chạy AI.

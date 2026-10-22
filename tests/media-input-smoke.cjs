@@ -30,7 +30,7 @@ const assert=require('node:assert/strict');
  await transfer('.node[data-id="vid"] .node-body','video');await page.waitForSelector('.node[data-id="vid"] video');
  await transfer('.node[data-id="img"] .node-body','video');await page.waitForFunction(()=>document.querySelector('#runStatus').textContent.includes('Sai loại tệp'));assert.equal(await page.locator('.node[data-id="img"] img').getAttribute('src'),png);
  await transfer('.node[data-id="img"] .node-body','image','paste');await page.waitForFunction(()=>document.querySelector('#runStatus').textContent.includes('Đã thêm 1 tệp'));
- await transfer('.node[data-id="gen"] .port.in[data-port="reference"]','image','drop',2);await page.waitForFunction(()=>document.querySelector('.node[data-id="gen"] .port.in[data-port="reference"]')?.title.includes('2 connected'));
+ await transfer('.node[data-id="gen"] .port.in[data-port="reference"]','image','drop',2);await page.waitForFunction(()=>document.querySelector('.node[data-id="gen"] .port.in[data-port="reference"]')?.title.includes('2 nguồn đã nối'));
  await transfer('.node[data-id="gen"] .port.in[data-port="video"]','video');await page.waitForFunction(()=>document.querySelectorAll('.node video').length===2);
  const before=await page.locator('.node').count();await transfer('.node[data-id="gen"] textarea','image','paste');await page.waitForTimeout(100);assert.equal(await page.locator('.node').count(),before,'Paste in text editor must stay native');
  await transfer('#timelineDock','image','drop',2);await page.waitForFunction(()=>document.querySelectorAll('.dock-clip').length===2);
