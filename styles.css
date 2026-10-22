@@ -229,3 +229,4 @@ body{grid-template-columns:minmax(0,1fr)}.toolbar.compact-toolbar{min-width:0;wi
 .output-order{padding-left:22px;max-height:240px;overflow:auto;font-size:11px}.output-order li{padding:5px 0}.output-order li span{display:inline-block;width:calc(100% - 58px);vertical-align:middle;overflow-wrap:anywhere}.output-order button{background:#282d3e;color:#d9d8ef;border:1px solid #454a61;border-radius:4px;margin-left:3px;cursor:pointer}.output-order button:disabled{opacity:.3}
 
 .final-output-body{max-height:610px;overflow-y:auto;overscroll-behavior:contain}
+.library-dialog input[hidden]{display:none!important}.library-hint{font-size:11px;line-height:1.5;color:#9da5b8}

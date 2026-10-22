@@ -1,4 +1,4 @@
-# Workflow · MuseFlow 0.18.0
+# Workflow · MuseFlow 0.19.0
 
 Extension Chrome/Edge dựa trên [MuseFlow / 26Flow](https://github.com/bynne2602/museflow), mở rộng canvas/timeline để làm việc với Muse.ai, Gemini, ChatGPT và API Google, OpenAI, fal.ai. Giữ nguyên giấy phép GPL-2.0-or-later của nguồn gốc và thông báo FFmpeg đi kèm.
 
@@ -218,3 +218,9 @@ Kiểm thử Chromium: menu đóng/mở, phím điều hướng, lưu/tạo node
 ### 0.18.0 — Output: ghép cảnh, chèn MP3 và tự xuất
 
 Thêm node **Output · Xuất video cuối** vào menu thêm node và menu kéo từ cổng video/âm thanh. Nối nhiều video, nhận thứ tự timeline hoặc số cảnh/tên, chỉnh bằng ↑ ↓; nhận MP3 từ Âm thanh đầu vào hoặc chọn/thả tệp trực tiếp. Run All chạy Output sau các video nguồn, ghép MP4, thay/trộn âm thanh và tự tải kết quả khi hoàn tất. Sửa nguồn/thứ tự sẽ khóa tải bản cũ cho đến khi xuất lại. [Hướng dẫn](docs/FINAL-OUTPUT.md).
+
+### 0.19.0 — nhập và xuất Kho prompt
+
+Mở **Kho tài nguyên → Kho prompt** để dùng **Nhập kho prompt** và **Xuất kho prompt**. Xuất toàn bộ kho ra JSON (kể cả khi đang tìm kiếm), giữ nguyên dấu tiếng Việt và xuống dòng. Nhập JSON gộp với kho hiện tại, giữ mục cũ, bỏ qua mục trùng cả tên lẫn nội dung; cùng tên nhưng khác nội dung được giữ riêng. Tệp lỗi hoặc vượt tổng 500 prompt không làm thay đổi kho.
+
+Định dạng xuất: `{ "format": "workflow-prompt-library", "version": 1, "prompts": [{ "name": "Tên", "content": "Câu lệnh" }] }` (có thêm ngày xuất). Cũng nhận mảng `{name,content}` trực tiếp. Tệp nhập tối đa 64 MB; mỗi tên tối đa 100 ký tự và nội dung tối đa 20.000 ký tự. Chỉ xuất dữ liệu Kho prompt; không kèm workflow, media hay khóa API.
