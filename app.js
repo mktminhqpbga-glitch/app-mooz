@@ -484,10 +484,63 @@
     while(pending.length){const current=pending.shift();if(!current||seen.has(current.id))continue;seen.add(current.id);if(current.type==='masterScript'){masters.set(current.id,current);continue;}if(!['actScript','partScript','segmentScript','storyPrompt'].includes(current.type))continue;for(const e of getIncoming(current.id,current.type==='storyPrompt'?'context':'text'))pending.push(sourceFor(e));}
     return masters.size===1?[...masters.values()][0]:null;
   }
+  let storyBatch=null;
+  const storyFresh=n=>!!n?.data.asset?.url&&!n.data.storyDirty;
+  const storyApproved=n=>storyFresh(n)&&!!n.data.asset.id&&n.data.storyApprovedAssetId===n.data.asset.id;
+  function storyScope(id){const n=nodeById(id);if(!n)return [];if(n.type==='masterScript')return state.nodes.filter(item=>item.data.storyMasterId===n.id);const key={actScript:'storyActId',partScript:'storyPartId',segmentScript:'storySegmentId'}[n.type];return key?state.nodes.filter(item=>item.data[key]===n.id):[n];}
+  function storyNeedsApproval(video){const master=nodeById(video.data.storyMasterId);if(!master?.data.reviewImages)return '';const images=getIncoming(video.id,'reference').map(sourceFor).filter(n=>n?.type==='generateImage');if(!images.length)return 'Chưa nối ảnh cảnh vào video.';return images.every(storyApproved)?'':'Tạo và duyệt ảnh cảnh trước khi tạo video.';}
+  async function storyPreflight(id,imagesOnly=false){
+    const target=nodeById(id);if(!target)return [{id,message:'Node đã bị xóa.'}];
+    const issues=[],add=(n,message)=>issues.push({id:n.id,message}),tabs=new Map();
+    let order;try{order=requiredNodeOrder(id);}catch(error){return [{id,message:error.message}];}
+    for(const key of order){const n=nodeById(key);if(n?.type==='imageInput'&&!n.data.localDataUrl&&!n.data.asset?.url)add(n,'Chưa chọn tệp ảnh tham chiếu.');if(!n||!['generateImage','generateVideo','generateText'].includes(n.type)||imagesOnly&&n.type!=='generateImage')continue;
+      if(n.id!==id&&storyFresh(n))continue;
+      try{
+        if(!resolvePrompt(n.id).trim())add(n,'Thiếu prompt. Nối hoặc nhập yêu cầu của cảnh.');
+        const provider=n.data.provider||(n.type==='generateText'?'gemini':'muse'),definition=WorkflowAI.providers[provider],kind=n.type==='generateImage'?'image':n.type==='generateVideo'?'video':'text';
+        if(!definition?.types.includes(kind)){add(n,'AI đã chọn không hỗ trợ '+kind+'.');continue;}
+        if(definition.urls){if(!tabs.has(provider))tabs.set(provider,await chrome.tabs.query({url:definition.urls}));if(!tabs.get(provider).length)throw Error('Chưa mở tab '+definition.name+'.');chooseChat(provider,tabs.get(provider),n.data.chatTarget||aiChatTargets[provider]);}
+        else if(!aiKeys[provider])add(n,'Chưa nhập API key cho '+definition.name+'.');
+        for(const e of getIncoming(n.id,'reference')){const source=sourceFor(e);if(!source)add(n,'Ảnh tham chiếu đã bị xóa.');else if(source.type==='imageInput'&&!source.data.localDataUrl&&!source.data.asset?.url)add(source,'Chưa chọn tệp ảnh tham chiếu.');else if(source.type==='characterLock'&&!source.data.lockedAsset?.url)add(source,'Chưa khóa ảnh nhân vật chuẩn.');}
+        if(n.type==='generateVideo'){
+          if(!getIncoming(n.id,'reference').length)add(n,'Thiếu ảnh khung đầu của cảnh.');
+          const approval=storyNeedsApproval(n);if(approval)add(n,approval);
+          WorkflowAI.validate(provider,{mediaType:'video',duration:n.data.duration,referenceImages:getIncoming(n.id,'reference').map(()=> 'pending'),referenceVideos:resolveVideos(n.id)});
+        }
+        if(provider==='openai'&&kind==='image'&&getIncoming(n.id,'reference').length)add(n,'OpenAI API tạo ảnh chưa hỗ trợ ảnh tham chiếu; chọn Gemini hoặc tab AI.');
+      }catch(error){add(n,error.message);}
+    }
+    return issues.filter((issue,i,list)=>list.findIndex(other=>other.id===issue.id&&other.message===issue.message)===i);
+  }
+  function storyApprove(ids){
+    const images=ids.map(nodeById).filter(n=>n?.type==='generateImage');if(!images.length)throw Error('Chưa có ảnh để duyệt.');
+    if(images.some(n=>!storyFresh(n)||runForNode(n.id)||autoPlan?.ids.has(n.id)))throw Error('Ảnh chưa hoàn tất hoặc đã thay đổi. Tạo lại trước khi duyệt.');
+    createUndoSnapshot('Duyệt ảnh cảnh');for(const n of images)n.data.storyApprovedAssetId=n.data.asset.id;render();scheduleAutoSave();
+  }
+  async function storyRunImages(scopeId,forceId){
+    if(storyBatch)throw Error('Đang tạo ảnh cho một phạm vi khác.');
+    const images=forceId?[nodeById(forceId)]:storyScope(scopeId).filter(n=>n.type==='generateImage'&&!storyFresh(n));
+    if(!images.length)return;
+    let issues=[];for(const n of images){if(!n||n.type!=='generateImage')throw Error('Node ảnh đã bị xóa.');issues.push(...await storyPreflight(n.id,true));}
+    if(issues.length)return {issues};
+    const batch={scopeId,current:null,stopped:false};storyBatch=batch;
+    try{for(const n of images){if(batch.stopped)break;if(nodeById(n.id)!==n)throw Error('Dự án đã thay đổi; dừng tạo ảnh.');batch.current=n.id;await execute(n.id);if(!storyFresh(n)||n.data.status!=='success')break;}}
+    finally{storyBatch=null;render();}
+    return {issues:[]};
+  }
+  function storyDashboardData(scopeId){
+    const roots=state.nodes.filter(n=>n.type==='masterScript'),groups=state.nodes.filter(n=>['masterScript','actScript','partScript','segmentScript'].includes(n.type));
+    const scope=nodeById(scopeId)||roots[0],nodes=scope?storyScope(scope.id):[],scenes=nodes.filter(n=>n.type==='generateImage').map(image=>({image,promptId:getIncoming(image.id,'prompt')[0]?.source,video:nodes.find(n=>n.type==='generateVideo'&&getIncoming(n.id,'reference').some(e=>e.source===image.id)),fresh:storyFresh(image),approved:storyApproved(image),busy:!!runForNode(image.id)}));
+    return {scope,groups,scenes,downloadReady:storyFresh(nodeById(scope?.data.assemblyId)),review:!!(scope?.type==='masterScript'?scope:storyMasterFor(scope))?.data.reviewImages,busy:!!storyBatch||nodes.some(n=>!!runForNode(n.id)),batch:!!storyBatch};
+  }
+
   function renderStoryNode(node,body){
     body.classList.add('story-node-body');
     const help=value=>{const p=document.createElement('p');p.textContent=value;body.append(p);},button=(name,action,disabled=false)=>studioButton(body,name,action,{disabled});
+    if(['masterScript','actScript','partScript','segmentScript'].includes(node.type))button('Bảng điều khiển kịch bản',()=>WorkflowStoryDashboard.open(node.id));
     if(node.type==='masterScript'){
+      if(node.data.reviewImages===undefined)node.data.reviewImages=!state.nodes.some(n=>n.data.storyMasterId===node.id);
+      toolField(body,node,'reviewImages','Duyệt ảnh trước khi tạo video',{type:'checkbox'}).disabled=state.isRunning;
       const field=toolField(body,node,'script','Kịch bản tổng',{type:'textarea'});field.disabled=state.isRunning;field.placeholder='HỒI 1: Tên hồi\nCẢNH 1 (0:00–0:06): Tên cảnh\nPrompt video: …';
       if(state.isRunning)help('Đang có tác vụ chạy. Dừng hoặc đợi hoàn tất để nhập và tạo cấu trúc kịch bản.');
       help('1. Nhập kịch bản hoặc điền mẫu. 2. Với văn xuôi, dùng AI chia hồi/cảnh. 3. Tạo node rồi chạy từng đoạn, phần hoặc hồi. Không cần tự thêm các node cấp dưới.');
@@ -1702,6 +1755,7 @@
 
   async function execute(targetId=null,{again=false,generationOrder=null,sinceSequence=completionSequence}={}) {
     if(!targetId&&activeRuns.size){setRunStatus('Có nhánh đang chạy. Bấm Chạy trên node độc lập để chạy thêm.','warn');return;}
+    if(targetId&&nodeById(targetId)?.data.storyMasterId){const issues=await storyPreflight(targetId);if(issues.length){WorkflowStoryDashboard.showIssues(targetId,issues);setRunStatus('Cần kiểm tra '+issues.length+' mục trước khi chạy.','warn');return;}}
     // Keep runtime graph references valid even if an older saved workflow or
     // an interrupted UI action left stale node IDs behind.
     normalizeSavedGraph();
@@ -1766,6 +1820,8 @@
         }
         if(['generateImage','generateVideo','generateText'].includes(n.type)){
           const isVideo=n.type==='generateVideo';
+          if(isVideo&&n.data.storyMasterId){const approval=storyNeedsApproval(n);if(approval)throw Error(approval);}
+          if(!isVideo)delete n.data.storyApprovedAssetId;
           generationStep++;
           const prompt=resolvePrompt(n.id); if(!String(prompt).trim()) throw new Error(`${nodeDefs[n.type].title} ${n.id}: connect a Prompt, Text Append, or Text Merge node first.`);
           const negativePrompt=resolveNegativePrompt(n.id);
@@ -2065,7 +2121,7 @@
   const isTextEntry=target=>Boolean(target?.closest?.('textarea,input,select,[contenteditable="true"]'));
   const isTextEditor=target=>Boolean(target?.closest?.('textarea,input:not([type="checkbox"]):not([type="number"]):not([type="file"]):not([type="range"]):not([type="color"]),[contenteditable="true"]'));
   document.addEventListener('keydown',e=>{
-    if(e.target.closest?.('#flowStudioDialog'))return;
+    if(e.target.closest?.('#flowStudioDialog,#storyDashboardDialog'))return;
     if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'&&!e.shiftKey){
       if(isTextEditor(e.target)){
         pendingNativeUndoTarget=e.target;setTimeout(()=>{if(pendingNativeUndoTarget===e.target)pendingNativeUndoTarget=null;},0);return;
@@ -2085,7 +2141,7 @@
     if(!e.repeat&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&!isTextEntry(e.target)&&e.key.toLowerCase()==='g'){e.preventDefault();setGroupDrawMode(!state.groupDrawMode);}
     if(!e.repeat&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&!isTextEntry(e.target)&&e.key.toLowerCase()==='t'){e.preventDefault();setGroupDrawMode(false);const rect=$('#viewport').getBoundingClientRect();addTextNote((rect.width/2-state.panX)/state.zoom-130,(rect.height/2-state.panY)/state.zoom-80);}
   },true);
-  document.addEventListener('keyup',e=>{if(e.target.closest?.('#flowStudioDialog'))return;if(e.key.toLowerCase()==='z'&&pendingNativeUndoTarget===e.target)pendingNativeUndoTarget=null;if(e.code==='Space'&&!isTextEntry(e.target)){e.preventDefault();state.spaceDown=false;applyCanvasTransform();}},true);
+  document.addEventListener('keyup',e=>{if(e.target.closest?.('#flowStudioDialog,#storyDashboardDialog'))return;if(e.key.toLowerCase()==='z'&&pendingNativeUndoTarget===e.target)pendingNativeUndoTarget=null;if(e.code==='Space'&&!isTextEntry(e.target)){e.preventDefault();state.spaceDown=false;applyCanvasTransform();}},true);
   window.addEventListener('blur',()=>{state.spaceDown=false;endPan();endSelectionMarquee();cancelGroupMarquee();applyCanvasTransform();});
 
   // Keep the session indicator fresh when Muse is opened/reloaded after the canvas.
@@ -2113,5 +2169,14 @@
     focus:card=>{selectNode(card.nodeId);storyFocus(nodeById(card.nodeId));}
   });
 
+  WorkflowStoryDashboard.bind({
+    read:storyDashboardData,
+    checkScope:async id=>{const scope=nodeById(id);if(!scope)return [{id,message:'Chọn kịch bản trước.'}];if(scope.type!=='masterScript')return storyPreflight(scope.data.assemblyId||id);const issues=[];for(const act of (scope.data.actIds||[]).map(nodeById).filter(Boolean))issues.push(...await storyPreflight(act.data.assemblyId));return issues.length?issues:scope.data.actIds?.length?[]:[{id,message:'Nhập kịch bản và tạo node cho các hồi trước.'}];},
+    images:storyRunImages,approve:storyApprove,
+    run:async id=>{const scope=nodeById(id),owners=scope?.type==='masterScript'?(scope.data.actIds||[]).map(nodeById):[scope];for(const owner of owners){if(!owner?.data.assemblyId)throw Error('Chưa tạo cấu trúc.');await execute(owner.data.assemblyId);if(!storyFresh(nodeById(owner.data.assemblyId)))break;}},
+    stop:()=>{if(storyBatch){storyBatch.stopped=true;if(storyBatch.current)stopGeneration(storyBatch.current);}},
+    focus:id=>storyFocus(nodeById(id)),download:id=>storyDownload(nodeById(nodeById(id)?.data.assemblyId)),
+    name:n=>n.data.customName||nodeDefs[n.type]?.title||n.id
+  });
   loadState(); detectMuse();applyCanvasTransform();
 })();

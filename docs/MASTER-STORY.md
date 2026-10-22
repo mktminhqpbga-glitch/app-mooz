@@ -59,3 +59,14 @@ Hồi/Chương, Phần và Đoạn là các cấp quản lý của bản dựng.
 Từ 0.22.2, node chưa khởi tạo có hướng dẫn và nút **Tạo cấu trúc từ kịch bản tổng** nếu đã nối về một Kịch bản tổng duy nhất. Nhập kịch bản đúng mẫu ở node tổng trước khi bấm. Hệ thống dùng lại những node còn trống nối đúng chuỗi Tổng → Hồi → Phần → Đoạn → Yêu cầu cảnh; các node có nội dung/kết quả được giữ nguyên. Không cần tự tạo các node cấp dưới. **Về kịch bản tổng** tìm được nguồn qua dây nối; không có nguồn thì có nút thêm node tổng.
 
 Sau khi tạo cấu trúc, bấm **Chạy đoạn này** để kiểm tra một đoạn trước, rồi chạy phần hoặc hồi. Nút tải chỉ mở sau khi ghép video thành công. Nếu đang có tác vụ chạy, dừng hoặc chờ hoàn tất trước khi nhập/tạo cấu trúc. Toàn bộ lượt tạo có thể hoàn tác bằng Ctrl+Z.
+
+## Bảng điều khiển và duyệt ảnh (0.23.0)
+
+Sau khi tạo cấu trúc, mở Bảng điều khiển kịch bản từ menu Tạo node hoặc ngay trong Tổng/Hồi/Phần/Đoạn. Chọn phạm vi để làm từng đoạn trước, tránh mở toàn bộ canvas.
+
+1. **Kiểm tra trước khi chạy**: kiểm tra prompt, tệp tham chiếu, tab được chọn và khóa API. Đi tới đúng node từ danh sách lỗi để sửa. Đây là kiểm tra cấu hình, không gửi prompt và không kiểm tra được hạn mức/dịch vụ hoặc đăng nhập thực tế.
+2. **Tạo ảnh còn thiếu / đã đổi**: chỉ tạo ảnh; giữ ảnh đã có còn hợp lệ. Lượt ảnh dùng hàng đợi và khoảng cách gửi AI hiện tại. Có thể dừng lượt này bằng Dừng tạo ảnh.
+3. Xem ảnh từng cảnh, bấm **Duyệt ảnh** hoặc **Duyệt tất cả ảnh hiện tại**. Dùng Tạo lại ảnh nếu chưa đạt; nút Sửa prompt đưa tới đúng prompt của ảnh.
+4. **Tạo video và ghép**: chỉ chạy khi không còn mục cần kiểm tra; ghép theo cấu trúc đã tạo. Phạm vi Tổng dựng lần lượt các hồi, không nối tất cả hồi thành một phim. Chọn từng hồi/phần/đoạn để tải video đầu ra.
+
+Bản dựng mới mặc định bật Duyệt ảnh trước khi tạo video. Tạo lại hoặc sửa prompt/nguồn ảnh yêu cầu duyệt lại; thay prompt chuyển động đơn thuần giữ lượt duyệt ảnh nếu ảnh không đổi. Trạng thái duyệt được lưu và xuất cùng workflow. Bản dựng cũ không có tùy chọn giữ chế độ tự chạy như trước; có thể bật ở Kịch bản tổng. Đóng bảng không dừng tác vụ đang chạy; các nút Dừng trên canvas vẫn hoạt động.

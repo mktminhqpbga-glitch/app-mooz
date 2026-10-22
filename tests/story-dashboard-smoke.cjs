@@ -1,0 +1,56 @@
+const {toolbarAction}=require('./toolbar-actions.cjs');
+/* UI integration harness: real Chromium DOM with simulated chrome.* APIs.
+   Does not claim a signed-in provider or a load-unpacked installation was tested. */
+const {chromium}=require('playwright');
+const {createServer}=require('node:http');
+const {readFile}=require('node:fs/promises');
+const path=require('node:path');
+const assert=require('node:assert/strict');
+(async()=>{
+ const base=path.resolve(__dirname,'..');
+ const server=createServer(async(req,res)=>{try{const pathname=new URL(req.url,'http://localhost').pathname;const file=path.resolve(base,'.'+pathname);if(!file.startsWith(base+path.sep))throw Error();const data=await readFile(file);res.setHeader('Content-Type',file.endsWith('.js')||file.endsWith('.mjs')?'text/javascript':file.endsWith('.svg')?'image/svg+xml':file.endsWith('.css')?'text/css':file.endsWith('.html')?'text/html':'application/octet-stream');res.end(data);}catch{res.writeHead(404);res.end();}});
+ await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+ const origin=`http://127.0.0.1:${server.address().port}`;
+ const browser=await chromium.launch({executablePath:'/usr/bin/chromium',headless:true,args:['--no-sandbox']});
+ try{
+ const page=await browser.newPage({viewport:{width:1500,height:950}});const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept());
+ await page.route('https://**/*',route=>route.fulfill({status:404,body:''}));
+ await page.addInitScript(({sessionFail})=>{
+  const store=JSON.parse(sessionStorage.getItem('story-test-store')||'{}');window.savedRevision=0;window.testStore=store;window.testMessages=[];window.testDownloads=[];window.testTargets=[];
+  const storage={get:async key=>({[key]:structuredClone(store[key])}),set:async value=>{Object.assign(store,structuredClone(value));sessionStorage.setItem('story-test-store',JSON.stringify(store));if(value.museflow)window.savedRevision++;}};
+  window.chrome={downloads:{download:async options=>{testDownloads.push(options);return 1;}},runtime:{id:'test',getManifest:()=>({version:'0.6.0'}),getURL:p=>location.origin+'/'+p},storage:{local:storage,session:{get:async()=>{if(sessionFail)throw new Error('session unavailable');return {};},set:async()=>{}}},scripting:{executeScript:async options=>options.func&&window.testPickerResult?[{result:window.testPickerResult}]:[]},tabs:{update:async id=>{window.testTabActivated=id;return {id};},query:async()=>window.testTabs||[{id:1,active:true,url:'https://gemini.google.com/app'}],sendMessage:async(id,msg)=>{window.testMessages.push(msg);window.testTargets.push({id,type:msg.type});if(msg.type==='WORKFLOW_AI_CHECK'&&window.testRequireActivation&&window.testTabActivated!==id)return {ok:true,composer:false,signedIn:false};if(msg.type==='WORKFLOW_AI_CHECK'&&window.testUnavailableIds?.includes(id))return {ok:true,composer:false,signedIn:false};if(msg.type==='WORKFLOW_AI_USE_RESULT'){window.testPending?.({ok:true,text:msg.text});return {ok:true};}if(msg.type==='WORKFLOW_AI_STOP'){window.testPending?.({ok:false,error:'Stopped'});return {ok:true};}if(window.testDelayNext&&msg.type==='WORKFLOW_AI_GENERATE'){window.testDelayNext=false;return new Promise(resolve=>{window.testPending=resolve;});}if(msg.mediaType==='video'&&window.testVideoURL)return {ok:true,url:window.testVideoURL};if(msg.mediaType==='image')return {ok:true,url:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII='};if(msg.type.includes('CHECK'))return {ok:true,signedIn:true,composer:true};return {ok:true,text:'Kịch bản mới từ video gốc'};},create:async()=>{},onUpdated:{addListener(){}},onCreated:{addListener(){}}}};
+ },{sessionFail:!!process.env.FAIL_SESSION_STORAGE});
+ await page.goto(origin+'/app.html');await page.waitForSelector('.node');assert.equal(await page.locator('#buyCoffeeBtn,#donationModal').count(),0);await page.keyboard.press('Escape');
+
+
+ const script='HỒI 1: Một buổi sáng\nPHẦN 1: Ra đường\nĐOẠN 1: Mở đầu\nCẢNH 1 (0:00–0:04): Cửa nhà\nPrompt ảnh: Người đàn ông trước cửa nhà.\nPrompt video: Anh bước ra ngoài.\nCẢNH 2 (0:04–0:08): Con đường\nPrompt ảnh: Người đàn ông trên đường.\nPrompt video: Anh bước về phía trước.';
+ await page.locator('#workflowFileInput').setInputFiles({name:'desk.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify({nodes:[{id:'master',type:'masterScript',x:20,y:20,data:{script,storyImageProvider:'gemini',storyVideoProvider:'muse'}}],edges:[]}))});await page.waitForSelector('.node[data-id="master"]');
+ await page.locator('.node[data-id="master"] button').filter({hasText:'Tạo node cho các hồi'}).evaluate(b=>b.click());await page.waitForFunction(()=>document.querySelectorAll('.node-title').length>10);
+ async function graph(){const before=await page.evaluate(()=>savedRevision);await toolbarAction(page,'#saveBtn');await page.waitForFunction(before=>savedRevision>before,before);return page.evaluate(()=>structuredClone(testStore.museflow));}
+ let saved=await graph();assert.equal(saved.nodes.find(n=>n.id==='master').data.reviewImages,true);
+ const images=saved.nodes.filter(n=>n.type==='generateImage'),act=saved.nodes.find(n=>n.type==='actScript');
+ await toolbarAction(page,'#storyDashboardBtn');const desk=page.locator('#storyDashboardDialog');await desk.waitFor({state:'visible'});assert.equal(await desk.locator('.story-scene').count(),2);await desk.getByRole('button',{name:'Đóng',exact:true}).focus();await page.keyboard.press('Delete');assert.equal(await page.locator('.node-title').count(),saved.nodes.filter(n=>!n.data.dockOnly).length,'Dialog keyboard must not delete canvas nodes');
+ await desk.getByRole('button',{name:'Tạo video và ghép',exact:true}).click();await page.waitForFunction(()=>document.querySelector('#storyDashboardDialog [data-issues]').textContent.includes('duyệt ảnh'));
+ assert.equal(await page.evaluate(()=>testMessages.filter(m=>m.mediaType).length),0,'Preflight cannot submit AI work');
+ await page.evaluate(()=>{window.testTabs=[];});await desk.getByRole('button',{name:'Tạo ảnh còn thiếu / đã đổi',exact:true}).click();await page.waitForFunction(()=>document.querySelector('#storyDashboardDialog [data-issues]').textContent.includes('Chưa mở tab'));
+ assert.equal(await page.evaluate(()=>testMessages.filter(m=>m.mediaType).length),0);
+ await page.evaluate(()=>{window.testTabs=undefined;});
+ await desk.getByRole('button',{name:'Tạo ảnh còn thiếu / đã đổi',exact:true}).click();await page.waitForFunction(()=>document.querySelector('#storyDashboardDialog [data-summary]').textContent.includes('Ảnh 2/2'),null,{timeout:45000});
+ await page.waitForFunction(()=>!document.querySelector('#storyDashboardDialog [data-actions] button').disabled);
+ assert.equal(await page.evaluate(()=>testMessages.filter(m=>m.mediaType==='image').length),2);assert.equal(await page.evaluate(()=>testMessages.filter(m=>m.mediaType==='video').length),0);
+ await desk.getByRole('button',{name:'Duyệt tất cả ảnh hiện tại',exact:true}).click();await page.waitForFunction(()=>document.querySelector('#storyDashboardDialog [data-summary]').textContent.includes('Đã duyệt 2/2'));
+ await desk.getByRole('button',{name:'Đóng',exact:true}).click();saved=await graph();assert.ok(saved.nodes.filter(n=>n.type==='generateImage').every(n=>n.data.storyApprovedAssetId===n.data.asset.id));
+ // Approval is persisted, rather than tied to the current dialog instance.
+ await page.reload();await page.waitForSelector('.node[data-id="master"]');await toolbarAction(page,'#storyDashboardBtn');await page.waitForFunction(()=>document.querySelector('#storyDashboardDialog [data-summary]').textContent.includes('Đã duyệt 2/2'));
+ const card=desk.locator(`.story-scene[data-image="${images[0].id}"]`);await card.getByRole('button',{name:'Tạo lại ảnh',exact:true}).click();await page.waitForFunction(()=>document.querySelector('#storyDashboardDialog [data-summary]').textContent.includes('Đã duyệt 1/2'),null,{timeout:30000});await page.waitForFunction(()=>!document.querySelector('#storyDashboardDialog [data-actions] button').disabled);
+ await desk.getByRole('button',{name:'Tạo video và ghép',exact:true}).click();await page.waitForFunction(()=>document.querySelector('#storyDashboardDialog [data-issues]').textContent.includes('duyệt ảnh'));assert.equal(await page.evaluate(()=>testMessages.filter(m=>m.mediaType==='video').length),0);
+ await card.getByRole('button',{name:'Duyệt ảnh',exact:true}).click();await page.waitForFunction(()=>document.querySelector('#storyDashboardDialog [data-summary]').textContent.includes('Đã duyệt 2/2'));
+ // Use a real short MP4 for the assembly path; the AI response is simulated.
+ const {execFileSync}=require('node:child_process');const video='data:video/mp4;base64,'+execFileSync('ffmpeg',['-v','error','-f','lavfi','-i','color=c=red:s=160x90:r=24:d=4','-f','lavfi','-i','sine=frequency=440:duration=4','-shortest','-c:v','libx264','-threads','1','-pix_fmt','yuv420p','-c:a','aac','-f','mp4','-movflags','frag_keyframe+empty_moov','pipe:1']).toString('base64');await page.evaluate(url=>{window.testVideoURL=url;},video);
+ await desk.locator('select').selectOption(act.id);await desk.getByRole('button',{name:'Tạo video và ghép',exact:true}).click();await page.waitForFunction(()=>document.querySelector('#storyDashboardDialog [data-summary]').textContent.includes('Video 2/2'),null,{timeout:90000});await page.waitForFunction(()=>!document.querySelector('#storyDashboardDialog [data-actions] button').disabled,null,{timeout:90000});
+ assert.equal(await page.evaluate(()=>testMessages.filter(m=>m.mediaType==='video').length),2);assert.equal(await desk.getByRole('button',{name:'Tải video phạm vi này',exact:true}).isEnabled(),true);
+ await desk.getByRole('button',{name:'Đóng',exact:true}).click();saved=await graph();const output=saved.nodes.find(n=>n.id===act.data.assemblyId).data.asset;assert.equal(output.kind,'video');assert.ok(output.url);const source=await page.locator(`.node[data-id="${act.data.assemblyId}"] video`).getAttribute('src');const bytes=await page.evaluate(async url=>[...new Uint8Array(await(await fetch(url)).arrayBuffer())],source);const info=JSON.parse(execFileSync('ffprobe',['-v','error','-show_entries','stream=codec_type:format=duration','-of','json','pipe:0'],{input:Buffer.from(bytes),encoding:'utf8'}));assert.ok(Math.abs(+info.format.duration-8)<.5);assert.ok(info.streams.some(stream=>stream.codec_type==='audio'));
+ const promptId=saved.edges.find(e=>e.target===images[0].id&&e.targetPort==='prompt').source;await page.locator(`.node[data-id="${promptId}"] textarea`).fill('Đổi yêu cầu ảnh đầu tiên');await toolbarAction(page,'#storyDashboardBtn');await page.waitForFunction(()=>document.querySelector('#storyDashboardDialog [data-summary]').textContent.includes('Đã duyệt 1/2'));assert.deepEqual(errors,[]);
+ console.log('PASS story dashboard: scope and progress, no-cost preflight, missing-tab errors, images-only stage, persisted approval, regeneration revokes approval, video stage blocks unapproved images, real MP4 assembly after review. AI providers simulated.');
+ }finally{await browser.close();server.close();}
+})().catch(error=>{console.error(error);process.exitCode=1});
