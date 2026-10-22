@@ -1,4 +1,4 @@
-# Workflow · MuseFlow 0.16.0
+# Workflow · MuseFlow 0.16.1
 
 Extension Chrome/Edge dựa trên [MuseFlow / 26Flow](https://github.com/bynne2602/museflow), mở rộng canvas/timeline để làm việc với Muse.ai, Gemini, ChatGPT và API Google, OpenAI, fal.ai. Giữ nguyên giấy phép GPL-2.0-or-later của nguồn gốc và thông báo FFmpeg đi kèm.
 
@@ -200,3 +200,11 @@ Bấm **⇄ Sắp xếp node** trên thanh công cụ để xếp từ trái san
 ### 0.16.0 — kịch bản tổng, dựng từng hồi/chương
 
 Thêm cấu trúc hồi/chương → phần → đoạn → cảnh; tạo ảnh nhân vật/bối cảnh rồi tạo video chuyển động từ ảnh. Chạy và tải MP4 từng cấp, dùng lại cảnh đã có, chỉ dựng lại nhánh bị chỉnh. Xem [hướng dẫn và giới hạn video dài](docs/MASTER-STORY.md).
+
+### 0.16.1 — khoảng chờ 5 giây, giữ video lệch tỷ lệ, xóa prompt
+
+- Các lần gửi yêu cầu tạo văn bản/ảnh/video cách nhau tối thiểu 5 giây; cùng tab còn đợi ít nhất 5 giây sau khi lượt trước trả về. Có thể dừng trong lúc đợi; các tab khác vẫn xử lý đồng thời sau khi được gửi.
+- Video AI trả tỷ lệ khác yêu cầu được tự đặt vào khung đã chọn bằng viền đệm, không cắt/méo hình. Ví dụ Muse trả 480×480 khi chọn 9:16: Workflow tạo MP4 480×854, giữ âm thanh và thời lượng, báo rõ đã thêm viền. Đây là đổi khung cục bộ, không làm AI tạo thêm nội dung dọc hoặc nâng chi tiết nguồn. FFmpeg có giới hạn tệp 100 MB và bộ nhớ trình duyệt. Ảnh lệch tỷ lệ được giữ lại kèm thông báo.
+- **Xóa prompt canvas** xóa nội dung các node Prompt, Negative Prompt, Yêu cầu cảnh và Text Append; giữ node, dây nối, media, kịch bản tổng, kết quả văn bản AI và Kho prompt. Dừng chạy trước khi xóa; Ctrl+Z để hoàn tác. Các kết quả dựng phụ thuộc bị đánh dấu cần cập nhật.
+
+Kiểm thử: hàng đợi/cooldown và hủy tác vụ; Run All thực tế đo thời gian gửi; xóa/hoàn tác không mất Kho prompt; Muse DOM mô phỏng; video vuông được chuyển 9:16 bằng FFmpeg WASM thật, kiểm tra hình/viền/âm thanh/thời lượng. Phản hồi AI được mô phỏng, chưa xác nhận tài khoản Muse thật.

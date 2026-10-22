@@ -13,5 +13,10 @@
    try{if(waiting)onWait?.();await waitFor(previous,signal);if(signal?.aborted)throw aborted();return release;}catch(error){release();throw error;}
   }};
  }
- globalThis.WorkflowRuntime={waitFor,queue};
+ function pause(ms,signal){return new Promise((resolve,reject)=>{if(signal?.aborted){reject(aborted());return;}const stop=()=>{clearTimeout(timer);signal?.removeEventListener('abort',stop);reject(aborted());},timer=setTimeout(()=>{signal?.removeEventListener('abort',stop);resolve();},ms);signal?.addEventListener('abort',stop,{once:true});});}
+ function pacer(interval=5000,{now=()=>Date.now(),sleep=pause}={}){
+  const mutex=queue(),completed=new Map();let started=-Infinity;
+  return {async wait(key,signal,onWait){const release=await mutex.acquire('dispatch',signal,()=>onWait?.(interval));try{const remaining=Math.max(started+interval,(completed.get(key)??-Infinity)+interval)-now();if(remaining>0){onWait?.(remaining);await sleep(remaining,signal);}if(signal?.aborted)throw aborted();started=now();let done=false;return ()=>{if(!done){done=true;completed.set(key,now());}};}finally{release();}}};
+ }
+ globalThis.WorkflowRuntime={waitFor,queue,pacer};
 })();

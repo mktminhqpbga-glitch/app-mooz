@@ -262,6 +262,13 @@
     if(message.requestId)aiTabs.set(message.requestId,chosen.id);signal?.addEventListener('abort',cancel,{once:true});
     try{const reply=await sendMuseTabMessage(chosen.id,message,signal);const latest=chrome.tabs.get?await chrome.tabs.get(chosen.id):chosen;return {...reply,chatTarget:{tabId:chosen.id,url:chatKey(latest.url)}};}finally{signal?.removeEventListener('abort',cancel);aiTabs.delete(message.requestId);}
   }
+  function clearCanvasPrompts(){
+    if(state.isRunning)throw Error('Dừng các lượt chạy trước khi xóa prompt.');
+    const prompts=state.nodes.filter(n=>['prompt','negativePrompt','storyPrompt','textAppend'].includes(n.type)&&String(n.data.text||'').length);
+    if(!prompts.length){setRunStatus('Canvas không có nội dung prompt để xóa.','ok');return;}
+    createUndoSnapshot('Xóa nội dung tất cả prompt trên canvas');for(const node of prompts){node.data.text='';storyDirtyAfter(node.id,true);}render();scheduleAutoSave();setRunStatus('Đã xóa nội dung '+prompts.length+' prompt trên canvas; giữ node, kết nối và Kho prompt. Ctrl+Z để hoàn tác.','ok');
+  }
+  const generationPacer=WorkflowRuntime.pacer(5000);
   async function generateWithProvider(n,request,signal){
     if(pendingChatSelections)throw new Error('Đang cập nhật cuộc trò chuyện đã chọn. Đợi một chút rồi chạy lại.');
     const references=[],canonical=new Map();
@@ -271,21 +278,21 @@
     const provider=n.data.provider||(n.type==='generateText'?'gemini':'muse');request={...request,chatTarget:n.data.chatTarget||aiChatTargets[provider]};
     WorkflowAI.validate(provider,request);
     providerJobs.set(request.requestId,{provider,phase:'queued'});renderHealth();
-    let release;try{
+    let release,finishPacing,paceKey='provider:'+provider;const pace=async()=>{finishPacing=await generationPacer.wait(paceKey,signal,ms=>progressNode(n,'Đợi '+Math.ceil(ms/1000)+' giây trước khi gửi lượt AI tiếp theo…'));};try{
     if(['muse','chatgpt','gemini'].includes(provider)){
       const tabs=await chrome.tabs.query({url:WorkflowAI.providers[provider].urls});const tab=chooseChat(provider,tabs,request.chatTarget);
-      request={...request,chatTarget:{tabId:tab.id,url:chatKey(tab.url)}};
+      request={...request,chatTarget:{tabId:tab.id,url:chatKey(tab.url)}};paceKey='tab:'+tab.id;
       release=await tabQueue.acquire('tab:'+tab.id,signal,()=>progressNode(n,'Đang đợi lượt dùng tab AI này. Bạn có thể chạy nhánh ở tab khác.'));
     }
     providerJobs.get(request.requestId).phase='busy';renderHealth();
     if(release){const tabs=await chrome.tabs.query({url:WorkflowAI.providers[provider].urls});chooseChat(provider,tabs,request.chatTarget);if(signal?.aborted)throw new DOMException('Đã dừng.','AbortError');}
-    if(provider==='muse'){if(request.referenceVideos?.length)throw new Error('Muse bridge chưa hỗ trợ video tham chiếu. Chọn fal.ai cho Motion Control.');const referenceImages=await Promise.all((request.referenceImages||[]).map(url=>blobAsDataUrlFromUrl(url)));const reply=await museTabMessage({...request,referenceImages,type:'MUSEFLOW_GENERATE'},preferredMuseTabId,signal);if(!reply?.ok){setProviderHealth(provider,failureHealth(reply?.error),reply?.error||'Muse không trả kết quả.',true);return reply;}setProviderHealth(provider,'ready','Đã nhận kết quả');return reply;}
+    if(provider==='muse'){if(request.referenceVideos?.length)throw new Error('Muse bridge chưa hỗ trợ video tham chiếu. Chọn fal.ai cho Motion Control.');const referenceImages=await Promise.all((request.referenceImages||[]).map(url=>blobAsDataUrlFromUrl(url)));await pace();const reply=await museTabMessage({...request,referenceImages,type:'MUSEFLOW_GENERATE'},preferredMuseTabId,signal);if(!reply?.ok){setProviderHealth(provider,failureHealth(reply?.error),reply?.error||'Muse không trả kết quả.',true);return reply;}setProviderHealth(provider,'ready','Đã nhận kết quả');return reply;}
     if(provider==='chatgpt'||provider==='gemini'){
       const safe={...request};safe.referenceImages=await Promise.all((request.referenceImages||[]).map(url=>blobAsDataUrlFromUrl(url)));safe.referenceVideos=await Promise.all((request.referenceVideos||[]).map(url=>blobAsDataUrlFromUrl(url)));
-      try{const reply=await otherTabMessage(provider,{...safe,type:'WORKFLOW_AI_GENERATE'},signal);if(!reply?.ok){setProviderHealth(provider,failureHealth(reply?.error),reply?.error||'Chưa nhận kết quả.',true);return reply;}setProviderHealth(provider,'ready','Đã nhận kết quả');if(reply.chatTarget){n.data.chatTarget=reply.chatTarget;if(aiChatTargets[provider]?.tabId===reply.chatTarget.tabId)aiChatTargets[provider]=reply.chatTarget;}return reply;}finally{aiTabs.delete(request.requestId);}
+      try{await pace();const reply=await otherTabMessage(provider,{...safe,type:'WORKFLOW_AI_GENERATE'},signal);if(!reply?.ok){setProviderHealth(provider,failureHealth(reply?.error),reply?.error||'Chưa nhận kết quả.',true);return reply;}setProviderHealth(provider,'ready','Đã nhận kết quả');if(reply.chatTarget){n.data.chatTarget=reply.chatTarget;if(aiChatTargets[provider]?.tabId===reply.chatTarget.tabId)aiChatTargets[provider]=reply.chatTarget;}return reply;}finally{aiTabs.delete(request.requestId);}
     }
-    const result=await WorkflowAI.api(provider,request,aiKeys[provider],signal);setProviderHealth(provider,'ready','API vừa trả kết quả');return result;
-    }catch(error){if(error.name!=='AbortError')setProviderHealth(provider,failureHealth(error.message),error.message,true);throw error;}finally{release?.();providerJobs.delete(request.requestId);renderHealth();if(signal?.aborted)void refreshProviderHealth(provider,true);}
+    await pace();const result=await WorkflowAI.api(provider,request,aiKeys[provider],signal);setProviderHealth(provider,'ready','API vừa trả kết quả');return result;
+    }catch(error){if(error.name!=='AbortError')setProviderHealth(provider,failureHealth(error.message),error.message,true);throw error;}finally{finishPacing?.();release?.();providerJobs.delete(request.requestId);renderHealth();if(signal?.aborted)void refreshProviderHealth(provider,true);}
   }
   async function blobAsDataUrlFromUrl(url){if(url.startsWith('data:'))return url;const r=await fetch(url);if(!r.ok)throw new Error('Không tải được tệp nguồn để chuyển sang AI.');return blobAsDataUrl(await r.blob());}
   async function refreshConnections(){
@@ -1717,17 +1724,22 @@
             if(abortController.signal.aborted)throw new DOMException('Generation stopped by user.','AbortError');
             if(!reply?.ok)throw new Error(reply?.error||`Muse.ai did not return a generated ${isVideo?'video':'image'}.`);
             const kind=isVideo?'video':'image';
-            const url=isVideo?reply.url:await persistImage(reply.url);
+            let url=isVideo?reply.url:await persistImage(reply.url);
             if(!url)throw new Error(`Muse.ai returned an empty ${kind} attachment.`);
-            const intrinsic=await mediaDimensions(url,isVideo?'video':'image');
+            let intrinsic=await mediaDimensions(url,isVideo?'video':'image');
             const actualRatio=intrinsic.width&&intrinsic.height?intrinsic.width/intrinsic.height:0;
             const expectedRatio=ratioValue(n.data.size);
-            const sizeMismatch=actualRatio&&Math.abs(Math.log(actualRatio/expectedRatio))>0.09;
-            if(sizeMismatch&&(n.data.provider||'muse')==='muse')throw new Error(`Muse returned ${intrinsic.width} × ${intrinsic.height}, which does not match the requested ${n.data.size} aspect ratio. The old result was cleared; retry generation after checking the Muse output.`);
+            let sizeMismatch=actualRatio&&Math.abs(Math.log(actualRatio/expectedRatio))>0.09;
+            let framingNote='';
+            if(sizeMismatch&&isVideo){
+              const sourceWidth=intrinsic.width,sourceHeight=intrinsic.height;progressNode(n,`AI trả ${sourceWidth} × ${sourceHeight}; đang đặt vào khung ${n.data.size}, giữ nguyên hình…`);
+              const framed=await WorkflowStudio.process('frameFit',{videos:[{url,kind:'video'}],settings:{size:n.data.size}},abortController.signal,text=>progressNode(n,text));url=await blobAsDataUrl(framed.blob);intrinsic=await mediaDimensions(url,'video');sizeMismatch=Math.abs(Math.log((intrinsic.width/intrinsic.height)/expectedRatio))>.09;if(sizeMismatch)throw Error('Chưa chuyển được video về tỷ lệ yêu cầu.');framingNote=`AI trả ${sourceWidth} × ${sourceHeight}; đã thêm viền đệm để xuất ${n.data.size}, giữ toàn bộ hình gốc.`;
+            }
             n.data.asset={id:uid('asset'),kind,url,name:`${isVideo?'Video':'Image'} ${n.id}`,sourceNodeId:n.id,width:intrinsic.width,height:intrinsic.height,requestedSize:n.data.size,sizeMismatch,actualDuration:intrinsic.duration||null}; n.data.status='success';
-            if(isVideo&&intrinsic.duration&&Math.abs(intrinsic.duration-Number(n.data.duration))>1)n.data.error=`Yêu cầu ${n.data.duration}s, AI trả về ${intrinsic.duration.toFixed(1)}s. Thời lượng clip phụ thuộc dịch vụ.`;
+            if(framingNote)n.data.error=framingNote;
+            if(isVideo&&intrinsic.duration&&Math.abs(intrinsic.duration-Number(n.data.duration))>1)n.data.error=[framingNote,`Yêu cầu ${n.data.duration}s, AI trả về ${intrinsic.duration.toFixed(1)}s. Thời lượng clip phụ thuộc dịch vụ.`].filter(Boolean).join(' ');
             if(isVideo)n.data.endFrame=await extractVideoEndFrame(url);
-            if(sizeMismatch)n.data.error=`Requested ${n.data.size}, received ${intrinsic.width}×${intrinsic.height}. Muse returned a different aspect ratio.`;
+            if(sizeMismatch)n.data.error=`Yêu cầu ${n.data.size}, AI trả ${intrinsic.width}×${intrinsic.height}. Kết quả được giữ lại với tỷ lệ thực tế.`;
             n.data.storyDirty=false;storyDirtyAfter(n.id,true);state.edges.filter(e=>e.source===n.id).forEach(e=>{const target=nodeById(e.target);if(target?.type==='preview')target.data.asset=e.sourcePort==='endFrame'?n.data.endFrame:n.data.asset;});render();
           }catch(err){if(err?.name==='AbortError'||abortController.signal.aborted){n.data.status='stopped';n.data.error='Generation stopped by user.';render();throw new DOMException('Generation stopped by user.','AbortError');}n.data.status='error';n.data.error=err?.message||String(err);render();throw err;}
         }
@@ -1944,6 +1956,7 @@
   // A DOM click handler receives the MouseEvent as its first argument. Keep
   // Keep toolbar workflow execution separate from the per-node generation action.
   WorkflowLibrary.init({getSelectedPrompt:()=>{const n=nodeById(state.selectedNodeId);return n?{name:n.data.customName||nodeDefs[n.type].title,content:resolveText(n.id)}:null;},onUse:(text,name)=>{if(state.isRunning)throw Error('Dừng workflow trước khi thêm node.');addNode('prompt');const n=state.nodes.at(-1);n.data.text=text;n.data.customName=name;render();scheduleAutoSave();}});
+  $('#clearPromptsBtn').onclick=()=>{try{clearCanvasPrompts();}catch(error){setRunStatus(error.message,'error');}};
   $('#masterScriptBtn').onclick=()=>addNode('masterScript');
   $('#arrangeNodesBtn').onclick=arrangeNodes;
   $('#runBtn').onclick=onWorkflowRunButtonClick;$('#runOptionsBtn').onclick=openRunOrderModal; $('#saveBtn').onclick=saveState; $('#resetBtn').onclick=resetState;

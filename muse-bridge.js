@@ -197,7 +197,7 @@
       const best=measured[0],bestRatioError=best?Math.abs(Math.log((best.width/best.height)/expectedRatio)):Infinity;
       if(best&&bestRatioError<=.09)firstWrongRatioAt=0;
       else if(best&&!firstWrongRatioAt)firstWrongRatioAt=Date.now();
-      const result=(best&&(bestRatioError<=.09||Date.now()-firstWrongRatioAt>=3500)?best:null)||(mediaType==='video'?matching.find(item=>item.videoUrl):null);
+      const result=(best&&(bestRatioError<=.09||Date.now()-firstWrongRatioAt>=3500)?best:null)||(mediaType==='video'?matching.find(item=>item.videoUrl&&(!item.width||!item.height)):null);
       if(result){
         report(requestId,'Đã tìm thấy kết quả Muse. Đang chuyển về Workflow…');
         const media=mediaType==='video'?(result.el.matches('video')?result.el:result.el.querySelector('video')):(result.el.matches('img')?result.el:result.el.querySelector('img'));

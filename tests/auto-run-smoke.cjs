@@ -22,7 +22,7 @@ const assert=require('node:assert/strict');
    if(msg.type.includes('CHECK'))return {ok:true,signedIn:true,composer:true,busy:busyTabs.has(id)};
    if(msg.type==='WORKFLOW_AI_SEND_NOW'){early.push(msg.requestId);return {ok:true};}
    if(msg.type.includes('STOP')){stops.push(msg.requestId);const job=pending.get(msg.requestId);if(job){pending.delete(msg.requestId);job.resolve({ok:false,error:'Stopped'});}return {ok:true};}
-   if(msg.type.includes('GENERATE')){generates.push({id,msg});return new Promise(resolve=>pending.set(msg.requestId,{id,msg,resolve}));}return {ok:false};
+   if(msg.type.includes('GENERATE')){generates.push({id,msg,at:Date.now()});return new Promise(resolve=>pending.set(msg.requestId,{id,msg,resolve}));}return {ok:false};
   }}};
   window.finish=(label,text)=>{const job=[...pending.values()].find(job=>job.msg.prompt.includes(label));if(!job)throw Error('Missing pending '+label);pending.delete(job.msg.requestId);job.resolve(job.msg.mediaType==='image'?{ok:true,url:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII='}:{ok:true,text:text||label+' result'});};
  });
@@ -57,7 +57,7 @@ const assert=require('node:assert/strict');
  assert.equal(await chip('gemini').getAttribute('data-state'),'ready');assert.equal(await chip('chatgpt').getAttribute('data-state'),'ready');assert.equal(await chip('muse').getAttribute('data-state'),'ready');
  assert.equal(await page.locator('.node[data-id="a"] textarea').inputValue(),'FRESH A');
  assert.equal(await page.locator('.node[data-id="b"] textarea').inputValue(),'FRESH B');
- assert.equal(await page.evaluate(()=>generates.length),4,'Every producer runs once, ignoring stale saved output');
+ assert.equal(await page.evaluate(()=>generates.length),4,'Every producer runs once, ignoring stale saved output');const sends=await page.evaluate(()=>generates.map(g=>g.at));for(let i=1;i<sends.length;i++)assert.ok(sends[i]-sends[i-1]>=4900,'AI requests must start at least 5 seconds apart');
  await load(chain);await page.click('#runBtn');await page.waitForFunction(()=>pending.size===2);
  await page.evaluate(()=>{const job=[...pending.values()].find(job=>job.msg.prompt==='ROOT');pending.delete(job.msg.requestId);job.resolve({ok:false,error:'HTTP 500 simulated service failure'});});
  await page.waitForSelector('.node[data-id="a"] .status.error');
