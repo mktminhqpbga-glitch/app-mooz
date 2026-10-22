@@ -1,4 +1,4 @@
-# Workflow · MuseFlow 0.22.1
+# Workflow · MuseFlow 0.22.2
 
 Extension Chrome/Edge dựa trên [MuseFlow / 26Flow](https://github.com/bynne2602/museflow), mở rộng canvas/timeline để làm việc với Muse.ai, Gemini, ChatGPT và API Google, OpenAI, fal.ai. Giữ nguyên giấy phép GPL-2.0-or-later của nguồn gốc và thông báo FFmpeg đi kèm.
 
@@ -246,3 +246,9 @@ Chỉ nối nguồn tương thích, không thêm dây trùng hoặc tạo vòng 
 ChatGPT, Gemini và Muse kiểm tra ảnh có giải mã được trước khi đính kèm; nhận diện PNG/JPEG/GIF/WebP bằng dữ liệu thực và sửa MIME sai mà giữ nguyên nội dung. Các định dạng khác trình duyệt đọc được được chuyển thành PNG, giữ kích thước và nền trong suốt. Ảnh hỏng, trên 20 MB hoặc trên 40 triệu điểm ảnh bị chặn với thông báo cụ thể. Video không được chuyển thành ảnh.
 
 Kiểm tra thông báo lỗi tải tệp trong vùng nhập chat trong khi chờ tải và trước khi gửi; không coi thẻ lỗi là tải thành công, không tự thử gửi lại. Vẫn cần kiểm tra trên tài khoản thật để xác định lỗi máy chủ, mạng hoặc giới hạn của từng nền tảng. Sau khi cập nhật extension, tải lại các tab AI đang mở để dùng bộ kết nối mới.
+
+### 0.22.2 — khởi tạo các node kịch bản rõ ràng
+
+Nhập nội dung hoặc bấm Điền mẫu hồi/cảnh trong Kịch bản tổng, sau đó bấm Tạo node cho các hồi. Với văn xuôi, chia bằng AI và kiểm tra trước. Các node hồi/phần/đoạn được tự tạo kèm cảnh, ảnh, video và bước ghép; nối dây kịch bản một mình chưa tạo các bước này.
+
+Node cấp dưới chưa khởi tạo hiện lý do và nút Tạo cấu trúc từ kịch bản tổng khi tìm thấy nguồn qua các dây kịch bản. Nút Về kịch bản tổng tìm được cả nguồn nối thủ công. Khi tạo cấu trúc, dùng lại các node trống nối đúng chuỗi, giữ ID và tên đã đặt; không ghi đè node có nội dung hoặc kết quả. Ctrl+Z hoàn tác cả lượt tạo. Dừng tác vụ đang chạy trước khi khởi tạo.

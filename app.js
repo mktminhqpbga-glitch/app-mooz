@@ -478,25 +478,44 @@
   function storyTouch(id){const node=nodeById(id);if(node&&(node.data.storyMasterId||WorkflowStudio.effects.has(node.type)))node.data.storyDirty=true;storyDirtyAfter(id,true);}
   function storyFocus(node){if(!node)return;state.zoom=1;state.panX=60-node.x;state.panY=60-node.y;applyCanvasTransform();scheduleDrawEdges();}
   function storyDownload(node){if(!node?.data.asset?.url)throw Error('Chưa có video; bấm chạy trước.');if(node.data.storyDirty)throw Error('Cảnh nguồn đã đổi; chạy lại bước ghép trước khi tải.');const a=document.createElement('a');a.href=node.data.asset.url;a.download=WorkflowTools.safeName(node.data.customName||node.data.componentId)+'.mp4';a.click();}
+  function storyMasterFor(node){
+    const assigned=nodeById(node?.data.storyMasterId);if(assigned?.type==='masterScript')return assigned;
+    const pending=[node],seen=new Set(),masters=new Map();
+    while(pending.length){const current=pending.shift();if(!current||seen.has(current.id))continue;seen.add(current.id);if(current.type==='masterScript'){masters.set(current.id,current);continue;}if(!['actScript','partScript','segmentScript','storyPrompt'].includes(current.type))continue;for(const e of getIncoming(current.id,current.type==='storyPrompt'?'context':'text'))pending.push(sourceFor(e));}
+    return masters.size===1?[...masters.values()][0]:null;
+  }
   function renderStoryNode(node,body){
     body.classList.add('story-node-body');
     const help=value=>{const p=document.createElement('p');p.textContent=value;body.append(p);},button=(name,action,disabled=false)=>studioButton(body,name,action,{disabled});
     if(node.type==='masterScript'){
       const field=toolField(body,node,'script','Kịch bản tổng',{type:'textarea'});field.disabled=state.isRunning;field.placeholder='HỒI 1: Tên hồi\nCẢNH 1 (0:00–0:06): Tên cảnh\nPrompt video: …';
+      if(state.isRunning)help('Đang có tác vụ chạy. Dừng hoặc đợi hoàn tất để nhập và tạo cấu trúc kịch bản.');
+      help('1. Nhập kịch bản hoặc điền mẫu. 2. Với văn xuôi, dùng AI chia hồi/cảnh. 3. Tạo node rồi chạy từng đoạn, phần hoặc hồi. Không cần tự thêm các node cấp dưới.');
+      button('Tạo node cho các hồi',()=>buildMasterStory(node),state.isRunning);
       button('Điền mẫu hồi/cảnh',()=>{if(node.data.script?.trim())throw Error('Ô đang có kịch bản. Sao chép ra trước nếu muốn thay bằng mẫu.');node.data.script=WorkflowStory.template;render();scheduleAutoSave();},state.isRunning);
       node.data.provider ||= 'gemini';body.append(providerControls({...node,type:'generateText'}));
       button(storyPlanning.has(node.id)?'■ Dừng chia kịch bản':'AI chia hồi/cảnh',async()=>{if(storyPlanning.has(node.id)){stopGeneration(node.id);return;}if(state.isRunning)throw Error('Đợi lượt chạy hiện tại hoàn tất trước.');storyPlanning.add(node.id);try{await execute(node.id);}finally{storyPlanning.delete(node.id);render();}},state.isRunning&&!storyPlanning.has(node.id));
       if(node.data.plan!==undefined){toolField(body,node,'plan','Bản chia hồi/cảnh — có thể sửa trước khi tạo node',{type:'textarea'}).disabled=state.isRunning;button('Bỏ bản chia AI',()=>{delete node.data.plan;delete node.data.planSource;render();scheduleAutoSave();},state.isRunning);}
       studioSelect(body,node,'storyImageProvider','AI tạo ảnh',Object.entries(WorkflowAI.providers).filter(([,p])=>p.types.includes('image')).map(([id,p])=>[id,p.name]),'gemini');studioSelect(body,node,'storyVideoProvider','AI tạo video',[['muse','Muse · tab'],['google','Google Veo · API']],'muse');studioSelect(body,node,'storySize','Tỷ lệ mặc định',[['16:9','Ngang 16:9'],['9:16','Dọc 9:16'],['1:1','Vuông 1:1']],'16:9');
-      button('Tạo node cho các hồi',()=>buildMasterStory(node),state.isRunning);button('Tạo bản dựng mới',()=>{if(state.isRunning)throw Error('Dừng chạy trước.');const copy=makeNode('masterScript',node.x,node.y+600);copy.data={...structuredClone(node.data),filmId:undefined,actIds:[],storyBuildSource:undefined,asset:undefined,status:'idle',componentId:undefined};const refs=getIncoming(node.id,'reference').map(ref=>({...ref,id:uid('edge'),target:copy.id}));state.nodes.push(copy);state.edges.push(...refs);try{buildMasterStory(copy);}catch(error){state.nodes=state.nodes.filter(n=>n.id!==copy.id);state.edges=state.edges.filter(e=>e.target!==copy.id);render();throw error;}},state.isRunning);
+      button('Tạo bản dựng mới',()=>{if(state.isRunning)throw Error('Dừng chạy trước.');const copy=makeNode('masterScript',node.x,node.y+600);copy.data={...structuredClone(node.data),filmId:undefined,actIds:[],storyBuildSource:undefined,asset:undefined,status:'idle',componentId:undefined};const refs=getIncoming(node.id,'reference').map(ref=>({...ref,id:uid('edge'),target:copy.id}));state.nodes.push(copy);state.edges.push(...refs);try{buildMasterStory(copy);}catch(error){state.nodes=state.nodes.filter(n=>n.id!==copy.id);state.edges=state.edges.filter(e=>e.target!==copy.id);render();throw error;}},state.isRunning);
       for(const id of node.data.actIds||[]){const act=nodeById(id),assembly=nodeById(act?.data.assemblyId);if(!act)continue;help(act.data.customName);button('Xem node '+act.data.customName,()=>storyFocus(act));button('▶ Chạy '+act.data.customName,()=>execute(assembly.id),!assembly||!!runForNode(assembly.id));button('⇩ Tải '+act.data.customName,()=>storyDownload(assembly),!assembly?.data.asset?.url||!!assembly?.data.storyDirty);}
       help('Nối ảnh nhân vật/bối cảnh vào cổng tham chiếu của Kịch bản tổng để dùng chung cho các cảnh. Hồi/Chương → Phần → Đoạn → Cảnh → Ảnh → Video. Chạy và tải từng cấp; dùng lại kết quả đã có. Nếu thiếu Prompt ảnh, dùng mô tả cảnh làm yêu cầu tạo khung đầu. Kịch bản văn xuôi cần AI chia rồi bạn kiểm tra trước khi tạo node.');
     }
     if(['actScript','partScript','segmentScript'].includes(node.type)){
-      button('Về kịch bản tổng',()=>storyFocus(nodeById(node.data.storyMasterId)));
+      const master=storyMasterFor(node),assembly=nodeById(node.data.assemblyId);
+      button('Về kịch bản tổng',()=>storyFocus(master),!master);
+      if(!assembly){
+        help(master?'Chưa tạo cấu trúc cảnh, ảnh, video và ghép cho node này. Nối dây kịch bản chưa đủ để chạy.':'Node này chưa thuộc kịch bản tổng. Nối Kịch bản tổng → Hồi/Chương → Phần → Đoạn, hoặc tạo toàn bộ từ Kịch bản tổng.');
+        const created=master&&state.nodes.find(n=>n.type===node.type&&n.data.storyMasterId===master.id&&nodeById(n.data.assemblyId));
+        if(created)button('Xem node đã tạo',()=>storyFocus(created));
+        else if(master)button('Tạo cấu trúc từ kịch bản tổng',()=>buildMasterStory(master),state.isRunning);
+        else button('Thêm kịch bản tổng',()=>addNode('masterScript'),state.isRunning);
+        help('Nhập nội dung ở Kịch bản tổng, bấm Tạo node cho các hồi. Hệ thống tự tạo các cấp và nút chạy. Node cấp dưới được tạo thủ công, còn trống và nối đúng cấp sẽ được dùng lại.');
+        return;
+      }
       const childType=node.type==='actScript'?'partScript':node.type==='partScript'?'segmentScript':'storyPrompt',parentKey=node.type==='actScript'?'storyActId':node.type==='partScript'?'storyPartId':'storySegmentId';
       for(const child of state.nodes.filter(n=>n.type===childType&&n.data[parentKey]===node.id))button('Xem '+child.data.customName,()=>storyFocus(child));
-      const field=document.createElement('textarea');field.value=node.data.text||'';field.readOnly=true;field.setAttribute('aria-label','Nội dung hồi');body.append(field);const assembly=nodeById(node.data.assemblyId);button(node.type==='actScript'?'▶ Chạy hồi này':node.type==='partScript'?'▶ Chạy phần này':'▶ Chạy đoạn này',()=>execute(node.data.assemblyId),!!runForNode(node.data.assemblyId)||!assembly);button(node.type==='actScript'?'⇩ Tải video hồi':node.type==='partScript'?'⇩ Tải video phần':'⇩ Tải video đoạn',()=>storyDownload(assembly),!assembly?.data.asset?.url||!!assembly?.data.storyDirty);help('Chỉnh prompt ở từng cảnh. Chạy cấp này dùng lại kết quả đã có, chỉ tạo cảnh thiếu/đã chỉnh rồi ghép từ dưới lên. Video dài phụ thuộc bộ nhớ trình duyệt; nên dựng và tải từng đoạn/phần trước.');
+      const field=document.createElement('textarea');field.value=node.data.text||'';field.readOnly=true;field.setAttribute('aria-label',node.type==='actScript'?'Nội dung hồi':node.type==='partScript'?'Nội dung phần':'Nội dung đoạn');body.append(field);button(node.type==='actScript'?'▶ Chạy hồi này':node.type==='partScript'?'▶ Chạy phần này':'▶ Chạy đoạn này',()=>execute(node.data.assemblyId),!!runForNode(node.data.assemblyId)||!assembly);button(node.type==='actScript'?'⇩ Tải video hồi':node.type==='partScript'?'⇩ Tải video phần':'⇩ Tải video đoạn',()=>storyDownload(assembly),!assembly?.data.asset?.url||!!assembly?.data.storyDirty);help('Chỉnh prompt ở từng cảnh. Chạy cấp này dùng lại kết quả đã có, chỉ tạo cảnh thiếu/đã chỉnh rồi ghép từ dưới lên. Video dài phụ thuộc bộ nhớ trình duyệt; nên dựng và tải từng đoạn/phần trước.');
     }
     if(node.type==='storyPrompt'){const input=toolField(body,node,'text','Yêu cầu của cảnh',{type:'textarea'});input.disabled=state.isRunning;const original=input.oninput;input.oninput=()=>{original();storyDirtyAfter(node.id,true);};help(node.data.sceneLabel||'Yêu cầu ảnh/video của cảnh');}
     if(node.type==='videoAssembly'){
@@ -511,7 +530,13 @@
     for(const act of parsed.acts)for(const part of act.parts){partCount++;for(const segment of part.segments){segmentCount++;const headings=[...segment.body.matchAll(/^\s*(?:#{1,6}\s*)?(?:CẢNH|SCENE)\s+(\d+)\s*\(([^)]*)\)\s*:\s*(.*?)\s*$/gim)];segment.scenes=parseSceneScript([parsed.preamble,act.context,part.context,segment.body].filter(Boolean).join('\n'));if(!headings.length||segment.scenes.length!==headings.length)throw Error(`Hồi ${act.number}, phần ${part.number}, đoạn ${segment.number}: cần CẢNH có thời gian và Prompt video.`);const numbers=new Set();for(const [index,scene] of segment.scenes.entries()){if(numbers.has(scene.number))throw Error('Trùng cảnh '+scene.number+' trong đoạn '+segment.number);numbers.add(scene.number);const range=headings[index][2].match(/^(\d+):(\d{2})\s*(?:đến|to|[–—-])\s*(\d+):(\d{2})$/i),duration=range?(+range[3]*60+ +range[4])-(+range[1]*60+ +range[2]):0;if(!range||+range[2]>59||+range[4]>59||duration<4||duration>60||!scene.hasVideoPrompt)throw Error(`Cảnh ${scene.number}: cần Prompt video và thời lượng 4–60 giây.`);}total+=segment.scenes.length;}}
     if(total>500)throw Error('Tối đa 500 cảnh mỗi bản dựng. Tách kịch bản lớn thành nhiều dự án chương.');
     createUndoSnapshot('Tạo cấu trúc chương/phần/đoạn/cảnh');const nodes=[],edges=[],actIds=[];let row=master.y;const baseX=master.x+370,project=master.id;
-    const make=(type,x,y,data)=>{const node=makeNode(type,x,y);node.data={...node.data,...data,storyMasterId:project};nodes.push(node);return node;},edge=(source,port,target,input)=>edges.push({id:uid('edge'),source:source.id,sourcePort:port,target:target.id,targetPort:input});
+    const reused=new Set(),hierarchy={actScript:'partScript',partScript:'segmentScript',segmentScript:'storyPrompt'};
+    const make=(type,x,y,data)=>{
+      const parent=type==='actScript'?project:type==='partScript'?data.storyActId:type==='segmentScript'?data.storyPartId:type==='storyPrompt'?data.storySegmentId:null;
+      const input=type==='storyPrompt'?'context':'text';
+      const existing=parent&&state.nodes.find(n=>n.type===type&&!reused.has(n.id)&&!n.data.storyMasterId&&!n.data.assemblyId&&!n.data.asset&&!String(n.data.text||'').trim()&&!runForNode(n.id)&&getIncoming(n.id,input).length===1&&getIncoming(n.id,input)[0].source===parent&&getIncoming(n.id,input)[0].sourcePort==='text'&&state.edges.filter(e=>e.source===n.id).every(e=>{const child=nodeById(e.target);return child?.type===hierarchy[type]&&!child.data.storyMasterId&&!String(child.data.text||'').trim();}));
+      const node=existing||makeNode(type,x,y);node.data={...node.data,...data,...(existing?.data.customName?{customName:existing.data.customName}:{}),storyMasterId:project};if(existing)reused.add(node.id);else nodes.push(node);return node;
+    },edge=(source,port,target,input)=>{if(!state.edges.some(e=>e.source===source.id&&e.sourcePort===port&&e.target===target.id&&e.targetPort===input))edges.push({id:uid('edge'),source:source.id,sourcePort:port,target:target.id,targetPort:input});};
     const assemble=(owner,clips,role,x,y)=>{const assembly=make('videoAssembly',x,y,{storyActId:owner.data.storyActId||owner.id,storyPartId:owner.data.storyPartId,storySegmentId:owner.data.storySegmentId,assemblyRole:role,expectedClips:clips.length,customName:owner.data.customName+' · Video',status:'idle'});clips.forEach(clip=>edge(clip,'video',assembly,'video'));owner.data.assemblyId=assembly.id;return assembly;};
     for(const act of parsed.acts){const actRow=row,actNode=make('actScript',baseX,row,{customName:'Hồi/Chương '+act.number+' · '+act.title,text:act.body,actNumber:act.number});actIds.push(actNode.id);edge(master,'text',actNode,'text');const parts=[];
       for(const part of act.parts){const partRow=row,partNode=make('partScript',baseX+350,row,{customName:'Phần '+part.number+' · '+part.title,text:part.body,storyActId:actNode.id});edge(actNode,'text',partNode,'text');const segments=[];
@@ -526,7 +551,7 @@
       }
       assemble(actNode,parts,'act',baseX+2860,actRow);row+=250;
     }
-    state.nodes.push(...nodes);state.edges.push(...edges);master.data.actIds=actIds;delete master.data.filmId;master.data.storyBuildSource=text;master.data.report=`Đã tạo ${parsed.acts.length} hồi/chương, ${partCount} phần, ${segmentCount} đoạn, ${total} cảnh. Mỗi cảnh: ảnh → video; đầu ra cuối là từng hồi/chương. Chưa gọi AI.`;normalizeSavedGraph();render();storyFocus(master);scheduleAutoSave();
+    state.nodes.push(...nodes);state.edges.push(...edges);master.data.actIds=actIds;delete master.data.filmId;master.data.storyBuildSource=text;master.data.report=`Đã tạo ${parsed.acts.length} hồi/chương, ${partCount} phần, ${segmentCount} đoạn, ${total} cảnh. Mỗi cảnh: ảnh → video; đầu ra cuối là từng hồi/chương. Chưa gọi AI.${reused.size?' Đã dùng lại '+reused.size+' node trống đã nối.':''}`;normalizeSavedGraph();render();storyFocus(master);scheduleAutoSave();
   }
 
   function toolField(body,node,key,label,{type='text',value='',min,max}={}){

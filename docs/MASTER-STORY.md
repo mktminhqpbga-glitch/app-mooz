@@ -1,6 +1,6 @@
 # Kịch bản tổng và dựng từng hồi/chương
 
-Bản 0.16.0 dùng cấu trúc:
+Cấu trúc dựng phim:
 
 **Kịch bản tổng → Hồi/Chương → Phần → Đoạn → Cảnh (ảnh khung đầu → video chuyển động).**
 
@@ -51,3 +51,11 @@ Có thể dùng `HỒI` thay `CHƯƠNG`. Số cảnh chỉ cần duy nhất tron
 - Ghép chạy bằng FFmpeg WASM trong trình duyệt, hiện mỗi tệp đầu vào tối đa 100 MB; vẫn cần đủ RAM cho toàn bộ các tệp trong một bước ghép. Các video H.264/AAC cùng cấu hình được nối trực tiếp, tránh mã hóa lặp qua nhiều tầng. Định dạng khác được chuẩn hóa tối đa cạnh dài 1280 px, 24 fps. Hồi dài có thể vượt bộ nhớ hoặc giới hạn tệp: tải các đoạn/phần để lưu trước; chưa có cơ chế ghép nhiều giờ bằng bộ xử lý trên máy chủ.
 - Lưu, xuất workflow và mẫu giữ các ID liên kết cấp dựng; bản dựng mới tạo node riêng, không ghi đè bản cũ. Kịch bản đã sửa sau khi AI chia cần chia lại hoặc bỏ bản chia cũ.
 - Kiểm thử trình duyệt dùng phản hồi AI mô phỏng; ghép video/âm thanh bằng FFmpeg thật, kiểm tra MP4 bằng ffprobe và màu khung hình theo thứ tự. Chưa xác nhận chất lượng AI thật hoặc một hồi nhiều giờ trong tài khoản người dùng.
+
+## Node nối thủ công nhưng chưa chạy được
+
+Hồi/Chương, Phần và Đoạn là các cấp quản lý của bản dựng. Kéo thêm rồi nối chúng chưa tạo các cảnh và bước ghép. Chữ mờ trong ô Kịch bản tổng chỉ là gợi ý, không phải nội dung đã nhập.
+
+Từ 0.22.2, node chưa khởi tạo có hướng dẫn và nút **Tạo cấu trúc từ kịch bản tổng** nếu đã nối về một Kịch bản tổng duy nhất. Nhập kịch bản đúng mẫu ở node tổng trước khi bấm. Hệ thống dùng lại những node còn trống nối đúng chuỗi Tổng → Hồi → Phần → Đoạn → Yêu cầu cảnh; các node có nội dung/kết quả được giữ nguyên. Không cần tự tạo các node cấp dưới. **Về kịch bản tổng** tìm được nguồn qua dây nối; không có nguồn thì có nút thêm node tổng.
+
+Sau khi tạo cấu trúc, bấm **Chạy đoạn này** để kiểm tra một đoạn trước, rồi chạy phần hoặc hồi. Nút tải chỉ mở sau khi ghép video thành công. Nếu đang có tác vụ chạy, dừng hoặc chờ hoàn tất trước khi nhập/tạo cấu trúc. Toàn bộ lượt tạo có thể hoàn tác bằng Ctrl+Z.
