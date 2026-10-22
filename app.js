@@ -1394,11 +1394,18 @@
   }
   function arrangeNodes(){
     try{
-      const order=topoOrder().filter(id=>!nodeById(id)?.data?.dockOnly),level=new Map(order.map(id=>[id,0]));
-      for(const id of order)for(const edge of state.edges.filter(e=>e.source===id&&level.has(e.target)))level.set(edge.target,Math.max(level.get(edge.target)||0,(level.get(id)||0)+1));
-      const groups=new Map();for(const id of order){const l=level.get(id)||0;if(!groups.has(l))groups.set(l,[]);groups.get(l).push(id);}
-      createUndoSnapshot('Arrange nodes');for(const [l,ids] of groups.entries())ids.forEach((id,row)=>{const node=nodeById(id);node.x=70+l*350;node.y=60+row*260;});
-      render();setRunStatus('Nodes arranged by workflow order.','ok');
+      const order=topoOrder().filter(id=>!nodeById(id)?.data?.dockOnly);if(!order.length){setRunStatus('Chưa có node để sắp xếp.','warn');return;}
+      const level=new Map(order.map(id=>[id,0])),parents=new Map(order.map(id=>[id,[]])),sizes=new Map();
+      for(const id of order){const n=nodeById(id),el=document.querySelector(`.node[data-id="${CSS.escape(id)}"]`);sizes.set(id,{width:el?.offsetWidth||270,height:el?.offsetHeight||220});const incoming=getIncoming(id).map(e=>e.source).filter(source=>level.has(source));if(n.type==='generateVideo'&&n.data.continuity){const previous=timelinePredecessor(id);if(previous&&level.has(previous.id))incoming.push(previous.id);}parents.set(id,[...new Set(incoming)]);for(const source of incoming)level.set(id,Math.max(level.get(id),level.get(source)+1));}
+      const columns=new Map();for(const id of order){const l=level.get(id);if(!columns.has(l))columns.set(l,[]);columns.get(l).push(id);}
+      createUndoSnapshot('Arrange nodes');let x=70;
+      for(const ids of columns.values()){
+        const center=id=>{const sources=parents.get(id);return sources.length?sources.reduce((sum,source)=>sum+nodeById(source).y+sizes.get(source).height/2,0)/sources.length:0;};ids.sort((a,b)=>center(a)-center(b));let y=60;
+        for(const id of ids){const n=nodeById(id),size=sizes.get(id);n.x=x;n.y=Math.max(y,parents.get(id).length?center(id)-size.height/2:60);y=n.y+size.height+60;}
+        x+=Math.max(...ids.map(id=>sizes.get(id).width))+110;
+      }
+      for(const group of state.groups){const members=(group.nodeIds||[]).map(nodeById).filter(n=>n&&sizes.has(n.id));if(!members.length)continue;group.x=Math.min(...members.map(n=>n.x))-25;group.y=Math.min(...members.map(n=>n.y))-35;group.width=Math.max(...members.map(n=>n.x+sizes.get(n.id).width))-group.x+25;group.height=Math.max(...members.map(n=>n.y+sizes.get(n.id).height))-group.y+25;}
+      render();fitCanvas();scheduleAutoSave();setRunStatus('Đã sắp xếp '+order.length+' node theo luồng kết nối. Ctrl+Z để hoàn tác.','ok');
     }catch(error){setRunStatus(error.message,'error');}
   }
   function runCanvasAction(action){
@@ -1875,6 +1882,7 @@
   // A DOM click handler receives the MouseEvent as its first argument. Keep
   // Keep toolbar workflow execution separate from the per-node generation action.
   WorkflowLibrary.init({getSelectedPrompt:()=>{const n=nodeById(state.selectedNodeId);return n?{name:n.data.customName||nodeDefs[n.type].title,content:resolveText(n.id)}:null;},onUse:(text,name)=>{if(state.isRunning)throw Error('Dừng workflow trước khi thêm node.');addNode('prompt');const n=state.nodes.at(-1);n.data.text=text;n.data.customName=name;render();scheduleAutoSave();}});
+  $('#arrangeNodesBtn').onclick=arrangeNodes;
   $('#runBtn').onclick=onWorkflowRunButtonClick;$('#runOptionsBtn').onclick=openRunOrderModal; $('#saveBtn').onclick=saveState; $('#resetBtn').onclick=resetState;
   $('#workflowExportBtn').onclick=exportWorkflowFile;
   $('#workflowImportBtn').onclick=()=>$('#workflowFileInput').click();
