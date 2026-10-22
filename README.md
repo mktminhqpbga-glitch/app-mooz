@@ -1,4 +1,4 @@
-# Workflow · MuseFlow 0.14.0
+# Workflow · MuseFlow 0.15.0
 
 Extension Chrome/Edge dựa trên [MuseFlow / 26Flow](https://github.com/bynne2602/museflow), mở rộng canvas/timeline để làm việc với Muse.ai, Gemini, ChatGPT và API Google, OpenAI, fal.ai. Giữ nguyên giấy phép GPL-2.0-or-later của nguồn gốc và thông báo FFmpeg đi kèm.
 
@@ -184,3 +184,10 @@ Kiểm thử Chromium: kéo/dán, thay tệp, từ chối sai loại, tạo nố
 Thêm Âm thanh đầu vào, Âm thanh/nhạc nền, Phụ đề, Lồng tiếng, Đồng bộ lời đọc–cảnh, Chuyển cảnh, Điều chỉnh tốc độ và Mẫu workflow vào cả menu thêm node và chuột phải. Các node hậu kỳ nối được vào nhau, chạy qua Run All, có nút dừng/tải tệp và đưa kết quả vào dòng thời gian. Chạy một node phía sau dùng lại kết quả hậu kỳ/giọng đọc nguồn đã có; Run All vẫn tạo kết quả mới cho các node của lượt đó.
 
 Hướng dẫn, cách nối và giới hạn: [docs/MEDIA-STUDIO.md](docs/MEDIA-STUDIO.md). Lồng tiếng và nhận diện phụ đề cần OpenAI API có quyền/số dư; âm thanh tải lên và SRT nhập tay không cần API. Các ý tưởng tiếp theo và tình trạng chưa truy cập được Toby Labs: [docs/WORKFLOW-IDEAS.md](docs/WORKFLOW-IDEAS.md).
+
+
+### 0.15.0 — Tải media và Kho prompt
+
+Thêm hai nút trên thanh menu: **Tải media** nhận link, nhận diện nền tảng và tải tệp; **Kho prompt** lưu tên/nội dung, tìm kiếm, sao chép, sửa/xóa, lấy từ node đang chọn và tạo node Prompt. Kho lưu riêng trên trình duyệt, không bị Reset canvas xóa.
+
+Link tệp trực tiếp tải ngay. Link bài đăng mạng xã hội cần bật bộ tải Python/yt-dlp cục bộ được đóng gói trong `tools/media-helper`; hướng dẫn ở ngay hộp thoại. Không tự đăng nhập/lấy cookie. Nền tảng có thể từ chối truy cập, nên không bảo đảm mọi link tải được. [Hướng dẫn và phạm vi kiểm thử](docs/MEDIA-LIBRARY.md).

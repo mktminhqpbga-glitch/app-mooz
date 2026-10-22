@@ -25,3 +25,7 @@ The bundled FFmpeg core includes FFmpeg n5.1.4 and codec libraries including x26
 `vendor/fonts/DejaVuSans.ttf` is bundled for Vietnamese subtitle rendering by FFmpeg/libass.
 Copyright and license notices (Bitstream Vera / DejaVu) are reproduced in
 `vendor/fonts/LICENSE-DejaVu.txt`. The font is distributed without modifications.
+
+## yt-dlp (optional local runtime)
+
+The local media helper installs yt-dlp separately through pip; its code and binaries are not bundled in the extension ZIP. Project and licensing information: https://github.com/yt-dlp/yt-dlp . See the installed package's license and dependency notices.

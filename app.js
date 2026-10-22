@@ -1874,6 +1874,7 @@
   $('#confirmRunOrderBtn').onclick=()=>{if(!pendingGenerationOrder||$('#confirmRunOrderBtn').disabled)return;const order=pendingGenerationOrder.filter(id=>pendingGenerationSelection.has(id));closeRunOrderModal();void runAutomatic(order);};
   // A DOM click handler receives the MouseEvent as its first argument. Keep
   // Keep toolbar workflow execution separate from the per-node generation action.
+  WorkflowLibrary.init({getSelectedPrompt:()=>{const n=nodeById(state.selectedNodeId);return n?{name:n.data.customName||nodeDefs[n.type].title,content:resolveText(n.id)}:null;},onUse:(text,name)=>{if(state.isRunning)throw Error('Dừng workflow trước khi thêm node.');addNode('prompt');const n=state.nodes.at(-1);n.data.text=text;n.data.customName=name;render();scheduleAutoSave();}});
   $('#runBtn').onclick=onWorkflowRunButtonClick;$('#runOptionsBtn').onclick=openRunOrderModal; $('#saveBtn').onclick=saveState; $('#resetBtn').onclick=resetState;
   $('#workflowExportBtn').onclick=exportWorkflowFile;
   $('#workflowImportBtn').onclick=()=>$('#workflowFileInput').click();

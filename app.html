@@ -3,14 +3,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Workflow · MuseFlow 0.14.0</title>
+  <title>Workflow · MuseFlow 0.15.0</title>
   <link rel="icon" type="image/png" sizes="128x128" href="icons/icon128.png" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <header class="toolbar">
-    <div class="brand"><img class="brand-logo" src="icons/26flow.svg" alt="26Flow" /><strong class="brand-name">Flow</strong><span class="brand-version">0.14.0</span></div>
+    <div class="brand"><img class="brand-logo" src="icons/26flow.svg" alt="26Flow" /><strong class="brand-name">Flow</strong><span class="brand-version">0.15.0</span></div>
     <div class="toolbar-tools" aria-label="Add workflow nodes">
+      <button id="mediaLibraryBtn" type="button">⇩ Tải media</button><button id="promptLibraryBtn" type="button">Kho prompt</button>
       <button id="batchImagesBtn" type="button">＋ Tạo ảnh hàng loạt</button><button id="scriptImportBtn" type="button">＋ Script → Nodes</button>
       <button id="addNodeMenuBtn" type="button" aria-haspopup="true" aria-expanded="false">＋ Add node</button>
     </div>
@@ -178,6 +179,9 @@
     </section>
   </div>
 
+  <dialog id="promptLibraryDialog" class="library-dialog"><header><h2>Kho prompt <small id="promptCount"></small></h2><button id="promptCloseBtn" type="button">Đóng</button></header><input id="promptSearch" type="search" aria-label="Tìm prompt" placeholder="Tìm theo tên hoặc nội dung…" /><div id="promptList"></div><div class="prompt-editor"><label>Tên prompt<input id="promptName" maxlength="100" /></label><label>Câu lệnh<textarea id="promptBody" maxlength="20000" rows="5"></textarea></label><div class="prompt-actions"><button id="promptSaveBtn" type="button">Thêm prompt</button><button id="promptNewBtn" type="button">Soạn mới</button><button id="promptFromNodeBtn" type="button">Lấy từ node đang chọn</button></div></div><p id="promptLibraryStatus" role="status"></p></dialog>
+  <dialog id="mediaDownloadDialog" class="library-dialog"><header><h2>Tải media từ link</h2><button id="mediaCloseBtn" type="button">Đóng</button></header><label>Đường dẫn<input id="mediaLink" type="url" placeholder="https://…" /></label><p id="mediaPlatform">Tự nhận diện nền tảng từ link</p><label>Chất lượng video<select id="mediaQuality"><option value="1080">Tối đa 1080p</option><option value="720">Tối đa 720p</option><option value="best">Tốt nhất có sẵn</option></select></label><small>Chất lượng chỉ áp dụng link bài đăng; tệp trực tiếp giữ nguyên bản.</small><div class="prompt-actions"><button id="mediaDownloadBtn" type="button">⇩ Tải media</button><button id="mediaCancelBtn" type="button" disabled>Hủy tải</button></div><p id="mediaDownloadStatus" role="status"></p><details><summary>Bật bộ tải cho link bài đăng</summary><p>Link MP4/WebM/ảnh trực tiếp tải ngay. Link bài đăng cần bộ tải chạy trên chính máy này; không gửi link sang dịch vụ tải bên thứ ba.</p><p>Tải và giải nén bản extension đầy đủ. Trong thư mục <code>tools/media-helper</code>, chạy <code>start-windows.bat</code> trên Windows; macOS/Linux chạy <code>sh start.sh</code>. Cần Python 3.10 trở lên. Cửa sổ đó sẽ hiện mã kết nối để dán bên dưới. Giữ cửa sổ mở trong lúc tải.</p><label>Mã kết nối cục bộ<input id="mediaHelperToken" type="password" autocomplete="off" /></label><button id="mediaHelperCheckBtn" type="button">Kiểm tra bộ tải</button><p>Bộ tải xử lý nội dung công khai mà nền tảng cho phép truy cập. Link riêng tư, DRM hoặc nền tảng thay đổi có thể không tải được. Không tự lấy cookie/tài khoản của bạn.</p></details></dialog>
+
   <script src="extension/package-update.js"></script>
   <script src="i18n.js"></script>
   <script src="vendor/ffmpeg/ffmpeg.js"></script>
@@ -186,6 +190,7 @@
   <script src="workflow-tools.js"></script>
   <script src="workflow-runtime.js"></script>
   <script src="media-studio.js"></script>
+  <script src="media-library.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
