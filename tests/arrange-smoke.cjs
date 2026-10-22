@@ -1,3 +1,4 @@
+const {toolbarAction}=require('./toolbar-actions.cjs');
 /* UI integration harness: real Chromium DOM with simulated chrome.* APIs.
    Does not claim a signed-in provider or a load-unpacked installation was tested. */
 const {chromium}=require('playwright');
@@ -22,7 +23,7 @@ const assert=require('node:assert/strict');
  await page.goto(origin+'/app.html');await page.waitForSelector('.node');assert.equal(await page.locator('#buyCoffeeBtn,#donationModal').count(),0);await page.keyboard.press('Escape');
 
  const graph={nodes:[{id:'p',type:'prompt',x:500,y:500,data:{text:'Write script'}},{id:'t',type:'generateText',x:500,y:500,data:{provider:'gemini'}},{id:'v',type:'generateVideo',x:500,y:500,data:{provider:'muse'}},{id:'q',type:'prompt',x:500,y:500,data:{text:'Other input'}},{id:'a',type:'imageInput',x:500,y:500,data:{}}],edges:[{id:'e1',source:'p',sourcePort:'text',target:'t',targetPort:'prompt'},{id:'e2',source:'t',sourcePort:'text',target:'v',targetPort:'prompt'},{id:'e3',source:'q',sourcePort:'text',target:'v',targetPort:'prompt'}]};
- await page.locator('#workflowFileInput').setInputFiles({name:'layout.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(graph))});await page.waitForSelector('.node[data-id="v"]');await page.click('#arrangeNodesBtn');await page.waitForFunction(()=>document.querySelector('#runStatus').textContent.includes('Đã sắp xếp 5 node'));
+ await page.locator('#workflowFileInput').setInputFiles({name:'layout.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(graph))});await page.waitForSelector('.node[data-id="v"]');await toolbarAction(page,'#arrangeNodesBtn');await page.waitForFunction(()=>document.querySelector('#runStatus').textContent.includes('Đã sắp xếp 5 node'));
  const boxes=await page.locator('.node').evaluateAll(nodes=>nodes.map(el=>({id:el.dataset.id,x:parseFloat(el.style.left),y:parseFloat(el.style.top),w:el.offsetWidth,h:el.offsetHeight})));const box=id=>boxes.find(b=>b.id===id);assert.ok(box('p').x<box('t').x&&box('t').x<box('v').x);assert.ok(box('q').x<box('v').x);for(let i=0;i<boxes.length;i++)for(let j=i+1;j<boxes.length;j++){const a=boxes[i],b=boxes[j];assert.ok(a.x+a.w<=b.x||b.x+b.w<=a.x||a.y+a.h<=b.y||b.y+b.h<=a.y,'Overlapping '+a.id+' and '+b.id);}
  await page.waitForFunction(()=>testStore.museflow?.nodes.find(n=>n.id==='p')?.x===70);await page.keyboard.press('Control+z');await page.waitForFunction(()=>[...document.querySelectorAll('.node')].every(n=>parseFloat(n.style.left)===500&&parseFloat(n.style.top)===500));assert.deepEqual(errors,[]);console.log('PASS quick layout: toolbar button, dependency direction, variable-sized nodes do not overlap, autosave, undo restores original positions.');
  }finally{await browser.close();server.close();}

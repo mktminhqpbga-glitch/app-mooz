@@ -1,4 +1,4 @@
-# Workflow · MuseFlow 0.16.1
+# Workflow · MuseFlow 0.17.0
 
 Extension Chrome/Edge dựa trên [MuseFlow / 26Flow](https://github.com/bynne2602/museflow), mở rộng canvas/timeline để làm việc với Muse.ai, Gemini, ChatGPT và API Google, OpenAI, fal.ai. Giữ nguyên giấy phép GPL-2.0-or-later của nguồn gốc và thông báo FFmpeg đi kèm.
 
@@ -208,3 +208,9 @@ Thêm cấu trúc hồi/chương → phần → đoạn → cảnh; tạo ảnh 
 - **Xóa prompt canvas** xóa nội dung các node Prompt, Negative Prompt, Yêu cầu cảnh và Text Append; giữ node, dây nối, media, kịch bản tổng, kết quả văn bản AI và Kho prompt. Dừng chạy trước khi xóa; Ctrl+Z để hoàn tác. Các kết quả dựng phụ thuộc bị đánh dấu cần cập nhật.
 
 Kiểm thử: hàng đợi/cooldown và hủy tác vụ; Run All thực tế đo thời gian gửi; xóa/hoàn tác không mất Kho prompt; Muse DOM mô phỏng; video vuông được chuyển 9:16 bằng FFmpeg WASM thật, kiểm tra hình/viền/âm thanh/thời lượng. Phản hồi AI được mô phỏng, chưa xác nhận tài khoản Muse thật.
+
+### 0.17.0 — thanh công cụ biểu tượng gọn
+
+Gom thao tác vào sáu nút có tooltip: Tạo node, Kho tài nguyên, Workflow, Kết nối AI, Cập nhật, Dọn canvas. Chỉ mở tùy chọn khi bấm; bấm lại, bấm ra ngoài hoặc Esc để đóng. Mỗi lần chỉ mở một nhóm. Run All/Dừng tất cả luôn hiện. Các nút chức năng và dữ liệu hiện có được giữ nguyên; Sắp xếp node và Lưu nằm trong nhóm Workflow, Xóa prompt nằm trong Dọn canvas. Hỗ trợ bàn phím và màn hình nhỏ; thanh công cụ giữ một hàng.
+
+Kiểm thử Chromium: menu đóng/mở, phím điều hướng, lưu/tạo node/mở thư viện/cài đặt, menu thêm node và bố cục ở 320, 390, 620, 900, 1500 px.

@@ -1,3 +1,4 @@
+const {toolbarAction}=require('./toolbar-actions.cjs');
 /* UI integration harness: real Chromium DOM with simulated chrome.* APIs.
    Does not claim a signed-in provider or a load-unpacked installation was tested. */
 const {chromium}=require('playwright');
@@ -33,7 +34,7 @@ const assert=require('node:assert/strict');
  await transfer('.node[data-id="gen"] .port.in[data-port="video"]','video');await page.waitForFunction(()=>document.querySelectorAll('.node video').length===2);
  const before=await page.locator('.node').count();await transfer('.node[data-id="gen"] textarea','image','paste');await page.waitForTimeout(100);assert.equal(await page.locator('.node').count(),before,'Paste in text editor must stay native');
  await transfer('#timelineDock','image','drop',2);await page.waitForFunction(()=>document.querySelectorAll('.dock-clip').length===2);
- await page.click('#saveBtn');await page.waitForFunction(()=>testStore.museflow?.nodes.filter(n=>n.type==='imageInput').length===5);assert.deepEqual(errors,[]);
+ await toolbarAction(page,'#saveBtn');await page.waitForFunction(()=>testStore.museflow?.nodes.filter(n=>n.type==='imageInput').length===5);assert.deepEqual(errors,[]);
  console.log('PASS media: image/video drops, clipboard image, wrong type preserves old file, multi-image references create connected nodes, original video port, text paste untouched, timeline file drops, persistence.');
  }finally{await browser.close();server.close();}
 })().catch(error=>{console.error(error);process.exitCode=1});

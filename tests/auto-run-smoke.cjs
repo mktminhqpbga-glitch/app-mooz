@@ -1,3 +1,4 @@
+const {toolbarAction}=require('./toolbar-actions.cjs');
 /* UI integration harness: real Chromium DOM with simulated chrome.* APIs.
    Does not claim a signed-in provider or a load-unpacked installation was tested. */
 const {chromium}=require('playwright');
@@ -68,7 +69,7 @@ const assert=require('node:assert/strict');
  await page.evaluate(()=>window.checkFailure=2);await page.click('#checkAllAIBtn');await page.waitForFunction(()=>document.querySelector('.ai-health-chip[data-provider="chatgpt"]').dataset.state==='check');await page.evaluate(()=>window.checkFailure=null);
  await load(chain);await page.click('#runBtn');await page.waitForFunction(()=>pending.size===2);await page.click('#runBtn');await idle();
  assert.equal(await page.evaluate(()=>pending.size),0);assert.equal(await page.evaluate(()=>generates.length),2,'Stop All prevents queued descendants from starting');
- await load(graph());await page.click('#runOptionsBtn');await page.waitForSelector('#runOrderModal:not(.hidden)');await page.click('#confirmRunOrderBtn');await page.waitForFunction(()=>pending.size===1);assert.equal(await page.evaluate(()=>generates[0].msg.prompt),'JOB-0');await page.evaluate(()=>finish('JOB-0'));await page.waitForFunction(()=>generates.length===2&&pending.size===1);assert.equal(await page.evaluate(()=>generates[1].msg.prompt),'JOB-1');await page.evaluate(()=>finish('JOB-1'));await idle();
+ await load(graph());await toolbarAction(page,'#runOptionsBtn');await page.waitForSelector('#runOrderModal:not(.hidden)');await page.click('#confirmRunOrderBtn');await page.waitForFunction(()=>pending.size===1);assert.equal(await page.evaluate(()=>generates[0].msg.prompt),'JOB-0');await page.evaluate(()=>finish('JOB-0'));await page.waitForFunction(()=>generates.length===2&&pending.size===1);assert.equal(await page.evaluate(()=>generates[1].msg.prompt),'JOB-1');await page.evaluate(()=>finish('JOB-1'));await idle();
  assert.deepEqual(errors,[]);console.log('PASS Run All: automatic DAG progression, parallel roots, FIFO same-tab, fresh text forwarded, no manual sends/picks, blocked failed descendants, Stop All, provider health states.');
  }finally{await browser.close();server.close();}
 })().catch(error=>{console.error(error);process.exitCode=1});
