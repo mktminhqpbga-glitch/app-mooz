@@ -1,4 +1,4 @@
-# Workflow · MuseFlow 0.15.1
+# Workflow · MuseFlow 0.16.0
 
 Extension Chrome/Edge dựa trên [MuseFlow / 26Flow](https://github.com/bynne2602/museflow), mở rộng canvas/timeline để làm việc với Muse.ai, Gemini, ChatGPT và API Google, OpenAI, fal.ai. Giữ nguyên giấy phép GPL-2.0-or-later của nguồn gốc và thông báo FFmpeg đi kèm.
 
@@ -196,3 +196,7 @@ Link tệp trực tiếp tải ngay. Link bài đăng mạng xã hội cần b�
 ### 0.15.1 — nút Sắp xếp node
 
 Bấm **⇄ Sắp xếp node** trên thanh công cụ để xếp từ trái sang phải theo kết nối, tính cả phụ thuộc khung cuối cảnh trước. Khoảng cách dựa trên kích thước node thực để giảm chồng lấn; khung nhóm đi theo các node trong nhóm. Tự căn khung nhìn và lưu bố cục. **Ctrl+Z** hoàn tác.
+
+### 0.16.0 — kịch bản tổng, dựng từng hồi/chương
+
+Thêm cấu trúc hồi/chương → phần → đoạn → cảnh; tạo ảnh nhân vật/bối cảnh rồi tạo video chuyển động từ ảnh. Chạy và tải MP4 từng cấp, dùng lại cảnh đã có, chỉ dựng lại nhánh bị chỉnh. Xem [hướng dẫn và giới hạn video dài](docs/MASTER-STORY.md).
