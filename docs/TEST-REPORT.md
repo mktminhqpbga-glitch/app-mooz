@@ -169,3 +169,11 @@ Không có phiên Muse/Gemini/ChatGPT đăng nhập thật, nên chưa xác minh
 
 - 61 unit tests đạt, gồm xóa đúng các ID đã chọn, không gửi prompt đã xóa, chặn cả đợt xóa nếu chứa tác vụ đang chạy và khôi phục danh sách khi lưu thất bại.
 - Batch Manager Chromium smoke đạt: tích ô không mở chi tiết, chọn qua hai trang, giữ lựa chọn khi tìm kiếm, chọn trang/kết quả lọc/bỏ chọn, xóa đúng mục và khóa ô chọn khi AI đang xử lý. Các kiểm tra ảnh tham chiếu, video MP4, lưu lại và quyền quản lý hàng đợi cũng đạt. API AI được mô phỏng.
+
+## 0.28.0 — hàng đợi gọn và nhận diện video Muse
+
+- Unit suite (`node --test tests/*.test.mjs`) đạt: cú pháp khối nhiều dòng/lồng dấu ngoặc, mẫu, từ chối khối thiếu dấu đóng, chuẩn bị node trước khi chạy, rollback chuẩn bị lỗi, hoàn tác/dọn nhóm, giữ hàng đợi khi cleanup lỗi và giới hạn thời lượng.
+- Batch Manager và Flow Studio Chromium smoke đạt: giao diện thu gọn, nhập khối, node có ngay trước Run, dọn nhóm hoàn thành, snapshot tham chiếu, chọn nhiều mục, MP4 thật, một tác vụ/tab và khoảng gửi 5 giây.
+- Muse bridge, Muse support và Muse job integration Chromium smoke đạt: phản hồi không có assistant class, display:contents, video nạp khi Play; bỏ video lịch sử/body không liên quan; prompt chỉ gửi một lần, nhận video và trích khung cuối dù rơi ACK/poll.
+- Chẩn đoán video không chứa URL riêng tư, token hoặc prompt. Báo cáo phiên bản bridge để nhận biết tab chưa tải lại.
+- Dịch vụ AI được mô phỏng. Chưa kiểm tra HTML/tài khoản Muse thật của người dùng; không kết luận chỉ từ `selectedSend:null` rằng thao tác gửi bị lỗi.

@@ -1,6 +1,7 @@
 (() => {
   if (window.__museFlowBridgeInstalled) return;
   window.__museFlowBridgeInstalled = true;
+  window.__museFlowBridgeVersion='0.28.0';
 
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     if(_sender.id!==chrome.runtime.id)return false;
@@ -68,7 +69,7 @@
     const composer=findComposer();
     const ready=Boolean(composer&&visible(composer)&&!composer.disabled&&!composer.readOnly);
     const loginRequired=Boolean(document.querySelector('input[type="password"],button[type="submit"]'))&&/sign in|log in|登录/i.test(document.body?.innerText||'');
-    return {ok:true,jobProtocol:1,signedIn:ready&&!loginRequired,busy:activeGenerations.size>0||[...document.querySelectorAll('[data-testid="hatch-composer-stop-button"],button[aria-label*="Stop" i]')].some(visible),title:document.title,composer:ready,loginRequired,url:location.href};
+    return {ok:true,jobProtocol:1,bridgeVersion:window.__museFlowBridgeVersion,signedIn:ready&&!loginRequired,busy:activeGenerations.size>0||[...document.querySelectorAll('[data-testid="hatch-composer-stop-button"],button[aria-label*="Stop" i]')].some(visible),title:document.title,composer:ready,loginRequired,url:location.href};
   }
 
   async function waitHydrated(timeout,signal) {
@@ -82,7 +83,7 @@
     if(!findComposer())throw new Error('Muse chat is not ready. Open the Muse chat page and wait for the message box to load.');
   }
 
-  function attachments() {
+  function attachments(acceptUnknown=null) {
     const composer=findComposer(),scope=composer&&composerScope(composer);
     const candidates=new Set(document.querySelectorAll(attachmentSelector));
     const tile=el=>el.closest(`${attachmentSelector},figure,[data-video-src],[data-video-url],[data-download-url]`)||el;
@@ -92,19 +93,21 @@
     for(const bubble of assistantMessageElements())for(const img of bubble.querySelectorAll('img'))if(img.naturalWidth>=128&&img.naturalHeight>=128)candidates.add(tile(img));
     const found=new Map();
     for(const el of candidates){
-      if(!visible(el)||el.closest('[data-testid*="placeholder" i],[data-testid*="loading" i],[data-state="loading"],[aria-busy="true"]')||scope?.contains(el)||el.closest('[class*="chat-user-bubble"],[data-message-author-role="user"],user-query,[data-testid="hatch-composer-placeholder-overlay"]'))continue;
+      if(!(visible(el)||getComputedStyle(el).display==='contents'&&[...el.querySelectorAll('video,img,a')].some(visible))||el.closest('[data-testid*="placeholder" i],[data-testid*="loading" i],[data-state="loading"],[aria-busy="true"]')||scope?.contains(el)||el.closest('[class*="chat-user-bubble"],[data-message-author-role="user"],user-query,[data-testid="hatch-composer-placeholder-overlay"]'))continue;
       const tid=el.getAttribute('data-testid')||'',video=el.matches('video')?el:el.querySelector('video'),image=el.matches('img')?el:el.querySelector('img');
       const nodes=[el,...el.querySelectorAll('a[href],source[src],[data-video-src],[data-video-url],[data-download-url]')];
       const urls=nodes.map(item=>({url:item.getAttribute('data-video-src')||item.getAttribute('data-video-url')||item.getAttribute('data-download-url')||item.href||item.src||'',download:item.getAttribute('download')||'',type:item.getAttribute('type')||'',explicitVideo:item.hasAttribute('data-video-src')||item.hasAttribute('data-video-url')})).filter(item=>item.url);
       const videoLink=urls.find(item=>item.explicitVideo||/video\//i.test(item.type)||/\.(mp4|webm|mov|m4v)(?:$|[?#])/i.test(item.url)||/\.(mp4|webm|mov|m4v)$/i.test(item.download))?.url||'';
-      const videoUrl=video?.currentSrc||video?.src||video?.querySelector('source')?.src||videoLink||'';
+      const videoUrl=video?.currentSrc||video?.src||video?.querySelector('source')?.src||video?.getAttribute('data-src')||video?.querySelector('source[data-src]')?.getAttribute('data-src')||videoLink||'';
       const src=videoUrl||image?.currentSrc||image?.src||'';
       const bubble=el.closest(assistantSelector);
       const decorative=/(?:^|[\/_.-])(?:placeholder|loading|loader|mascot|avatar|sloth|welcome|onboarding)(?:[\/_.?-]|$)/i.test(src);
-      if(src&&bubble&&!decorative)found.set(src,{el,bubble,tid,src,videoUrl,isVideo:!!videoUrl||!!video||/video/i.test(tid),width:video?.videoWidth||image?.naturalWidth||0,height:video?.videoHeight||image?.naturalHeight||0});
+      if(src&&(bubble||acceptUnknown?.(el))&&!decorative)found.set(src,{el,bubble,tid,src,videoUrl,isVideo:!!videoUrl||!!video||/video/i.test(tid),width:video?.videoWidth||image?.naturalWidth||0,height:video?.videoHeight||image?.naturalHeight||0});
     }
     return [...found.values()];
   }
+
+  window.WorkflowMuseBridgeDiagnostics=()=>({version:window.__museFlowBridgeVersion,activeJobs:activeGenerations.size,trackedJobs:museJobs.size,recognizedAttachments:attachments().length,assistantContainers:assistantMessageElements().length});
 
   function waitForAttachmentChange(timeoutMs,signal){
     return new Promise(resolve=>{
@@ -177,8 +180,22 @@
       const text=(el.innerText||el.textContent||'').trim(),normalized=text.replace(/\s+/g,' ');
       return visible(el)&&text!==userSnapshot.get(el)&&normalized.includes(promptText)&&!el.contains(item.el)&&Boolean(el.compareDocumentPosition(item.el)&Node.DOCUMENT_POSITION_FOLLOWING);
     });
+    const normalize=text=>String(text||'').replace(/\s+/g,' ').trim();
+    const promptReceipts=()=>[...document.querySelectorAll('div,p,span,article,[role="listitem"]')].filter(el=>{
+      if(el.contains(findComposer())||el.closest('form')&&el.closest('form')===findComposer()?.closest('form')||!visible(el))return false;
+      const text=normalize(el.textContent);return text.includes(promptText)&&text.length<=promptText.length+40&&![...el.children].some(child=>normalize(child.textContent).includes(promptText));
+    });
+    const oldReceipts=new Set(promptReceipts());
+    const newReceipts=()=>promptReceipts().filter(el=>!oldReceipts.has(el));
+    // Fallback for a new UI without assistant classes. A source URL alone is never enough:
+    // the exact current prompt must have a new receipt, and the media must follow it
+    // in the same main conversation, before the composer (never a page/footer video).
+    const contextualReply=el=>newReceipts().some(receipt=>{
+      const root=receipt.closest('main,[role="main"]'),editor=findComposer();
+      return root&&root.contains(el)&&!el.contains(receipt)&&Boolean(receipt.compareDocumentPosition(el)&Node.DOCUMENT_POSITION_FOLLOWING)&&editor&&Boolean(el.compareDocumentPosition(editor)&Node.DOCUMENT_POSITION_FOLLOWING);
+    });
     const beforeSendCount=bubbleCount(),previousTexts=new Set(priorBubbleTexts.values());
-    const activity=()=>!!findComposer()&&!findComposer().value.trim()&&(bubbleCount()>beforeSendCount||attachments().some(item=>!baseline.has(item.src))||assistantMessageElements().some(el=>{const text=(el.innerText||el.textContent||'').replace(/\s+/g,' ').trim();return text&&!previousTexts.has(text);})||[...document.querySelectorAll('[data-testid="hatch-composer-stop-button"],button[aria-label*="Stop" i],button[aria-label*="停止"]')].some(visible));
+    const activity=()=>!!findComposer()&&!findComposer().value.trim()&&(bubbleCount()>beforeSendCount||newReceipts().length>0||attachments().some(item=>!baseline.has(item.src))||assistantMessageElements().some(el=>{const text=(el.innerText||el.textContent||'').replace(/\s+/g,' ').trim();return text&&!previousTexts.has(text);})||[...document.querySelectorAll('[data-testid="hatch-composer-stop-button"],button[aria-label*="Stop" i],button[aria-label*="停止"]')].some(visible));
     report(requestId,'Muse: đã điền prompt, đang chờ nút Gửi…');
     let sendButton=null,submitted=false,keyboardSend=false;
     for(let i=0;i<900;i++){
@@ -209,11 +226,13 @@
     report(requestId,'Muse đã nhận yêu cầu. Đang tìm video/ảnh kết quả mới…');
     const deadline=Date.now()+Math.min(900,Math.max(30,Number(timeoutSec)||600))*1000;
     let lastProgress=Date.now(),firstWrongRatioAt=0,wrongMediaSince=0,lastCandidate='',candidateSince=0;
-    let refusalContext='',refusalContextSince=0;
+    let refusalContext='',refusalContextSince=0;const openedPlayers=new Set();
     while(Date.now()<deadline){
       throwIfAborted();
-      const fresh=attachments().filter(a=>!baseline.has(a.src)&&(!priorBubbleTexts.has(a.bubble)||followsReceipt(a)));
+      const fresh=attachments(contextualReply).filter(a=>!baseline.has(a.src)&&(!priorBubbleTexts.has(a.bubble)||followsReceipt(a)||contextualReply(a.el)));
+      if(mediaType==='video')for(const item of fresh.filter(a=>a.isVideo&&!a.videoUrl&&!openedPlayers.has(a.src))){const play=[...item.el.querySelectorAll('button[aria-label],button[title],[role="button"][aria-label]')].find(button=>visible(button)&&/^(?:play|phát|播放)(?:\b|\s|$)/i.test(button.getAttribute('aria-label')||button.title||''));if(play){openedPlayers.add(item.src);play.click();report(requestId,'Muse: đã mở trình phát của kết quả mới, đang đọc đường dẫn video…');}}
       const matching=fresh.filter(a=>mediaType==='video'?a.isVideo:!a.isVideo);
+      if(Date.now()-lastProgress>=5000){lastProgress=Date.now();report(requestId,matching.length?'Muse: đã thấy thẻ kết quả mới, đang chờ nguồn phát sẵn sàng…':'Muse: đã gửi một lần; đang đối chiếu video với tin nhắn vừa gửi. Không gửi lại prompt.');}
       const wrongMedia=fresh.find(a=>mediaType==='image'?a.isVideo:!a.isVideo);
       if(wrongMedia&&mediaType!=='video'){if(!wrongMediaSince)wrongMediaSince=Date.now();if(Date.now()-wrongMediaSince>=1800){const expected=mediaType==='image'?'image':'video',actual=mediaType==='image'?'video':'image';const error=new Error(`Muse returned a ${actual} for a Generate ${expected==='image'?'Image':'Video'} node. Switch the Muse composer to ${expected} generation, then retry.`);error.code='MEDIA_TYPE_MISMATCH';throw error;}}
       else wrongMediaSince=0;

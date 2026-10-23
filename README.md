@@ -1,4 +1,4 @@
-# Workflow · MuseFlow 0.27.1
+# Workflow · MuseFlow 0.28.0
 
 Extension Chrome/Edge dựa trên [MuseFlow / 26Flow](https://github.com/bynne2602/museflow), mở rộng canvas/timeline để làm việc với Muse.ai, Gemini, ChatGPT và API Google, OpenAI, fal.ai. Giữ nguyên giấy phép GPL-2.0-or-later của nguồn gốc và thông báo FFmpeg đi kèm.
 
@@ -315,3 +315,11 @@ Nhãn thời lượng ghi rõ giây; trang đặt translate=no để tránh trì
 
 - Ô chọn từng dòng, chọn trang, chọn tất cả kết quả lọc, bỏ chọn và xóa nhiều mục trong một lần. Giữ lựa chọn khi chuyển trang/lọc.
 - Chặn xóa tác vụ đang chạy; xóa mục chờ khỏi bộ điều phối, giữ node và media trên canvas.
+
+### 0.28.0 — hàng đợi gọn, prompt theo khối và đồng bộ canvas
+
+- Mỗi prompt đặt trong `[ ... ]`, hỗ trợ nhiều dòng; có Sao chép mẫu / Xem mẫu. Giữ chế độ tách cũ.
+- Kho ảnh, thiết lập phụ thu gọn; thêm hàng đợi tạo ngay nhóm node. Dọn hoàn thành xóa nhóm tương ứng, giữ node còn được nhánh/tác vụ khác sử dụng.
+- Thời lượng tạo video: 5, 10, 15, 30, 40 giây; dịch vụ vẫn quyết định thời lượng thực tế.
+- Muse: nhận diện phản hồi có cấu trúc mới bằng tin nhắn prompt vừa gửi; hỗ trợ wrapper display:contents và trình phát nạp nguồn khi bấm Play. Chẩn đoán bổ sung phiên bản bridge và trạng thái video, không chép URL riêng tư.
+- Sau cập nhật extension, tải lại trang Workflow và tab Muse để nạp bridge mới. Các kiểm thử dùng Chromium và dịch vụ AI mô phỏng, chưa xác minh trực tiếp tài khoản Muse của người dùng.

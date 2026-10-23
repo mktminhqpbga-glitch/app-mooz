@@ -6,14 +6,14 @@ Mở **Tạo node → Hàng đợi · Kho ảnh**. Đây là phần bổ sung v�
 
 1. Thêm nhiều ảnh PNG/JPG/WebP. Mỗi ảnh tối đa 8 MB. Tệp hỏng bị bỏ riêng, các tệp hợp lệ vẫn được lưu. Tag được tạo từ tên tệp và thêm hậu tố khi trùng. Có thể đổi tag hoặc xóa ảnh khỏi kho.
 2. Nhập prompt, dùng `@tag` để chọn ảnh. Khi gõ `@`, chọn gợi ý bằng chuột hoặc phím lên/xuống và Enter; Escape đóng gợi ý. Cũng có ô tìm tag và nút Chèn tag.
-3. Chọn cách tách: mỗi dòng, mỗi đoạn cách bằng dòng trống, hoặc toàn bộ nội dung là một tác vụ. Chọn AI, cuộc trò chuyện, tỷ lệ và thời lượng.
-4. Bấm **Thêm vào hàng đợi**. Tag chưa có ảnh chặn toàn bộ đợt. Ảnh, prompt, thiết lập và cuộc trò chuyện được chốt tại thời điểm xếp hàng. Đổi tag, xóa ảnh trong kho hoặc đổi cuộc trò chuyện mặc định sau đó không làm thay đổi các tác vụ đã chốt.
+3. Mặc định đặt mỗi prompt trong `[ ... ]`, cho phép nhiều dòng bên trong. Nút **Sao chép mẫu** dưới ô nhập sao chép mẫu, không ghi đè nội dung đang nhập. Có thể mở **Xem mẫu**. Vẫn có chế độ cũ: mỗi dòng, mỗi đoạn cách bằng dòng trống, hoặc toàn bộ nội dung là một tác vụ. Khối thiếu dấu đóng không được tự thêm. Chọn AI, cuộc trò chuyện, tỷ lệ và thời lượng.
+4. Bấm **Thêm & tạo node**. Nhóm prompt, ảnh tham chiếu và node tạo được thêm ngay trên canvas, chưa gửi AI. Tag chưa có ảnh chặn toàn bộ đợt. Ảnh, prompt, thiết lập và cuộc trò chuyện được chốt tại thời điểm xếp hàng. Đổi tag, xóa ảnh trong kho hoặc đổi cuộc trò chuyện mặc định sau đó không làm thay đổi các tác vụ đã chốt.
 5. Bấm **Chạy hàng đợi**. Chọn 1–6 tác vụ song song cho toàn hàng đợi; mặc định 1. Giới hạn này dùng chung với các thẻ Flow Studio. Mỗi tab AI vẫn chỉ xử lý một tác vụ, các lượt gửi giữ khoảng cách 5 giây theo bộ chạy hiện có. Muốn dùng nhiều tab, thêm từng đợt với tab tương ứng trước khi chạy.
-6. Mở một dòng kết quả để xem prompt, Task ID, thông báo lỗi, phát video / xem ảnh và tải tệp. Dùng bộ lọc, tìm kiếm hoặc phân trang 10 mục. Kết quả được lưu theo từng Task ID, không đổi sang video mới khi chạy lại cùng thẻ. Dọn mục đã xong không xóa node và video trên canvas.
+6. Mở một dòng kết quả để xem prompt, Task ID, thông báo lỗi, phát video / xem ảnh và tải tệp. Dùng bộ lọc, tìm kiếm hoặc phân trang 10 mục. Kết quả được lưu theo từng Task ID, không đổi sang video mới khi chạy lại cùng thẻ. **Dọn mục đã xong** xóa các mục hoàn thành và nhóm node tương ứng. Nếu nhóm còn được tác vụ khác hoặc node ngoài nhóm sử dụng, các node cần thiết được giữ lại. Tệp đã tải về máy không bị xóa. Hoàn tác đợt chưa chạy cũng dọn các node vừa tạo.
 
 **Dán → thêm sau 2 giây** mặc định bật. Nó tự xếp hàng, không tự bật bộ điều phối. Nếu hàng đợi đã chạy, tác vụ mới được nhận tự động. Gõ tay không tự xếp hàng. Hoàn tác chỉ áp dụng khi toàn bộ đợt vừa thêm còn chờ.
 
-Thẻ **Tạo hàng loạt / Flow Studio** cũng đưa tác vụ vào cùng hàng đợi; bấm Tạo trên thẻ hoặc Tạo tất cả sẽ bật bộ điều phối. Các ảnh gắn thủ công và `@tag` đều được chốt vào tác vụ. Giới hạn thời lượng 5/10/15 giây trong màn hình hàng đợi là yêu cầu gửi cho AI, không bảo đảm dịch vụ hỗ trợ. Flow Studio giữ các thời lượng hiện có.
+Thẻ **Tạo hàng loạt / Flow Studio** cũng đưa tác vụ vào cùng hàng đợi; bấm Tạo trên thẻ hoặc Tạo tất cả sẽ bật bộ điều phối. Các ảnh gắn thủ công và `@tag` đều được chốt vào tác vụ. Các lựa chọn tạo video là **5/10/15/30/40 giây**, dùng ở Hàng đợi, Flow Studio và node tạo video. Thời lượng thực tế phụ thuộc dịch vụ; các adapter API vẫn kiểm tra giới hạn riêng. Kho ảnh và thiết lập phụ được thu gọn mặc định, bấm tiêu đề để mở.
 
 ## Chọn và xóa nhiều prompt (0.27.1)
 

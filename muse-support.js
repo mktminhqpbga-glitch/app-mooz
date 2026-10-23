@@ -4,9 +4,13 @@
   let cancelBinding=null;
   const visible=el=>!!el?.getClientRects().length&&getComputedStyle(el).visibility!=='hidden';
   const editor=()=>[...document.querySelectorAll('textarea')].find(el=>visible(el)&&!el.disabled&&!el.readOnly);
+  function mediaDiagnostics(){
+    const describe=el=>({tag:el.tagName,className:String(el.getAttribute('class')||'').slice(0,180),role:el.getAttribute('role'),testId:(el.getAttribute('data-testid')||'').slice(0,120),display:getComputedStyle(el).display,visible:visible(el),busy:el.getAttribute('aria-busy')});
+    return {bridge:globalThis.WorkflowMuseBridgeDiagnostics?.()||{version:globalThis.__museFlowBridgeVersion||null},videos:[...document.querySelectorAll('video')].slice(0,20).map(video=>{const ancestors=[];for(let el=video;el&&ancestors.length<8;el=el.parentElement)ancestors.push(describe(el));const src=video.currentSrc||video.src||video.querySelector('source')?.src||video.getAttribute('data-src')||'';return {hasSource:!!src,sourceScheme:/^([a-z]+):/i.exec(src)?.[1]||null,hasPoster:!!video.poster,readyState:video.readyState,networkState:video.networkState,errorCode:video.error?.code||null,width:video.videoWidth,height:video.videoHeight,ancestors};}),frames:[...document.querySelectorAll('iframe')].slice(0,10).map(describe),openShadowRoots:[...document.querySelectorAll('*')].filter(el=>el.shadowRoot).length};
+  }
   function diagnostics(){
     const input=editor(),scope=WorkflowComposer.scopeFor(input);
-    return {origin:location.origin,documentReady:document.readyState,visibility:document.visibilityState,focused:document.hasFocus(),editor:input?{tag:input.tagName,id:input.id,disabled:input.disabled,readOnly:input.readOnly,hasText:!!input.value.trim()}:null,scope:scope?{tag:scope.tagName,id:scope.id,buttons:scope.querySelectorAll('button,[role="button"],input[type="submit"]').length}:null,selectedSend:scope&&WorkflowComposer.findSend(scope)?WorkflowComposer.describe(WorkflowComposer.findSend(scope)):null,controls:scope?[...scope.querySelectorAll('button,[role="button"],input[type="submit"]')].slice(0,40).map(WorkflowComposer.describe):[]};
+    return {media:mediaDiagnostics(),origin:location.origin,documentReady:document.readyState,visibility:document.visibilityState,focused:document.hasFocus(),editor:input?{tag:input.tagName,id:input.id,disabled:input.disabled,readOnly:input.readOnly,hasText:!!input.value.trim()}:null,scope:scope?{tag:scope.tagName,id:scope.id,buttons:scope.querySelectorAll('button,[role="button"],input[type="submit"]').length}:null,selectedSend:scope&&WorkflowComposer.findSend(scope)?WorkflowComposer.describe(WorkflowComposer.findSend(scope)):null,controls:scope?[...scope.querySelectorAll('button,[role="button"],input[type="submit"]')].slice(0,40).map(WorkflowComposer.describe):[]};
   }
   function bindSend(){
     if(cancelBinding)cancelBinding();
