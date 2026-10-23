@@ -1096,6 +1096,7 @@
     const el = document.createElement('section');
     el.className = `node ${['generateImage','generateVideo','generateText'].includes(n.type) ? 'generate' : ''} ${n.type==='timeline'?'timeline-node':''} ${state.selectedNodeIds.includes(n.id)||state.selectedNodeId===n.id ? 'selected' : ''}`;
     el.dataset.id = n.id;
+    el.dataset.type = n.type;
     el.style.left = `${n.x}px`;
     el.style.top = `${n.y}px`;
     const head = document.createElement('div');

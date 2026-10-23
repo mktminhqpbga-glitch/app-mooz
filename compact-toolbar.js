@@ -5,10 +5,10 @@
  const groups=[['create','Tạo node',['batchManagerBtn','flowStudioBtn','addNodeMenuBtn','batchImagesBtn','scriptImportBtn','masterScriptBtn','storyDashboardBtn']],['library','Kho tài nguyên',['promptLibraryBtn','mediaLibraryBtn']],['workflow','Workflow',['saveBtn','workflowExportBtn','workflowImportBtn','arrangeNodesBtn','duplicateSelectionBtn','runOptionsBtn']],['settings','Kết nối AI',['settingsBtn']],['update','Cập nhật',['packageUpdateBtn','dataUpdateBtn']],['cleanup','Dọn canvas',['clearPromptsBtn','resetBtn']]];
  const nav=document.createElement('nav');nav.className='compact-tools';nav.setAttribute('aria-label','Công cụ workflow');const panels=[];let active=null;
  function close(focus=false){if(!active)return;const current=active;active=null;current.panel.hidden=true;current.toggle.setAttribute('aria-expanded','false');if(focus)current.toggle.focus();}
- function position(entry){const r=entry.toggle.getBoundingClientRect(),panel=entry.panel;panel.style.left=Math.max(8,Math.min(r.left,innerWidth-panel.offsetWidth-8))+'px';panel.style.top=(r.bottom+8)+'px';panel.style.maxHeight=Math.max(100,innerHeight-r.bottom-24)+'px';}
+ function position(entry){const r=entry.toggle.getBoundingClientRect(),panel=entry.panel;panel.style.maxHeight=Math.max(100,innerHeight-24)+'px';panel.style.left=Math.max(8,Math.min(r.right+10,innerWidth-panel.offsetWidth-8))+'px';panel.style.top=Math.max(8,Math.min(r.top,innerHeight-panel.offsetHeight-12))+'px';}
  for(const [key,label,ids] of groups){
   const toggle=document.createElement('button');toggle.type='button';toggle.id='toolbar-'+key;toggle.className='compact-toggle';toggle.title=label;toggle.setAttribute('aria-label',label);toggle.setAttribute('aria-haspopup','menu');toggle.setAttribute('aria-expanded','false');toggle.setAttribute('aria-controls','toolbar-panel-'+key);
-  toggle.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="'+paths[key]+'"/></svg>';
+  toggle.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="'+paths[key]+'"/></svg><span>'+label+'</span>';
   const panel=document.createElement('section');panel.id='toolbar-panel-'+key;panel.className='toolbar-popover';panel.hidden=true;panel.setAttribute('role','menu');panel.setAttribute('aria-label',label);const heading=document.createElement('h2');heading.textContent=label;panel.append(heading);
   for(const id of ids){const button=document.getElementById(id);button.setAttribute('role','menuitem');panel.append(button);}
   const entry={toggle,panel};panels.push(entry);document.body.append(panel);nav.append(toggle);
@@ -17,7 +17,23 @@
   panel.addEventListener('click',event=>{if(event.target.closest('button'))close();});
   panel.addEventListener('keydown',event=>{if(!['ArrowDown','ArrowUp','Home','End'].includes(event.key))return;event.preventDefault();const buttons=[...panel.querySelectorAll('button:not(:disabled)')],index=buttons.indexOf(document.activeElement),next=event.key==='Home'?0:event.key==='End'?buttons.length-1:(index+(event.key==='ArrowDown'?1:-1)+buttons.length)%buttons.length;buttons[next]?.focus();});
  }
- const run=document.getElementById('runBtn');run.classList.add('compact-run');run.title='Chạy tất cả node · Cách nhau tối thiểu 5 giây giữa các lượt gửi AI';const input=document.getElementById('workflowFileInput');header.replaceChildren(brand,nav,run,input);header.classList.add('compact-toolbar');
+ const run=document.getElementById('runBtn');run.classList.add('compact-run');run.title='Chạy tất cả node · Cách nhau tối thiểu 5 giây giữa các lượt gửi AI';const input=document.getElementById('workflowFileInput');
+ const sidebar=document.createElement('aside');sidebar.className='studio-sidebar';sidebar.setAttribute('aria-label','Điều hướng studio');
+ const caption=document.createElement('p');caption.className='studio-nav-caption';caption.textContent='KHÔNG GIAN SÁNG TẠO';
+ const quick=document.createElement('div');quick.className='studio-quick-actions';
+ for(const [id,label,mark] of [['batchManagerBtn','Hàng đợi','☷'],['flowStudioBtn','Flow Studio','▦']]){const button=document.createElement('button');button.type='button';button.dataset.studioAction=id;button.title=label;button.setAttribute('aria-label',label);button.innerHTML='<span aria-hidden="true">'+mark+'</span><span>'+label+'</span>';button.onclick=()=>{close();document.getElementById(id).click();};quick.append(button);}
+ const footer=document.createElement('div');footer.className='studio-sidebar-footer';footer.textContent='Ý tưởng → Thành phẩm';
+ sidebar.append(brand,caption,quick,nav,footer);document.body.prepend(sidebar);
+ const heading=document.createElement('div');heading.className='studio-heading';heading.innerHTML='<span class="studio-breadcrumb">KHÔNG GIAN LÀM VIỆC / CANVAS</span><strong>Quy trình sáng tạo</strong>';
+ const connection=document.createElement('div');connection.id='studioConnections';connection.className='studio-connections';
+ // Retain extension actions before removing the old toolbar wrappers.
+ const companion=document.getElementById('desktopConnectBtn');if(companion)connection.append(companion);
+ const save=document.createElement('button');save.type='button';save.className='studio-save';save.textContent='Lưu';save.title='Lưu dự án hiện tại';save.onclick=()=>document.getElementById('saveBtn').click();
+ header.replaceChildren(heading,connection,save,run,input);header.classList.add('compact-toolbar');document.body.classList.add('studio-layout');
+ const overview=document.createElement('div');overview.className='studio-overview';overview.innerHTML='<span class="studio-overview-kicker">WORKFLOW CANVAS</span><strong>Nối ý tưởng. Tạo thành phẩm.</strong><span id="studioNodeCount"></span>';
+ document.getElementById('viewport').append(overview);
+ const updateCount=()=>{const count=document.querySelectorAll('#canvas>.node').length;document.getElementById('studioNodeCount').textContent=count+' node trên canvas';};updateCount();new MutationObserver(updateCount).observe(document.getElementById('canvas'),{childList:true});
+
  document.addEventListener('pointerdown',event=>{if(active&&!active.panel.contains(event.target)&&!nav.contains(event.target))close();},true);
  document.getElementById('addNodeMenu').addEventListener('click',event=>{if(event.target.closest('[data-add]'))document.getElementById('toolbar-create').focus();});
  window.addEventListener('keydown',event=>{if(event.code==='Space'&&event.target.closest?.('.compact-toolbar,.toolbar-popover')){event.stopImmediatePropagation();return;}if(event.key==='Escape'&&!document.getElementById('addNodeMenu').classList.contains('hidden')){event.preventDefault();event.stopImmediatePropagation();document.getElementById('addNodeMenu').classList.add('hidden');document.getElementById('addNodeMenuBtn').setAttribute('aria-expanded','false');document.getElementById('toolbar-create').focus();return;}if(event.key==='Escape'&&active){event.preventDefault();event.stopImmediatePropagation();close(true);}},true);

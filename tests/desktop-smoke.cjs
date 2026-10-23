@@ -19,6 +19,8 @@ const path=require('node:path');
   const project=await home.evaluate(()=>window.workflowHome.createProject('Dự án kiểm thử desktop'));
   const canvasPromise=application.waitForEvent('window');await home.evaluate(id=>window.workflowHome.openProject(id),project.id);const canvas=await canvasPromise;canvas.setDefaultTimeout(20000);canvas.on('pageerror',error=>errors.push(error.message));
   await canvas.waitForSelector('.node');
+  await canvas.click('#desktopConnectChrome');await canvas.waitForSelector('#canvasChromeDialog[open]');assert.match(await canvas.locator('#canvasChromePairing').inputValue(),/^workflow-connect:\/\/127\.0\.0\.1:/);await canvas.click('#canvasChromeClose');assert.equal(await canvas.locator('#canvasChromePairing').inputValue(),'');
+
   assert.equal(await canvas.evaluate(()=>chrome.runtime.getManifest().version),require('../package.json').version);
   await canvas.evaluate(()=>chrome.storage.local.set({desktopSmoke:'saved',museflow:{nodes:[],edges:[],groups:[],notes:[],settings:{}}}));
   await canvas.reload();await canvas.waitForSelector('#canvas');assert.equal(await canvas.evaluate(async()=>(await chrome.storage.local.get('desktopSmoke')).desktopSmoke),'saved');

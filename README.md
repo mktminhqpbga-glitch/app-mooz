@@ -1,8 +1,12 @@
-# Workflow · MuseFlow 0.31.1
+# Workflow · MuseFlow 0.32.0
 
 **[⬇ ĐÓNG GÓI / CẬP NHẬT APP MAC](https://github.com/mktminhqpbga-glitch/app-mooz/actions/workflows/desktop.yml)** · **[Hướng dẫn từng bước](docs/PACKAGING.md)**
 
 Bấm liên kết trên → **Run workflow** → chọn `main`. Khi build xong, tải artifact DMG đúng loại Mac. Có thể chọn tạo draft Release để chuẩn bị bản cập nhật; app nhận biết sau khi bạn Publish release mới hơn.
+
+## Giao diện Studio · 0.32.0
+
+Thanh bên có tên chức năng rõ ràng và lối vào trực tiếp **Hàng đợi** / **Flow Studio**. Nút **Kết nối app desktop** luôn hiển thị trong tiện ích Chrome; nút **Kết nối Chrome** trong canvas desktop mở mã ghép nối ngay tại dự án. Canvas phân màu node theo loại, tăng độ tương phản và bố trí lại thanh điều khiển. Hàng đợi tách phần chuẩn bị nội dung và theo dõi kết quả, có trạng thái trống/bộ lọc. Thư viện dự án dùng chung phong cách Studio; dữ liệu và luồng chạy được giữ nguyên.
 
 ## Hàng đợi nâng cấp · 0.31.1
 

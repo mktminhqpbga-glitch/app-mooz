@@ -2,8 +2,8 @@
 (() => {
   if (window.workflowDesktop || !globalThis.chrome?.runtime?.id) return;
   const button = document.createElement('button');
-  button.type = 'button'; button.textContent = 'Kết nối app desktop';
+  button.id = 'desktopConnectBtn'; button.className='studio-connect'; button.type = 'button'; button.textContent = 'Kết nối app desktop';
   button.title = 'Ghép nối app Workflow với các tab AI đang mở trong Chrome';
   button.onclick = () => chrome.tabs.create({url: chrome.runtime.getURL('desktop/connect.html')});
-  document.querySelector('.toolbar-actions')?.prepend(button);
+  (document.getElementById('studioConnections') || document.querySelector('.toolbar-actions'))?.prepend(button);
 })();
