@@ -70,9 +70,16 @@ test('app protocol serves only bundled public resources and rejects traversal/sy
   fs.symlinkSync(path.join(temp, 'secret.json'), path.join(root, 'escape.json'));
   fs.symlinkSync(path.join(root, '.git', 'config.json'), path.join(root, 'private.json'));
   fs.symlinkSync(path.join(root, 'desktop', 'main.cjs'), path.join(root, 'private.js'));
-  assert.equal(resolveAppPath(root, 'workflow://app/app.html'), path.join(root, 'app.html'));
-  assert.equal(resolveAppPath(root, 'workflow://app/'), path.join(root, 'app.html'));
-  assert.equal(resolveAppPath(root, 'workflow://app/desktop/home.js?v=1'), path.join(root, 'desktop', 'home.js'));
+  // macOS temporary directories can use /var -> /private/var aliases.
+  // The resolver deliberately returns the canonical path for its containment checks.
+  const realRoot = fs.realpathSync(root);
+  assert.equal(resolveAppPath(root, 'workflow://app/app.html'), path.join(realRoot, 'app.html'));
+  assert.equal(resolveAppPath(root, 'workflow://app/'), path.join(realRoot, 'app.html'));
+  assert.equal(resolveAppPath(root, 'workflow://app/desktop/home.js?v=1'), path.join(realRoot, 'desktop', 'home.js'));
+  const linkedRoot = path.join(temp, 'app-alias');
+  fs.symlinkSync(root, linkedRoot, 'dir');
+  assert.equal(resolveAppPath(linkedRoot, 'workflow://app/app.html'), path.join(realRoot, 'app.html'));
+  assert.equal(resolveAppPath(linkedRoot, 'workflow://app/desktop/home.js?v=1'), path.join(realRoot, 'desktop', 'home.js'));
   for (const url of ['workflow://app/../secret.json', 'workflow://app/%2e%2e/secret.json',
     'workflow://app/%252e%252e/secret.json', 'workflow://app/%2e%2e%2fsecret.json',
     'workflow://app/%2e%2e%5csecret.json', 'workflow://app/%00.json', 'workflow://app/%zz.json',
@@ -82,5 +89,6 @@ test('app protocol serves only bundled public resources and rejects traversal/sy
     'workflow://app/absent.js', 'workflow://app:999/app.html',
     'workflow://user@app/app.html', 'https://app/app.html']) {
     assert.equal(resolveAppPath(root, url), null, url);
+    assert.equal(resolveAppPath(linkedRoot, url), null, 'linked app root: ' + url);
   }
 });
