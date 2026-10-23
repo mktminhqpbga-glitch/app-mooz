@@ -164,3 +164,8 @@ Không có phiên Muse/Gemini/ChatGPT đăng nhập thật, nên chưa xác minh
 - Story references smoke đạt trong Chromium: tự sinh ba ô @1/@2/@3 trước và sau khi tạo cấu trúc, gợi ý khi nhập @, nhập ảnh sai thứ tự theo tên mã, bỏ tệp hỏng, chặn ảnh còn thiếu trước khi gửi AI, kiểm tra chính xác byte ảnh theo từng cảnh, sửa mã cập nhật dây, giữ cảnh không liên quan, lưu ảnh qua reload và nguồn ảnh riêng cho bản dựng mới.
 - Story dashboard, hierarchical story và canvas groups/frames smoke đạt: giữ bước duyệt ảnh, ghép MP4/âm thanh đúng thứ tự, dựng lại chọn lọc và thao tác nhóm node.
 - AI được mô phỏng; chưa xác minh chất lượng đồng nhất nhân vật trên tài khoản AI thật.
+
+## 0.27.1 — chọn và xóa nhiều mục hàng đợi
+
+- 61 unit tests đạt, gồm xóa đúng các ID đã chọn, không gửi prompt đã xóa, chặn cả đợt xóa nếu chứa tác vụ đang chạy và khôi phục danh sách khi lưu thất bại.
+- Batch Manager Chromium smoke đạt: tích ô không mở chi tiết, chọn qua hai trang, giữ lựa chọn khi tìm kiếm, chọn trang/kết quả lọc/bỏ chọn, xóa đúng mục và khóa ô chọn khi AI đang xử lý. Các kiểm tra ảnh tham chiếu, video MP4, lưu lại và quyền quản lý hàng đợi cũng đạt. API AI được mô phỏng.

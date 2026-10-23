@@ -1,4 +1,4 @@
-# Workflow · MuseFlow 0.27.0
+# Workflow · MuseFlow 0.27.1
 
 Extension Chrome/Edge dựa trên [MuseFlow / 26Flow](https://github.com/bynne2602/museflow), mở rộng canvas/timeline để làm việc với Muse.ai, Gemini, ChatGPT và API Google, OpenAI, fal.ai. Giữ nguyên giấy phép GPL-2.0-or-later của nguồn gốc và thông báo FFmpeg đi kèm.
 
@@ -310,3 +310,8 @@ Nhãn thời lượng ghi rõ giây; trang đặt translate=no để tránh trì
 - Mỗi cảnh chỉ nối ảnh của mã được nhắc trong cảnh; danh mục đầu phim không kéo toàn bộ nhân vật vào mọi cảnh. Gợi ý khi gõ @, chỉnh mã trong prompt cập nhật dây; thiếu ảnh chặn gửi AI.
 - Lưu ảnh cùng workflow, tạo bản dựng mới giữ nguồn riêng, AI chia kịch bản phải giữ mã. Ảnh nối thủ công làm tham chiếu chung vẫn được giữ.
 - [Hướng dẫn và ví dụ](docs/MASTER-STORY.md).
+
+### 0.27.1 — chọn và xóa nhiều prompt trong Hàng đợi
+
+- Ô chọn từng dòng, chọn trang, chọn tất cả kết quả lọc, bỏ chọn và xóa nhiều mục trong một lần. Giữ lựa chọn khi chuyển trang/lọc.
+- Chặn xóa tác vụ đang chạy; xóa mục chờ khỏi bộ điều phối, giữ node và media trên canvas.

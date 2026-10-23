@@ -15,6 +15,12 @@ Mở **Tạo node → Hàng đợi · Kho ảnh**. Đây là phần bổ sung v�
 
 Thẻ **Tạo hàng loạt / Flow Studio** cũng đưa tác vụ vào cùng hàng đợi; bấm Tạo trên thẻ hoặc Tạo tất cả sẽ bật bộ điều phối. Các ảnh gắn thủ công và `@tag` đều được chốt vào tác vụ. Giới hạn thời lượng 5/10/15 giây trong màn hình hàng đợi là yêu cầu gửi cho AI, không bảo đảm dịch vụ hỗ trợ. Flow Studio giữ các thời lượng hiện có.
 
+## Chọn và xóa nhiều prompt (0.27.1)
+
+Tích ô bên trái mỗi dòng rồi bấm **Xóa mục đã chọn**. **Chọn trang này** chỉ chọn các mục được phép xóa trên trang đang xem. **Chọn tất cả kết quả lọc** chọn toàn bộ kết quả của bộ lọc/tìm kiếm hiện tại, kể cả những trang khác. **Bỏ chọn** xóa lựa chọn hiện tại.
+
+Lựa chọn được giữ khi đổi trang hoặc bộ lọc; số Đã chọn luôn tính cả mục không còn hiển thị. Tác vụ đang chạy hoặc đang hoàn tất dừng không cho chọn/xóa. Xóa mục trong hàng đợi không xóa node hoặc tệp kết quả trên canvas. Mục chờ đã xóa không được gửi tới AI.
+
 ## Lưu và phục hồi
 
 - Kho ảnh và hàng đợi lưu cục bộ trong hồ sơ trình duyệt. Tối đa 50 prompt/đợt, 200 mục trong danh sách; tối đa 8 ảnh/tác vụ, tổng dữ liệu ảnh đang được kho và tác vụ giữ là 32 MB.

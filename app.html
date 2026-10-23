@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Workflow · MuseFlow 0.27.0</title>
+  <title>Workflow · MuseFlow 0.27.1</title>
   <link rel="icon" type="image/png" sizes="128x128" href="icons/icon128.png" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <header class="toolbar">
-    <div class="brand"><img class="brand-logo" src="icons/26flow.svg" alt="26Flow" /><strong class="brand-name">Flow</strong><span class="brand-version">0.27.0</span></div>
+    <div class="brand"><img class="brand-logo" src="icons/26flow.svg" alt="26Flow" /><strong class="brand-name">Flow</strong><span class="brand-version">0.27.1</span></div>
     <div class="toolbar-tools" aria-label="Add workflow nodes">
       <button id="mediaLibraryBtn" type="button">⇩ Tải media</button><button id="promptLibraryBtn" type="button">Kho prompt</button>
       <button id="batchManagerBtn" type="button">Hàng đợi · Kho ảnh</button><button id="flowStudioBtn" type="button">Tạo hàng loạt</button><button id="batchImagesBtn" type="button">＋ Tạo ảnh hàng loạt</button><button id="scriptImportBtn" type="button">＋ Script → Nodes</button>
@@ -199,7 +199,7 @@
     <div class="batch-controls"><span id="batchManagerChat"></span><button id="batchManagerRefreshChats" type="button">↻ Làm mới cửa sổ AI</button></div>
     <div class="batch-controls"><label>Song song toàn hàng đợi <input id="batchManagerConcurrency" type="number" min="1" max="6" value="1" /></label><button id="batchManagerStart" class="primary" type="button">▶ Chạy hàng đợi</button><button id="batchManagerStop" type="button">■ Dừng tất cả</button><button id="batchManagerClear" type="button">Dọn mục đã xong</button></div>
     <p class="hint">Mỗi tab AI chỉ nhận một tác vụ tại một thời điểm. Chạy song song cần các tab khác nhau; nhiều cửa sổ cùng hồ sơ không phải các tài khoản cách ly. Thời lượng thực tế phụ thuộc AI.</p>
-    <p id="batchManagerNotice" role="status"></p><div id="batchManagerLive" class="batch-live" aria-label="Tác vụ đang chạy" hidden></div><div id="batchManagerFilters" class="batch-controls"></div><input id="batchManagerSearch" type="search" placeholder="Tìm prompt / Task ID" aria-label="Tìm tác vụ" /><div id="batchManagerJobs"></div><footer><button id="batchManagerPrev" type="button">Trước</button><span id="batchManagerPages"></span><button id="batchManagerNext" type="button">Sau</button></footer>
+    <p id="batchManagerNotice" role="status"></p><div id="batchManagerLive" class="batch-live" aria-label="Tác vụ đang chạy" hidden></div><div id="batchManagerFilters" class="batch-controls"></div><input id="batchManagerSearch" type="search" placeholder="Tìm prompt / Task ID" aria-label="Tìm tác vụ" /><div class="batch-controls batch-selection"><label><input id="batchManagerSelectPage" type="checkbox" /> Chọn trang này</label><button id="batchManagerSelectFiltered" type="button">Chọn tất cả kết quả lọc</button><button id="batchManagerUnselect" type="button" disabled>Bỏ chọn</button><span id="batchManagerSelectionCount" role="status" title="Giữ lựa chọn khi chuyển trang hoặc thay bộ lọc">Đã chọn 0</span><button id="batchManagerDeleteSelected" type="button" disabled>Xóa mục đã chọn (0)</button></div><div id="batchManagerJobs"></div><footer><button id="batchManagerPrev" type="button">Trước</button><span id="batchManagerPages"></span><button id="batchManagerNext" type="button">Sau</button></footer>
   </dialog>
   <script src="vendor/ffmpeg/ffmpeg.js"></script>
   <script src="batch-images.js"></script>
