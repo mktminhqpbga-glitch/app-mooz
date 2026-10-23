@@ -1,7 +1,7 @@
 (() => {
   if (window.__museFlowBridgeInstalled) return;
   window.__museFlowBridgeInstalled = true;
-  window.__museFlowBridgeVersion='0.29.0';
+  window.__museFlowBridgeVersion='0.31.0';
 
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     if(_sender.id!==chrome.runtime.id)return false;
@@ -69,7 +69,7 @@
     const composer=findComposer();
     const ready=Boolean(composer&&visible(composer)&&!composer.disabled&&!composer.readOnly);
     const loginRequired=Boolean(document.querySelector('input[type="password"],button[type="submit"]'))&&/sign in|log in|登录/i.test(document.body?.innerText||'');
-    return {ok:true,jobProtocol:1,bridgeVersion:window.__museFlowBridgeVersion,signedIn:ready&&!loginRequired,busy:activeGenerations.size>0||[...document.querySelectorAll('[data-testid="hatch-composer-stop-button"],button[aria-label*="Stop" i]')].some(visible),title:document.title,composer:ready,loginRequired,url:location.href};
+    return {ok:true,jobProtocol:1,bridgeProtocol:1,bridgeVersion:window.__museFlowBridgeVersion,signedIn:ready&&!loginRequired,busy:activeGenerations.size>0||[...document.querySelectorAll('[data-testid="hatch-composer-stop-button"],button[aria-label*="Stop" i]')].some(visible),title:document.title,composer:ready,loginRequired,url:location.href};
   }
 
   async function waitHydrated(timeout,signal) {

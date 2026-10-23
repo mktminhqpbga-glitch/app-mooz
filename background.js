@@ -1,3 +1,4 @@
+importScripts('desktop/chrome-relay-worker.js');
 chrome.action.onClicked.addListener(async () => {
   const url = chrome.runtime.getURL('app.html');
   const tabs = await chrome.tabs.query({ url });

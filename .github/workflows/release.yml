@@ -1,0 +1,71 @@
+name: Build signed macOS update (draft)
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing version tag, for example v0.31.0
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: macos-release-${{ inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  signed-release:
+    runs-on: macos-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write
+    env:
+      CSC_LINK: ${{ secrets.MAC_CERTIFICATE_P12 }}
+      CSC_KEY_PASSWORD: ${{ secrets.MAC_CERTIFICATE_PASSWORD }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      RELEASE_TAG: ${{ inputs.tag }}
+    steps:
+      - name: Check out the selected existing tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Validate release version and signing requirements
+        run: |
+          node -e 'if (process.env.RELEASE_TAG !== "v" + require("./package.json").version) throw Error("Tag must match package.json version")'
+          for requirement in CSC_LINK CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID; do
+            if [ -z "${!requirement}" ]; then
+              echo "Missing repository secret for $requirement. Configure signing before creating an automatic update."
+              exit 1
+            fi
+          done
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Prepare Electron
+        run: npm run setup:desktop
+      - name: Run unit tests
+        run: npm test
+      - name: Build signed and notarized packages for both Mac architectures
+        run: npm exec electron-builder -- --mac --arm64 --x64 -c.forceCodeSigning=true -c.mac.notarize=true --publish never
+      - name: Verify automatic update metadata exists
+        run: |
+          test -s dist/latest-mac.yml
+          test -s "dist/Workflow-${RELEASE_TAG#v}-mac-arm64.zip"
+          test -s "dist/Workflow-${RELEASE_TAG#v}-mac-x64.zip"
+      - name: Create a draft release with update files
+        run: |
+          cat > /tmp/workflow-release-notes.md <<'NOTES'
+          Signed macOS packages for Apple Silicon and Intel.
+
+          Review and test the packages before publishing this draft. Only a published stable release is offered to installed apps. Keep the ZIP, blockmap and latest-mac.yml files together so compatible clients can download only changed blocks.
+          NOTES
+          gh release create "$RELEASE_TAG" dist/*.dmg dist/*.zip dist/*.blockmap dist/latest-mac.yml --draft --verify-tag --title "Workflow $RELEASE_TAG" --notes-file /tmp/workflow-release-notes.md

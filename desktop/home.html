@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>Workflow — Không gian làm việc</title>
+  <link rel="stylesheet" href="home.css">
+  <link rel="stylesheet" href="update-ui.css">
+</head>
+<body>
+  <aside class="sidebar">
+    <a class="brand" href="home.html" aria-label="Workflow, trang chủ"><span class="brand-mark">W</span><span>Workflow<small>AI CREATIVE STUDIO</small></span></a>
+    <p class="nav-label">KHÔNG GIAN LÀM VIỆC</p>
+    <nav aria-label="Thư viện dự án">
+      <button class="nav-button selected" id="allProjects" aria-current="page"><span>▦</span>Tất cả dự án</button>
+      <button class="nav-button" id="recentProjects"><span>◷</span>Gần đây</button>
+    </nav>
+    <div class="sidebar-bottom"><span class="local-dot"></span><div>Lưu trên máy của bạn<small>Không tự tải dự án lên đám mây</small></div></div>
+  </aside>
+
+  <main>
+    <header class="topbar"><span>Không gian làm việc</span><span class="desktop-badge">DESKTOP</span></header>
+    <section class="workspace-heading">
+      <div><p class="eyebrow">TỪ Ý TƯỞNG ĐẾN THÀNH PHẨM</p><h1>Dự án của bạn</h1><p class="subtitle">Kết nối các bước AI. Giữ ý tưởng, nội dung và kết quả trong cùng một nơi.</p></div>
+      <button id="newProject" class="primary"><span aria-hidden="true">＋</span> Dự án mới</button>
+    </section>
+
+    <section class="getting-started" aria-labelledby="startHeading">
+      <div class="start-title"><span class="spark" aria-hidden="true">✧</span><div><h2 id="startHeading">Bắt đầu một quy trình sáng tạo</h2><p>Ba bước để đưa ý tưởng vào hoạt động.</p></div></div>
+      <ol>
+        <li><span class="step">01</span><div><strong>Tạo dự án</strong><p>Đặt tên, thêm node và nối các bước trên canvas.</p></div></li>
+        <li><span class="step">02</span><div><strong>Kết nối AI</strong><p>Kết nối Chrome để dùng các tab AI đang mở, hoặc mở cửa sổ AI riêng trong app.</p></div></li>
+        <li><span class="step">03</span><div><strong>Chạy và kiểm tra</strong><p>Thử một node trước, kiểm tra kết quả rồi chạy cả workflow.</p></div></li>
+      </ol>
+      <div class="connection-footer"><p class="connection-note">Kết nối Chrome cần tiện ích đồng hành. Cửa sổ AI trong app có phiên riêng và cần đăng nhập lại; app không sao chép cookie Chrome. API key chỉ giữ trong phiên, không lưu vào tệp dự án.</p><button id="connectChrome" class="secondary">Kết nối Chrome</button></div>
+    </section>
+
+    <section class="project-library" aria-labelledby="libraryHeading">
+      <div class="library-toolbar"><div><h2 id="libraryHeading">Tất cả dự án</h2><span id="projectCount" class="count"></span></div><label class="search"><span aria-hidden="true">⌕</span><input id="searchProjects" type="search" placeholder="Tìm dự án…" aria-label="Tìm dự án theo tên"></label></div>
+      <p id="libraryStatus" class="status" role="status" aria-live="polite">Đang mở thư viện…</p>
+      <div id="projectGrid" class="project-grid"></div>
+      <div id="emptyState" class="empty-state" hidden><div class="empty-icon" aria-hidden="true">◇</div><h3 id="emptyTitle">Chưa có dự án nào</h3><p id="emptyDescription">Tạo dự án đầu tiên để bắt đầu xây dựng workflow AI.</p><button id="emptyCreate" class="secondary">＋ Tạo dự án đầu tiên</button></div>
+    </section>
+  </main>
+
+  <dialog id="nameDialog">
+    <form id="nameForm"><h2 id="nameDialogTitle">Dự án mới</h2><p id="nameDialogDescription">Một tên dễ nhớ giúp bạn tìm lại công việc của mình.</p><label class="field" for="projectName">Tên dự án<input id="projectName" maxlength="100" required autocomplete="off" placeholder="Ví dụ: Video giới thiệu sản phẩm"></label><p id="nameError" class="form-error" role="alert"></p><div class="dialog-actions"><button id="cancelName" type="button" class="secondary">Hủy</button><button id="submitName" class="primary" type="submit">Tạo dự án</button></div></form>
+  </dialog>
+  <dialog id="restoreDialog">
+    <h2>Khôi phục bản lưu trước?</h2><p id="restoreDescription"></p><p>Tệp hiện tại được giữ lại riêng để có thể kiểm tra sau. Bản lưu trước sẽ trở thành phiên bản đang dùng.</p><p id="restoreError" class="form-error" role="alert"></p><div class="dialog-actions"><button id="cancelRestore" class="secondary">Hủy</button><button id="confirmRestore" class="primary">Khôi phục</button></div>
+  </dialog>
+  <dialog id="chromeDialog">
+    <h2>Kết nối các tab AI trong Chrome</h2><p>Cài tiện ích đồng hành của Workflow trong Chrome, mở tiện ích rồi dán mã kết nối dưới đây. Giữ app và các tab AI mở khi chạy.</p><label class="field" for="chromePairing">Mã kết nối phiên này<input id="chromePairing" readonly autocomplete="off" spellcheck="false"></label><p>Mã này cấp quyền thao tác các tab AI qua tiện ích đồng hành. Chỉ dán vào tiện ích Workflow trên máy của bạn.</p><p id="chromeStatus" class="form-error" role="status"></p><div class="dialog-actions"><button id="closeChrome" class="secondary">Đóng</button><button id="copyChrome" class="primary">Sao chép mã</button></div>
+  </dialog>
+  <script src="update-ui.js"></script>
+  <script src="home.js"></script>
+</body>
+</html>

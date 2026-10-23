@@ -1,3 +1,6 @@
 __pycache__/
 *.py[cod]
 tools/media-helper/.venv/
+node_modules/
+dist/
+.electron-test/

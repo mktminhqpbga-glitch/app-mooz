@@ -1,0 +1,45 @@
+name: Desktop checks and unsigned macOS build
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  macos-build:
+    name: Tests and unsigned macOS ZIP
+    runs-on: macos-latest
+    timeout-minutes: 25
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Prepare Electron runtime
+        run: npm run setup:desktop
+      - name: Run unit tests
+        run: npm test
+      - name: Build unsigned macOS ZIP without publishing
+        run: npm exec electron-builder -- --mac zip --publish never
+      - name: Upload unsigned build for manual testing
+        uses: actions/upload-artifact@v4
+        with:
+          name: Workflow-macOS-unsigned-${{ runner.arch }}
+          path: dist/*.zip
+          if-no-files-found: error
+          retention-days: 14

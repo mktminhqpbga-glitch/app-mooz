@@ -6,7 +6,7 @@ root = Path(__file__).resolve().parents[1]
 files = [
     'manifest.json', 'app.html', 'app.js', 'background.js', 'muse-bridge.js', 'muse-jobs.js', 'muse-support.js',
     'ai-bridge.js', 'result-picker.js', 'composer-controls.js', 'ai-providers.js', 'workflow-tools.js', 'workflow-runtime.js', 'media-studio.js', 'media-library.js', 'story-workflow.js', 'story-references.js', 'story-dashboard.js', 'compact-toolbar.js', 'flow-studio.js', 'batch-manager.js', 'batch-images.js', 'i18n.js', 'styles.css', 'README.md',
-    'LICENSE', 'THIRD_PARTY_NOTICES.md',
+    'LICENSE', 'THIRD_PARTY_NOTICES.md', 'desktop/renderer.js', 'desktop/update-ui.js', 'desktop/update-ui.css', 'desktop/chrome-connect.js', 'desktop/chrome-relay-worker.js', 'desktop/connect.html', 'desktop/connect.js',
 ]
 directories = ['icons', 'licenses', 'vendor', 'templates', 'extension', 'data', 'docs', 'tools/media-helper']
 output = root / 'downloads' / 'Workflow-extension.zip'

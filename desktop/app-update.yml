@@ -1,0 +1,4 @@
+provider: github
+owner: mktminhqpbga-glitch
+repo: workflow
+updaterCacheDirName: workflow-museflow-updater

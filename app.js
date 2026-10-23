@@ -844,7 +844,7 @@
     state.nodes = state.nodes.filter(n => n.id !== id);
     state.edges = state.edges.filter(e => e.source !== id && e.target !== id);
     state.selectedNodeIds=state.selectedNodeIds.filter(nodeId=>nodeId!==id);if(state.selectedNodeId===id)state.selectedNodeId=state.selectedNodeIds.at(-1)||null;
-    render();syncTimelineDock();
+    render();syncTimelineDock();scheduleAutoSave();
   }
 
   function selectNode(id,{toggle=false,add=false}={}){let ids=[...state.selectedNodeIds];if(toggle){ids=ids.includes(id)?ids.filter(item=>item!==id):[...ids,id];}else if(add){if(!ids.includes(id))ids.push(id);}else ids=[id];state.selectedNodeIds=ids;state.selectedNodeId=ids.at(-1)||null;document.querySelectorAll('.node').forEach(el=>el.classList.toggle('selected',ids.includes(el.dataset.id)));}
@@ -1759,8 +1759,9 @@
     return references;
   }
 
-  function topoOrder(preferredGenerationOrder=null) {
-    const indeg=new Map(state.nodes.map(n=>[n.id,0])), outgoing=new Map(state.nodes.map(n=>[n.id,[]]));
+  function topoOrder(preferredGenerationOrder=null,includedIds=null) {
+    const nodes=includedIds?state.nodes.filter(node=>includedIds.has(node.id)):state.nodes;
+    const indeg=new Map(nodes.map(n=>[n.id,0])), outgoing=new Map(nodes.map(n=>[n.id,[]]));
     const addOrderEdge=(from,to,allowSelf=false)=>{if((from===to&&!allowSelf)||!outgoing.has(from)||!outgoing.has(to)||outgoing.get(from).includes(to))return;outgoing.get(from).push(to);indeg.set(to,indeg.get(to)+1);};
     state.edges.forEach(e=>addOrderEdge(e.source,e.target,true));
     for(const node of state.nodes.filter(item=>item.type==='generateVideo'&&item.data?.continuity)){const previous=timelinePredecessor(node.id);if(previous)addOrderEdge(previous.id,node.id);}
@@ -1769,15 +1770,15 @@
     for(const node of state.nodes)if(node.type==='generateVideo'&&!orderedVideos.includes(node.id))orderedVideos.push(node.id);
     const videoRank=new Map(orderedVideos.map((id,index)=>[id,index])),nodeRank=new Map(state.nodes.map((node,index)=>[node.id,index]));
     const priority=id=>{const item=nodeById(id);return item?.type==='generateVideo'?state.nodes.length+1+(videoRank.get(id)??nodeRank.get(id)):nodeRank.get(id)??0;};
-    const q=state.nodes.filter(n=>indeg.get(n.id)===0).map(n=>n.id), out=[];
+    const q=nodes.filter(n=>indeg.get(n.id)===0).map(n=>n.id), out=[];
     while(q.length){q.sort((a,b)=>priority(a)-priority(b));const id=q.shift();out.push(id);for(const target of outgoing.get(id)){indeg.set(target,indeg.get(target)-1);if(indeg.get(target)===0)q.push(target);}}
-    if(out.length!==state.nodes.length) throw new Error('Workflow contains a cycle. Remove the loop first.'); return out;
+    if(out.length!==nodes.length) throw new Error('Workflow contains a cycle. Remove the loop first.'); return out;
   }
 
   function requiredNodeOrder(targetId){
     const required=new Set();
     const visit=id=>{if(required.has(id))return;required.add(id);for(const edge of state.edges.filter(item=>item.target===id))visit(edge.source);const node=nodeById(id),previous=node?.type==='generateVideo'&&node.data?.continuity?timelinePredecessor(id):null;if(previous)visit(previous.id);};
-    visit(targetId);return topoOrder().filter(id=>required.has(id));
+    visit(targetId);return topoOrder(null,required);
   }
 
   function validateTargetPrompt(targetId){
@@ -1797,7 +1798,7 @@
     const preferred=preferredTabId??preferredMuseTabId;
     if(preferred){const index=tabs.findIndex(tab=>tab.id===preferred);if(index>0)tabs.unshift(tabs.splice(index,1)[0]);}
     let lastError='';
-    if(message.type==='MUSEFLOW_GENERATE'){const tab=chooseChat('muse',tabs,message.chatTarget||aiChatTargets.muse);await chrome.scripting.executeScript({target:{tabId:tab.id},files:['composer-controls.js','muse-bridge.js']});preferredMuseTabId=tab.id;const session=await waitTabIdle(tab.id,'MUSEFLOW_CHECK_SESSION',message.requestId,signal);if(session.bridgeVersion&&session.bridgeVersion!==chrome.runtime.getManifest().version)throw Error('Bộ nối trên tab Muse là bản '+session.bridgeVersion+', khác bản extension. Tải lại tab Muse trước khi chạy; chưa gửi prompt.');aiTabs.set(message.requestId,tab.id);try{const reply=session.jobProtocol===1?await WorkflowMuseJobs.run(msg=>sendMuseTabMessage(tab.id,msg,signal),message,signal,{onProgress:text=>{const run=[...activeRuns.values()].find(r=>r.requestId===message.requestId);progressNode(nodeById(run?.activeNodeId),text);},onReconnect:()=>{const run=[...activeRuns.values()].find(r=>r.requestId===message.requestId);progressNode(nodeById(run?.activeNodeId),'Đang nối lại với Muse; không gửi lại prompt…');}}):await sendMuseTabMessage(tab.id,message,signal);if(reply?.ok&&reply.conversationUrl){const latest=chrome.tabs.get?await chrome.tabs.get(tab.id):(await chrome.tabs.query({url:WorkflowAI.providers.muse.urls})).find(item=>item.id===tab.id);if(latest&&chatKey(latest.url)===chatKey(reply.conversationUrl)){aiChatTabs.muse=[...(aiChatTabs.muse||[]).filter(item=>item.id!==tab.id),latest];const from=chatKey(tab.url),to=chatKey(reply.conversationUrl);if(new URL(from).origin===new URL(to).origin&&from!==to){const aliases=museChatTransitions.get(tab.id)||new Map();for(const [key,value] of aliases)if(value===from)aliases.set(key,to);aliases.set(from,to);museChatTransitions.set(tab.id,aliases);}return {...reply,chatTarget:{tabId:tab.id,url:to}};}}return reply;}catch(error){if(/message channel closed|message port closed|asynchronous response|receiving end does not exist/i.test(error.message||''))throw Error('Kênh kết nối Muse đã đóng. Không gửi lại prompt. Tải video đã tạo và dùng Công cụ → Nhập video kết quả; tải lại tab Muse để dùng bộ nối mới ở lượt sau.');throw error;}finally{aiTabs.delete(message.requestId);}}
+    if(message.type==='MUSEFLOW_GENERATE'){const tab=chooseChat('muse',tabs,message.chatTarget||aiChatTargets.muse);await chrome.scripting.executeScript({target:{tabId:tab.id},files:['composer-controls.js','muse-bridge.js']});preferredMuseTabId=tab.id;const session=await waitTabIdle(tab.id,'MUSEFLOW_CHECK_SESSION',message.requestId,signal);if(session.bridgeProtocol!==undefined&&session.bridgeProtocol!==1)throw Error('Bộ nối Muse dùng giao thức chưa tương thích. Cập nhật tiện ích và tải lại tab Muse; chưa gửi prompt.');if(session.bridgeProtocol===undefined&&session.bridgeVersion&&session.bridgeVersion!==chrome.runtime.getManifest().version)throw Error('Bộ nối trên tab Muse là bản '+session.bridgeVersion+', khác bản extension. Tải lại tab Muse trước khi chạy; chưa gửi prompt.');aiTabs.set(message.requestId,tab.id);try{const reply=session.jobProtocol===1?await WorkflowMuseJobs.run(msg=>sendMuseTabMessage(tab.id,msg,signal),message,signal,{onProgress:text=>{const run=[...activeRuns.values()].find(r=>r.requestId===message.requestId);progressNode(nodeById(run?.activeNodeId),text);},onReconnect:()=>{const run=[...activeRuns.values()].find(r=>r.requestId===message.requestId);progressNode(nodeById(run?.activeNodeId),'Đang nối lại với Muse; không gửi lại prompt…');}}):await sendMuseTabMessage(tab.id,message,signal);if(reply?.ok&&reply.conversationUrl){const latest=chrome.tabs.get?await chrome.tabs.get(tab.id):(await chrome.tabs.query({url:WorkflowAI.providers.muse.urls})).find(item=>item.id===tab.id);if(latest&&chatKey(latest.url)===chatKey(reply.conversationUrl)){aiChatTabs.muse=[...(aiChatTabs.muse||[]).filter(item=>item.id!==tab.id),latest];const from=chatKey(tab.url),to=chatKey(reply.conversationUrl);if(new URL(from).origin===new URL(to).origin&&from!==to){const aliases=museChatTransitions.get(tab.id)||new Map();for(const [key,value] of aliases)if(value===from)aliases.set(key,to);aliases.set(from,to);museChatTransitions.set(tab.id,aliases);}return {...reply,chatTarget:{tabId:tab.id,url:to}};}}return reply;}catch(error){if(/message channel closed|message port closed|asynchronous response|receiving end does not exist/i.test(error.message||''))throw Error('Kênh kết nối Muse đã đóng. Không gửi lại prompt. Tải video đã tạo và dùng Công cụ → Nhập video kết quả; tải lại tab Muse để dùng bộ nối mới ở lượt sau.');throw error;}finally{aiTabs.delete(message.requestId);}}
     for(const tab of tabs){
       if(signal?.aborted)throw new DOMException('Generation stopped by user.','AbortError');
       if(!tab.id)continue;
@@ -2099,18 +2100,18 @@
   }
 
   let mediaDbPromise;
-  function mediaDb(){if(!mediaDbPromise)mediaDbPromise=new Promise((resolve,reject)=>{const request=indexedDB.open('museflow-media',1);request.onupgradeneeded=()=>request.result.createObjectStore('assets');request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error||new Error('Could not open local media storage.'));});return mediaDbPromise;}
+  function mediaDb(){if(!mediaDbPromise)mediaDbPromise=new Promise((resolve,reject)=>{const request=indexedDB.open('museflow-media',1);request.onupgradeneeded=()=>request.result.createObjectStore('assets');request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error||new Error('Could not open local media storage.'));}).catch(error=>{mediaDbPromise=null;throw error;});return mediaDbPromise;}
   async function putMedia(key,blob){const db=await mediaDb();return new Promise((resolve,reject)=>{const tx=db.transaction('assets','readwrite');tx.objectStore('assets').put(blob,key);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error('Could not save a media file locally.'));tx.onabort=()=>reject(tx.error||new Error('Media storage transaction was cancelled.'));});}
   async function getMedia(key){const db=await mediaDb();return new Promise((resolve,reject)=>{const request=db.transaction('assets','readonly').objectStore('assets').get(key);request.onsuccess=()=>resolve(request.result||null);request.onerror=()=>reject(request.error||new Error('Could not read a saved media file.'));});}
   const idbMediaPrefix='museflow-idb:';
   async function dehydrateMediaUrl(url,key){if(!url||url.startsWith(idbMediaPrefix)||!(/^(?:data:|blob:)/i).test(url))return url;const response=await fetch(url);const blob=await response.blob();if(!blob.size)throw new Error('A saved image or video is empty.');await putMedia(key,blob);return idbMediaPrefix+encodeURIComponent(key);}
-  let autoSaveTimer=0,workflowSaveQueue=Promise.resolve();
+  let autoSaveTimer=0,workflowSaveQueue=Promise.resolve(),workflowSaveBlocked=true;
   async function saveWorkflowSnapshot(){const snapshot=structuredClone({nodes:state.nodes,edges:state.edges,groups:state.groups,notes:state.notes,settings:state.settings});for(const node of snapshot.nodes){const data=node.data||{};if(data.localDataUrl)data.localDataUrl=await dehydrateMediaUrl(data.localDataUrl,`input:${node.id}`);for(const field of ['asset','endFrame','lockedAsset']){const media=data[field];if(media?.url)media.url=await dehydrateMediaUrl(media.url,`${field}:${field==='lockedAsset'?node.id:media.id||node.id}`);}}await chrome.storage.local.set({museflow:snapshot});}
-  function queueWorkflowSave(){workflowSaveQueue=workflowSaveQueue.catch(()=>{}).then(saveWorkflowSnapshot);return workflowSaveQueue;}
+  function queueWorkflowSave({allowRecoveryWrite=false}={}){workflowSaveQueue=workflowSaveQueue.catch(()=>{}).then(async()=>{if(workflowSaveBlocked&&!allowRecoveryWrite)throw new Error('Bản lưu trước đang được bảo vệ sau lỗi tải dữ liệu. Tải lại để thử khôi phục, hoặc bấm Lưu để xác nhận thay thế bằng canvas hiện tại.');await saveWorkflowSnapshot();if(allowRecoveryWrite)workflowSaveBlocked=false;});return workflowSaveQueue;}
   function scheduleAutoSave(){clearTimeout(autoSaveTimer);autoSaveTimer=setTimeout(()=>{queueWorkflowSave().catch(error=>{if(runStatus.className!=='error')setRunStatus(`Auto-save failed: ${error?.message||String(error)}`,'error');});},650);}
-  async function hydrateMediaUrl(url,cache){if(!url?.startsWith(idbMediaPrefix))return url;const key=decodeURIComponent(url.slice(idbMediaPrefix.length));if(!cache.has(key)){const blob=await getMedia(key);cache.set(key,blob?URL.createObjectURL(blob):'');}return cache.get(key);}
-  async function hydrateWorkflowMedia(){const cache=new Map();for(const node of state.nodes){const data=node.data||{};if(data.localDataUrl)data.localDataUrl=await hydrateMediaUrl(data.localDataUrl,cache);for(const field of ['asset','endFrame','lockedAsset'])if(data[field]?.url)data[field].url=await hydrateMediaUrl(data[field].url,cache);}}
-  async function saveState(){clearTimeout(autoSaveTimer);try{await queueWorkflowSave();setRunStatus('Đã lưu.','ok');}catch(error){setRunStatus(`Could not save workflow: ${error?.message||String(error)}`,'error');}}
+  async function hydrateMediaUrl(url,cache){if(!url?.startsWith(idbMediaPrefix))return url;const key=decodeURIComponent(url.slice(idbMediaPrefix.length));if(!cache.has(key)){const blob=await getMedia(key);if(!blob)throw new Error('Không tìm thấy tệp media đã lưu: '+key);cache.set(key,URL.createObjectURL(blob));}return cache.get(key);}
+  async function hydrateWorkflowMedia(){const cache=new Map(),changes=[];try{for(const node of state.nodes){const data=node.data||{};if(data.localDataUrl)changes.push([data,'localDataUrl',await hydrateMediaUrl(data.localDataUrl,cache)]);for(const field of ['asset','endFrame','lockedAsset'])if(data[field]?.url)changes.push([data[field],'url',await hydrateMediaUrl(data[field].url,cache)]);}for(const [target,key,value] of changes)target[key]=value;}catch(error){for(const url of cache.values())URL.revokeObjectURL(url);throw error;}}
+  async function saveState(){clearTimeout(autoSaveTimer);if(workflowSaveBlocked&&!window.confirm('Không tải được đầy đủ bản lưu trước. Lưu canvas hiện tại sẽ thay thế bản đó. Bạn có chắc muốn tiếp tục?'))return;try{await queueWorkflowSave({allowRecoveryWrite:true});setRunStatus('Đã lưu.','ok');}catch(error){setRunStatus(`Could not save workflow: ${error?.message||String(error)}`,'error');}}
   function blobAsDataUrl(blob){return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result||''));reader.onerror=()=>reject(reader.error||new Error('Could not package workflow media.'));reader.readAsDataURL(blob);});}
   async function exportWorkflowFile(){
     const button=$('#workflowExportBtn');button.disabled=true;
@@ -2144,12 +2145,28 @@
     const previous={nodes:state.nodes,edges:state.edges,groups:state.groups,notes:state.notes,settings:state.settings};
     try{
       state.nodes=workflow.nodes;state.edges=workflow.edges;state.groups=Array.isArray(workflow.groups)?workflow.groups:[];state.notes=Array.isArray(workflow.notes)?workflow.notes:[];state.settings=workflow.settings&&typeof workflow.settings==='object'?workflow.settings:{};
-      await hydrateWorkflowMedia();normalizeSavedGraph();state.selectedNodeIds=[];state.selectedNodeId=null;state.selectedEdgeIds=[];syncSettingsUI();render();await queueWorkflowSave();
+      await hydrateWorkflowMedia();normalizeSavedGraph();state.selectedNodeIds=[];state.selectedNodeId=null;state.selectedEdgeIds=[];syncSettingsUI();render();await queueWorkflowSave({allowRecoveryWrite:true});
       setRunStatus(`Workflow imported: ${file.name}`,'ok');
     }catch(error){state.nodes=previous.nodes;state.edges=previous.edges;state.groups=previous.groups||[];state.notes=previous.notes||[];state.settings=previous.settings;render();setRunStatus(`Could not import workflow: ${error?.message||String(error)}`,'error');}
   }
-  async function loadState(){await studioTemplatesReady;try{const got=await chrome.storage.local.get('museflow');if(got.museflow){state.nodes=Array.isArray(got.museflow.nodes)?got.museflow.nodes:[];state.edges=Array.isArray(got.museflow.edges)?got.museflow.edges:[];state.groups=Array.isArray(got.museflow.groups)?got.museflow.groups:[];state.notes=Array.isArray(got.museflow.notes)?got.museflow.notes:[];state.settings=got.museflow.settings||{};if(!state.nodes.length){const s=starter();state.nodes=s.nodes;state.edges=s.edges;}}else{const s=starter();state.nodes=s.nodes;state.edges=s.edges;}await hydrateWorkflowMedia();}catch(error){const s=starter();state.nodes=s.nodes;state.edges=s.edges;state.groups=[];state.notes=[];setRunStatus(`Could not load saved workflow: ${error.message}`,'error');}normalizeSavedGraph();syncSettingsUI();
-    render();syncTimelineDock();try{clearTimeout(autoSaveTimer);await queueWorkflowSave();}catch(error){setRunStatus(`Workflow is open, but media migration failed: ${error?.message||String(error)}`,'warn');}}
+  async function loadState(){
+    await studioTemplatesReady;let loaded=false;
+    try{
+      const got=await chrome.storage.local.get('museflow');
+      if(got.museflow){
+        if(!Array.isArray(got.museflow.nodes)||!Array.isArray(got.museflow.edges))throw new Error('Bản lưu không có cấu trúc workflow hợp lệ.');
+        state.nodes=got.museflow.nodes;state.edges=got.museflow.edges;state.groups=Array.isArray(got.museflow.groups)?got.museflow.groups:[];state.notes=Array.isArray(got.museflow.notes)?got.museflow.notes:[];state.settings=got.museflow.settings||{};
+      }else{const s=starter();state.nodes=s.nodes;state.edges=s.edges;}
+      await hydrateWorkflowMedia();normalizeSavedGraph();loaded=true;workflowSaveBlocked=false;
+    }catch(error){
+      workflowSaveBlocked=true;setRunStatus(`Không tải được đầy đủ workflow: ${error.message}. Bản lưu trước chưa bị thay thế. Tải lại để thử khôi phục hoặc nhập bản sao lưu JSON.`, 'error');
+      // Keep a graph that was read successfully, including unresolved media IDs.
+      // When storage itself is unreadable, use an empty, unsaved canvas.
+      try{normalizeSavedGraph();}catch{state.nodes=[];state.edges=[];state.groups=[];state.notes=[];}
+    }
+    syncSettingsUI();render();syncTimelineDock();
+    if(loaded)try{clearTimeout(autoSaveTimer);await queueWorkflowSave();}catch(error){setRunStatus(`Workflow is open, but media migration failed: ${error?.message||String(error)}`,'warn');}
+  }
   async function resetState(){if(state.isRunning)return;createUndoSnapshot('Reset workflow',{preserveRuntime:false});const s=starter();state.nodes=s.nodes;state.edges=s.edges;state.groups=[];state.notes=[];state.selectedNodeIds=[];state.selectedNodeId=null;render();await saveState();}
   function syncSettingsUI(){backendStatus.textContent=`v${appVersion}`;}
 
@@ -2348,4 +2365,13 @@
   });
   WorkflowStoryReferences.bind({layout:scheduleDrawEdges,read:storyReferenceSlots,put:setStoryReference,rename:(id,tag,label)=>{const master=storyReferenceMaster(id);if(state.isRunning)throw Error('Dừng tác vụ trước khi đổi tên.');Object.defineProperty(master.data.storyReferenceLabels||={},tag,{value:String(label).slice(0,100),writable:true,enumerable:true,configurable:true});const source=storyReferenceNode(master,tag);if(source){source.data.storyReferenceLabel=String(label).slice(0,100);dirtyStoryReference(source);}scheduleAutoSave();}});
   const workflowReady=loadState(); detectMuse();applyCanvasTransform();
+  if(window.workflowDesktop){
+    // The desktop host waits for this before closing a canvas; a pending
+    // debounce must not discard the last edit. Keep state and credentials private.
+    window.WorkflowDesktopLifecycle=Object.freeze({
+      flush:async()=>{await workflowReady;clearTimeout(autoSaveTimer);await queueWorkflowSave();},
+      stop:()=>{scriptAIController?.abort();if(storyBatch)storyBatch.stopped=true;stopTimelineExport();stopAllRuns();},
+      busy:()=>state.isRunning||state.timelineExporting||!!scriptAIController
+    });
+  }
 })();

@@ -1,4 +1,27 @@
-# Workflow · MuseFlow 0.29.0
+# Workflow · MuseFlow 0.31.0
+
+## Ứng dụng desktop — bản alpha
+
+Bản 0.31.0 thêm panel **Cập nhật**, tự kiểm tra phiên bản và tải nền/tự cài cho bản Mac đã ký. Bản chưa ký chỉ kiểm tra và mở trang tải. [Cách cập nhật và phát hành](docs/AUTO-UPDATE.md).
+
+Repository hiện có **ứng dụng Electron cho macOS** bên cạnh tiện ích Chrome/Edge. App có thư viện dự án, dữ liệu tách biệt, lưu cục bộ và khôi phục bản trước. Có thể kết nối các tab AI đã đăng nhập trong Chrome qua tiện ích đồng hành, hoặc mở cửa sổ AI riêng trong app.
+
+```sh
+npm ci
+npm run setup:desktop
+npm start
+```
+
+**[Hướng dẫn app desktop, kết nối Chrome và đóng gói](docs/DESKTOP.md)** · **[Phân tích kiến trúc và phạm vi bản alpha](docs/APP-ARCHITECTURE.md)**
+
+Để dùng Chrome hiện tại: tải lại tiện ích từ thư mục gốc → trong app chọn **Kết nối Chrome** → sao chép mã → trong canvas tiện ích chọn **Kết nối app desktop** và dán mã → làm mới danh sách chat trong app. Không cần sao chép cookie hoặc nhập API key cho các tab đã đăng nhập.
+
+Bản phân phối macOS hiện chưa ký/notarize và chưa kiểm thử trên Mac thật. Các kết quả kiểm thử Electron/Linux không thay thế xác minh đăng nhập và tạo nội dung trên dịch vụ AI thật. Không có cơ chế tự chạy lại yêu cầu AI khi mất kết nối.
+
+Các sửa lỗi nền tảng trong bản này: giữ nguyên workflow khi đọc dữ liệu/media lỗi; giữ canvas rỗng đã lưu; chạy nhánh độc lập không bị vòng lặp ở nhánh khác chặn; xóa node bằng nút × được tự lưu; đóng cửa sổ desktop chờ lưu và dừng tác vụ.
+
+## Tiện ích Chrome/Edge
+
 
 Extension Chrome/Edge dựa trên [MuseFlow / 26Flow](https://github.com/bynne2602/museflow), mở rộng canvas/timeline để làm việc với Muse.ai, Gemini, ChatGPT và API Google, OpenAI, fal.ai. Giữ nguyên giấy phép GPL-2.0-or-later của nguồn gốc và thông báo FFmpeg đi kèm.
 
