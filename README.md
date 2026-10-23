@@ -1,4 +1,4 @@
-# Workflow · MuseFlow 0.24.0
+# Workflow · MuseFlow 0.24.1
 
 Extension Chrome/Edge dựa trên [MuseFlow / 26Flow](https://github.com/bynne2602/museflow), mở rộng canvas/timeline để làm việc với Muse.ai, Gemini, ChatGPT và API Google, OpenAI, fal.ai. Giữ nguyên giấy phép GPL-2.0-or-later của nguồn gốc và thông báo FFmpeg đi kèm.
 
@@ -269,3 +269,9 @@ Bản dựng mới mặc định bật Duyệt ảnh trước khi tạo video, c
 - **D** hoặc **Workflow → Nhân bản nhóm** tạo nhóm mới với ID và dây nội bộ mới. Không sao chép video, kết quả tạo hay trạng thái duyệt cũ; tệp nguồn được giữ. **⌘C/⌘V** trên macOS (Ctrl+C/V trên Windows/Linux) sao chép/dán nhóm trong canvas; ô nhập văn bản vẫn sao chép/dán bình thường. **Mũi tên** dịch nhóm 10 px; **Shift + mũi tên** dịch 50 px. Không gán ⌘D, ⌘H hoặc tổ hợp Control/Option dùng cho hệ thống. Các thao tác sửa có thể hoàn tác bằng ⌘Z/Ctrl+Z.
 
 Kiểm thử Chromium gồm kéo nhiều node/nhóm, nhân bản và clipboard, xóa kết quả, hủy lượt chạy có phản hồi muộn; trích khung cuối từ MP4 thật. Chưa thử trên thiết bị macOS thật; bộ nối AI dùng phản hồi mô phỏng.
+
+### 0.24.1 — không lấy video trang trí/lịch sử làm kết quả Muse
+
+Bộ nối chỉ nhận media trong vùng trả lời mới, bỏ video ngoài chat, media của tin nhắn cũ tải muộn, placeholder/loading và tài nguyên mascot/avatar. Đợi media ổn định và Muse ngừng trả lời trước khi nhận. Nếu không xác minh được kết quả mới, tiếp tục chờ thay vì chọn một video bất kỳ trên trang.
+
+Khung cuối phải có mã video nguồn trùng với video hiện tại. Khung cũ chưa có thông tin đối chiếu không hiển thị như kết quả hợp lệ; có thể trích lại từ video nguồn. Video nhận nhầm ở bản trước phải xóa kết quả và chạy lại sau khi cập nhật, tải lại tab Muse. Trích lại từ một video vốn đã sai không sửa được nội dung video đó. Kiểm thử trình duyệt dùng video MP4 thật và trang Muse mô phỏng.

@@ -34,6 +34,7 @@
     const cancel=()=>{clearTimeout(timer);signal?.removeEventListener('abort',cancel);reject(new DOMException('Generation stopped by user.','AbortError'));};
     signal?.addEventListener('abort',cancel,{once:true});
   });
+  const assistantSelector='div[class*="hatch-chat-groupable-bubble"],[data-message-author-role="assistant"],[data-testid*="assistant" i],[data-testid*="message-content" i],[class*="assistant-message" i],[class*="assistant-bubble" i],.group\\/msg';
   const attachmentSelector='[data-testid^="hatch-chat-attachment-presentation-"]';
   const activeGenerations=new Map();
 
@@ -77,14 +78,16 @@
     for(const bubble of assistantMessageElements())for(const img of bubble.querySelectorAll('img'))if(img.naturalWidth>=128&&img.naturalHeight>=128)candidates.add(tile(img));
     const found=new Map();
     for(const el of candidates){
-      if(scope?.contains(el)||el.closest('[class*="chat-user-bubble"],[data-message-author-role="user"],user-query,[data-testid="hatch-composer-placeholder-overlay"]'))continue;
+      if(!visible(el)||el.closest('[data-testid*="placeholder" i],[data-testid*="loading" i],[data-state="loading"],[aria-busy="true"]')||scope?.contains(el)||el.closest('[class*="chat-user-bubble"],[data-message-author-role="user"],user-query,[data-testid="hatch-composer-placeholder-overlay"]'))continue;
       const tid=el.getAttribute('data-testid')||'',video=el.matches('video')?el:el.querySelector('video'),image=el.matches('img')?el:el.querySelector('img');
       const nodes=[el,...el.querySelectorAll('a[href],source[src],[data-video-src],[data-video-url],[data-download-url]')];
       const urls=nodes.map(item=>({url:item.getAttribute('data-video-src')||item.getAttribute('data-video-url')||item.getAttribute('data-download-url')||item.href||item.src||'',download:item.getAttribute('download')||'',type:item.getAttribute('type')||'',explicitVideo:item.hasAttribute('data-video-src')||item.hasAttribute('data-video-url')})).filter(item=>item.url);
       const videoLink=urls.find(item=>item.explicitVideo||/video\//i.test(item.type)||/\.(mp4|webm|mov|m4v)(?:$|[?#])/i.test(item.url)||/\.(mp4|webm|mov|m4v)$/i.test(item.download))?.url||'';
       const videoUrl=video?.currentSrc||video?.src||video?.querySelector('source')?.src||videoLink||'';
       const src=videoUrl||image?.currentSrc||image?.src||'';
-      if(src)found.set(src,{el,tid,src,videoUrl,isVideo:!!videoUrl||!!video||/video/i.test(tid),width:video?.videoWidth||image?.naturalWidth||0,height:video?.videoHeight||image?.naturalHeight||0});
+      const bubble=el.closest(assistantSelector);
+      const decorative=/(?:^|[\/_.-])(?:placeholder|loading|loader|mascot|avatar|sloth|welcome|onboarding)(?:[\/_.?-]|$)/i.test(src);
+      if(src&&bubble&&!decorative)found.set(src,{el,bubble,tid,src,videoUrl,isVideo:!!videoUrl||!!video||/video/i.test(tid),width:video?.videoWidth||image?.naturalWidth||0,height:video?.videoHeight||image?.naturalHeight||0});
     }
     return [...found.values()];
   }
@@ -101,7 +104,7 @@
   }
 
   function assistantMessageElements(){
-    return [...document.querySelectorAll('div[class*="hatch-chat-groupable-bubble"],[data-message-author-role="assistant"],[data-testid*="assistant" i],[data-testid*="message-content" i],[class*="assistant-message" i],[class*="assistant-bubble" i]')].filter(el=>visible(el)&&!el.closest('[class*="chat-user-bubble"],[data-message-author-role="user"],[data-testid*="user-message" i]'));
+    return [...document.querySelectorAll(assistantSelector)].filter(el=>visible(el)&&!el.closest('[class*="chat-user-bubble"],[data-message-author-role="user"],[data-testid*="user-message" i]'));
   }
 
   function readNewAssistantContext(previousBubbleTexts){
@@ -182,11 +185,11 @@
     if(!accepted)throw new Error('Chưa xác nhận Muse nhận prompt. Không tự gửi lại để tránh trùng lặp.');
     report(requestId,'Muse đã nhận yêu cầu. Đang tìm video/ảnh kết quả mới…');
     const deadline=Date.now()+Math.min(900,Math.max(30,Number(timeoutSec)||600))*1000;
-    let lastProgress=Date.now(),firstWrongRatioAt=0,wrongMediaSince=0;
+    let lastProgress=Date.now(),firstWrongRatioAt=0,wrongMediaSince=0,lastCandidate='',candidateSince=0;
     let refusalContext='',refusalContextSince=0;
     while(Date.now()<deadline){
       throwIfAborted();
-      const fresh=attachments().filter(a=>!baseline.has(a.src));
+      const fresh=attachments().filter(a=>!baseline.has(a.src)&&!priorBubbleTexts.has(a.bubble));
       const matching=fresh.filter(a=>mediaType==='video'?a.isVideo:!a.isVideo);
       const wrongMedia=fresh.find(a=>mediaType==='image'?a.isVideo:!a.isVideo);
       if(wrongMedia&&mediaType!=='video'){if(!wrongMediaSince)wrongMediaSince=Date.now();if(Date.now()-wrongMediaSince>=1800){const expected=mediaType==='image'?'image':'video',actual=mediaType==='image'?'video':'image';const error=new Error(`Muse returned a ${actual} for a Generate ${expected==='image'?'Image':'Video'} node. Switch the Muse composer to ${expected} generation, then retry.`);error.code='MEDIA_TYPE_MISMATCH';throw error;}}
@@ -202,6 +205,9 @@
       else if(best&&!firstWrongRatioAt)firstWrongRatioAt=Date.now();
       const result=(best&&(bestRatioError<=.09||Date.now()-firstWrongRatioAt>=3500)?best:null)||(mediaType==='video'?matching.find(item=>item.videoUrl&&(!item.width||!item.height)):null);
       if(result){
+        const responding=[...document.querySelectorAll('[data-testid="hatch-composer-stop-button"],button[aria-label*="Stop" i],button[aria-label*="停止"]')].some(visible);
+        if(lastCandidate!==result.src){lastCandidate=result.src;candidateSince=Date.now();}
+        if(responding||Date.now()-candidateSince<1500){await waitForAttachmentChange(Math.min(500,deadline-Date.now()),signal);continue;}
         report(requestId,'Đã tìm thấy kết quả Muse. Đang chuyển về Workflow…');
         const media=mediaType==='video'?(result.el.matches('video')?result.el:result.el.querySelector('video')):(result.el.matches('img')?result.el:result.el.querySelector('img'));
         const src=mediaType==='video'?(result.videoUrl||media?.currentSrc||media?.src||''):(media?.currentSrc||media?.src||'');
@@ -210,7 +216,7 @@
         if(!src){firstWrongRatioAt=firstWrongRatioAt||Date.now();await waitForAttachmentChange(Math.min(500,deadline-Date.now()),signal);continue;}
         if(src.startsWith('data:'))return {ok:true,url:src};
         try{
-          const response=await fetch(src,{credentials:'include'});
+          const response=await fetch(src,{credentials:'include',signal});
           if(!response.ok)throw new Error(`${mediaType} download returned HTTP ${response.status}.`);
           const blob=await response.blob();
           return {ok:true,url:await blobToDataUrl(blob)};
