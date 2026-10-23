@@ -1,7 +1,7 @@
 (() => {
   if (window.__museFlowBridgeInstalled) return;
   window.__museFlowBridgeInstalled = true;
-  window.__museFlowBridgeVersion='0.28.1';
+  window.__museFlowBridgeVersion='0.28.2';
 
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     if(_sender.id!==chrome.runtime.id)return false;
@@ -100,7 +100,9 @@
       const videoLink=urls.find(item=>item.explicitVideo||/video\//i.test(item.type)||/\.(mp4|webm|mov|m4v)(?:$|[?#])/i.test(item.url)||/\.(mp4|webm|mov|m4v)$/i.test(item.download))?.url||'';
       const videoUrl=video?.currentSrc||video?.src||video?.querySelector('source')?.src||video?.getAttribute('data-src')||video?.querySelector('source[data-src]')?.getAttribute('data-src')||videoLink||'';
       const src=videoUrl||image?.currentSrc||image?.src||'';
-      const bubble=el.closest(assistantSelector);
+      // Muse wraps the bubble inside the attachment presentation, not always outside it.
+      const media=video||image,bubble=media?.closest(assistantSelector)||el.closest(assistantSelector);
+      if(media?.closest('[class*="chat-user-bubble"],[data-message-author-role="user"],user-query'))continue;
       const decorative=/(?:^|[\/_.-])(?:placeholder|loading|loader|mascot|avatar|sloth|welcome|onboarding)(?:[\/_.?-]|$)/i.test(src);
       if(src&&(bubble||acceptUnknown?.(el))&&!decorative)found.set(src,{el,bubble,tid,src,videoUrl,isVideo:!!videoUrl||!!video||/video/i.test(tid),width:video?.videoWidth||image?.naturalWidth||0,height:video?.videoHeight||image?.naturalHeight||0});
     }

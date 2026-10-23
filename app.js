@@ -562,7 +562,7 @@
   }
 
   function renderStoryNode(node,body){
-    body.classList.add('story-node-body');
+    body.classList.add('story-node-body');body.tabIndex=0;body.setAttribute('aria-label','Nội dung kịch bản, cuộn để xem thêm');
     const help=value=>{const p=document.createElement('p');p.textContent=value;body.append(p);},button=(name,action,disabled=false)=>studioButton(body,name,action,{disabled});
     if(['masterScript','actScript','partScript','segmentScript'].includes(node.type))button('Bảng điều khiển kịch bản',()=>WorkflowStoryDashboard.open(node.id));
     if(node.type==='masterScript'){
@@ -2212,7 +2212,7 @@
   window.addEventListener('pointerup',finishGroupMarquee);window.addEventListener('pointerup',finishTextNoteMove);
   window.addEventListener('pointercancel',endSelectionMarquee);
   window.addEventListener('pointercancel',cancelGroupMarquee);window.addEventListener('pointercancel',finishTextNoteMove);
-  $('#viewport').addEventListener('wheel',event=>{event.preventDefault();const factor=Math.exp(-event.deltaY*.0015);zoomAt(event.clientX,event.clientY,factor);},{passive:false});
+  $('#viewport').addEventListener('wheel',event=>{if(!event.ctrlKey&&!event.metaKey){for(let el=event.target;el&&el!==event.currentTarget;el=el.parentElement){const style=getComputedStyle(el);if(/auto|scroll/.test(style.overflowY+' '+style.overflowX))return;}}event.preventDefault();const factor=Math.exp(-event.deltaY*.0015);zoomAt(event.clientX,event.clientY,factor);},{passive:false});
   $('#viewport').addEventListener('pointerdown',event=>{const panGesture=event.button===1||state.spaceDown||state.handMode;if(panGesture&&!event.target.closest('button,input,label,textarea,select,video,a,.canvas-tools,.canvas-note'))startPan(event);});
   $('#viewport').addEventListener('pointerdown',startSelectionMarquee);
   document.addEventListener('pointerdown',event=>{const stop=event.target.closest('[data-stop-generation]');if(!stop)return;if(event.pointerType==='mouse'&&event.detail>1)return;event.preventDefault();event.stopImmediatePropagation();stopGeneration(stop.dataset.stopGeneration);},true);
@@ -2237,6 +2237,7 @@
   document.addEventListener('paste',event=>{if(!canvasClipboardTarget(event.target))return;let bundle;try{bundle=JSON.parse(event.clipboardData?.getData('text/plain')||'null');}catch{return;}if(bundle?.format!=='workflow-node-bundle')return;event.preventDefault();try{pasteNodeBundle(bundle);}catch(error){setRunStatus(error.message,'error');}});
   document.addEventListener('keydown',e=>{
     if(e.target.closest?.('#flowStudioDialog,#storyDashboardDialog,#batchManagerDialog,#storyReferencesDialog'))return;
+    const storyBody=e.target.closest?.('.story-node-body');if(storyBody&&!isTextEntry(e.target)&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','PageDown','PageUp','Home','End'].includes(e.key)){e.preventDefault();const step=e.key.startsWith('Page')?storyBody.clientHeight*.8:40;if(e.key==='Home')storyBody.scrollTop=0;else if(e.key==='End')storyBody.scrollTop=storyBody.scrollHeight;else if(['ArrowUp','ArrowDown','PageUp','PageDown'].includes(e.key))storyBody.scrollTop+=/Up$/.test(e.key)?-step:step;else storyBody.scrollLeft+=e.key==='ArrowLeft'?-step:step;return;}
     if(!e.repeat&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&canvasClipboardTarget(e.target)&&e.key.toLowerCase()==='d'){e.preventDefault();try{pasteNodeBundle(selectedNodeBundle());}catch(error){setRunStatus(error.message,'warn');}return;}
     if(!e.ctrlKey&&!e.metaKey&&!e.altKey&&canvasClipboardTarget(e.target)&&['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)&&state.selectedNodeIds.length){e.preventDefault();if(!e.repeat)createUndoSnapshot('Di chuyển các node');const step=e.shiftKey?50:10;for(const id of state.selectedNodeIds){const n=nodeById(id);if(n){n.x+=e.key==='ArrowLeft'?-step:e.key==='ArrowRight'?step:0;n.y+=e.key==='ArrowUp'?-step:e.key==='ArrowDown'?step:0;}}for(const g of state.groups.filter(g=>g.nodeIds.length&&g.nodeIds.every(id=>state.selectedNodeIds.includes(id)))){g.x+=e.key==='ArrowLeft'?-step:e.key==='ArrowRight'?step:0;g.y+=e.key==='ArrowUp'?-step:e.key==='ArrowDown'?step:0;}render();scheduleAutoSave();return;}
     if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'&&!e.shiftKey){

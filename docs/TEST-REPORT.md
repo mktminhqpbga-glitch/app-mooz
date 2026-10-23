@@ -181,3 +181,11 @@ Không có phiên Muse/Gemini/ChatGPT đăng nhập thật, nên chưa xác minh
 ## 0.28.1 — xử lý nhân bản lúc tác vụ đang chạy
 
 Canvas groups/frames Chromium smoke đạt, bổ sung thao tác nhân bản từ menu chuột phải trong khi phản hồi AI đang chờ: có cảnh báo, số node không đổi, không phát sinh pageerror. Các kiểm tra sao chép khi rảnh, di chuyển nhóm, khung cuối video và dừng phản hồi trễ vẫn đạt. AI được mô phỏng.
+
+## 0.28.2 — cấu trúc Muse từ báo cáo 2026-10-23
+
+Báo cáo 0.28.0 có 3 video blob 720×1280 readyState 4, cấu trúc attachment-presentation-video > div > span.contents > span.inline-grid > hatch-chat-groupable-bubble > div > video. Lỗi tìm closest() từ khung attachment bỏ qua bong bóng nằm bên trong. Sửa tìm từ media, giữ kiểm tra loại trừ tin nhắn user.
+
+Muse Chromium smoke đạt với MP4 blob và cấu trúc lồng đúng báo cáo, không có main, không có phản hồi văn bản: nhận đúng byte video, gửi đúng một lần và chẩn đoán nhận diện được attachment. Các trường hợp lịch sử/placeholder, wrapper cũ và cấu trúc mới vẫn đạt. Đây là tái hiện DOM bằng báo cáo, chưa kiểm chứng trên tài khoản thật.
+
+Story scaffold Chromium smoke: cuộn trong node dài tăng scrollTop, không đổi transform canvas; Home rồi ArrowDown cuộn nội dung 40px và không đổi vị trí node. Node có vùng cuộn nhận focus, thanh cuộn rõ hơn và giới hạn chiều cao theo viewport.
