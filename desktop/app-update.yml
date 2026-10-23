@@ -1,4 +1,4 @@
 provider: github
 owner: mktminhqpbga-glitch
-repo: workflow
+repo: app-mooz
 updaterCacheDirName: workflow-museflow-updater

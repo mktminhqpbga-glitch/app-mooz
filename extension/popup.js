@@ -33,7 +33,7 @@ document.querySelector('#settings').addEventListener('submit', async event => {
 });
 try {
   const { snapshot } = await chrome.storage.local.get('snapshot');
-  repository.value = snapshot?.repository || 'mktminhqpbga-glitch/workflow';
+  repository.value = snapshot?.repository || 'mktminhqpbga-glitch/app-mooz';
   branch.value = snapshot?.branch || 'main';
   render(snapshot);
 } catch (error) { status.textContent = `Không đọc được bộ nhớ: ${error.message}`; }

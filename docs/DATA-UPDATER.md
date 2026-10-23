@@ -4,7 +4,7 @@ Extension Chrome/Edge Manifest V3 với nút **Cập nhật** để tải dữ l
 
 ## Cài đặt
 
-1. Đưa mã nguồn này lên GitHub, nhánh `main` của `mktminhqpbga-glitch/workflow` (hoặc repository công khai khác).
+1. Đưa mã nguồn này lên GitHub, nhánh `main` của `mktminhqpbga-glitch/app-mooz` (hoặc repository công khai khác).
 2. Mở trang quản lý extension của Chrome/Edge, bật Developer mode.
 3. Chọn **Load unpacked**, chọn thư mục `extension` trong bản tải xuống của repository.
 4. Mở extension, nhập repository và nhánh, bấm **Cập nhật**. Giữ popup mở đến khi hoàn tất.

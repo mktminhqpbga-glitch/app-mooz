@@ -21,7 +21,7 @@ Không tách mã JavaScript tải từ xa rồi chạy ngoài gói ứng dụng 
 
 ## Nguồn phiên bản
 
-- Repository: `mktminhqpbga-glitch/workflow`.
+- Repository: `mktminhqpbga-glitch/app-mooz`.
 - Kênh: GitHub Releases **stable, đã publish**. Bản draft/prerelease không được cung cấp qua kênh stable này.
 - Tên gói: `Workflow-<version>-mac-arm64.zip` và `Workflow-<version>-mac-x64.zip`.
 - Native updater dùng cấu hình `publish` do electron-builder ghi vào `app-update.yml`, xác minh hash và cơ chế kiểm tra chữ ký của macOS.

@@ -14,7 +14,7 @@ test('development and non-Mac builds do not contact a release service',async()=>
 });
 test('unsigned Mac checks stable release without using native download or installation',async()=>{
  const engine=new Engine();const updater=new UpdateService({version:'0.31.0',packaged:true,platform:'darwin',engine,fetchRelease:async()=>({version:'0.32.0'})});
- assert.equal((await updater.check()).state,'available');assert.equal(updater.status().mode,'manual');assert.equal(engine.checks,0);assert.equal(engine.downloads,0);assert.equal(updater.releaseURL(),'https://github.com/mktminhqpbga-glitch/workflow/releases/tag/v0.32.0');await assert.rejects(updater.install(),/chưa sẵn sàng/);
+ assert.equal((await updater.check()).state,'available');assert.equal(updater.status().mode,'manual');assert.equal(engine.checks,0);assert.equal(engine.downloads,0);assert.equal(updater.releaseURL(),'https://github.com/mktminhqpbga-glitch/app-mooz/releases/tag/v0.32.0');await assert.rejects(updater.install(),/chưa sẵn sàng/);
 });
 test('signed update downloads once in background, reports progress and never installs on quit',async()=>{
  const {engine,service}=native();const progress=[];service.on('status',value=>progress.push(value));await Promise.all([service.check(),service.check()]);await tick();
@@ -54,7 +54,7 @@ test('code signing requires a verified Developer ID signature, not ad-hoc signin
 });
 test('manual release discovery accepts only stable published Mac builds and fixed endpoint',async()=>{
  let url;const request=async(uri,options)=>{url=uri;assert.equal(options.redirect,'error');return new Response(JSON.stringify({tag_name:'v0.32.0',assets:[{name:'Workflow-0.32.0-mac-arm64.zip'}]}));};
- assert.deepEqual(await latestPublicRelease(request),{version:'0.32.0'});assert.equal(url,'https://api.github.com/repos/mktminhqpbga-glitch/workflow/releases/latest');
+ assert.deepEqual(await latestPublicRelease(request),{version:'0.32.0'});assert.equal(url,'https://api.github.com/repos/mktminhqpbga-glitch/app-mooz/releases/latest');
  assert.equal(await latestPublicRelease(async()=>new Response('',{status:404})),null);
  assert.equal(await latestPublicRelease(async()=>new Response(JSON.stringify({tag_name:'v0.32.0',assets:[]}))),null);
  assert.equal(await latestPublicRelease(async()=>new Response(JSON.stringify({tag_name:'v0.32.0',prerelease:true,assets:[{name:'Workflow-0.32.0-mac-arm64.zip'}]}))),null);

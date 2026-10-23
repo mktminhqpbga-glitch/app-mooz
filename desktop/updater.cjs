@@ -2,8 +2,8 @@
 const {EventEmitter}=require('node:events');
 const {execFile}=require('node:child_process');
 const {promisify}=require('node:util');
-const RELEASES='https://github.com/mktminhqpbga-glitch/workflow/releases';
-const LATEST='https://api.github.com/repos/mktminhqpbga-glitch/workflow/releases/latest';
+const RELEASES='https://github.com/mktminhqpbga-glitch/app-mooz/releases';
+const LATEST='https://api.github.com/repos/mktminhqpbga-glitch/app-mooz/releases/latest';
 function stableVersion(value){const match=/^v?((?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))$/.exec(String(value||''));return match?match[1]:null;}
 function newer(candidate,current){const a=stableVersion(candidate),b=stableVersion(current);if(!a||!b)return false;const left=a.split('.').map(Number),right=b.split('.').map(Number);for(let i=0;i<3;i++){if(left[i]!==right[i])return left[i]>right[i];}return false;}
 async function isDeveloperIDSigned(bundle,run=promisify(execFile)){

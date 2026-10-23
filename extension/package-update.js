@@ -6,7 +6,7 @@
     button.disabled = true;
     try {
       await chrome.downloads.download({
-        url: `https://raw.githubusercontent.com/mktminhqpbga-glitch/workflow/main/downloads/Workflow-extension.zip?t=${Date.now()}`,
+        url: `https://raw.githubusercontent.com/mktminhqpbga-glitch/app-mooz/main/downloads/Workflow-extension.zip?t=${Date.now()}`,
         filename: 'Workflow-extension-latest.zip',
         conflictAction: 'uniquify',
         saveAs: true
