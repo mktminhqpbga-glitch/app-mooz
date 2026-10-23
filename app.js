@@ -95,7 +95,7 @@
   const activeRuns=new Map(),nodeClaims=new Map(),nodeOutcomes=new Map(),tabQueue=WorkflowRuntime.queue();let completionSequence=0,autoPlan=null;
   const runForNode=id=>nodeClaims.get(id)?.run||[...activeRuns.values()].find(run=>run.activeNodeId===id||run.targetId===id);
   function syncRuns(){const last=[...activeRuns.values()].at(-1);state.isRunning=activeRuns.size>0||!!autoPlan;state.activeGenerationId=last?.activeNodeId||null;state.generationRequestId=last?.requestId||null;state.generationAbortController=last?.controller||null;$('#runBtn').disabled=false;$('#runBtn').textContent=state.isRunning?`■ Dừng tất cả (${activeRuns.size||1})`:'▶ Run All';$('#runBtn').title=state.isRunning?'Dừng tất cả nhánh đang chạy và đang chờ':'Chạy workflow';}
-  function progressNode(node,text){if(!node)return;node.data.progress=text;const status=document.querySelector(`.node[data-id="${CSS.escape(node.id)}"] .status`);if(status)status.textContent=text;}
+  function progressNode(node,text){if(!node)return;node.data.progress=text;const root=document.querySelector(`.node[data-id="${CSS.escape(node.id)}"]`),status=root?.querySelector(".status"),detail=root?.querySelector(".node-status-detail");if(status){status.textContent=text;status.title=text;}if(detail)detail.textContent=text;}
 
   const providerJobs=new Map(),providerHealth=new Map(),healthChecks=new Set();
   const providerName=id=>({muse:'Muse',gemini:'Gemini',chatgpt:'GPT',google:'Google API',openai:'OpenAI API',fal:'fal.ai'})[id]||id;
@@ -195,7 +195,7 @@
   chrome.runtime.onMessage?.addListener((message,sender)=>{
     if(sender.id!==chrome.runtime.id||message?.type!=='WORKFLOW_AI_PROGRESS'||typeof message.requestId!=='string'||aiTabs.get(message.requestId)!==sender.tab?.id||typeof message.text!=='string')return false;
     if(message.requestId.startsWith('script-'))$('#scriptAIStatus').textContent=message.text;
-    else{setRunStatus(message.text,'warn');renderHealth();const run=[...activeRuns.values()].find(item=>item.requestId===message.requestId);const node=nodeById(run?.activeNodeId);if(node?.data.status==='running'){node.data.progress=message.text;const status=document.querySelector(`.node[data-id="${CSS.escape(node.id)}"] .status`);if(status)status.textContent=message.text;}}
+    else{setRunStatus(message.text,'warn');renderHealth();const run=[...activeRuns.values()].find(item=>item.requestId===message.requestId);const node=nodeById(run?.activeNodeId);if(node?.data.status==='running'){progressNode(node,message.text);}}
     return false;
   });
   async function runMuseSupport(mode){
@@ -1767,7 +1767,7 @@
     const preferred=preferredTabId??preferredMuseTabId;
     if(preferred){const index=tabs.findIndex(tab=>tab.id===preferred);if(index>0)tabs.unshift(tabs.splice(index,1)[0]);}
     let lastError='';
-    if(message.type==='MUSEFLOW_GENERATE'){const tab=chooseChat('muse',tabs,message.chatTarget||aiChatTargets.muse);await chrome.scripting.executeScript({target:{tabId:tab.id},files:['composer-controls.js','muse-bridge.js']});preferredMuseTabId=tab.id;const session=await waitTabIdle(tab.id,'MUSEFLOW_CHECK_SESSION',message.requestId,signal);aiTabs.set(message.requestId,tab.id);try{return session.jobProtocol===1?await WorkflowMuseJobs.run(msg=>sendMuseTabMessage(tab.id,msg,signal),message,signal,{onReconnect:()=>{const run=[...activeRuns.values()].find(r=>r.requestId===message.requestId);progressNode(nodeById(run?.activeNodeId),'Đang nối lại với Muse; không gửi lại prompt…');}}):await sendMuseTabMessage(tab.id,message,signal);}catch(error){if(/message channel closed|message port closed|asynchronous response|receiving end does not exist/i.test(error.message||''))throw Error('Kênh kết nối Muse đã đóng. Không gửi lại prompt. Tải video đã tạo và dùng Công cụ → Nhập video kết quả; tải lại tab Muse để dùng bộ nối mới ở lượt sau.');throw error;}finally{aiTabs.delete(message.requestId);}}
+    if(message.type==='MUSEFLOW_GENERATE'){const tab=chooseChat('muse',tabs,message.chatTarget||aiChatTargets.muse);await chrome.scripting.executeScript({target:{tabId:tab.id},files:['composer-controls.js','muse-bridge.js']});preferredMuseTabId=tab.id;const session=await waitTabIdle(tab.id,'MUSEFLOW_CHECK_SESSION',message.requestId,signal);aiTabs.set(message.requestId,tab.id);try{return session.jobProtocol===1?await WorkflowMuseJobs.run(msg=>sendMuseTabMessage(tab.id,msg,signal),message,signal,{onProgress:text=>{const run=[...activeRuns.values()].find(r=>r.requestId===message.requestId);progressNode(nodeById(run?.activeNodeId),text);},onReconnect:()=>{const run=[...activeRuns.values()].find(r=>r.requestId===message.requestId);progressNode(nodeById(run?.activeNodeId),'Đang nối lại với Muse; không gửi lại prompt…');}}):await sendMuseTabMessage(tab.id,message,signal);}catch(error){if(/message channel closed|message port closed|asynchronous response|receiving end does not exist/i.test(error.message||''))throw Error('Kênh kết nối Muse đã đóng. Không gửi lại prompt. Tải video đã tạo và dùng Công cụ → Nhập video kết quả; tải lại tab Muse để dùng bộ nối mới ở lượt sau.');throw error;}finally{aiTabs.delete(message.requestId);}}
     for(const tab of tabs){
       if(signal?.aborted)throw new DOMException('Generation stopped by user.','AbortError');
       if(!tab.id)continue;

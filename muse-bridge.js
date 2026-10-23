@@ -9,7 +9,7 @@
       return true;
     }
     if(message?.type==='MUSEFLOW_JOB_STATUS'){
-      const job=museJobs.get(message.requestId);sendResponse(job?{ok:true,state:job.result?'done':'running',...(job.result?{result:job.result}:{})}:{ok:false,state:'missing',error:'Không còn mã tác vụ trong tab Muse; không tự gửi lại prompt.'});return false;
+      const job=museJobs.get(message.requestId);sendResponse(job?{ok:true,state:job.result?'done':'running',progress:job.progress||'',...(job.result?{result:job.result}:{})}:{ok:false,state:'missing',error:'Không còn mã tác vụ trong tab Muse; không tự gửi lại prompt.'});return false;
     }
     if(message?.type==='MUSEFLOW_JOB_ACK'){if(museJobs.get(message.requestId)?.result)museJobs.delete(message.requestId);sendResponse({ok:true});return false;}
     if(message?.type==='MUSEFLOW_JOB_START'){
@@ -138,7 +138,7 @@
     return explicit.test(text)||inability.test(text)&&(sceneContext.test(text)||offerAlternative.test(text));
   }
 
-  function report(requestId,text){if(chrome.runtime.sendMessage)void chrome.runtime.sendMessage({type:'WORKFLOW_AI_PROGRESS',requestId,text}).catch(()=>{});}
+  function report(requestId,text){const job=museJobs.get(requestId);if(job)job.progress=text;if(chrome.runtime.sendMessage)void chrome.runtime.sendMessage({type:'WORKFLOW_AI_PROGRESS',requestId,text}).catch(()=>{});}
 
   async function generate({prompt,timeoutSec=600,mediaType='image',referenceImage='',referenceImages=[],size='1:1',requestId},signal) {
     const throwIfAborted=()=>{if(signal?.aborted)throw new DOMException('Generation stopped by user.','AbortError');};
@@ -168,6 +168,15 @@
     composer.dispatchEvent(new Event('input',{bubbles:true}));
     composer.dispatchEvent(new Event('change',{bubbles:true}));
     const bubbleCount=()=>new Set(document.querySelectorAll('div[class*="hatch-chat-groupable-bubble"],[data-message-author-role],user-query,[class*="chat-user-bubble"]')).size;
+    const userSelector='[data-message-author-role="user"],user-query,[class*="chat-user-bubble"]';
+    const userSnapshot=new Map([...document.querySelectorAll(userSelector)].map(el=>[el,(el.innerText||el.textContent||'').trim()]));
+    const promptText=String(prompt).replace(/\s+/g,' ').trim();
+    // A reply container can be reused, or already exist as an empty streaming shell.
+    // Only unlock it when a new user receipt containing THIS prompt precedes the media.
+    const followsReceipt=item=>[...document.querySelectorAll(userSelector)].some(el=>{
+      const text=(el.innerText||el.textContent||'').trim(),normalized=text.replace(/\s+/g,' ');
+      return visible(el)&&text!==userSnapshot.get(el)&&normalized.includes(promptText)&&!el.contains(item.el)&&Boolean(el.compareDocumentPosition(item.el)&Node.DOCUMENT_POSITION_FOLLOWING);
+    });
     const beforeSendCount=bubbleCount(),previousTexts=new Set(priorBubbleTexts.values());
     const activity=()=>!!findComposer()&&!findComposer().value.trim()&&(bubbleCount()>beforeSendCount||attachments().some(item=>!baseline.has(item.src))||assistantMessageElements().some(el=>{const text=(el.innerText||el.textContent||'').replace(/\s+/g,' ').trim();return text&&!previousTexts.has(text);})||[...document.querySelectorAll('[data-testid="hatch-composer-stop-button"],button[aria-label*="Stop" i],button[aria-label*="停止"]')].some(visible));
     report(requestId,'Muse: đã điền prompt, đang chờ nút Gửi…');
@@ -203,7 +212,7 @@
     let refusalContext='',refusalContextSince=0;
     while(Date.now()<deadline){
       throwIfAborted();
-      const fresh=attachments().filter(a=>!baseline.has(a.src)&&!priorBubbleTexts.has(a.bubble));
+      const fresh=attachments().filter(a=>!baseline.has(a.src)&&(!priorBubbleTexts.has(a.bubble)||followsReceipt(a)));
       const matching=fresh.filter(a=>mediaType==='video'?a.isVideo:!a.isVideo);
       const wrongMedia=fresh.find(a=>mediaType==='image'?a.isVideo:!a.isVideo);
       if(wrongMedia&&mediaType!=='video'){if(!wrongMediaSince)wrongMediaSince=Date.now();if(Date.now()-wrongMediaSince>=1800){const expected=mediaType==='image'?'image':'video',actual=mediaType==='image'?'video':'image';const error=new Error(`Muse returned a ${actual} for a Generate ${expected==='image'?'Image':'Video'} node. Switch the Muse composer to ${expected} generation, then retry.`);error.code='MEDIA_TYPE_MISMATCH';throw error;}}

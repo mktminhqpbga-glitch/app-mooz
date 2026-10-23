@@ -29,3 +29,5 @@ test('abort stops polling and rejects before work when already canceled',async()
 });
 
 test('cancel before the scheduled send cannot start a job',async()=>{const controller=new AbortController();let calls=0;const pending=WorkflowMuseJobs.run(async()=>{calls++;return {ok:true};},request,controller.signal,options);controller.abort();await assert.rejects(pending,{name:'AbortError'});assert.equal(calls,0);});
+
+test('polling restores the current provider progress without a broadcast',async()=>{let polls=0;const progress=[];await WorkflowMuseJobs.run(async msg=>{if(msg.type==='MUSEFLOW_JOB_START'||msg.type==='MUSEFLOW_JOB_ACK')return {ok:true};return ++polls===1?{ok:true,state:'running',progress:'Đang nhận video'}:{ok:true,state:'done',result:{ok:true,url:'video'}};},request,null,{...options,onProgress:text=>progress.push(text)});assert.deepEqual(progress,['Đang nhận video']);});

@@ -1,4 +1,4 @@
-# Workflow · MuseFlow 0.25.1
+# Workflow · MuseFlow 0.25.2
 
 Extension Chrome/Edge dựa trên [MuseFlow / 26Flow](https://github.com/bynne2602/museflow), mở rộng canvas/timeline để làm việc với Muse.ai, Gemini, ChatGPT và API Google, OpenAI, fal.ai. Giữ nguyên giấy phép GPL-2.0-or-later của nguồn gốc và thông báo FFmpeg đi kèm.
 
@@ -289,3 +289,10 @@ Tab Muse có bộ nối mới nhận tác vụ và trả mã ngay; Workflow hỏ
 Nếu Muse đã tạo xong nhưng node cũ báo lỗi kênh: tải video đó từ Muse, mở **Công cụ → Nhập video kết quả** trên node, chọn tệp MP4/WebM/MOV không quá 100 MB. Hệ thống đọc kích thước/thời lượng và trích khung cuối, lưu vào node mà không gọi AI. Đầu vào không phải video đọc được bị từ chối.
 
 Nhãn thời lượng ghi rõ giây; trang đặt translate=no để tránh trình dịch tự đổi 20s thành những năm 20 hoặc dịch ID/cổng kỹ thuật. Kiểm thử lỗi ACK/kênh đọc bị mất, truy vấn lại không tạo trùng, hủy trước khi gửi, mã tác vụ thực trên DOM mô phỏng và nhập video MP4 thật. Chưa xác nhận trên tài khoản Muse thật.
+
+### 0.25.2 — nhận kết quả trong khung Muse được tái sử dụng
+
+- Cho phép nhận media mới trong khung trả lời đã tồn tại khi có tin nhắn mới chứa đúng prompt đứng trước media; tiếp tục loại URL cũ, lịch sử trước lượt gửi và hình chờ.
+- Trả tiến độ qua truy vấn mã tác vụ để khôi phục khi mất thông báo trực tiếp. Trạng thái rút gọn và Chi tiết luôn cập nhật cùng nhau.
+- So với 0.24.0: 0.24.1 bổ sung lọc media và nguồn khung cuối; 0.25.0 thu gọn node; 0.25.1 chuyển sang START/STATUS/ACK và cho nhập video đã tạo; 0.25.2 xử lý khung trả lời tái sử dụng.
+- Chưa xác minh trên phiên Muse đăng nhập thật. Nhóm tài khoản cách ly, kho ảnh @tag và hàng đợi bền vững theo PDF chưa được triển khai đầy đủ.
