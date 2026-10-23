@@ -1,7 +1,7 @@
 (() => {
   if (window.__museFlowBridgeInstalled) return;
   window.__museFlowBridgeInstalled = true;
-  window.__museFlowBridgeVersion='0.28.4';
+  window.__museFlowBridgeVersion='0.29.0';
 
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     if(_sender.id!==chrome.runtime.id)return false;
@@ -20,13 +20,13 @@
       for(const [key,job] of museJobs)if(job.result&&Date.now()-(job.finishedAt||job.createdAt)>1200000)museJobs.delete(key);
       const completed=[...museJobs].filter(([,job])=>job.result);while(completed.length>=3)museJobs.delete(completed.shift()[0]);
       const controller=new AbortController(),job={createdAt:Date.now(),result:null};museJobs.set(id,job);activeGenerations.set(id,controller);
-      generate(message,controller.signal).then(result=>{job.result=result;job.finishedAt=Date.now();},error=>{job.finishedAt=Date.now();job.result={ok:false,code:error.code||'MUSE_ERROR',error:error.message||String(error)};}).finally(()=>activeGenerations.delete(id));
+      generate(message,controller.signal).then(result=>{job.result={...result,conversationUrl:location.href};job.finishedAt=Date.now();},error=>{job.finishedAt=Date.now();job.result={ok:false,code:error.code||'MUSE_ERROR',error:error.message||String(error)};}).finally(()=>activeGenerations.delete(id));
       sendResponse({ok:true,accepted:true,requestId:id});return false;
     }
     if (message?.type === 'MUSEFLOW_GENERATE') {
       if(activeGenerations.size){sendResponse({ok:false,error:'Muse đang xử lý yêu cầu khác.'});return false;}
       const controller=new AbortController();activeGenerations.set(message.requestId,controller);
-      generate(message,controller.signal).then(sendResponse, error => sendResponse({ ok: false, code:error.code||'MUSE_ERROR', error: error.message || String(error) })).finally(()=>activeGenerations.delete(message.requestId));
+      generate(message,controller.signal).then(result=>sendResponse({...result,conversationUrl:location.href}), error => sendResponse({ ok: false, code:error.code||'MUSE_ERROR', error: error.message || String(error) })).finally(()=>activeGenerations.delete(message.requestId));
       return true;
     }
     if(message?.type==='MUSEFLOW_STOP_GENERATION'){
@@ -90,10 +90,10 @@
     for(const el of document.querySelectorAll('video,[data-video-src],[data-video-url],[data-download-url],a[download],a[href]')){
       if(el.matches('video,[data-video-src],[data-video-url]')||/\.(mp4|webm|mov|m4v)(?:$|[?#])/i.test(el.href||el.getAttribute('download')||el.getAttribute('data-download-url')||''))candidates.add(tile(el));
     }
-    for(const bubble of assistantMessageElements())for(const img of bubble.querySelectorAll('img'))if(img.naturalWidth>=128&&img.naturalHeight>=128)candidates.add(tile(img));
+    for(const img of document.querySelectorAll('img'))if(img.naturalWidth>=128&&img.naturalHeight>=128)candidates.add(tile(img));
     const found=new Map();
     for(const el of candidates){
-      if(!(visible(el)||getComputedStyle(el).display==='contents'&&[...el.querySelectorAll('video,img,a')].some(visible))||el.closest('[data-testid*="placeholder" i],[data-testid*="loading" i],[data-state="loading"],[aria-busy="true"]')||scope?.contains(el)||el.closest('[class*="chat-user-bubble"],[data-message-author-role="user"],user-query,[data-testid="hatch-composer-placeholder-overlay"]'))continue;
+      if(!(visible(el)||getComputedStyle(el).display==='contents'&&[...el.querySelectorAll('video,img,a')].some(visible))||el.closest('[data-testid*="placeholder" i],[data-testid*="loading" i],[data-state="loading"],[aria-busy="true"]')||(scope?.contains(el)&&!(el.compareDocumentPosition(composer)&Node.DOCUMENT_POSITION_FOLLOWING))||el.closest('[class*="chat-user-bubble"],[data-message-author-role="user"],user-query,[data-testid="hatch-composer-placeholder-overlay"]'))continue;
       const tid=el.getAttribute('data-testid')||'',video=el.matches('video')?el:el.querySelector('video'),image=el.matches('img')?el:el.querySelector('img');
       const nodes=[el,...el.querySelectorAll('a[href],source[src],[data-video-src],[data-video-url],[data-download-url]')];
       const urls=nodes.map(item=>({url:item.getAttribute('data-video-src')||item.getAttribute('data-video-url')||item.getAttribute('data-download-url')||item.href||item.src||'',download:item.getAttribute('download')||'',type:item.getAttribute('type')||'',explicitVideo:item.hasAttribute('data-video-src')||item.hasAttribute('data-video-url')})).filter(item=>item.url);
@@ -109,7 +109,8 @@
     return [...found.values()];
   }
 
-  window.WorkflowMuseBridgeDiagnostics=()=>({version:window.__museFlowBridgeVersion,activeJobs:activeGenerations.size,trackedJobs:museJobs.size,recognizedAttachments:attachments().length,assistantContainers:assistantMessageElements().length});
+  let lastScan=null;
+  window.WorkflowMuseBridgeDiagnostics=()=>({lastScan,version:window.__museFlowBridgeVersion,activeJobs:activeGenerations.size,trackedJobs:museJobs.size,recognizedAttachments:attachments().length,assistantContainers:assistantMessageElements().length});
 
   function waitForAttachmentChange(timeoutMs,signal){
     return new Promise(resolve=>{
@@ -164,7 +165,8 @@
     if(referenceList.length){report(requestId,'Muse: đang tải ảnh tham chiếu…');await attachReferences(referenceList,signal);}
     composer=findComposer();if(!composer?.isConnected)throw new Error('Ô nhập Muse đã thay đổi. Hãy tải lại tab Muse rồi thử lại.');
     throwIfAborted();
-    const baseline=new Set([...attachments().map(a=>a.src),...[...document.querySelectorAll('img,video,source,a[download],[data-video-url],[data-video-src]')].filter(el=>!composerScope(composer).contains(el)&&!el.closest('[data-message-author-role="user"],user-query,[class*="chat-user-bubble"]')).flatMap(el=>[el.currentSrc,el.src,el.href,el.getAttribute('data-video-url'),el.getAttribute('data-video-src')]).filter(Boolean),...assistantMessageElements().flatMap(el=>[...el.querySelectorAll('img')].map(img=>img.currentSrc||img.src))]);
+    const baseline=new Set([...attachments().map(a=>a.src),...[...document.querySelectorAll('img,video,source,a[download],[data-video-url],[data-video-src]')].flatMap(el=>[el.currentSrc,el.src,el.href,el.getAttribute('data-video-url'),el.getAttribute('data-video-src')]).filter(Boolean),...assistantMessageElements().flatMap(el=>[...el.querySelectorAll('img')].map(img=>img.currentSrc||img.src))]);
+    const initialConversation=location.origin+location.pathname;
     const priorBubbleTexts=new Map(assistantMessageElements().map(el=>[el,(el.innerText||el.textContent||'').replace(/\s+/g,' ').trim()]));
     composer.scrollIntoView({block:'center'});composer.focus();
     const setter=Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value')?.set;
@@ -191,9 +193,9 @@
     const newReceipts=()=>promptReceipts().filter(el=>!oldReceipts.has(el));
     // Fallback for a new UI without assistant classes. A source URL alone is never enough:
     // the exact current prompt must have a new receipt, and the media must follow it
-    // in the same main conversation, before the composer (never a page/footer video).
+    // in the same conversation root, before the composer (never a page/footer video).
     const contextualReply=el=>newReceipts().some(receipt=>{
-      const root=receipt.closest('main,[role="main"]'),editor=findComposer();
+      const editor=findComposer();let root=receipt.closest('main,[role="main"]');if(!root){root=receipt.parentElement;while(root&&!root.contains(editor))root=root.parentElement;}
       return root&&root.contains(el)&&!el.contains(receipt)&&Boolean(receipt.compareDocumentPosition(el)&Node.DOCUMENT_POSITION_FOLLOWING)&&editor&&Boolean(el.compareDocumentPosition(editor)&Node.DOCUMENT_POSITION_FOLLOWING);
     });
     const beforeSendCount=bubbleCount(),previousTexts=new Set(priorBubbleTexts.values());
@@ -231,10 +233,12 @@
     let refusalContext='',refusalContextSince=0;const openedPlayers=new Set();
     while(Date.now()<deadline){
       throwIfAborted();
-      const fresh=attachments(contextualReply).filter(a=>!baseline.has(a.src)&&(!priorBubbleTexts.has(a.bubble)||followsReceipt(a)||contextualReply(a.el)));
+      const scanned=attachments(contextualReply);lastScan={kind:mediaType,candidates:scanned.length,baselineExcluded:scanned.filter(a=>baseline.has(a.src)).length,receipts:newReceipts().length};
+      const conversationChanged=initialConversation!==location.origin+location.pathname;lastScan.conversationChanged=conversationChanged;
+      const fresh=scanned.filter(a=>!baseline.has(a.src)&&(!conversationChanged||followsReceipt(a)||contextualReply(a.el))&&(!priorBubbleTexts.has(a.bubble)||followsReceipt(a)||contextualReply(a.el)));
       if(mediaType==='video')for(const item of fresh.filter(a=>a.isVideo&&!a.videoUrl&&!openedPlayers.has(a.src))){const play=[...item.el.querySelectorAll('button[aria-label],button[title],[role="button"][aria-label]')].find(button=>visible(button)&&/^(?:play|phát|播放)(?:\b|\s|$)/i.test(button.getAttribute('aria-label')||button.title||''));if(play){openedPlayers.add(item.src);play.click();report(requestId,'Muse: đã mở trình phát của kết quả mới, đang đọc đường dẫn video…');}}
-      const matching=fresh.filter(a=>mediaType==='video'?a.isVideo:!a.isVideo);
-      if(Date.now()-lastProgress>=5000){lastProgress=Date.now();report(requestId,matching.length?'Muse: đã thấy thẻ kết quả mới, đang chờ nguồn phát sẵn sàng…':'Muse: đã gửi một lần; đang đối chiếu video với tin nhắn vừa gửi. Không gửi lại prompt.');}
+      const matching=fresh.filter(a=>mediaType==='video'?a.isVideo:!a.isVideo);Object.assign(lastScan,{fresh:fresh.length,matching:matching.length});
+      if(Date.now()-lastProgress>=5000){lastProgress=Date.now();report(requestId,matching.length?`Muse: đã thấy ${mediaType==='video'?'video':'ảnh'} mới, đang chờ dữ liệu sẵn sàng…`:`Muse: đã gửi một lần; đang đối chiếu ${mediaType==='video'?'video':'ảnh'} với tin nhắn vừa gửi. Không gửi lại prompt.`);}
       const wrongMedia=fresh.find(a=>mediaType==='image'?a.isVideo:!a.isVideo);
       if(wrongMedia&&mediaType!=='video'){if(!wrongMediaSince)wrongMediaSince=Date.now();if(Date.now()-wrongMediaSince>=1800){const expected=mediaType==='image'?'image':'video',actual=mediaType==='image'?'video':'image';const error=new Error(`Muse returned a ${actual} for a Generate ${expected==='image'?'Image':'Video'} node. Switch the Muse composer to ${expected} generation, then retry.`);error.code='MEDIA_TYPE_MISMATCH';throw error;}}
       else wrongMediaSince=0;
@@ -276,10 +280,7 @@
         }
       }
       else{refusalContext='';refusalContextSince=0;}
-      if(!stop&&Date.now()-lastProgress>5000){
-        const tail=(document.body?.innerText||'').slice(-800);
-        if(/out of credits|insufficient credits|额度不足|积分不足/i.test(tail))throw new Error('Muse account has insufficient image credits.');
-      }
+      if(!stop&&/out of credits|insufficient credits|额度不足|积分不足/i.test(currentContext))throw new Error('Tài khoản Muse không đủ lượt tạo ảnh/video.');
       await waitForAttachmentChange(Math.min(500,deadline-Date.now()),signal);
     }
     throwIfAborted();

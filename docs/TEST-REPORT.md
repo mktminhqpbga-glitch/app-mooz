@@ -197,3 +197,9 @@ Flow Studio dùng chung WorkflowBatchManager.split, không còn đếm mỗi dò
 ## 0.28.4 — số luồng trong Flow Studio
 
 Unit suite và Flow Studio Chromium smoke đạt. Thiết lập 2 luồng trực tiếp trong Flow Studio được lưu vào hàng đợi dùng chung; hai tab AI chạy đồng thời, chỉ báo 2/2 cập nhật, các lượt gửi cách tối thiểu 4.9 giây, giữ cấu hình khi mở lại và dừng được tác vụ đang chạy/chờ. Các trường hợp chia khối, lỗi độc lập và lưu thẻ vẫn đạt. AI được mô phỏng.
+
+## 0.29.0 — rà luồng nhận kết quả
+
+Unit suite đạt. Chromium smoke đã chạy và đạt: muse, muse-job-integration, muse-support, batch-manager, auto-run, parallel, gpt-response, bridge, story-workflow, flow-studio. Kiểm thử mới nhận ảnh thuần không có assistant/attachment/main, bảo toàn byte ảnh, một lần gửi, trả URL chat đã tạo; tác vụ chốt URL cũ dùng được chuyển tiếp đã xác minh; bridge cũ bị chặn trước gửi. Kết quả video thật, DAG/queue/story dùng provider mô phỏng. Chi tiết phát hiện, thay đổi và giới hạn nằm trong RESULT-FLOW-AUDIT.md.
+
+Kiểm thử Muse cũng xác nhận phản hồi mới “Insufficient credits” kết thúc chờ ngay với lỗi rõ ràng, độc lập timer tiến độ. Nguồn ảnh tham chiếu/bản xem trước được ghi nhận trước khi gửi để không coi ảnh tải lên là đầu ra mới.

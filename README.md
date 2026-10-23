@@ -1,4 +1,4 @@
-# Workflow · MuseFlow 0.28.4
+# Workflow · MuseFlow 0.29.0
 
 Extension Chrome/Edge dựa trên [MuseFlow / 26Flow](https://github.com/bynne2602/museflow), mở rộng canvas/timeline để làm việc với Muse.ai, Gemini, ChatGPT và API Google, OpenAI, fal.ai. Giữ nguyên giấy phép GPL-2.0-or-later của nguồn gốc và thông báo FFmpeg đi kèm.
 
@@ -341,3 +341,10 @@ Thẻ tổng Flow Studio mặc định dùng cùng bộ tách `[ ... ]` với H�
 ### 0.28.4 — chọn song song ngay tại Flow Studio
 
 Chọn 1–6 luồng trên thanh Tạo tất cả, dùng chung giới hạn với Hàng đợi. Chỉ báo đang chạy/chờ phản ánh toàn hàng đợi. Chọn Luồng AI (tab/cuộc trò chuyện) trên từng thẻ, có nút làm mới danh sách. Muốn hai thẻ chạy đồng thời, chọn hai tab khác nhau; một tab chỉ nhận một tác vụ, khoảng cách gửi vẫn 5 giây. Thay số luồng không tự gửi tác vụ mới ngoài hàng đợi đã bật.
+
+### 0.29.0 — rà toàn bộ luồng nhận kết quả
+
+- Bộ nhận Muse dò cả ảnh lớn không có lớp assistant/attachment, đối chiếu prompt mới và giới hạn trước ô nhập; giữ chặn nguồn cũ/user/composer. Hỗ trợ chat không có main và ảnh/video không kèm văn bản.
+- Thông báo ảnh/video đúng loại; chẩn đoán thêm cấu trúc ảnh và bộ đếm đối chiếu không chứa URL/prompt.
+- Đồng bộ chat sau kết quả thành công của cùng tab, giữ tác vụ đã chốt URL trước đó chạy tiếp khi Muse tự đổi URL. Đổi chat thủ công không được tự nhận là chuyển tiếp hợp lệ. Chặn bridge có phiên bản cũ trước khi gửi.
+- Sửa kiểm tra hết lượt bị bộ đếm tiến độ che mất. Chi tiết và giới hạn: docs/RESULT-FLOW-AUDIT.md.
