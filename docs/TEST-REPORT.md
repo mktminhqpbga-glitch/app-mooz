@@ -149,3 +149,11 @@ Kiểm tra UI xác nhận không còn nút/modal ủng hộ và nhấn Escape kh
 - Harness UI cũ vẫn xác minh chọn chat, gửi, khôi phục kết quả, lưu, tạo ảnh hàng loạt, video đầu ra và xuất FFmpeg WASM thật. Harness tám công cụ giữ khóa, vai trò, duyệt/hủy, chia cảnh, biến thể, lưu theo bộ và FFprobe trên tệp thật.
 
 Không có phiên Muse/Gemini/ChatGPT đăng nhập thật, nên chưa xác minh khả năng chạy đồng thời của dịch vụ hoặc hành vi focus/streaming trên giao diện thật. Nút Run workflow vẫn tuần tự theo danh sách; tính năng mới cho phép chủ động chạy thêm nhánh bằng nút Chạy của node.
+
+## 0.26.0 — tích hợp Batch Manager, đợt 1
+
+- 58 kiểm tra unit đạt, gồm snapshot @tag, bộ điều phối theo giới hạn toàn cục và từng tab, tránh một tab bận chiếm hết slot của AI khác, dừng trong giai đoạn chuẩn bị, mất lưu trữ không gửi yêu cầu, phục hồi không tự gửi lại và kết quả riêng cho từng tác vụ.
+- Chromium: batch-manager-smoke đạt với ảnh hợp lệ/hỏng, gợi ý @tag, đổi/xóa tag sau khi xếp hàng, tham chiếu ảnh thật, ảnh đầu ra, MP4 thật được tạo bằng ffmpeg, xem trực tiếp, lưu lại qua reload, dán tự xếp hàng/hoàn tác, lọc/tìm/dọn và khóa điều phối giữa hai trang.
+- Flow Studio smoke đạt sau khi chuyển sang cùng hàng đợi và đặt giới hạn song song bằng giao diện; kiểm tra hai AI độc lập, khoảng cách gửi 5 giây, lỗi riêng từng thẻ, dừng cả thẻ đang chạy và thẻ đang chờ, thứ tự và ảnh được lưu.
+- Compact generator và Muse job integration smoke đạt; không mất tính năng thu gọn node, khôi phục kết quả và nhập video thủ công.
+- API/phiên đăng nhập AI được mô phỏng trong smoke. Chưa kiểm thử trên tài khoản Muse thật; chưa triển khai Account Pool cách ly hoặc backend PDF.

@@ -1,4 +1,4 @@
-# Workflow · MuseFlow 0.25.2
+# Workflow · MuseFlow 0.26.0
 
 Extension Chrome/Edge dựa trên [MuseFlow / 26Flow](https://github.com/bynne2602/museflow), mở rộng canvas/timeline để làm việc với Muse.ai, Gemini, ChatGPT và API Google, OpenAI, fal.ai. Giữ nguyên giấy phép GPL-2.0-or-later của nguồn gốc và thông báo FFmpeg đi kèm.
 
@@ -296,3 +296,10 @@ Nhãn thời lượng ghi rõ giây; trang đặt translate=no để tránh trì
 - Trả tiến độ qua truy vấn mã tác vụ để khôi phục khi mất thông báo trực tiếp. Trạng thái rút gọn và Chi tiết luôn cập nhật cùng nhau.
 - So với 0.24.0: 0.24.1 bổ sung lọc media và nguồn khung cuối; 0.25.0 thu gọn node; 0.25.1 chuyển sang START/STATUS/ACK và cho nhập video đã tạo; 0.25.2 xử lý khung trả lời tái sử dụng.
 - Chưa xác minh trên phiên Muse đăng nhập thật. Nhóm tài khoản cách ly, kho ảnh @tag và hàng đợi bền vững theo PDF chưa được triển khai đầy đủ.
+
+### 0.26.0 — Hàng đợi và Kho ảnh theo PDF, đợt 1
+
+- Tạo node → Hàng đợi · Kho ảnh: upload nhiều ảnh, đặt @tag, gợi ý khi gõ, tách prompt theo dòng/đoạn/toàn bộ và chốt ảnh/thiết lập/tab khi xếp hàng.
+- Cùng bộ điều phối với Flow Studio; 1–6 tác vụ song song, dải đang chạy, lọc/tìm/phân trang, xem kết quả và tải. Dán tự thêm sau 2 giây có hoàn tác cho đợt chưa chạy.
+- Lưu cục bộ, giữ ảnh đã chốt khi tag bị sửa/xóa, chặn điều phối trùng giữa hai cửa sổ. Tác vụ gián đoạn chuyển Cần kiểm tra, không tự gửi lại.
+- Chưa có Account Pool cách ly hoặc backend máy chủ. [Hướng dẫn và đối chiếu PDF](docs/BATCH-MANAGER.md).

@@ -5,7 +5,7 @@ from zipfile import ZipFile, ZIP_DEFLATED
 root = Path(__file__).resolve().parents[1]
 files = [
     'manifest.json', 'app.html', 'app.js', 'background.js', 'muse-bridge.js', 'muse-jobs.js', 'muse-support.js',
-    'ai-bridge.js', 'result-picker.js', 'composer-controls.js', 'ai-providers.js', 'workflow-tools.js', 'workflow-runtime.js', 'media-studio.js', 'media-library.js', 'story-workflow.js', 'story-dashboard.js', 'compact-toolbar.js', 'flow-studio.js', 'batch-images.js', 'i18n.js', 'styles.css', 'README.md',
+    'ai-bridge.js', 'result-picker.js', 'composer-controls.js', 'ai-providers.js', 'workflow-tools.js', 'workflow-runtime.js', 'media-studio.js', 'media-library.js', 'story-workflow.js', 'story-dashboard.js', 'compact-toolbar.js', 'flow-studio.js', 'batch-manager.js', 'batch-images.js', 'i18n.js', 'styles.css', 'README.md',
     'LICENSE', 'THIRD_PARTY_NOTICES.md',
 ]
 directories = ['icons', 'licenses', 'vendor', 'templates', 'extension', 'data', 'docs', 'tools/media-helper']
