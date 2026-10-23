@@ -1,4 +1,4 @@
-# Workflow · MuseFlow 0.26.0
+# Workflow · MuseFlow 0.27.0
 
 Extension Chrome/Edge dựa trên [MuseFlow / 26Flow](https://github.com/bynne2602/museflow), mở rộng canvas/timeline để làm việc với Muse.ai, Gemini, ChatGPT và API Google, OpenAI, fal.ai. Giữ nguyên giấy phép GPL-2.0-or-later của nguồn gốc và thông báo FFmpeg đi kèm.
 
@@ -303,3 +303,10 @@ Nhãn thời lượng ghi rõ giây; trang đặt translate=no để tránh trì
 - Cùng bộ điều phối với Flow Studio; 1–6 tác vụ song song, dải đang chạy, lọc/tìm/phân trang, xem kết quả và tải. Dán tự thêm sau 2 giây có hoàn tác cho đợt chưa chạy.
 - Lưu cục bộ, giữ ảnh đã chốt khi tag bị sửa/xóa, chặn điều phối trùng giữa hai cửa sổ. Tác vụ gián đoạn chuyển Cần kiểm tra, không tự gửi lại.
 - Chưa có Account Pool cách ly hoặc backend máy chủ. [Hướng dẫn và đối chiếu PDF](docs/BATCH-MANAGER.md).
+
+### 0.27.0 — ảnh tham chiếu phim theo mã @
+
+- Kịch bản tổng → Ảnh tham chiếu của kịch bản tự tạo các ô theo @1/@2/@3 hoặc @ten; hỗ trợ nhập nhiều ảnh theo tên mã, chọn/thả/dán ảnh và đặt nhãn.
+- Mỗi cảnh chỉ nối ảnh của mã được nhắc trong cảnh; danh mục đầu phim không kéo toàn bộ nhân vật vào mọi cảnh. Gợi ý khi gõ @, chỉnh mã trong prompt cập nhật dây; thiếu ảnh chặn gửi AI.
+- Lưu ảnh cùng workflow, tạo bản dựng mới giữ nguồn riêng, AI chia kịch bản phải giữ mã. Ảnh nối thủ công làm tham chiếu chung vẫn được giữ.
+- [Hướng dẫn và ví dụ](docs/MASTER-STORY.md).

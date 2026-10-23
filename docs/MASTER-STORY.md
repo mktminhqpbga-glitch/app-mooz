@@ -70,3 +70,35 @@ Sau khi tạo cấu trúc, mở Bảng điều khiển kịch bản từ menu T�
 4. **Tạo video và ghép**: chỉ chạy khi không còn mục cần kiểm tra; ghép theo cấu trúc đã tạo. Phạm vi Tổng dựng lần lượt các hồi, không nối tất cả hồi thành một phim. Chọn từng hồi/phần/đoạn để tải video đầu ra.
 
 Bản dựng mới mặc định bật Duyệt ảnh trước khi tạo video. Tạo lại hoặc sửa prompt/nguồn ảnh yêu cầu duyệt lại; thay prompt chuyển động đơn thuần giữ lượt duyệt ảnh nếu ảnh không đổi. Trạng thái duyệt được lưu và xuất cùng workflow. Bản dựng cũ không có tùy chọn giữ chế độ tự chạy như trước; có thể bật ở Kịch bản tổng. Đóng bảng không dừng tác vụ đang chạy; các nút Dừng trên canvas vẫn hoạt động.
+
+## Ảnh nhân vật/bối cảnh theo mã @ (0.27.0)
+
+Ở Kịch bản tổng có nút **Ảnh tham chiếu của kịch bản**. Viết `@1`, `@2`, `@3` hoặc `@ten` trong kịch bản/bản chia AI để tự có ô nhập ảnh tương ứng. Mã là định danh cố định; tên nhân vật/bối cảnh bên cạnh ảnh chỉ là nhãn giúp nhận biết. Gõ `@` trong ô kịch bản hoặc yêu cầu cảnh để chọn gợi ý bằng chuột, phím lên/xuống và Enter. Escape đóng gợi ý.
+
+```text
+NHÂN VẬT: @1 Lan; @2 Nam
+BỐI CẢNH: @3 khu vườn
+
+HỒI 1: Gặp nhau
+CẢNH 1 (0:00–0:05): Lan
+Prompt ảnh: Lan @1 đứng trong khu vườn @3.
+Prompt video: Lan @1 bước chậm trong khu vườn @3.
+
+CẢNH 2 (0:05–0:10): Nam
+Prompt ảnh: Nam @2 đứng trong khu vườn @3.
+Prompt video: Nam @2 quay đầu nhìn quanh khu vườn @3.
+```
+
+Ví dụ trên sinh ba ô ảnh; cảnh 1 nối ảnh @1 và @3, cảnh 2 nối @2 và @3. Danh mục ở đầu không làm mọi ảnh đi vào mọi cảnh. Mã có thể đặt trong tiêu đề/mô tả cảnh, Prompt ảnh hoặc Prompt video; mã chỉ có trong danh mục đầu phim không tự thêm vào cảnh. Tối đa tám mã ảnh/cảnh.
+
+- Có thể nhập ảnh **trước hoặc sau khi tạo node cho các hồi**. Chưa có ảnh vẫn tạo được cấu trúc, nhưng bước tạo ảnh cảnh sẽ báo thiếu mã và chưa gửi yêu cầu AI.
+- **Nhập nhiều ảnh** nhận PNG/JPG/WebP, tối đa 8 MB/ảnh. Tên `1.png`, `2-Nam.jpg`, `@3.png` được ghép đúng mã; tên khác điền lần lượt các ô còn trống. Xem lại kết quả gán trước khi chạy. Tệp hỏng hoặc mã tên tệp không tồn tại được báo riêng; ảnh hợp lệ vẫn được nhập.
+- Mỗi ô có thể chọn, kéo thả hoặc dán một ảnh; có thể đặt nhãn như “Lan”, “Nam”, “Khu vườn”.
+- Nút và ô ảnh thuộc riêng Kịch bản tổng, không lấy nhầm tag trùng tên ở kho ảnh hàng đợi.
+- Sau khi tạo node, sửa phần **YÊU CẦU RIÊNG CỦA CẢNH** trong các prompt ảnh/video để đổi mã. Dây ảnh tự cập nhật theo hợp các mã của hai prompt. Nếu đổi nhân vật của cảnh, sửa cả prompt ảnh và prompt chuyển động tương ứng.
+- Thay ảnh chuẩn khiến các cảnh đang nối ảnh đó cần tạo lại ảnh và duyệt lại; cảnh không dùng ảnh đó giữ kết quả. Video vẫn nhận ảnh khung đầu đã tạo của cảnh.
+- Ảnh nối thủ công vào cổng tham chiếu Kịch bản tổng và không thuộc ô @ vẫn là ảnh dùng chung, được truyền cho mọi cảnh như trước.
+- AI chia kịch bản được yêu cầu giữ mã @. Nếu phản hồi bỏ một mã đã có trong kịch bản gốc, hệ thống báo lỗi thay vì âm thầm lưu bản chia thiếu mã.
+- Ảnh được lưu và xuất cùng workflow. Tạo bản dựng mới sao chép các ô ảnh thành nguồn riêng, không thay ảnh của bản dựng cũ khi sửa bản mới.
+
+Kiểm chứng: `node tests/story-references-smoke.cjs` dùng Chromium thật và AI mô phỏng; kiểm tra mã ảnh, byte ảnh đính kèm, chỉnh dây, ảnh thiếu/hỏng và lưu qua tải lại trang. Chất lượng giữ nhân vật của dịch vụ AI thật vẫn phụ thuộc mô hình.

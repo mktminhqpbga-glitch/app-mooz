@@ -157,3 +157,10 @@ Không có phiên Muse/Gemini/ChatGPT đăng nhập thật, nên chưa xác minh
 - Flow Studio smoke đạt sau khi chuyển sang cùng hàng đợi và đặt giới hạn song song bằng giao diện; kiểm tra hai AI độc lập, khoảng cách gửi 5 giây, lỗi riêng từng thẻ, dừng cả thẻ đang chạy và thẻ đang chờ, thứ tự và ảnh được lưu.
 - Compact generator và Muse job integration smoke đạt; không mất tính năng thu gọn node, khôi phục kết quả và nhập video thủ công.
 - API/phiên đăng nhập AI được mô phỏng trong smoke. Chưa kiểm thử trên tài khoản Muse thật; chưa triển khai Account Pool cách ly hoặc backend PDF.
+
+## 0.27.0 — ảnh tham chiếu kịch bản theo mã @
+
+- 59 unit tests đạt, gồm phân tích mã số/tên, phân biệt @1 và @12, loại email và tách danh mục chung khỏi yêu cầu riêng của cảnh.
+- Story references smoke đạt trong Chromium: tự sinh ba ô @1/@2/@3 trước và sau khi tạo cấu trúc, gợi ý khi nhập @, nhập ảnh sai thứ tự theo tên mã, bỏ tệp hỏng, chặn ảnh còn thiếu trước khi gửi AI, kiểm tra chính xác byte ảnh theo từng cảnh, sửa mã cập nhật dây, giữ cảnh không liên quan, lưu ảnh qua reload và nguồn ảnh riêng cho bản dựng mới.
+- Story dashboard, hierarchical story và canvas groups/frames smoke đạt: giữ bước duyệt ảnh, ghép MP4/âm thanh đúng thứ tự, dựng lại chọn lọc và thao tác nhóm node.
+- AI được mô phỏng; chưa xác minh chất lượng đồng nhất nhân vật trên tài khoản AI thật.
