@@ -49,7 +49,7 @@ Nhập các giá trị trong **GitHub → Settings → Secrets and variables →
 
 Workflow cài dependency theo lockfile, chạy tests, buộc ký, notarize, build cả hai kiến trúc và tạo **draft release** kèm ZIP/DMG/blockmap/metadata. Nó không tự publish. Người quản lý kiểm tra gói trên Mac rồi publish draft để mở cập nhật cho người dùng. Nếu secrets còn thiếu, workflow dừng trước bước build.
 
-Workflow `.github/workflows/desktop.yml` vẫn chỉ tạo artifact unsigned để QA, không đưa nó lên kênh tự cài.
+Workflow `.github/workflows/desktop.yml` có nút **Run workflow** để tạo DMG/ZIP unsigned cho cả hai kiến trúc. Tùy chọn tạo draft Release chỉ chuẩn bị bản nháp, không publish hoặc bật tự cài. [Hướng dẫn đóng gói và đưa bản mới lên repo](PACKAGING.md).
 
 ## Kiểm thử và giới hạn
 

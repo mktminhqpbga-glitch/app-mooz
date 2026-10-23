@@ -129,7 +129,7 @@ npm run dist:mac
 npm run package:desktop -- --mac
 ```
 
-Workflow CI tại `.github/workflows/desktop.yml` chạy unit tests rồi tạo ZIP macOS **chưa ký**; nó chỉ tải artifact vào lần chạy GitHub Actions, không xuất bản release. Bản thử chưa có Developer ID hoặc notarization. Cơ chế cập nhật đã được triển khai từ 0.31.0, nhưng tải nền/tự cài chỉ hoạt động trên bản Mac đã ký và có release hợp lệ; bản unsigned chỉ kiểm tra bản mới. Xem [AUTO-UPDATE.md](AUTO-UPDATE.md). Không coi artifact unsigned là bản cài đã được Apple xác minh; không hướng dẫn tắt Gatekeeper để phát hành.
+Workflow CI tại `.github/workflows/desktop.yml` chạy unit tests rồi tạo DMG/ZIP macOS **chưa ký** cho Apple Silicon và Intel. Nút **Run workflow** có thể tạo thêm draft Release khi bạn chọn, nhưng không tự publish. Xem [PACKAGING.md](PACKAGING.md). Bản thử chưa có Developer ID hoặc notarization. Cơ chế cập nhật đã được triển khai từ 0.31.0, nhưng tải nền/tự cài chỉ hoạt động trên bản Mac đã ký và có release hợp lệ; bản unsigned chỉ kiểm tra bản mới. Xem [AUTO-UPDATE.md](AUTO-UPDATE.md). Không coi artifact unsigned là bản cài đã được Apple xác minh; không hướng dẫn tắt Gatekeeper để phát hành.
 
 Build macOS trong CI chỉ được coi là đạt khi xem được kết quả chạy và artifact tương ứng. Máy Linux phát triển có thể kiểm thử Electron/Linux; chưa thể chứng minh binary Mac chạy đúng trên Apple Silicon/Intel bằng các kiểm tra đó.
 

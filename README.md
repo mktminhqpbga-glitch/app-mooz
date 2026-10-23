@@ -1,5 +1,9 @@
 # Workflow · MuseFlow 0.31.0
 
+**[⬇ ĐÓNG GÓI / CẬP NHẬT APP MAC](https://github.com/mktminhqpbga-glitch/app-mooz/actions/workflows/desktop.yml)** · **[Hướng dẫn từng bước](docs/PACKAGING.md)**
+
+Bấm liên kết trên → **Run workflow** → chọn `main`. Khi build xong, tải artifact DMG đúng loại Mac. Có thể chọn tạo draft Release để chuẩn bị bản cập nhật; app nhận biết sau khi bạn Publish release mới hơn.
+
 ## Ứng dụng desktop — bản alpha
 
 Bản 0.31.0 thêm panel **Cập nhật**, tự kiểm tra phiên bản và tải nền/tự cài cho bản Mac đã ký. Bản chưa ký chỉ kiểm tra và mở trang tải. [Cách cập nhật và phát hành](docs/AUTO-UPDATE.md).
@@ -31,7 +35,7 @@ Extension Chrome/Edge dựa trên [MuseFlow / 26Flow](https://github.com/bynne26
 
 1. Tải ZIP repository này bằng **Code → Download ZIP**, rồi giải nén.
 2. Mở `chrome://extensions` hoặc `edge://extensions`, bật **Developer mode**.
-3. Chọn **Load unpacked**, chọn **thư mục gốc `workflow-main` có `manifest.json` và `app.html`**. Không chọn thư mục con `extension`: thư mục đó chỉ chứa bộ cập nhật dữ liệu cũ.
+3. Chọn **Load unpacked**, chọn **thư mục gốc `app-mooz-main` có `manifest.json` và `app.html`**. Không chọn thư mục con `extension`: thư mục đó chỉ chứa bộ cập nhật dữ liệu cũ.
 4. Bấm biểu tượng extension để mở canvas trong tab mới.
 5. Mở Gemini, ChatGPT hoặc Muse.ai, đăng nhập và mở trang chat. Tải lại tab AI nếu vừa cài/cập nhật extension.
 6. Vào **Kết nối AI → Kiểm tra kết nối**. Xanh: tìm thấy ô chat sẵn sàng; đỏ: kiểm tra thất bại/cần đăng nhập; xám: chưa mở tab hoặc chưa nhập khóa. Khóa API đã nhập nhưng chưa gọi thật được hiển thị vàng, không coi là xác thực thành công.

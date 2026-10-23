@@ -1,7 +1,13 @@
-name: Desktop checks and unsigned macOS build
+name: Đóng gói / Cập nhật app Mac
 
 on:
   workflow_dispatch:
+    inputs:
+      create_draft_release:
+        description: Tạo thêm bản nháp trong Releases sau khi đóng gói (mỗi version chỉ dùng một lần)
+        required: false
+        default: false
+        type: boolean
   pull_request:
   push:
     branches: [main]
@@ -10,14 +16,17 @@ permissions:
   contents: read
 
 concurrency:
-  group: desktop-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: desktop-${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' }}
 
 jobs:
   macos-build:
-    name: Tests and unsigned macOS ZIP
+    name: Build DMG + ZIP cho Mac M-series và Intel
     runs-on: macos-latest
-    timeout-minutes: 25
+    timeout-minutes: 45
+    outputs:
+      version: ${{ steps.metadata.outputs.version }}
+      source_sha: ${{ steps.metadata.outputs.source_sha }}
     env:
       CSC_IDENTITY_AUTO_DISCOVERY: 'false'
     steps:
@@ -28,18 +37,119 @@ jobs:
         with:
           node-version: '24'
           cache: npm
+      - name: Record the version and source commit
+        id: metadata
+        run: |
+          node -e 'const fs=require("fs"); const v=require("./package.json").version; if(!/^\d+\.\d+\.\d+$/.test(v))throw Error("Use a stable application version"); fs.appendFileSync(process.env.GITHUB_OUTPUT,"version="+v+"\n")'
+          echo "source_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
       - name: Install locked dependencies
         run: npm ci
       - name: Prepare Electron runtime
         run: npm run setup:desktop
       - name: Run unit tests
         run: npm test
-      - name: Build unsigned macOS ZIP without publishing
-        run: npm exec electron-builder -- --mac zip --publish never
-      - name: Upload unsigned build for manual testing
+      - name: Build unsigned DMG and ZIP for both architectures
+        run: npm exec electron-builder -- --mac --arm64 --x64 --publish never
+      - name: Verify packages and record SHA256 checksums
+        run: |
+          version="${{ steps.metadata.outputs.version }}"
+          for arch in arm64 x64; do
+            test -s "dist/Workflow-$version-mac-$arch.dmg"
+            test -s "dist/Workflow-$version-mac-$arch.zip"
+          done
+          test -s dist/latest-mac.yml
+          node <<'NODE'
+          const fs=require('fs'),crypto=require('crypto'),yaml=require('js-yaml');
+          const version=require('./package.json').version;
+          const info=yaml.load(fs.readFileSync('dist/latest-mac.yml','utf8'));
+          if(info.version!==version)throw Error('Update metadata version mismatch');
+          for(const arch of ['arm64','x64']){
+            const name=`Workflow-${version}-mac-${arch}.zip`;
+            const entry=info.files.find(file=>file.url===name);
+            if(!entry)throw Error('Missing update metadata for '+arch);
+            const hash=crypto.createHash('sha512').update(fs.readFileSync('dist/'+name)).digest('base64');
+            if(hash!==entry.sha512)throw Error('Update SHA512 mismatch for '+arch);
+            if(!fs.statSync('dist/'+name+'.blockmap').size)throw Error('Missing blockmap');
+          }
+          NODE
+          shasum -a 256 dist/*.dmg dist/*.zip | sed 's|  dist/|  |' > dist/SHA256SUMS.txt
+      - name: Tải app Mac M1-M2-M3-M4 tại artifact này
         uses: actions/upload-artifact@v4
         with:
-          name: Workflow-macOS-unsigned-${{ runner.arch }}
-          path: dist/*.zip
+          name: Workflow-Mac-AppleSilicon-DMG
+          path: dist/*-mac-arm64.dmg
+          compression-level: 0
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 30
+      - name: Tải app Mac Intel tại artifact này
+        uses: actions/upload-artifact@v4
+        with:
+          name: Workflow-Mac-Intel-DMG
+          path: dist/*-mac-x64.dmg
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 30
+      - name: Upload ZIP packages and update metadata
+        uses: actions/upload-artifact@v4
+        with:
+          name: Workflow-update-files
+          path: |
+            dist/*.zip
+            dist/*.blockmap
+            dist/latest-mac.yml
+            dist/SHA256SUMS.txt
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 30
+      - name: Hướng dẫn tải và cập nhật
+        run: |
+          cat >> "$GITHUB_STEP_SUMMARY" <<'SUMMARY'
+          ## App Mac đã được đóng gói
+          - Mac M1/M2/M3/M4: tải **Workflow-Mac-AppleSilicon-DMG**.
+          - Mac Intel: tải **Workflow-Mac-Intel-DMG**.
+          - Giải nén artifact, mở DMG, kéo **Workflow.app** vào **Applications**.
+          - Đây là bản **chưa ký Apple**, không yêu cầu chứng chỉ để build.
+          - Mã mới phải được commit/push lên nhánh đã chọn trước khi bấm Run workflow.
+          - Muốn app nhận biết bản mới: tăng version, tạo draft release, kiểm tra rồi Publish release. Run workflow đơn thuần chưa phát hành cập nhật.
+          SUMMARY
+
+  draft-release:
+    name: Tạo bản nháp trong Releases (chưa publish)
+    if: github.event_name == 'workflow_dispatch' && inputs.create_draft_release
+    needs: macos-build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      APP_VERSION: ${{ needs.macos-build.outputs.version }}
+      SOURCE_SHA: ${{ needs.macos-build.outputs.source_sha }}
+    steps:
+      - name: Check out the exact built commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.macos-build.outputs.source_sha }}
+      - name: Download packages from this run
+        uses: actions/download-artifact@v4
+        with:
+          pattern: Workflow-*
+          merge-multiple: true
+          path: release-files
+      - name: Refuse an existing version tag
+        run: |
+          existing=$(git ls-remote origin "refs/tags/v$APP_VERSION")
+          if [ -n "$existing" ]; then
+            echo "Version v$APP_VERSION already exists. Increase the application version; existing tags and releases are never overwritten."
+            exit 1
+          fi
+      - name: Create an unsigned draft without publishing
+        run: |
+          cat > /tmp/unsigned-release-notes.md <<'NOTES'
+          Bản thử chưa ký Apple — kiểm tra trên Mac trước khi Publish release.
+
+          Mac M1/M2/M3/M4: chọn DMG có arm64. Mac Intel: chọn DMG có x64. Dữ liệu dự án được giữ trong thư mục dữ liệu ứng dụng khi thay app.
+
+          Bản unsigned chỉ kiểm tra và dẫn tới trang tải, không tự cài. Không phát hành bản unsigned vào kênh đang phân phối tự cài cho người dùng bản signed; dùng quy trình signed release khi đã có Developer ID.
+          NOTES
+          gh release create "v$APP_VERSION" release-files/*.dmg release-files/*.zip release-files/*.blockmap release-files/latest-mac.yml release-files/SHA256SUMS.txt --target "$SOURCE_SHA" --draft --title "Workflow v$APP_VERSION" --notes-file /tmp/unsigned-release-notes.md

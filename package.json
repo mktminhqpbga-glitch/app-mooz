@@ -16,7 +16,8 @@
     "package:desktop": "electron-builder --dir",
     "dist:mac": "electron-builder --mac",
     "dist:linux": "electron-builder --linux",
-    "setup:desktop": "install-electron"
+    "setup:desktop": "install-electron",
+    "version:app": "node tools/set-version.cjs"
   },
   "engines": {
     "node": ">=22.12.0"
