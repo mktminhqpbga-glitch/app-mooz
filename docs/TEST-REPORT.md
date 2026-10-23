@@ -189,3 +189,7 @@ Báo cáo 0.28.0 có 3 video blob 720×1280 readyState 4, cấu trúc attachment
 Muse Chromium smoke đạt với MP4 blob và cấu trúc lồng đúng báo cáo, không có main, không có phản hồi văn bản: nhận đúng byte video, gửi đúng một lần và chẩn đoán nhận diện được attachment. Các trường hợp lịch sử/placeholder, wrapper cũ và cấu trúc mới vẫn đạt. Đây là tái hiện DOM bằng báo cáo, chưa kiểm chứng trên tài khoản thật.
 
 Story scaffold Chromium smoke: cuộn trong node dài tăng scrollTop, không đổi transform canvas; Home rồi ArrowDown cuộn nội dung 40px và không đổi vị trí node. Node có vùng cuộn nhận focus, thanh cuộn rõ hơn và giới hạn chiều cao theo viewport.
+
+## 0.28.3 — Flow Studio theo khối
+
+Flow Studio dùng chung WorkflowBatchManager.split, không còn đếm mỗi dòng trong khối thành một prompt. Chromium smoke kiểm tra từ chối khối thiếu dấu đóng không tạo thẻ nào, ba khối tạo đúng ba thẻ và giữ dòng phụ, cùng quy trình hàng đợi/kết quả/sắp xếp/lưu lại hiện có. AI được mô phỏng.

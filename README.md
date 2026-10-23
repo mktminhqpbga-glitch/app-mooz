@@ -1,4 +1,4 @@
-# Workflow · MuseFlow 0.28.2
+# Workflow · MuseFlow 0.28.3
 
 Extension Chrome/Edge dựa trên [MuseFlow / 26Flow](https://github.com/bynne2602/museflow), mở rộng canvas/timeline để làm việc với Muse.ai, Gemini, ChatGPT và API Google, OpenAI, fal.ai. Giữ nguyên giấy phép GPL-2.0-or-later của nguồn gốc và thông báo FFmpeg đi kèm.
 
@@ -333,3 +333,7 @@ Sửa Uncaught Error khi bấm nhân bản nhóm từ menu chuột phải trong 
 Theo cấu trúc báo cáo thực tế, tìm bong bóng trả lời từ phần tử video/ảnh thay vì chỉ từ khung attachment. Hỗ trợ video blob không kèm văn bản, vẫn loại ảnh/video nằm trong tin nhắn người dùng và kết quả có trước lúc gửi. Cần tải lại cả Workflow và tab Muse sau cập nhật để nạp bridge mới.
 
 Node kịch bản dài: cuộn chuột trong nội dung không zoom canvas; bấm phần nội dung rồi dùng mũi tên, Page Up/Down, Home/End để xem. Phím trong ô nhập vẫn giữ hành vi soạn thảo. Cuộn ngoài node vẫn zoom; Ctrl/pinch vẫn zoom.
+
+### 0.28.3 — Flow Studio dùng prompt theo khối
+
+Thẻ tổng Flow Studio mặc định dùng cùng bộ tách `[ ... ]` với Hàng đợi, giữ nhiều dòng trong từng thẻ. Thiếu dấu đóng chặn tạo cả đợt. Có Sao chép mẫu / Xem mẫu, và chế độ Theo dòng (cũ) cho dữ liệu cũ.
