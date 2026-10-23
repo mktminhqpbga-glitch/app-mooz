@@ -1,7 +1,7 @@
 (() => {
   if (window.__museFlowBridgeInstalled) return;
   window.__museFlowBridgeInstalled = true;
-  window.__museFlowBridgeVersion='0.28.3';
+  window.__museFlowBridgeVersion='0.28.4';
 
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     if(_sender.id!==chrome.runtime.id)return false;

@@ -1,4 +1,4 @@
-# Workflow · MuseFlow 0.28.3
+# Workflow · MuseFlow 0.28.4
 
 Extension Chrome/Edge dựa trên [MuseFlow / 26Flow](https://github.com/bynne2602/museflow), mở rộng canvas/timeline để làm việc với Muse.ai, Gemini, ChatGPT và API Google, OpenAI, fal.ai. Giữ nguyên giấy phép GPL-2.0-or-later của nguồn gốc và thông báo FFmpeg đi kèm.
 
@@ -337,3 +337,7 @@ Node kịch bản dài: cuộn chuột trong nội dung không zoom canvas; bấ
 ### 0.28.3 — Flow Studio dùng prompt theo khối
 
 Thẻ tổng Flow Studio mặc định dùng cùng bộ tách `[ ... ]` với Hàng đợi, giữ nhiều dòng trong từng thẻ. Thiếu dấu đóng chặn tạo cả đợt. Có Sao chép mẫu / Xem mẫu, và chế độ Theo dòng (cũ) cho dữ liệu cũ.
+
+### 0.28.4 — chọn song song ngay tại Flow Studio
+
+Chọn 1–6 luồng trên thanh Tạo tất cả, dùng chung giới hạn với Hàng đợi. Chỉ báo đang chạy/chờ phản ánh toàn hàng đợi. Chọn Luồng AI (tab/cuộc trò chuyện) trên từng thẻ, có nút làm mới danh sách. Muốn hai thẻ chạy đồng thời, chọn hai tab khác nhau; một tab chỉ nhận một tác vụ, khoảng cách gửi vẫn 5 giây. Thay số luồng không tự gửi tác vụ mới ngoài hàng đợi đã bật.

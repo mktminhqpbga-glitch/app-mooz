@@ -56,3 +56,7 @@ Lựa chọn được giữ khi đổi trang hoặc bộ lọc; số Đã chọn
 `node tests/flow-studio-smoke.cjs`
 
 Kiểm tra trình duyệt dùng Chromium thật, API AI được mô phỏng. Không được xem kết quả này là xác nhận dịch vụ Muse/Gemini/ChatGPT đang đăng nhập thật.
+
+## Chọn luồng từ Flow Studio
+
+Ngay cạnh Tạo tất cả có **Chạy song song: 1–6 luồng**, dùng cùng giá trị với Hàng đợi và lưu cục bộ. Dòng đếm cho biết số đang chạy/giới hạn và số đang chờ của toàn hàng đợi. Mỗi thẻ có **Luồng AI · cửa sổ / cuộc trò chuyện**: chọn tab phù hợp; để chạy đồng thời phải chọn các tab khác nhau. Hai thẻ cùng tab sẽ chạy lần lượt. Bấm **Làm mới luồng AI** sau khi mở tab mới. Không có cách ly tài khoản chỉ bằng việc mở thêm cửa sổ.

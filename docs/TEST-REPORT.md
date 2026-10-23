@@ -193,3 +193,7 @@ Story scaffold Chromium smoke: cuộn trong node dài tăng scrollTop, không đ
 ## 0.28.3 — Flow Studio theo khối
 
 Flow Studio dùng chung WorkflowBatchManager.split, không còn đếm mỗi dòng trong khối thành một prompt. Chromium smoke kiểm tra từ chối khối thiếu dấu đóng không tạo thẻ nào, ba khối tạo đúng ba thẻ và giữ dòng phụ, cùng quy trình hàng đợi/kết quả/sắp xếp/lưu lại hiện có. AI được mô phỏng.
+
+## 0.28.4 — số luồng trong Flow Studio
+
+Unit suite và Flow Studio Chromium smoke đạt. Thiết lập 2 luồng trực tiếp trong Flow Studio được lưu vào hàng đợi dùng chung; hai tab AI chạy đồng thời, chỉ báo 2/2 cập nhật, các lượt gửi cách tối thiểu 4.9 giây, giữ cấu hình khi mở lại và dừng được tác vụ đang chạy/chờ. Các trường hợp chia khối, lỗi độc lập và lưu thẻ vẫn đạt. AI được mô phỏng.
