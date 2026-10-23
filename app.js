@@ -63,6 +63,7 @@
   let draggedGenerationId=null;
 
   const nodeDefs = {
+    referenceBoard:{title:'Ảnh tham chiếu chung',outputs:WorkflowReferences.outputs},
     videoInput: {title:'Video đầu vào',outputs:[{id:'video',label:'video gốc',type:'video'}]},
     generateText: {title:'Tạo văn bản',inputs:[{id:'prompt',label:'Yêu cầu',type:'text'},{id:'rules',label:'Quy tắc',type:'text'},{id:'reference',label:'Ảnh',type:'image'},{id:'video',label:'Video gốc',type:'video'}],outputs:[{id:'text',label:'Văn bản',type:'text'}]},
     prompt: { title: 'Prompt', outputs: [{ id: 'text', label: 'text', type: 'text' }] },
@@ -284,6 +285,7 @@
     if(pendingChatSelections)throw new Error('Đang cập nhật cuộc trò chuyện đã chọn. Đợi một chút rồi chạy lại.');
     const references=[],canonical=new Map();
     for(const ref of n.id?resolveReferences(n.id):[]){const url=await blobAsDataUrlFromUrl(ref.url);if(signal?.aborted)throw new DOMException('Đã dừng.','AbortError');if(canonical.has(url)){const old=canonical.get(url);old.roles=[...new Set([...old.roles,...ref.roles])];old.aliases=[...new Set([...(old.aliases||[]),ref.componentId,...(ref.aliases||[])])];if(ref.instructions&&!old.instructions.includes(ref.instructions))old.instructions+='\n'+ref.instructions;}else{const copy={...ref,url,roles:[...ref.roles]};canonical.set(url,copy);references.push(copy);}}
+    if(references.length>8)throw Error('Tác vụ có '+references.length+' ảnh tham chiếu; tối đa 8 ảnh. Tắt ảnh chung hoặc bỏ bớt ảnh riêng.');
     if(references.length)request={...request,referenceImages:references.map(ref=>ref.url)};
     const referenceNote=WorkflowTools.referenceNote(references,request.prompt);if(referenceNote)request={...request,prompt:request.prompt+'\n'+referenceNote};
     const provider=n.data.provider||(n.type==='generateText'?'gemini':'muse');request={...request,chatTarget:n.data.chatTarget||aiChatTargets[provider]};
@@ -377,6 +379,7 @@
   function toolIncoming(node,port){return getIncoming(node.id,port).map(sourceFor).filter(Boolean);}
   function toolAsset(node,port='media'){
     const edge=getIncoming(node.id,port)[0],source=sourceFor(edge);if(!source)return null;
+    if(source.type==='referenceBoard'){const image=WorkflowReferences.select(source.data,edge.sourcePort)[0];return image?{kind:'image',url:image.url,id:image.id,name:image.name}:null;}
     if(edge.sourcePort==='endFrame')return frameMatchesVideo(source)?source.data.endFrame:null;
     if(['imageInput','videoInput'].includes(source.type)&&source.data.localDataUrl)return {kind:source.type==='videoInput'?'video':'image',url:source.data.localDataUrl};
     if(source.type==='review')return toolAsset(source,edge.sourcePort==='video'?'video':'reference');
@@ -718,6 +721,7 @@
       const data={...(node.data||{})};
       if(data.asset&&typeof data.asset==='object')data.asset={...data.asset};
       if(data.endFrame&&typeof data.endFrame==='object')data.endFrame={...data.endFrame};
+      if(Array.isArray(data.referenceImages))data.referenceImages=structuredClone(data.referenceImages);
       if(Array.isArray(data.clipOrder))data.clipOrder=[...data.clipOrder];
       if(data.durations&&typeof data.durations==='object')data.durations={...data.durations};
       return{...node,data};
@@ -817,7 +821,7 @@
       type === 'timeline' ? { clipOrder: [], durations: {} } : {};
     if(toolKind){data.toolKind=toolKind;data.customName=WorkflowTools.aliases[toolKind];data.variantCount=3;}
     createUndoSnapshot(`Add ${nodeDefs[type]?.title||'node'}`);const node={ id: uid(type), type, x, y, data };state.nodes.push(node);
-    if(type==='references')syncReferenceFanOut(node);else if(['generateImage','generateVideo','generateText'].includes(type)){const references=state.nodes.find(item=>item.type==='references');if(references)connectReferenceNode(references,node);}
+    if(type==='referenceBoard')node.data={referenceImages:[],shared:false};if(type==='references')syncReferenceFanOut(node);else if(['generateImage','generateVideo','generateText'].includes(type)){const references=state.nodes.find(item=>item.type==='references');if(references)connectReferenceNode(references,node);}
     render();if(type==='timeline'){syncTimelineDock();if($('#timelineDock').classList.contains('collapsed'))toggleTimeline();}
   }
 
@@ -1092,6 +1096,18 @@
     state.edges=unique.reverse();
     state.groups=Array.isArray(state.groups)?state.groups.filter(group=>group&&Number.isFinite(group.x)&&Number.isFinite(group.y)&&Number.isFinite(group.width)&&Number.isFinite(group.height)&&group.width>0&&group.height>0).map(group=>({...group,id:typeof group.id==='string'?group.id:uid('group'),name:String(group.name||'Group'),nodeIds:Array.isArray(group.nodeIds)?group.nodeIds.filter(id=>seenNodeIds.has(id)):[]})):[];
   }
+  const referenceUploads=new Set();
+  function renderReferenceBoard(n,body,el){
+    const images=WorkflowReferences.images(n.data);el.classList.add('reference-board');el.style.width=Math.max(620,images.length*126+32)+'px';
+    const controls=document.createElement('div');controls.className='reference-board-controls';const label=document.createElement('label'),shared=document.createElement('input');shared.type='checkbox';shared.checked=!!n.data.shared;shared.disabled=state.isRunning;shared.onchange=()=>{createUndoSnapshot('Dùng ảnh cho toàn workflow');n.data.shared=shared.checked;render();};label.append(shared,document.createTextNode('Dùng chung cho toàn workflow'));const count=document.createElement('span');count.textContent=images.length+' / 8 ảnh';controls.append(label,count);body.append(controls);
+    const strip=document.createElement('div');strip.className='reference-board-strip';
+    for(const image of images){const tile=document.createElement('figure');tile.className='reference-board-tile';tile.dataset.referenceSlot=image.slot;const img=new Image();img.src=image.url;img.alt=image.name;const caption=document.createElement('figcaption');caption.textContent='Ảnh '+image.slot;const name=document.createElement('input');name.value=image.name;name.setAttribute('aria-label','Tên ảnh '+image.slot);name.disabled=state.isRunning;name.onchange=()=>{createUndoSnapshot('Đổi tên ảnh tham chiếu');image.name=name.value.trim()||'Ảnh '+image.slot;scheduleAutoSave();};const remove=document.createElement('button');remove.type='button';remove.textContent='×';remove.title='Xóa ảnh '+image.slot;remove.setAttribute('aria-label',remove.title);remove.disabled=state.isRunning;remove.onclick=()=>{createUndoSnapshot('Xóa ảnh tham chiếu');n.data.referenceImages=images.filter(i=>i.slot!==image.slot);state.edges=state.edges.filter(e=>!(e.source===n.id&&e.sourcePort==='image'+image.slot));render();};tile.append(img,caption,name,remove);strip.append(tile);}
+    const upload=document.createElement('label');upload.className='reference-board-upload';upload.textContent=images.length?'＋ Thêm ảnh':'＋ Kéo thả ảnh vào đây';const input=document.createElement('input');input.type='file';input.accept='image/png,image/jpeg,image/webp';input.multiple=true;input.disabled=images.length===8||state.isRunning;input.setAttribute('aria-label','Thêm ảnh tham chiếu');
+    const add=async files=>{if(state.isRunning)throw Error('Dừng workflow trước khi đổi ảnh.');if(referenceUploads.has(n.id))throw Error('Đang đọc ảnh; chờ hoàn tất.');referenceUploads.add(n.id);try{const added=await WorkflowReferences.prepare(n.data,[...files]);if(!nodeById(n.id))return;if(state.isRunning)throw Error('Workflow đã bắt đầu chạy; thêm ảnh lại sau khi dừng.');if(WorkflowReferences.images(n.data).map(i=>i.id).join(',')!==images.map(i=>i.id).join(','))throw Error('Bảng ảnh đã thay đổi trong khi đọc tệp. Thêm ảnh lại.');if(added.length){createUndoSnapshot('Thêm ảnh tham chiếu');n.data.referenceImages=[...images,...added];render();await queueWorkflowSave();setRunStatus('Đã thêm '+added.length+' ảnh. Kéo điểm dưới mỗi ảnh để nối tới node cần dùng.','ok');}}finally{referenceUploads.delete(n.id);}};
+    input.onchange=()=>void add(input.files).catch(error=>setRunStatus(error.message,'error'));upload.append(input);strip.append(upload);body.append(strip);const hint=document.createElement('p');hint.className='hint';hint.textContent='Kéo điểm dưới từng ảnh tới cổng Ảnh tham chiếu. Một ảnh có thể nối nhiều node. Cổng Tất cả ảnh gửi cả bảng.';body.append(hint);
+    body.ondragover=e=>{if(e.dataTransfer?.types.includes('Files')){e.preventDefault();e.stopPropagation();body.classList.add('reference-drag-over');}};body.ondragleave=()=>body.classList.remove('reference-drag-over');body.ondrop=e=>{e.preventDefault();e.stopPropagation();body.classList.remove('reference-drag-over');void add(e.dataTransfer.files).catch(error=>setRunStatus(error.message,'error'));};
+  }
+
   function renderNode(n) {
     const el = document.createElement('section');
     el.className = `node ${['generateImage','generateVideo','generateText'].includes(n.type) ? 'generate' : ''} ${n.type==='timeline'?'timeline-node':''} ${state.selectedNodeIds.includes(n.id)||state.selectedNodeId===n.id ? 'selected' : ''}`;
@@ -1145,6 +1161,7 @@
     }
 
     if(WorkflowTools.definitions[n.type])renderTool(n,body);
+    if(n.type==='referenceBoard')renderReferenceBoard(n,body,el);
     if(n.type==='references'){
       const incoming=(nodeDefs.references.inputs||[]).reduce((count,input)=>count+getIncoming(n.id,input.id).length,0),badge=document.createElement('span');badge.className='ref-badge';badge.textContent=`${incoming} image source${incoming===1?'':'s'} connected`;body.appendChild(badge);
       const list=document.createElement('div');list.className='references-input-list';(nodeDefs.references.inputs||[]).forEach(input=>{const row=document.createElement('div');row.textContent=`${input.label} · connect image source`;list.appendChild(row);});body.appendChild(list);
@@ -1153,6 +1170,7 @@
 
     if(['generateImage','generateVideo','generateText'].includes(n.type))body.appendChild(providerControls(n));
     if(n.type==='generateText'){
+      if(n.data.text){const splitButton=document.createElement('button');splitButton.type='button';splitButton.className='tool-action';splitButton.textContent='Tách kết quả thành node';splitButton.onclick=()=>WorkflowCreative.open(n.data.text);body.append(splitButton);}
       if(n.data.toolKind==='promptVariants'){toolField(body,n,'variantCount','Số biến thể',{type:'number',value:3,min:2,max:10});toolField(body,n,'variationStyle','Định hướng biến thể',{value:'góc máy, ánh sáng và bối cảnh'});}
       if(n.data.toolKind==='promptVariants'){const variants=WorkflowTools.variants(n.data.text);if(variants.length){const select=document.createElement('select');select.setAttribute('aria-label','Biến thể dùng làm đầu ra');variants.forEach((text,index)=>select.append(new Option(`Biến thể ${index+1}: ${text.slice(0,40)}`,String(index))));select.value=String(Math.min(variants.length-1,Number(n.data.selectedVariant)||0));select.onchange=()=>{n.data.selectedVariant=Number(select.value);scheduleAutoSave();};body.append(select);}}
       const output=document.createElement('textarea');output.readOnly=true;output.value=n.data.text||'';output.placeholder='Kết quả văn bản sẽ xuất hiện tại đây';body.appendChild(output);
@@ -1169,7 +1187,7 @@
       if(n.data.asset?.width&&n.data.asset?.height){const dimensions=document.createElement('div');dimensions.className=`hint ${n.data.asset.sizeMismatch?'error':''}`;dimensions.textContent=`Yêu cầu ${n.data.asset.requestedSize||n.data.size} · thực tế ${n.data.asset.width} × ${n.data.asset.height}${n.data.asset.actualDuration?' · '+n.data.asset.actualDuration.toFixed(1)+' giây':''}${n.data.asset.sizeMismatch?' (AI trả về tỷ lệ khác)':''}`;body.appendChild(dimensions);}
       if (n.data.asset?.url) { const a=document.createElement('a'); a.href=n.data.asset.url; a.target='_blank'; a.className='image-link'; const img=document.createElement('img'); img.src=n.data.asset.url; a.appendChild(img); body.appendChild(a); }
       const promptCount=getIncoming(n.id,'prompt').length;if(promptCount>1){const b=document.createElement('span');b.className='ref-badge';b.textContent=`${promptCount} prompt sources combined`;body.appendChild(b);}
-      const referenceCount=getIncoming(n.id,'reference').length;if(referenceCount){const b=document.createElement('span');b.className='ref-badge';b.textContent=`${referenceCount} reference image${referenceCount===1?'':'s'} connected`;body.appendChild(b);}
+      const referenceCount=resolveReferences(n.id).length;if(referenceCount){const b=document.createElement('span');b.className='ref-badge';b.textContent=`${referenceCount} reference image${referenceCount===1?'':'s'} connected`;body.appendChild(b);}
       body.appendChild(createNodeRunActions(n));
     }
 
@@ -1241,7 +1259,8 @@
     }
     if(status){status.title=status.textContent;const log=document.createElement('p');log.className='node-status-detail';log.textContent=status.textContent;sections.info.content.prepend(log);}
     if(controls){[...controls.querySelectorAll('select')].forEach((select,i)=>select.setAttribute('aria-label',i===0?'Tỷ lệ khung hình':'Thời lượng video'));for(const model of [...controls.querySelectorAll('input')])sections.connection.content.append(model);}
-    const refs=sections.frames.content.querySelector('.reference-id-list');if(refs){refs.title=refs.textContent;sections.frames.details.querySelector('summary').textContent=(node.type==='generateVideo'?'Khung hình':'Ảnh tham chiếu')+' · '+getIncoming(node.id,'reference').length;}
+    const sharedLabel=document.createElement('label');sharedLabel.className='shared-reference-toggle';const sharedCheck=document.createElement('input');sharedCheck.type='checkbox';sharedCheck.checked=!node.data.excludeSharedReferences;sharedCheck.disabled=!!node.data.freezeSharedReferences;sharedCheck.onchange=()=>{createUndoSnapshot('Đổi ảnh chung');node.data.excludeSharedReferences=!sharedCheck.checked;render();};sharedLabel.append(sharedCheck,document.createTextNode(node.data.freezeSharedReferences?'Ảnh đã chốt trong hàng đợi':'Dùng ảnh tham chiếu chung'));sections.frames.content.append(sharedLabel);
+    const refs=sections.frames.content.querySelector('.reference-id-list');if(refs){refs.title=refs.textContent;sections.frames.details.querySelector('summary').textContent=(node.type==='generateVideo'?'Khung hình':'Ảnh tham chiếu')+' · '+resolveReferences(node.id).length;}
     if(node.data.status==='error')sections.info.details.open=true;
     body.replaceChildren(...[provider,controls,status,media,actions,options].filter(Boolean));
   }
@@ -1276,12 +1295,15 @@
       const label=document.createElement('span'); label.className='port-label left'; label.style.top=`${y-1}px`; const count=isMultiInput(n.type,p.id)?getIncoming(n.id,p.id).length:0;label.textContent=count?`${p.label} · ${count}`:p.label;if(count)port.title=`${p.label}: ${count} nguồn đã nối`;port.title+=' · Giữ Shift và bấm để nối các node đang chọn';el.append(label,port);
     });
     (def.outputs || []).forEach((p, i) => {
+      if(n.type==='referenceBoard'&&p.id!=='image'&&!WorkflowReferences.select(n.data,p.id).length)return;
       const y = ['prompt','negativePrompt','textAppend'].includes(n.type) ? 80 : n.type==='generateVideo'?82+i*30:['imageInput','generateImage'].includes(n.type)?82:66+i*42;
       const port=document.createElement('div'); port.className='port out'; port.dataset.node=n.id; port.dataset.port=p.id;port.dataset.type=p.type; port.style.top=`${y}px`; port.title=`Output: ${p.label} (${p.type})`;
       port.onpointerdown=e=>startWire(e,n.id,p.id);
       if(n.type==='generateVideo'){port.classList.add('video-output-port');port.title=p.id==='endFrame'?'Connect this final frame to the next video’s reference input':'Connect video output to the Timeline or another compatible input';}
       port.onmousedown=e=>{if(e.button===0){e.stopPropagation();state.connectingFrom={nodeId:n.id,portId:p.id};setRunStatus(`Connecting ${p.type}: click a compatible input port.`,'warn');}};
       port.onclick=(e)=>{e.stopPropagation();if(state.suppressPortClick)return;if(!state.draggingWire){state.connectingFrom={nodeId:n.id,portId:p.id};setRunStatus(`Connecting ${p.type}: click a compatible input or drag to one.`,'warn');}};
+      if(n.type==='referenceBoard'&&p.id!=='image'){const tile=el.querySelector('[data-reference-slot="'+p.id.slice(5)+'"]');port.style.top='auto';port.style.bottom='-7px';port.style.right='12px';tile.append(port);return;}
+      if(n.type==='referenceBoard')port.style.top='74px';
       const label=document.createElement('span'); label.className='port-label right'; label.style.top=`${y-1}px`; label.textContent=p.label; el.append(label,port);
     });
   }
@@ -1589,7 +1611,7 @@
     for(const node of state.nodes){const data=node.data||(node.data={});if(!data.componentId||used.has(data.componentId)){const prefix=['imageInput','generateImage','imageResize'].includes(node.type)?'IMG':node.type==='videoInput'||node.type==='generateVideo'?'VID':'NODE';do{data.componentId=prefix+'-'+crypto.randomUUID().slice(0,8).toUpperCase();}while(used.has(data.componentId));}used.add(data.componentId);}
   }
   function render() {
-    ensureComponentIds();
+    ensureComponentIds();syncSharedReferenceBoards();
     syncPreviewOutputs();canvas.innerHTML='';state.groups.forEach(group=>canvas.appendChild(renderCanvasGroup(group)));state.notes.forEach(note=>canvas.appendChild(renderCanvasNote(note)));state.nodes.filter(n=>!n.data?.dockOnly).forEach(n => canvas.appendChild(renderNode(n)));applyCanvasTransform();requestAnimationFrame(drawEdges);syncTimelineDock();updateChatUsageLabels();scheduleAutoSave();
   }
 
@@ -1611,7 +1633,7 @@
     frame.append(label,remove);return frame;
   }
 
-  function syncPreviewOutputs(){for(const preview of state.nodes.filter(node=>node.type==='preview')){const edge=getIncoming(preview.id,'media')[0],source=edge&&nodeById(edge.source);let asset=null;if(source){asset=edge.sourcePort==='endFrame'?(frameMatchesVideo(source)?source.data.endFrame:null):source.data?.asset;if(!asset&&source.type==='imageInput'&&source.data?.localDataUrl)asset={id:source.id,kind:'image',url:source.data.localDataUrl,name:'Input image'};}preview.data.asset=asset||null;}}
+  function syncPreviewOutputs(){for(const preview of state.nodes.filter(node=>node.type==='preview')){const edge=getIncoming(preview.id,'media')[0],source=edge&&nodeById(edge.source);let asset=null;if(source){asset=edge.sourcePort==='endFrame'?(frameMatchesVideo(source)?source.data.endFrame:null):source.data?.asset;if(!asset&&source.type==='referenceBoard'){const image=WorkflowReferences.select(source.data,edge.sourcePort)[0];if(image)asset={id:image.id,kind:'image',url:image.url,name:image.name};}if(!asset&&source.type==='imageInput'&&source.data?.localDataUrl)asset={id:source.id,kind:'image',url:source.data.localDataUrl,name:'Input image'};}preview.data.asset=asset||null;}}
 
   function applyCanvasTransform(){const transform=`translate(${state.panX}px, ${state.panY}px) scale(${state.zoom})`;canvas.style.transform=transform;edgesSvg.style.transform=transform;$('#zoomLevel').textContent=`${Math.round(state.zoom*100)}%`;$('#viewport').classList.toggle('hand-mode',state.handMode||state.spaceDown);}
   function zoomAt(clientX,clientY,factor){const rect=$('#viewport').getBoundingClientRect(),x=clientX-rect.left,y=clientY-rect.top,old=state.zoom,next=Math.max(.25,Math.min(2.5,old*factor));if(next===old)return;const contentX=(x-state.panX)/old,contentY=(y-state.panY)/old;state.zoom=next;state.panX=x-contentX*next;state.panY=y-contentY*next;applyCanvasTransform();scheduleDrawEdges();}
@@ -1742,11 +1764,18 @@
   }
   function resolveNegativePrompt(nodeId){const source=sourceFor(getIncoming(nodeId,'negative')[0]);return source?resolveText(source.id):'';}
   function timelinePredecessor(nodeId){const timeline=state.nodes.find(item=>item.type==='timeline'),order=timeline?.data?.clipOrder||[],index=order.indexOf(nodeId);return index>0?nodeById(order[index-1]):null;}
+  function syncSharedReferenceBoards(){
+    const boards=state.nodes.filter(n=>n.type==='referenceBoard'&&n.data.shared&&WorkflowReferences.images(n.data).length);
+    state.edges=state.edges.filter(edge=>!edge.sharedBoard||boards.some(b=>b.id===edge.source)&&!nodeById(edge.target)?.data.excludeSharedReferences&&!nodeById(edge.target)?.data.freezeSharedReferences);
+    for(const board of boards)for(const target of state.nodes.filter(n=>['generateImage','generateVideo','generateText'].includes(n.type)&&!n.data.excludeSharedReferences&&!n.data.freezeSharedReferences))if(!state.edges.some(e=>e.source===board.id&&e.sourcePort==='image'&&e.target===target.id&&e.targetPort==='reference'))state.edges.push({id:uid('edge'),source:board.id,sourcePort:'image',target:target.id,targetPort:'reference',sharedBoard:true});
+  }
+  async function sharedReferenceSnapshots(){const images=[];for(const board of state.nodes.filter(n=>n.type==='referenceBoard'&&n.data.shared))for(const image of WorkflowReferences.images(board.data))images.push({...image,componentId:board.data.componentId+'-IMG'+image.slot,url:await blobAsDataUrlFromUrl(image.url)});return images;}
   function resolveReferences(nodeId){
     const references=[],seen=new Map();
     const add=(url,name,componentId,roles=[],instructions='')=>{if(!url)return;if(seen.has(url)){const old=seen.get(url);old.roles=[...new Set([...old.roles,...roles])];if(componentId!==old.componentId)old.aliases=[...new Set([...(old.aliases||[]),componentId])];if(instructions&&!old.instructions.includes(instructions))old.instructions+='\n'+instructions;return;}const ref={url,name:name||'Ảnh tham chiếu',componentId,roles,instructions};seen.set(url,ref);references.push(ref);};
     const visit=(source,sourcePort,visited=new Set(),roles=[])=>{
       if(!source||visited.has(source.id))return;const next=new Set(visited);next.add(source.id);
+      if(source.type==='referenceBoard'){for(const image of WorkflowReferences.select(source.data,sourcePort))add(image.url,image.name,source.data.componentId+'-IMG'+image.slot,roles,image.notes||'');return;}
       if(['references','imageRoles','review'].includes(source.type)){
         for(const edge of getIncoming(source.id).filter(edge=>source.type!=='review'||edge.targetPort==='reference'))visit(nodeById(edge.source),edge.sourcePort,next,source.type==='imageRoles'?[...roles,({character:'Nhân vật',background:'Bối cảnh',clothing:'Trang phục',pose:'Tư thế'})[edge.targetPort]]:roles);return;
       }
@@ -1915,7 +1944,7 @@
           }catch(error){n.data.status=error.name==='AbortError'?'stopped':'error';n.data.error=error.message;render();throw error;}
         }
         if(n.type==='imageResize'){
-          const source=sourceFor(getIncoming(n.id,'image')[0]);const url=source?.data?.localDataUrl||source?.data?.asset?.url;
+          const source=sourceFor(getIncoming(n.id,'image')[0]);const inputEdge=getIncoming(n.id,'image')[0],boardImage=source?.type==='referenceBoard'?WorkflowReferences.select(source.data,inputEdge?.sourcePort)[0]:null;const url=boardImage?.url||source?.data?.localDataUrl||source?.data?.asset?.url;
           if(!url){setRunStatus('Image Resize is waiting for an input image.','warn');continue;}
           const image=await loadImage(url),canvas=document.createElement('canvas');drawResized(image,canvas,n.data);
           const resized=canvas.toDataURL('image/png');n.data.asset={id:uid('asset'),kind:'image',url:resized,name:`Resized ${n.data.width}×${n.data.height}`,width:canvas.width,height:canvas.height,sourceNodeId:n.id};
@@ -2107,11 +2136,11 @@
   const idbMediaPrefix='museflow-idb:';
   async function dehydrateMediaUrl(url,key){if(!url||url.startsWith(idbMediaPrefix)||!(/^(?:data:|blob:)/i).test(url))return url;const response=await fetch(url);const blob=await response.blob();if(!blob.size)throw new Error('A saved image or video is empty.');await putMedia(key,blob);return idbMediaPrefix+encodeURIComponent(key);}
   let autoSaveTimer=0,workflowSaveQueue=Promise.resolve(),workflowSaveBlocked=true;
-  async function saveWorkflowSnapshot(){const snapshot=structuredClone({nodes:state.nodes,edges:state.edges,groups:state.groups,notes:state.notes,settings:state.settings});for(const node of snapshot.nodes){const data=node.data||{};if(data.localDataUrl)data.localDataUrl=await dehydrateMediaUrl(data.localDataUrl,`input:${node.id}`);for(const field of ['asset','endFrame','lockedAsset']){const media=data[field];if(media?.url)media.url=await dehydrateMediaUrl(media.url,`${field}:${field==='lockedAsset'?node.id:media.id||node.id}`);}}await chrome.storage.local.set({museflow:snapshot});}
+  async function saveWorkflowSnapshot(){const snapshot=structuredClone({nodes:state.nodes,edges:state.edges,groups:state.groups,notes:state.notes,settings:state.settings});for(const node of snapshot.nodes){const data=node.data||{};if(data.localDataUrl)data.localDataUrl=await dehydrateMediaUrl(data.localDataUrl,`input:${node.id}`);for(const image of data.referenceImages||[])image.url=await dehydrateMediaUrl(image.url,`reference:${node.id}:${image.id}`);for(const field of ['asset','endFrame','lockedAsset']){const media=data[field];if(media?.url)media.url=await dehydrateMediaUrl(media.url,`${field}:${field==='lockedAsset'?node.id:media.id||node.id}`);}}await chrome.storage.local.set({museflow:snapshot});}
   function queueWorkflowSave({allowRecoveryWrite=false}={}){workflowSaveQueue=workflowSaveQueue.catch(()=>{}).then(async()=>{if(workflowSaveBlocked&&!allowRecoveryWrite)throw new Error('Bản lưu trước đang được bảo vệ sau lỗi tải dữ liệu. Tải lại để thử khôi phục, hoặc bấm Lưu để xác nhận thay thế bằng canvas hiện tại.');await saveWorkflowSnapshot();if(allowRecoveryWrite)workflowSaveBlocked=false;});return workflowSaveQueue;}
   function scheduleAutoSave(){clearTimeout(autoSaveTimer);autoSaveTimer=setTimeout(()=>{queueWorkflowSave().catch(error=>{if(runStatus.className!=='error')setRunStatus(`Auto-save failed: ${error?.message||String(error)}`,'error');});},650);}
   async function hydrateMediaUrl(url,cache){if(!url?.startsWith(idbMediaPrefix))return url;const key=decodeURIComponent(url.slice(idbMediaPrefix.length));if(!cache.has(key)){const blob=await getMedia(key);if(!blob)throw new Error('Không tìm thấy tệp media đã lưu: '+key);cache.set(key,URL.createObjectURL(blob));}return cache.get(key);}
-  async function hydrateWorkflowMedia(){const cache=new Map(),changes=[];try{for(const node of state.nodes){const data=node.data||{};if(data.localDataUrl)changes.push([data,'localDataUrl',await hydrateMediaUrl(data.localDataUrl,cache)]);for(const field of ['asset','endFrame','lockedAsset'])if(data[field]?.url)changes.push([data[field],'url',await hydrateMediaUrl(data[field].url,cache)]);}for(const [target,key,value] of changes)target[key]=value;}catch(error){for(const url of cache.values())URL.revokeObjectURL(url);throw error;}}
+  async function hydrateWorkflowMedia(){const cache=new Map(),changes=[];try{for(const node of state.nodes){const data=node.data||{};if(data.localDataUrl)changes.push([data,'localDataUrl',await hydrateMediaUrl(data.localDataUrl,cache)]);for(const image of data.referenceImages||[])changes.push([image,'url',await hydrateMediaUrl(image.url,cache)]);for(const field of ['asset','endFrame','lockedAsset'])if(data[field]?.url)changes.push([data[field],'url',await hydrateMediaUrl(data[field].url,cache)]);}for(const [target,key,value] of changes)target[key]=value;}catch(error){for(const url of cache.values())URL.revokeObjectURL(url);throw error;}}
   async function saveState(){clearTimeout(autoSaveTimer);if(workflowSaveBlocked&&!window.confirm('Không tải được đầy đủ bản lưu trước. Lưu canvas hiện tại sẽ thay thế bản đó. Bạn có chắc muốn tiếp tục?'))return;try{await queueWorkflowSave({allowRecoveryWrite:true});setRunStatus('Đã lưu.','ok');}catch(error){setRunStatus(`Could not save workflow: ${error?.message||String(error)}`,'error');}}
   function blobAsDataUrl(blob){return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result||''));reader.onerror=()=>reject(reader.error||new Error('Could not package workflow media.'));reader.readAsDataURL(blob);});}
   async function exportWorkflowFile(){
@@ -2129,7 +2158,7 @@
           return await blobAsDataUrl(blob);
         }catch{externalMedia++;return url;}
       };
-      for(const node of workflow.nodes){const data=node.data||{};if(data.localDataUrl)data.localDataUrl=await packageUrl(data.localDataUrl);for(const field of ['asset','endFrame','lockedAsset'])if(data[field]?.url)data[field].url=await packageUrl(data[field].url);}
+      for(const node of workflow.nodes){const data=node.data||{};if(data.localDataUrl)data.localDataUrl=await packageUrl(data.localDataUrl);for(const image of data.referenceImages||[])image.url=await packageUrl(image.url);for(const field of ['asset','endFrame','lockedAsset'])if(data[field]?.url)data[field].url=await packageUrl(data[field].url);}
       const file={format:'26flow-workflow',version:1,appVersion,exportedAt:new Date().toISOString(),workflow};
       const blob=new Blob([JSON.stringify(file)],{type:'application/json'}),url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=`26MuseFlow-Workflow-${new Date().toISOString().replace(/[:.]/g,'-')}.json`;link.click();setTimeout(()=>URL.revokeObjectURL(url),5000);
       setRunStatus(externalMedia?`Workflow saved; ${externalMedia} media URL(s) could not be embedded and may require the original Muse session.`:'Workflow saved with media included.','ok');
@@ -2239,6 +2268,7 @@
   window.addEventListener('pointermove',movePan);window.addEventListener('pointerup',endPan);window.addEventListener('pointercancel',endPan);
   $('#handTool').onclick=()=>{state.handMode=!state.handMode;applyCanvasTransform();$('#handTool').classList.toggle('active',state.handMode);};
   $('#groupTool').onclick=()=>setGroupDrawMode(!state.groupDrawMode);
+  $('#referenceBoardBtn').onclick=()=>{const bounds=$('#viewport').getBoundingClientRect();addNode('referenceBoard',Math.max(30,(40-state.panX)/state.zoom),Math.max(40,(bounds.height*.15-state.panY)/state.zoom));};
   $('#zoomIn').onclick=()=>setZoom(Math.min(2.5,state.zoom*1.15));$('#zoomOut').onclick=()=>setZoom(Math.max(.25,state.zoom/1.15));$('#fitCanvas').onclick=fitCanvas;
   $('#viewport').addEventListener('contextmenu',openCanvasMenu);
   const trackUndoEdit=event=>{const target=event.target;if(!target.closest('.node,.canvas-note,.timeline-dock,#settingsModal'))return;const owner=target.closest('.node'),title=owner?.querySelector('.node-title')?.textContent||'text note';if(pendingNativeUndoTarget===target){if(lastUndoInput===target&&undoStack.at(-1)?.label===`Edit ${title}`)undoStack.pop();lastUndoInput=null;pendingNativeUndoTarget=null;return;}if(lastUndoInput!==target){createUndoSnapshot(`Edit ${title}`);lastUndoInput=target;}};
@@ -2295,7 +2325,7 @@
     chatControl:(card,changed)=>{const n=nodeById(card.nodeId),provider=n.data.provider||'muse';if(!WorkflowAI.providers[provider]?.urls)return null;const wrap=document.createElement('div');wrap.className='flow-chat-control';const label=document.createElement('label');label.textContent='Luồng AI · cửa sổ / cuộc trò chuyện';label.append(chatSelector(provider,n.data.chatTarget||aiChatTargets[provider],value=>{n.data.chatTarget=value;scheduleAutoSave();updateChatUsageLabels();},n.id));wrap.append(label);const refresh=document.createElement('button');refresh.type='button';refresh.textContent='↻ Làm mới cửa sổ';refresh.onclick=()=>void refreshChatTabs().then(()=>{render();changed();}).catch(e=>setRunStatus(e.message,'error'));wrap.append(refresh);return wrap;},
     master:value=>{if(value===undefined)return state.settings.flowMaster||'';state.settings.flowMaster=value;scheduleAutoSave();},
     cards:()=>Array.isArray(state.settings.flowCards)?state.settings.flowCards.filter(c=>c&&nodeById(c.nodeId)&&nodeById(c.promptId)).slice(0,200):[],
-    create:(prompt,options)=>{const refs=options.referenceSnapshots||WorkflowBatchManager.resolveTags(prompt);const clean={...options};delete clean.referenceSnapshots;const cards=Array.isArray(state.settings.flowCards)?state.settings.flowCards.filter(c=>c&&nodeById(c.nodeId)&&nodeById(c.promptId)):[];if(cards.length>=200)throw Error('Canvas tối đa 200 thẻ; xóa các thẻ cũ trước.');if(refs.length>8)throw Error('Mỗi tác vụ tối đa 8 ảnh tham chiếu.');createUndoSnapshot('Thêm thẻ Flow Studio');const id=uid('card'),y=Math.max(40,...state.nodes.map(n=>n.y+650)),p=makeNode('prompt',40,y),n=makeNode(clean.mediaType==='video'?'generateVideo':'generateImage',380,y);p.data={text:prompt,flowCardId:id};n.data={...n.data,...clean,flowCardId:id,customName:'Flow · Thẻ '+(cards.length+1),status:'idle'};state.nodes.push(p,n);state.edges.push({id:uid('edge'),source:p.id,sourcePort:'text',target:n.id,targetPort:'prompt'});for(const [i,ref] of refs.entries()){const input=makeNode('imageInput',40-i*30,y+230+i*80);input.data={...input.data,localDataUrl:ref.url,fileName:ref.name,libraryTag:ref.tag,flowCardId:id};state.nodes.push(input);connectReferenceNode(input,n);}const card={id,nodeId:n.id,promptId:p.id};state.settings.flowCards=[...cards,card];render();scheduleAutoSave();return card;},
+    create:(prompt,options)=>{const refs=options.referenceSnapshots||WorkflowBatchManager.resolveTags(prompt);const clean={...options};delete clean.referenceSnapshots;delete clean.sharedReferenceSnapshots;if(options.referenceSnapshots)clean.freezeSharedReferences=true;const cards=Array.isArray(state.settings.flowCards)?state.settings.flowCards.filter(c=>c&&nodeById(c.nodeId)&&nodeById(c.promptId)):[];if(cards.length>=200)throw Error('Canvas tối đa 200 thẻ; xóa các thẻ cũ trước.');if(refs.length>8)throw Error('Mỗi tác vụ tối đa 8 ảnh tham chiếu.');createUndoSnapshot('Thêm thẻ Flow Studio');const id=uid('card'),y=Math.max(40,...state.nodes.map(n=>n.y+650)),p=makeNode('prompt',40,y),n=makeNode(clean.mediaType==='video'?'generateVideo':'generateImage',380,y);p.data={text:prompt,flowCardId:id};n.data={...n.data,...clean,flowCardId:id,customName:'Flow · Thẻ '+(cards.length+1),status:'idle'};state.nodes.push(p,n);state.edges.push({id:uid('edge'),source:p.id,sourcePort:'text',target:n.id,targetPort:'prompt'});for(const [i,ref] of refs.entries()){const input=makeNode('imageInput',40-i*30,y+230+i*80);input.data={...input.data,localDataUrl:ref.url,fileName:ref.name,libraryTag:ref.tag,flowCardId:id};state.nodes.push(input);connectReferenceNode(input,n);}const card={id,nodeId:n.id,promptId:p.id};state.settings.flowCards=[...cards,card];render();scheduleAutoSave();return card;},
     read:card=>{const n=nodeById(card.nodeId),p=nodeById(card.promptId);if(!n||!p)return null;return {...n.data,mediaType:n.type==='generateVideo'?'video':'image',prompt:p.data.text||'',references:getIncoming(n.id,'reference').map(e=>nodeById(e.source)).filter(Boolean).map(ref=>({id:ref.id,url:ref.data.localDataUrl||ref.data.asset?.url,name:ref.data.fileName})).filter(ref=>ref.url)};},
     update:(card,changes)=>{const n=nodeById(card.nodeId),p=nodeById(card.promptId);if(runForNode(n.id))throw Error('Dừng thẻ trước khi chỉnh.');if(changes.prompt!==undefined)p.data.text=changes.prompt;else{createUndoSnapshot('Đổi thiết lập thẻ');if(changes.mediaType)n.type=changes.mediaType==='video'?'generateVideo':'generateImage';for(const key of ['provider','size','duration'])if(changes[key]!==undefined)n.data[key]=changes[key];if(changes.provider!==undefined||changes.mediaType!==undefined){delete n.data.chatTarget;n.data.apiModel='';}n.data.status='idle';n.data.error='';}n.data.status='idle';n.data.error='';n.data.progress='';n.data.storyDirty=true;storyDirtyAfter(n.id,true);render();scheduleAutoSave();},
     references:async(card,files)=>{const n=nodeById(card.nodeId);if(runForNode(n.id))throw Error('Dừng thẻ trước khi thêm ảnh.');if(!files.length)return;const existing=getIncoming(n.id,'reference');if(existing.length+files.length>8||files.some(f=>!f.type.startsWith('image/'))||files.reduce((s,f)=>s+f.size,0)+existing.reduce((s,e)=>s+(nodeById(e.source)?.data.localDataUrl?.length||0)*.75,0)>20*1024*1024)throw Error('Mỗi thẻ tối đa 8 ảnh, tổng 20 MB.');const before=new Set(state.nodes.map(n=>n.id));await importMediaFiles(files,{node:n,port:nodeDefs[n.type].inputs.find(p=>p.id==='reference')});for(const ref of state.nodes.filter(n=>!before.has(n.id)))ref.data.flowCardId=card.id;scheduleAutoSave();},
@@ -2318,11 +2348,33 @@
   }
   const batchAssetCache=new Map(),batchAssetLoading=new Set();
   async function batchAsset(job){if(!job.asset?.url)throw Error('Tác vụ chưa có tệp kết quả.');const url=await hydrateMediaUrl(job.asset.url,batchAssetCache);if(!url)throw Error('Không còn tệp kết quả trong bộ nhớ trình duyệt.');return {...job.asset,url};}
+  async function commitCreativeNodes(nodes,edges,label){
+    await workflowReady;if(state.isRunning)throw Error('Dừng workflow trước khi thêm quy trình.');if(state.nodes.length+nodes.length>1000)throw Error('Canvas tối đa 1.000 node; tách sang dự án khác.');createUndoSnapshot(label);const before={nodes:state.nodes,edges:state.edges};state.nodes=[...state.nodes,...nodes];state.edges=[...state.edges,...edges];try{render();await queueWorkflowSave();fitCanvas();return nodes.map(n=>n.id);}catch(error){state.nodes=before.nodes;state.edges=before.edges;render();throw error;}
+  }
+  WorkflowCreative.init({
+    parseScenes:parseSceneScript,
+    createScenes:async(rows,providers)=>{const nodes=[],edges=[],baseY=Math.max(100,...state.nodes.map(n=>n.y+500));
+      for(const [index,row] of rows.entries()){let image;const y=baseY+index*480;for(const [kind,prompt,x] of [['image',row.imagePrompt,40],['video',row.videoPrompt,row.imagePrompt?740:40]]){if(!prompt)continue;const type=kind==='image'?'generateImage':'generateVideo';if(!WorkflowAI.providers[providers[kind]]?.types.includes(kind))throw Error('AI không hỗ trợ '+kind);const source=makeNode('prompt',x,y),target=makeNode(type,x+330,y);source.data.text=prompt;target.data={...target.data,provider:providers[kind],size:row.size,duration:row.duration,customName:row.title+(kind==='image'?' · Ảnh':' · Video'),status:'idle'};nodes.push(source,target);edges.push({id:uid('edge'),source:source.id,sourcePort:'text',target:target.id,targetPort:'prompt'});if(kind==='image')image=target;else if(image)edges.push({id:uid('edge'),source:image.id,sourcePort:'image',target:target.id,targetPort:'reference'});}}
+      return commitCreativeNodes(nodes,edges,'Tạo node từ câu trả lời AI');
+    },
+    sample:async(file,instruction,provider)=>{await workflowReady;if(state.isRunning)throw Error('Dừng workflow trước khi thêm video mẫu.');if(!['video/mp4','video/webm','video/quicktime'].includes(file.type)||!file.size||file.size>50*1024*1024)throw Error('Video mẫu cần MP4/WebM/MOV, tối đa 50 MB.');const url=URL.createObjectURL(file);let metadata;try{metadata=await mediaDimensions(url,'video');}finally{URL.revokeObjectURL(url);}if(!Number.isFinite(metadata.duration)||metadata.duration<=0)throw Error('Không đọc được thời lượng video.');
+      const y=Math.max(100,...state.nodes.map(n=>n.y+500)),video=makeNode('videoInput',40,y),prompt=makeNode('prompt',370,y),analysis=makeNode('generateText',700,y),splitter=makeNode('sceneSplit',1030,y);
+      video.data={localDataUrl:await blobAsDataUrl(file),fileName:file.name};prompt.data.text='Phân tích video mẫu đính kèm theo từng cảnh: nội dung, góc máy, chuyển động, ánh sáng và nhịp dựng. Không đoán nội dung không đọc được.\n'+String(instruction||'Giữ cách quay và nhịp dựng; dùng nhân vật/sản phẩm trong ảnh tham chiếu nếu có.').slice(0,10000)+'\nTrả bằng tiếng Việt, tối đa 50 cảnh. Mỗi cảnh đúng mẫu:\nCẢNH 1 (0:00–0:05): Tên cảnh\nPrompt ảnh: Mô tả ảnh mở đầu có thể dùng để tạo ảnh.\nPrompt video: Chuyển động và góc máy của cảnh.\nKhông dùng dấu … thay cho nội dung. Nếu không đọc được video, nêu lỗi và không bịa cảnh.';
+      analysis.data={provider,toolKind:'videoAnalysis',customName:'Phân tích video mẫu',status:'idle',text:''};splitter.data={text:'',sceneMode:'both'};
+      await commitCreativeNodes([video,prompt,analysis,splitter],[{id:uid('edge'),source:video.id,sourcePort:'video',target:analysis.id,targetPort:'video'},{id:uid('edge'),source:prompt.id,sourcePort:'text',target:analysis.id,targetPort:'prompt'},{id:uid('edge'),source:analysis.id,sourcePort:'text',target:splitter.id,targetPort:'prompt'}],'Tạo quy trình theo video mẫu');
+    },
+    preflight:async()=>{await workflowReady;syncSharedReferenceBoards();const issues=[],targets=state.nodes.filter(n=>['generateImage','generateVideo','generateText'].includes(n.type)),cache=new Map();
+      try{topoOrder();}catch(error){issues.push({id:targets[0]?.id,title:'Kết nối workflow',message:error.message});}
+      for(const node of targets){const provider=node.data.provider||(node.type==='generateText'?'gemini':'muse'),p=WorkflowAI.providers[provider],kind=node.type==='generateText'?'text':node.type==='generateVideo'?'video':'image';try{const prompt=resolvePrompt(node.id),refs=resolveReferences(node.id),videos=resolveVideos(node.id);if(!prompt.trim())throw Error('Thiếu prompt; nối node Yêu cầu hoặc viết nội dung đầu vào.');if(refs.length>8)throw Error('Có '+refs.length+' ảnh; tối đa 8 ảnh mỗi tác vụ.');if(node.data.toolKind==='videoAnalysis'&&!videos.length)throw Error('Chưa nối video gốc.');WorkflowAI.validate(provider,{mediaType:kind,referenceImages:refs.map(r=>r.url),referenceVideos:videos,duration:node.data.duration});if(p?.urls){if(!cache.has(provider))cache.set(provider,await chrome.tabs.query({url:p.urls}));chooseChat(provider,cache.get(provider),node.data.chatTarget||aiChatTargets[provider]);}else if(!aiKeys[provider])throw Error('Chưa nhập API key trong Kết nối AI.');}catch(error){issues.push({id:node.id,title:node.data.customName||nodeDefs[node.type].title,message:error.message});}}
+      return {checked:targets.length,issues};
+    },focus:id=>{if(id&&nodeById(id))flowApi.focus({nodeId:id});}
+  });
+
   const batchQueue=WorkflowBatchManager.init({
     ready:()=>workflowReady,refreshChats:()=>refreshChatTabs(),
-    prepareOptions:async options=>{WorkflowAI.validate(options.provider,{...options,prompt:'Kiểm tra thiết lập'});if(WorkflowAI.providers[options.provider]?.urls){const tabs=await chrome.tabs.query({url:WorkflowAI.providers[options.provider].urls});const tab=chooseChat(options.provider,tabs,options.chatTarget||aiChatTargets[options.provider]);return {...options,chatTarget:{tabId:tab.id,url:chatKey(tab.url)}};}return options;},
+    prepareOptions:async options=>{options={...options,sharedReferenceSnapshots:await sharedReferenceSnapshots()};WorkflowAI.validate(options.provider,{...options,prompt:'Kiểm tra thiết lập'});if(WorkflowAI.providers[options.provider]?.urls){const tabs=await chrome.tabs.query({url:WorkflowAI.providers[options.provider].urls});const tab=chooseChat(options.provider,tabs,options.chatTarget||aiChatTargets[options.provider]);return {...options,chatTarget:{tabId:tab.id,url:chatKey(tab.url)}};}return options;},
     chatPicker:(provider,changed)=>WorkflowAI.providers[provider]?.urls?chatSelector(provider,aiChatTargets[provider],changed):null,
-    prepareJobs:async(jobs,assets)=>{await workflowReady;for(const job of jobs){if(!job.card){job.card=flowApi.create(job.prompt,{...job.options,referenceSnapshots:job.refs.map(ref=>({...ref,url:assets[ref.id]}))});job.queueCreatedCard=true;}const n=nodeById(job.card.nodeId);if(!n)throw Error('Node của tác vụ đã bị xóa.');n.data.batchTaskId=job.id;if(!runForNode(n.id)){n.data.status='queued';n.data.progress='Đã xếp hàng; chưa gửi AI.';}}render();await queueWorkflowSave();},
+    prepareJobs:async(jobs,assets)=>{await workflowReady;for(const job of jobs){if(!job.card){job.card=flowApi.create(job.prompt,{...job.options,referenceSnapshots:job.refs.map(ref=>({...ref,url:assets[ref.id]}))});job.queueCreatedCard=true;}const n=nodeById(job.card.nodeId);if(!n)throw Error('Node của tác vụ đã bị xóa.');n.data.batchTaskId=job.id;n.data.freezeSharedReferences=true;if(!runForNode(n.id)){n.data.status='queued';n.data.progress='Đã xếp hàng; chưa gửi AI.';}}render();await queueWorkflowSave();},
     rollbackJobs:jobs=>removeBatchGroups(jobs,[]),cleanupJobs:removeBatchGroups,
     prepareCard:async card=>{
       const node=nodeById(card.nodeId),prompt=nodeById(card.promptId);if(!node||!prompt)throw Error('Thẻ không còn tồn tại.');

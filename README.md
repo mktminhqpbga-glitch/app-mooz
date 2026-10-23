@@ -1,8 +1,16 @@
-# Workflow · MuseFlow 0.32.0
+# Workflow · MuseFlow 0.33.0
 
 **[⬇ ĐÓNG GÓI / CẬP NHẬT APP MAC](https://github.com/mktminhqpbga-glitch/app-mooz/actions/workflows/desktop.yml)** · **[Hướng dẫn từng bước](docs/PACKAGING.md)**
 
 Bấm liên kết trên → **Run workflow** → chọn `main`. Khi build xong, tải artifact DMG đúng loại Mac. Có thể chọn tạo draft Release để chuẩn bị bản cập nhật; app nhận biết sau khi bạn Publish release mới hơn.
+
+## Ảnh tham chiếu và Trợ lý sáng tạo · 0.33.0
+
+- Bấm **Ảnh tham chiếu** ở thanh bên để thêm bảng ảnh ngang. Kéo thả PNG/JPG/WebP (tối đa 8 ảnh, 8 MB/ảnh, tổng 32 MB/bảng). Mỗi ảnh có một điểm nối ở dưới: kéo **Ảnh 1** tới cổng **Ảnh tham chiếu** của một hoặc nhiều node. Cổng **Tất cả ảnh** gửi cả bảng. Xóa ảnh không đánh lại số hay đổi dây của ảnh khác.
+- Bật **Dùng chung cho toàn workflow** trên bảng để tự nối cả bảng tới các node tạo nội dung hiện có và tạo sau đó. Trong node tạo ảnh/video → **Ảnh tham chiếu / Khung hình**, bỏ **Dùng ảnh tham chiếu chung** để loại riêng node đó; dây nối ảnh riêng vẫn được giữ. Ảnh chung được chốt khi thêm tác vụ vào hàng đợi; sửa bảng không đổi tác vụ đã xếp. Tổng ảnh mỗi tác vụ tối đa 8, model có thể nhận ít hơn.
+- **Trợ lý sáng tạo → Video mẫu** tạo luồng bốn node video/prompt/phân tích/chia cảnh. Chạy node phân tích bằng Gemini, đọc lại kết quả rồi tạo các node cảnh. Tạo luồng chưa gửi AI. Video mẫu tối đa 50 MB; giới hạn của tab/model có thể thấp hơn. Đây là phân tích và dựng lại, không bảo đảm sao chép chuyển động như Motion Control.
+- **Tách câu trả lời** nhận JSON `scenes` với `imagePrompt`/`videoPrompt`, mảng `variants`/`prompts`, khối `[ ... ]`, danh sách đánh số hoặc mẫu `CẢNH`. Xem trước và sửa prompt rồi tạo node. Một cảnh có cả ảnh và video sẽ được nối ảnh → video. Tối đa 50 mục/lần; nội dung sai định dạng bị chặn. Node Tạo văn bản có nút **Tách kết quả thành node** khi đã có văn bản.
+- **Kiểm tra workflow** rà prompt, ảnh, đầu vào video, thiết lập provider, API key trong phiên và tab đã chọn; không gửi AI, không xác minh hạn mức của dịch vụ.
 
 ## Giao diện Studio · 0.32.0
 

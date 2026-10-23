@@ -26,6 +26,8 @@
   function validate(provider,r) {
     if(!providers[provider]?.types.includes(r.mediaType))throw new Error('AI này không hỗ trợ loại đầu ra đã chọn.');
     if(r.referenceVideos?.length&&provider==='openai')throw new Error('OpenAI adapter chưa hỗ trợ video gốc. Chọn Gemini để phân tích video.');
+    if(r.mediaType==='video'&&provider==='google'&&r.referenceVideos?.length)throw new Error('Veo adapter chưa hỗ trợ Motion Control. Chọn fal.ai.');
+    if(r.mediaType==='video'&&provider==='google'&&(r.referenceImages||[]).length>1)throw new Error('Veo adapter chỉ nhận một ảnh khởi đầu.');
     if(r.mediaType==='video'&&provider==='google'&&![4,6,8].includes(Number(r.duration)))throw new Error('Veo adapter hỗ trợ clip 4, 6 hoặc 8 giây; không thể bảo đảm một clip 15–60 giây.');
     if(provider==='fal'&&(!r.referenceImages?.length||r.referenceVideos?.length!==1))throw new Error('Motion Control cần ảnh nhân vật và đúng một video chuyển động gốc.');
     if(provider==='fal'&&r.referenceImages.length!==1)throw new Error('Motion Control nhận đúng một ảnh nhân vật.');
