@@ -24,7 +24,7 @@ const assert=require('node:assert/strict');
  assert.equal(await page.locator('.node').count(),3);assert.equal(await page.locator('.node-header .node-component-id').count(),3);assert.equal(await page.locator('.node-body .node-component-id').count(),0);assert.ok(await page.locator('.node-component-id').first().evaluate(el=>parseFloat(getComputedStyle(el).fontSize)<=10));await toolbarAction(page,'#packageUpdateBtn');const downloads=await page.evaluate(()=>testDownloads);assert.equal(downloads.length,1);assert.ok(downloads[0].url.startsWith('https://raw.githubusercontent.com/mktminhqpbga-glitch/workflow/main/downloads/Workflow-extension.zip'));assert.equal(downloads[0].saveAs,true);
  for(const type of ['generateText','videoInput','generateVideo']){await toolbarAction(page,'#addNodeMenuBtn');await page.click(`[data-add="${type}"]`);}
  assert.equal(await page.locator('.node').count(),6);
- assert.deepEqual(await page.locator('.video-controls select').nth(1).locator('option').allTextContents(),['4s','5s','6s','8s','10s','15s','20s','30s','60s']);
+ assert.deepEqual(await page.locator('.video-controls select').nth(1).locator('option').allTextContents(),['4 giây','5 giây','6 giây','8 giây','10 giây','15 giây','20 giây','30 giây','60 giây']);
  await toolbarAction(page,'#settingsBtn');await page.waitForFunction(()=>document.querySelector('#aiConnections').innerText.includes('chưa nhập khóa'));
  assert.equal(await page.locator('#apiSettings input[type="password"]').count(),3);
  await page.click('#closeSettingsBtn');

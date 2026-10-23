@@ -1,4 +1,4 @@
-# Workflow · MuseFlow 0.25.0
+# Workflow · MuseFlow 0.25.1
 
 Extension Chrome/Edge dựa trên [MuseFlow / 26Flow](https://github.com/bynne2602/museflow), mở rộng canvas/timeline để làm việc với Muse.ai, Gemini, ChatGPT và API Google, OpenAI, fal.ai. Giữ nguyên giấy phép GPL-2.0-or-later của nguồn gốc và thông báo FFmpeg đi kèm.
 
@@ -281,3 +281,11 @@ Khung cuối phải có mã video nguồn trùng với video hiện tại. Khung
 Phần chính giữ AI, tỷ lệ/thời lượng, trạng thái tối đa hai dòng, xem trước và Chạy/Chạy lại. Bỏ khoảng trống đệm cũ; ảnh/video xem trước tối đa cao 180 px, giữ toàn bộ hình bằng contain. Bốn mục bấm mở: **Kết nối AI** (tab, làm mới, model), **Khung hình/Ảnh tham chiếu** (ID ảnh, khung đầu/cuối và thao tác khung), **Công cụ** (Timeline, xóa kết quả), **Chi tiết** (thông báo đầy đủ và kích thước). Mở/đóng được giữ trong phiên khi node cập nhật tiến độ; không đổi dữ liệu/kết nối hoặc tự gọi AI khi mở mục.
 
 Lỗi tự mở phần Chi tiết; các cảnh báo dài của video thành công vẫn đọc đầy đủ ở đó. Kiểm thử Chromium đo chiều cao node, mở mục và thao tác điều khiển thật, duy trì lựa chọn/tab, xóa kết quả, kéo nhóm và khung cuối.
+
+### 0.25.1 — chờ kết quả Muse bằng mã tác vụ
+
+Tab Muse có bộ nối mới nhận tác vụ và trả mã ngay; Workflow hỏi trạng thái bằng các tin nhắn ngắn. Mất phản hồi khởi tạo/đọc trạng thái sẽ chỉ hỏi lại mã cũ, không gửi lại prompt. Kết quả ở tab Muse được giữ cho tới khi Workflow xác nhận nhận; yêu cầu khởi tạo trùng mã không tạo thêm tác vụ. Dừng node hủy lượt chờ và tác vụ như trước. Đây là nối lại lỗi kênh tạm thời: tải lại/đóng tab Muse hoặc reload extension có thể làm mất mã đang giữ trong bộ nhớ; khi đó báo chưa xác định, không tự chạy lại. Cần tải lại tab Muse sau khi cập nhật để kích hoạt giao thức mới.
+
+Nếu Muse đã tạo xong nhưng node cũ báo lỗi kênh: tải video đó từ Muse, mở **Công cụ → Nhập video kết quả** trên node, chọn tệp MP4/WebM/MOV không quá 100 MB. Hệ thống đọc kích thước/thời lượng và trích khung cuối, lưu vào node mà không gọi AI. Đầu vào không phải video đọc được bị từ chối.
+
+Nhãn thời lượng ghi rõ giây; trang đặt translate=no để tránh trình dịch tự đổi 20s thành những năm 20 hoặc dịch ID/cổng kỹ thuật. Kiểm thử lỗi ACK/kênh đọc bị mất, truy vấn lại không tạo trùng, hủy trước khi gửi, mã tác vụ thực trên DOM mô phỏng và nhập video MP4 thật. Chưa xác nhận trên tài khoản Muse thật.

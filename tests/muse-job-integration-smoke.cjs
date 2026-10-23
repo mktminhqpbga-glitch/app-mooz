@@ -1,0 +1,40 @@
+const {toolbarAction}=require('./toolbar-actions.cjs');
+/* UI integration harness: real Chromium DOM with simulated chrome.* APIs.
+   Does not claim a signed-in provider or a load-unpacked installation was tested. */
+const {chromium}=require('playwright');
+const {createServer}=require('node:http');
+const {readFile}=require('node:fs/promises');
+const path=require('node:path');
+const assert=require('node:assert/strict');
+(async()=>{
+ const base=path.resolve(__dirname,'..');
+ const server=createServer(async(req,res)=>{try{const pathname=new URL(req.url,'http://localhost').pathname;const file=path.resolve(base,'.'+pathname);if(!file.startsWith(base+path.sep))throw Error();const data=await readFile(file);res.setHeader('Content-Type',file.endsWith('.js')||file.endsWith('.mjs')?'text/javascript':file.endsWith('.svg')?'image/svg+xml':file.endsWith('.css')?'text/css':file.endsWith('.html')?'text/html':'application/octet-stream');res.end(data);}catch{res.writeHead(404);res.end();}});
+ await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+ const origin=`http://127.0.0.1:${server.address().port}`;
+ const browser=await chromium.launch({executablePath:'/usr/bin/chromium',headless:true,args:['--no-sandbox']});
+ try{
+ const page=await browser.newPage({viewport:{width:1500,height:950}});const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept());
+ await page.route('https://**/*',route=>route.fulfill({status:404,body:''}));
+ await page.addInitScript(({sessionFail})=>{
+  const store={};window.testStore=store;window.testMessages=[];window.testDownloads=[];window.testTargets=[];
+  const storage={get:async key=>({[key]:structuredClone(store[key])}),set:async value=>Object.assign(store,structuredClone(value))};
+  window.chrome={downloads:{download:async options=>{testDownloads.push(options);return 1;}},runtime:{id:'test',getManifest:()=>({version:'0.6.0'}),getURL:p=>location.origin+'/'+p},storage:{local:storage,session:{get:async()=>{if(sessionFail)throw new Error('session unavailable');return {};},set:async()=>{}}},scripting:{executeScript:async options=>options.func&&window.testPickerResult?[{result:window.testPickerResult}]:[]},tabs:{update:async id=>{window.testTabActivated=id;return {id};},query:async()=>window.testTabs||[{id:1,active:true,url:'https://gemini.google.com/app'}],sendMessage:async(id,msg)=>{window.testMessages.push(msg);window.testTargets.push({id,type:msg.type});if(msg.type==='WORKFLOW_AI_CHECK'&&window.testRequireActivation&&window.testTabActivated!==id)return {ok:true,composer:false,signedIn:false};if(msg.type==='WORKFLOW_AI_CHECK'&&window.testUnavailableIds?.includes(id))return {ok:true,composer:false,signedIn:false};if(msg.type==='WORKFLOW_AI_USE_RESULT'){window.testPending?.({ok:true,text:msg.text});return {ok:true};}if(msg.type==='WORKFLOW_AI_STOP'){window.testPending?.({ok:false,error:'Stopped'});return {ok:true};}if(window.testDelayNext&&msg.type==='WORKFLOW_AI_GENERATE'){window.testDelayNext=false;return new Promise(resolve=>{window.testPending=resolve;});}if(msg.mediaType==='video'&&window.testVideoURL)return {ok:true,url:window.testVideoURL};if(msg.mediaType==='image')return {ok:true,url:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII='};if(msg.type.includes('CHECK'))return {ok:true,signedIn:true,composer:true};return {ok:true,text:'Kịch bản mới từ video gốc'};},create:async()=>{},onUpdated:{addListener(){}},onCreated:{addListener(){}}}};
+ },{sessionFail:!!process.env.FAIL_SESSION_STORAGE});
+ await page.goto(origin+'/app.html');await page.waitForSelector('.node');assert.equal(await page.locator('#buyCoffeeBtn,#donationModal').count(),0);await page.keyboard.press('Escape');
+
+
+ const {execFileSync}=require('node:child_process');const bytes=execFileSync('ffmpeg',['-v','error','-f','lavfi','-i','color=c=blue:s=160x90:r=24:d=2','-c:v','libx264','-threads','1','-pix_fmt','yuv420p','-f','mp4','-movflags','frag_keyframe+empty_moov','pipe:1']);const video='data:video/mp4;base64,'+bytes.toString('base64');
+ await page.evaluate(url=>{window.jobStarts=0;window.jobReads=0;window.legacySends=0;const original=chrome.tabs.sendMessage;chrome.tabs.sendMessage=async(id,msg)=>{
+  if(msg.type==='MUSEFLOW_CHECK_SESSION')return {ok:true,composer:true,signedIn:true,busy:false,jobProtocol:1};
+  if(msg.type==='MUSEFLOW_JOB_START'){jobStarts++;window.jobId=msg.requestId;throw Error('A listener indicated an asynchronous response but the message channel closed');}
+  if(msg.type==='MUSEFLOW_JOB_STATUS'){if(msg.requestId!==jobId)throw Error('wrong job');jobReads++;if(jobReads===1)throw Error('temporary lost port');return jobReads===2?{ok:true,state:'running'}:{ok:true,state:'done',result:{ok:true,url}};}
+  if(msg.type==='MUSEFLOW_JOB_ACK')return {ok:true};
+  if(msg.type==='MUSEFLOW_GENERATE'){legacySends++;throw Error('Must not use a long message');}return original(id,msg);
+ };},video);
+ await page.locator('#workflowFileInput').setInputFiles({name:'job.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify({nodes:[{id:'p',type:'prompt',x:20,y:50,data:{text:'Make the video'}},{id:'v',type:'generateVideo',x:400,y:50,data:{provider:'muse',size:'16:9',duration:4}}],edges:[{id:'p-v',source:'p',sourcePort:'text',target:'v',targetPort:'prompt'}]}))});await page.waitForSelector('.node[data-id="v"]');
+ await page.locator('.node[data-id="v"] .node-run-button.primary').click();await page.waitForSelector('.node[data-id="v"] .status.success',{timeout:45000});assert.equal(await page.evaluate(()=>jobStarts),1);assert.equal(await page.evaluate(()=>legacySends),0);assert.ok(await page.evaluate(()=>jobReads>=3));assert.equal(await page.locator('.node[data-id="v"] video').count(),1);
+ await page.locator('.node[data-id="v"] details[data-panel="tools"] summary').click();await page.locator('.node[data-id="v"] button').filter({hasText:'Xóa kết quả cũ'}).click();await page.waitForFunction(()=>!document.querySelector('.node[data-id="v"] video'));
+ const before=await page.evaluate(()=>jobStarts);await page.locator('.node[data-id="v"] input[data-import-result="video"]').setInputFiles({name:'completed-on-muse.mp4',mimeType:'video/mp4',buffer:bytes});await page.waitForSelector('.node[data-id="v"] .status.success');assert.equal(await page.evaluate(()=>jobStarts),before,'Importing the completed clip must never submit AI work');await page.locator('.node[data-id="v"] details[data-panel="frames"] summary').click();assert.equal(await page.locator('.node[data-id="v"] .end-frame-thumb').isVisible(),true);assert.equal(await page.locator('.node[data-id="v"] video').count(),1);assert.deepEqual(errors,[]);
+ console.log('PASS Muse job integration: lost start ACK, dropped polling response, no duplicate or legacy generation, real video returned and frame extracted; manual import of a completed clip restores output without any AI submission.');
+ }finally{await browser.close();server.close();}
+})().catch(error=>{console.error(error);process.exitCode=1});

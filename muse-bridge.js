@@ -5,8 +5,22 @@
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     if(_sender.id!==chrome.runtime.id)return false;
     if (message?.type === 'MUSEFLOW_CHECK_SESSION') {
-      checkSession().then(sendResponse);
+      checkSession().then(sendResponse,error=>sendResponse({ok:false,error:error.message||String(error)}));
       return true;
+    }
+    if(message?.type==='MUSEFLOW_JOB_STATUS'){
+      const job=museJobs.get(message.requestId);sendResponse(job?{ok:true,state:job.result?'done':'running',...(job.result?{result:job.result}:{})}:{ok:false,state:'missing',error:'Không còn mã tác vụ trong tab Muse; không tự gửi lại prompt.'});return false;
+    }
+    if(message?.type==='MUSEFLOW_JOB_ACK'){if(museJobs.get(message.requestId)?.result)museJobs.delete(message.requestId);sendResponse({ok:true});return false;}
+    if(message?.type==='MUSEFLOW_JOB_START'){
+      const id=message.requestId;if(typeof id!=='string'||!id){sendResponse({ok:false,error:'Thiếu mã tác vụ.'});return false;}
+      if(museJobs.has(id)){sendResponse({ok:true,accepted:true,requestId:id});return false;}
+      if(activeGenerations.size){sendResponse({ok:false,error:'Muse đang xử lý yêu cầu khác.'});return false;}
+      for(const [key,job] of museJobs)if(job.result&&Date.now()-(job.finishedAt||job.createdAt)>1200000)museJobs.delete(key);
+      const completed=[...museJobs].filter(([,job])=>job.result);while(completed.length>=3)museJobs.delete(completed.shift()[0]);
+      const controller=new AbortController(),job={createdAt:Date.now(),result:null};museJobs.set(id,job);activeGenerations.set(id,controller);
+      generate(message,controller.signal).then(result=>{job.result=result;job.finishedAt=Date.now();},error=>{job.finishedAt=Date.now();job.result={ok:false,code:error.code||'MUSE_ERROR',error:error.message||String(error)};}).finally(()=>activeGenerations.delete(id));
+      sendResponse({ok:true,accepted:true,requestId:id});return false;
     }
     if (message?.type === 'MUSEFLOW_GENERATE') {
       if(activeGenerations.size){sendResponse({ok:false,error:'Muse đang xử lý yêu cầu khác.'});return false;}
@@ -36,7 +50,7 @@
   });
   const assistantSelector='div[class*="hatch-chat-groupable-bubble"],[data-message-author-role="assistant"],[data-testid*="assistant" i],[data-testid*="message-content" i],[class*="assistant-message" i],[class*="assistant-bubble" i],.group\\/msg';
   const attachmentSelector='[data-testid^="hatch-chat-attachment-presentation-"]';
-  const activeGenerations=new Map();
+  const activeGenerations=new Map(),museJobs=new Map();
 
   function clickMuseStop(){
     const button=[...document.querySelectorAll('[data-testid="hatch-composer-stop-button"],button[aria-label*="Stop" i],button[aria-label*="停止"]')].find(visible);
@@ -54,7 +68,7 @@
     const composer=findComposer();
     const ready=Boolean(composer&&visible(composer)&&!composer.disabled&&!composer.readOnly);
     const loginRequired=Boolean(document.querySelector('input[type="password"],button[type="submit"]'))&&/sign in|log in|登录/i.test(document.body?.innerText||'');
-    return {ok:true,signedIn:ready&&!loginRequired,busy:activeGenerations.size>0||[...document.querySelectorAll('[data-testid="hatch-composer-stop-button"],button[aria-label*="Stop" i]')].some(visible),title:document.title,composer:ready,loginRequired,url:location.href};
+    return {ok:true,jobProtocol:1,signedIn:ready&&!loginRequired,busy:activeGenerations.size>0||[...document.querySelectorAll('[data-testid="hatch-composer-stop-button"],button[aria-label*="Stop" i]')].some(visible),title:document.title,composer:ready,loginRequired,url:location.href};
   }
 
   async function waitHydrated(timeout,signal) {

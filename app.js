@@ -741,6 +741,17 @@
   }
   function resetNodeOutput(node){node.data.asset=null;node.data.endFrame=null;node.data.status='idle';node.data.error='';node.data.progress='';delete node.data.storyApprovedAssetId;if(node.type==='generateText')node.data.text='';storyDirtyAfter(node.id,true);syncPreviewOutputs();}
   const frameMatchesVideo=node=>!!node?.data.asset?.id&&!!node.data.endFrame?.url&&node.data.endFrame.sourceAssetId===node.data.asset.id;
+  async function importVideoResult(node,file){
+    if(!file)return;if(runForNode(node.id)||autoPlan?.ids.has(node.id))throw Error('Dừng node trước khi nhập kết quả.');
+    if(file.size>100*1024*1024||!file.size)throw Error('Video phải có dữ liệu và không vượt 100 MB.');
+    const previous=node.data.asset,url=URL.createObjectURL(file);let published=false;
+    try{
+      const info=await mediaDimensions(url,'video'),frame=await extractVideoEndFrame(url);
+      if(nodeById(node.id)!==node||node.data.asset!==previous||runForNode(node.id)||autoPlan?.ids.has(node.id))throw Error('Node đã thay đổi hoặc đang chạy; chưa nhập video.');
+      createUndoSnapshot('Nhập video kết quả',{preserveRuntime:false});const asset={id:uid('asset'),kind:'video',url,name:file.name,sourceNodeId:node.id,width:info.width,height:info.height,actualDuration:info.duration,requestedSize:node.data.size,imported:true};
+      if(frame)frame.sourceAssetId=asset.id;node.data.asset=asset;node.data.endFrame=frame;node.data.status='success';node.data.error='';node.data.progress='';node.data.storyDirty=false;published=true;storyDirtyAfter(node.id,true);render();scheduleAutoSave();setRunStatus('Đã nhập video và trích khung cuối; không gửi yêu cầu AI.','ok');
+    }finally{if(!published)URL.revokeObjectURL(url);}
+  }
   async function refreshEndFrame(node){
     if(runForNode(node.id))throw Error('Đợi video hoàn tất trước.');const asset=node.data.asset;if(!asset?.url)throw Error('Chưa có video để trích khung cuối.');
     const frame=await extractVideoEndFrame(asset.url);if(nodeById(node.id)!==node||node.data.asset!==asset||runForNode(node.id))throw Error('Video đã thay đổi; không dùng khung cuối cũ.');if(!frame)throw Error('Không đọc được khung cuối. Kiểm tra video hoặc quyền truy cập tệp.');
@@ -1134,7 +1145,7 @@
     if(n.type==='generateVideo'){
       const controls=document.createElement('div');controls.className='gen-controls video-controls';
       const ratio=document.createElement('select');[['16:9','Landscape 16:9'],['9:16','Portrait 9:16'],['1:1','Square']].forEach(([v,label])=>{const o=document.createElement('option');o.value=v;o.textContent=label;ratio.appendChild(o);});ratio.value=['16:9','9:16','1:1'].includes(n.data.size)?n.data.size:'16:9';ratio.onchange=()=>n.data.size=ratio.value;
-      const duration=document.createElement('select');[4,5,6,8,10,15,20,30,60].forEach(v=>{const o=document.createElement('option');o.value=String(v);o.textContent=`${v}s`;duration.appendChild(o);});duration.value=String(n.data.duration||5);duration.onchange=()=>n.data.duration=Number(duration.value);
+      const duration=document.createElement('select');[4,5,6,8,10,15,20,30,60].forEach(v=>{const o=document.createElement('option');o.value=String(v);o.textContent=`${v} giây`;duration.appendChild(o);});duration.value=String(n.data.duration||5);duration.onchange=()=>n.data.duration=Number(duration.value);
       controls.append(ratio,duration);body.appendChild(controls);
       const continuityLabel=document.createElement('label');continuityLabel.className='continuity-toggle';continuityLabel.htmlFor=`continuity-${n.id}`;continuityLabel.onpointerdown=event=>event.stopPropagation();const continuity=document.createElement('input');continuity.id=`continuity-${n.id}`;continuity.type='checkbox';continuity.checked=Boolean(n.data.continuity);continuity.onchange=()=>{n.data.continuity=continuity.checked;scheduleAutoSave();};continuityLabel.append(continuity,document.createTextNode('Use previous clip end frame as start reference'));body.appendChild(continuityLabel);
       for(const edge of getIncoming(n.id,'reference').filter(e=>e.sourcePort==='endFrame')){const source=sourceFor(edge),note=document.createElement('p');note.className='hint';note.textContent='Khung mở đầu từ '+(source?.data.componentId||edge.source)+'-END';body.append(note);if(frameMatchesVideo(source)){const inputFrame=new Image();inputFrame.className='end-frame-input';inputFrame.src=source.data.endFrame.url;inputFrame.alt=note.textContent;body.append(inputFrame);}else{note.textContent+=' · chưa có ảnh, cần chạy hoặc trích khung cuối ở video nguồn.';}}
@@ -1146,6 +1157,7 @@
       if(n.data.asset?.url){const video=document.createElement('video');video.controls=true;video.preload='metadata';video.src=n.data.asset.url;body.appendChild(video);}
       const timelineDrag=document.createElement('button');timelineDrag.type='button';timelineDrag.className='video-timeline-drag';timelineDrag.draggable=true;timelineDrag.innerHTML='<span aria-hidden="true">⠿</span> Drag output to Timeline';timelineDrag.title='Drag this output to the timeline';timelineDrag.ondragstart=event=>{event.dataTransfer.setData('application/x-museflow-video-node',n.id);event.dataTransfer.setData('text/plain',n.id);event.dataTransfer.effectAllowed='copy';};timelineDrag.onclick=event=>{event.stopPropagation();addTimelineClip(ensureDockTimeline(),n.id);};body.appendChild(timelineDrag);
       body.appendChild(createNodeRunActions(n));
+      const importResult=document.createElement('input');importResult.type='file';importResult.accept='video/*,.mp4,.webm,.mov';importResult.hidden=true;importResult.dataset.importResult='video';importResult.onchange=()=>{const file=importResult.files?.[0];importResult.value='';void importVideoResult(n,file).catch(error=>setRunStatus(error.message,'error'));};body.append(importResult);studioButton(body,'Nhập video kết quả',()=>importResult.click(),{disabled:!!runForNode(n.id)});
     }
     if(n.type==='timeline')renderTimelineBody(n,body);
 
@@ -1755,7 +1767,7 @@
     const preferred=preferredTabId??preferredMuseTabId;
     if(preferred){const index=tabs.findIndex(tab=>tab.id===preferred);if(index>0)tabs.unshift(tabs.splice(index,1)[0]);}
     let lastError='';
-    if(message.type==='MUSEFLOW_GENERATE'){const tab=chooseChat('muse',tabs,message.chatTarget||aiChatTargets.muse);await chrome.scripting.executeScript({target:{tabId:tab.id},files:['composer-controls.js','muse-bridge.js']});preferredMuseTabId=tab.id;await waitTabIdle(tab.id,'MUSEFLOW_CHECK_SESSION',message.requestId,signal);aiTabs.set(message.requestId,tab.id);try{return await sendMuseTabMessage(tab.id,message,signal);}finally{aiTabs.delete(message.requestId);}}
+    if(message.type==='MUSEFLOW_GENERATE'){const tab=chooseChat('muse',tabs,message.chatTarget||aiChatTargets.muse);await chrome.scripting.executeScript({target:{tabId:tab.id},files:['composer-controls.js','muse-bridge.js']});preferredMuseTabId=tab.id;const session=await waitTabIdle(tab.id,'MUSEFLOW_CHECK_SESSION',message.requestId,signal);aiTabs.set(message.requestId,tab.id);try{return session.jobProtocol===1?await WorkflowMuseJobs.run(msg=>sendMuseTabMessage(tab.id,msg,signal),message,signal,{onReconnect:()=>{const run=[...activeRuns.values()].find(r=>r.requestId===message.requestId);progressNode(nodeById(run?.activeNodeId),'Đang nối lại với Muse; không gửi lại prompt…');}}):await sendMuseTabMessage(tab.id,message,signal);}catch(error){if(/message channel closed|message port closed|asynchronous response|receiving end does not exist/i.test(error.message||''))throw Error('Kênh kết nối Muse đã đóng. Không gửi lại prompt. Tải video đã tạo và dùng Công cụ → Nhập video kết quả; tải lại tab Muse để dùng bộ nối mới ở lượt sau.');throw error;}finally{aiTabs.delete(message.requestId);}}
     for(const tab of tabs){
       if(signal?.aborted)throw new DOMException('Generation stopped by user.','AbortError');
       if(!tab.id)continue;
