@@ -755,7 +755,7 @@
   function duplicateNodesForDrag(ids){return cloneNodeBundle(ids.map(nodeById).filter(Boolean),state.edges,{externalInputs:true});}
   function selectedNodeBundle(){const ids=new Set(state.selectedNodeIds.length?state.selectedNodeIds:[state.selectedNodeId]);return {format:'workflow-node-bundle',version:1,nodes:state.nodes.filter(n=>ids.has(n.id)&&!n.data.dockOnly).map(original=>{const n=structuredClone(original);if(!['imageInput','videoInput','audioInput'].includes(n.type))delete n.data.asset;delete n.data.endFrame;return n;}),edges:state.edges.filter(e=>ids.has(e.source)&&ids.has(e.target))};}
   function pasteNodeBundle(bundle){
-    if(state.isRunning)throw Error('Dừng tác vụ trước khi nhân bản nhóm.');
+    if(state.isRunning){setRunStatus('Đang có tác vụ chạy. Dừng hoặc đợi hoàn tất trước khi nhân bản nhóm.','warn');return;}
     if(!bundle||bundle.format!=='workflow-node-bundle'||bundle.version!==1||!Array.isArray(bundle.nodes)||!bundle.nodes.length||bundle.nodes.length>2000||!Array.isArray(bundle.edges))throw Error('Không có nhóm node hợp lệ để dán.');
     if(bundle.nodes.some(n=>!n||!Object.hasOwn(nodeDefs,n.type)||typeof n.id!=='string'||!Number.isFinite(n.x)||!Number.isFinite(n.y)||!n.data)||new Set(bundle.nodes.map(n=>n.id)).size!==bundle.nodes.length)throw Error('Dữ liệu nhóm node không hợp lệ.');
     createUndoSnapshot('Nhân bản nhóm node');const ids=cloneNodeBundle(bundle.nodes,bundle.edges,{dx:60,dy:80});render();

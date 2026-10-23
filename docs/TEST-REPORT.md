@@ -177,3 +177,7 @@ Không có phiên Muse/Gemini/ChatGPT đăng nhập thật, nên chưa xác minh
 - Muse bridge, Muse support và Muse job integration Chromium smoke đạt: phản hồi không có assistant class, display:contents, video nạp khi Play; bỏ video lịch sử/body không liên quan; prompt chỉ gửi một lần, nhận video và trích khung cuối dù rơi ACK/poll.
 - Chẩn đoán video không chứa URL riêng tư, token hoặc prompt. Báo cáo phiên bản bridge để nhận biết tab chưa tải lại.
 - Dịch vụ AI được mô phỏng. Chưa kiểm tra HTML/tài khoản Muse thật của người dùng; không kết luận chỉ từ `selectedSend:null` rằng thao tác gửi bị lỗi.
+
+## 0.28.1 — xử lý nhân bản lúc tác vụ đang chạy
+
+Canvas groups/frames Chromium smoke đạt, bổ sung thao tác nhân bản từ menu chuột phải trong khi phản hồi AI đang chờ: có cảnh báo, số node không đổi, không phát sinh pageerror. Các kiểm tra sao chép khi rảnh, di chuyển nhóm, khung cuối video và dừng phản hồi trễ vẫn đạt. AI được mô phỏng.
