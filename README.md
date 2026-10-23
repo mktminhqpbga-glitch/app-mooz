@@ -1,8 +1,16 @@
-# Workflow · MuseFlow 0.31.0
+# Workflow · MuseFlow 0.31.1
 
 **[⬇ ĐÓNG GÓI / CẬP NHẬT APP MAC](https://github.com/mktminhqpbga-glitch/app-mooz/actions/workflows/desktop.yml)** · **[Hướng dẫn từng bước](docs/PACKAGING.md)**
 
 Bấm liên kết trên → **Run workflow** → chọn `main`. Khi build xong, tải artifact DMG đúng loại Mac. Có thể chọn tạo draft Release để chuẩn bị bản cập nhật; app nhận biết sau khi bạn Publish release mới hơn.
+
+## Hàng đợi nâng cấp · 0.31.1
+
+Trong **Hàng đợi**, bấm **Tạm ngưng** để ngừng nhận tác vụ mới và để AI đang chạy hoàn tất; bấm **Chạy / Tiếp tục** để nhận tiếp. **Dừng** vẫn yêu cầu hủy các tác vụ đang chạy.
+
+Chọn các mục lỗi/đã dừng/cần kiểm tra rồi bấm **Chạy lại mục đã chọn**. App yêu cầu xác nhận đã kiểm tra tab AI để tránh gửi trùng sau mất kết nối. Nếu không lưu được trạng thái, app giữ các mục cũ và tạm ngưng hàng đợi. Mở lại app không tự gửi lại tác vụ bị gián đoạn.
+
+**Xuất lịch sử JSON** lưu prompt, thiết lập, số lần chạy và trạng thái; không kèm tệp ảnh/video hoặc cấu hình tài khoản. Tải kết quả từng mục bằng **Tải kết quả** như trước. Lịch sử có chứa nội dung prompt và thông báo lỗi của tác vụ.
 
 ## Ứng dụng desktop — bản alpha
 
