@@ -1170,8 +1170,37 @@
     el.appendChild(body);
     addPorts(el, n);
     if(['generateImage','generateVideo','generateText'].includes(n.type))studioButton(body,'Xóa kết quả cũ',()=>clearNodeOutput(n),{disabled:!!runForNode(n.id)});
-    el.onmousedown = event => {if(event.target.closest('button,input,textarea,select,.port,.node-header'))return;if(event.shiftKey||event.ctrlKey||event.metaKey)selectNode(n.id,{toggle:true});else if(!state.selectedNodeIds.includes(n.id))selectNode(n.id);};
+    compactGenerator(n,body);
+    el.onmousedown = event => {if(event.target.closest('button,input,textarea,select,summary,details,.port,.node-header'))return;if(event.shiftKey||event.ctrlKey||event.metaKey)selectNode(n.id,{toggle:true});else if(!state.selectedNodeIds.includes(n.id))selectNode(n.id);};
     return el;
+  }
+
+  const compactPanels=new Map();
+  function compactGenerator(node,body){
+    if(!['generateImage','generateVideo'].includes(node.type))return;
+    body.classList.add('compact-generation');
+    const children=[...body.children],provider=body.querySelector('.provider-controls'),controls=body.querySelector('.gen-controls'),status=body.querySelector('.status'),actions=body.querySelector('.node-generation-actions');
+    const media=children.find(el=>el.matches('video,.image-link')),options=document.createElement('div');options.className='node-options';
+    const sections={};
+    for(const [key,name] of [['connection','Kết nối AI'],['frames',node.type==='generateVideo'?'Khung hình':'Ảnh tham chiếu'],['tools','Công cụ'],['info','Chi tiết']]){
+      const details=document.createElement('details');details.className='node-option';details.dataset.panel=key;const summary=document.createElement('summary');summary.textContent=name;const content=document.createElement('div');content.className='node-option-content';summary.title=key==='frames'?'Ảnh tham chiếu, khung mở đầu và khung cuối':name;details.append(summary,content);options.append(details);sections[key]={details,content};
+      details.open=compactPanels.get(node.id+':'+key)||false;
+      details.ontoggle=()=>{if(!details.isConnected)return;compactPanels.set(node.id+':'+key,details.open);scheduleDrawEdges();};
+    }
+    if(provider){const first=provider.querySelector('select[aria-label="AI thực hiện"]');for(const el of [...provider.children])if(el!==first)sections.connection.content.append(el);}
+    for(const el of children){
+      if([provider,controls,status,actions,media].includes(el))continue;
+      if(el.matches('.tool-action,.video-timeline-drag')){
+        if(/khung cuối/.test(el.textContent))sections.frames.content.append(el);else sections.tools.content.append(el);
+      }else if(el.matches('.reference-id-list,.continuity-toggle,.end-frame-thumb,.end-frame-input')||/Khung (?:cuối|mở đầu)/.test(el.textContent))sections.frames.content.append(el);
+      else if(el.matches('.hint,.ref-badge'))sections.info.content.append(el);
+      else sections.info.content.append(el);
+    }
+    if(status){status.title=status.textContent;const log=document.createElement('p');log.className='node-status-detail';log.textContent=status.textContent;sections.info.content.prepend(log);}
+    if(controls){[...controls.querySelectorAll('select')].forEach((select,i)=>select.setAttribute('aria-label',i===0?'Tỷ lệ khung hình':'Thời lượng video'));for(const model of [...controls.querySelectorAll('input')])sections.connection.content.append(model);}
+    const refs=sections.frames.content.querySelector('.reference-id-list');if(refs){refs.title=refs.textContent;sections.frames.details.querySelector('summary').textContent=(node.type==='generateVideo'?'Khung hình':'Ảnh tham chiếu')+' · '+getIncoming(node.id,'reference').length;}
+    if(node.data.status==='error')sections.info.details.open=true;
+    body.replaceChildren(...[provider,controls,status,media,actions,options].filter(Boolean));
   }
 
   function createNodeRunActions(node){

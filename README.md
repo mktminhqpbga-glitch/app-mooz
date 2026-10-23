@@ -1,4 +1,4 @@
-# Workflow · MuseFlow 0.24.1
+# Workflow · MuseFlow 0.25.0
 
 Extension Chrome/Edge dựa trên [MuseFlow / 26Flow](https://github.com/bynne2602/museflow), mở rộng canvas/timeline để làm việc với Muse.ai, Gemini, ChatGPT và API Google, OpenAI, fal.ai. Giữ nguyên giấy phép GPL-2.0-or-later của nguồn gốc và thông báo FFmpeg đi kèm.
 
@@ -275,3 +275,9 @@ Kiểm thử Chromium gồm kéo nhiều node/nhóm, nhân bản và clipboard, 
 Bộ nối chỉ nhận media trong vùng trả lời mới, bỏ video ngoài chat, media của tin nhắn cũ tải muộn, placeholder/loading và tài nguyên mascot/avatar. Đợi media ổn định và Muse ngừng trả lời trước khi nhận. Nếu không xác minh được kết quả mới, tiếp tục chờ thay vì chọn một video bất kỳ trên trang.
 
 Khung cuối phải có mã video nguồn trùng với video hiện tại. Khung cũ chưa có thông tin đối chiếu không hiển thị như kết quả hợp lệ; có thể trích lại từ video nguồn. Video nhận nhầm ở bản trước phải xóa kết quả và chạy lại sau khi cập nhật, tải lại tab Muse. Trích lại từ một video vốn đã sai không sửa được nội dung video đó. Kiểm thử trình duyệt dùng video MP4 thật và trang Muse mô phỏng.
+
+### 0.25.0 — node tạo ảnh/video gọn hơn
+
+Phần chính giữ AI, tỷ lệ/thời lượng, trạng thái tối đa hai dòng, xem trước và Chạy/Chạy lại. Bỏ khoảng trống đệm cũ; ảnh/video xem trước tối đa cao 180 px, giữ toàn bộ hình bằng contain. Bốn mục bấm mở: **Kết nối AI** (tab, làm mới, model), **Khung hình/Ảnh tham chiếu** (ID ảnh, khung đầu/cuối và thao tác khung), **Công cụ** (Timeline, xóa kết quả), **Chi tiết** (thông báo đầy đủ và kích thước). Mở/đóng được giữ trong phiên khi node cập nhật tiến độ; không đổi dữ liệu/kết nối hoặc tự gọi AI khi mở mục.
+
+Lỗi tự mở phần Chi tiết; các cảnh báo dài của video thành công vẫn đọc đầy đủ ở đó. Kiểm thử Chromium đo chiều cao node, mở mục và thao tác điều khiển thật, duy trì lựa chọn/tab, xóa kết quả, kéo nhóm và khung cuối.
