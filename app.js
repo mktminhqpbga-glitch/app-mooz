@@ -123,6 +123,7 @@
       const preferred=aiChatTargets[provider],tab=tabs.find(tab=>tab.id===preferred?.tabId)||tabs.find(tab=>tab.active)||tabs[0];
       await chrome.scripting.executeScript({target:{tabId:tab.id},files:provider==='muse'?['composer-controls.js','muse-bridge.js']:['composer-controls.js','ai-bridge.js']});
       const result=await chrome.tabs.sendMessage(tab.id,{type:provider==='muse'?'MUSEFLOW_CHECK_SESSION':'WORKFLOW_AI_CHECK'});
+      assertCurrentBridge(provider==='muse'?'MUSEFLOW_CHECK_SESSION':'WORKFLOW_AI_CHECK',result);
       if(result?.busy)setProviderHealth(provider,'busy','Tab AI đang xử lý');else if(result?.ok&&result.composer&&result.signedIn!==false)setProviderHealth(provider,'ready',tab.title||'Ô chat sẵn sàng');else setProviderHealth(provider,'check','Mở chat/đăng nhập hoặc tải lại tab');
     }catch(error){setProviderHealth(provider,'error',error.message);}finally{healthChecks.delete(provider);}
   }
@@ -230,7 +231,8 @@
     const select=document.createElement('select');select.setAttribute('aria-label','AI thực hiện');
     for(const [id,p] of Object.entries(WorkflowAI.providers)){if(!p.types.includes(kind))continue;const option=document.createElement('option');option.value=id;option.textContent=p.name;select.appendChild(option);}
     select.value=n.data.provider||(kind==='text'?'gemini':'muse');
-    select.onchange=()=>{n.data.provider=select.value;n.data.apiModel='';n.data.chatTarget=null;scheduleAutoSave();render();};wrap.appendChild(select);
+    select.disabled=!!runForNode(n.id);
+    select.onchange=()=>{if(runForNode(n.id)){select.value=n.data.provider||(kind==='text'?'gemini':'muse');setRunStatus('Dừng node trước khi đổi AI thực hiện.','warn');return;}createUndoSnapshot('Đổi AI thực hiện');n.data.provider=select.value;n.data.apiModel='';n.data.chatTarget=null;n.data.error='';n.data.progress='';n.data.status='idle';if(kind!=='text'){n.data.asset=null;n.data.endFrame=null;syncPreviewOutputs();}scheduleAutoSave();render();};wrap.appendChild(select);
     const provider=select.value;if(WorkflowAI.providers[provider]?.urls){const target=n.data.chatTarget||aiChatTargets[provider];wrap.appendChild(chatSelector(provider,target,value=>{n.data.chatTarget=value;if(n.data.error?.includes('cuộc trò chuyện')){n.data.error='';n.data.status='idle';}scheduleAutoSave();},n.id));const refresh=document.createElement('button');refresh.type='button';refresh.textContent='Làm mới danh sách chat';refresh.onclick=async()=>{
       if(runForNode(n.id)){setRunStatus('Dừng lượt đang chạy của node này trước khi đổi cuộc trò chuyện.','warn');return;}
       const selected=n.data.chatTarget||aiChatTargets[provider];await refreshChatTabs();
@@ -242,11 +244,16 @@
     if(kind==='video'){const hint=document.createElement('small');hint.textContent=provider==='fal'?'Motion Control: nối đúng 1 ảnh nhân vật + 1 video chuyển động. Thời lượng theo video nguồn.':provider==='google'?'Veo: clip 4/6/8 giây, cần API key có quyền model.':'5/10/15/30/40 giây là thời lượng yêu cầu; kết quả phụ thuộc Muse.ai.';wrap.appendChild(hint);}
     return wrap;
   }
+  function assertCurrentBridge(type,result){
+    if(!result?.bridgeVersion)return;
+    const muse=type==='MUSEFLOW_CHECK_SESSION';
+    if(result.resultProtocol!==2)throw Error('Bộ nối trên tab '+(muse?'Muse':'Gemini/ChatGPT')+' đang là bản '+result.bridgeVersion+' và chưa hỗ trợ bộ nhận kết quả mới. Cập nhật tiện ích đồng hành, dừng lượt cũ trên trang AI. Tải lại tab '+(muse?'Muse':'Gemini/ChatGPT')+' bằng ⌘R/Ctrl+R. Chưa gửi prompt mới.');
+  }
   async function waitTabIdle(tabId,type,requestId,signal,first){
     let result=first;const end=Date.now()+600000;
     while(true){
       if(signal?.aborted)throw new DOMException('Đã dừng.','AbortError');
-      result=result||await sendMuseTabMessage(tabId,{type},signal);if(!result?.busy)return result;
+      result=result||await sendMuseTabMessage(tabId,{type},signal);assertCurrentBridge(type,result);if(!result?.busy)return result;
       if(Date.now()>end)throw new Error('Tab AI vẫn đang xử lý yêu cầu trước. Chưa gửi thêm prompt.');
       const run=[...activeRuns.values()].find(item=>item.requestId===requestId);progressNode(nodeById(run?.activeNodeId),'Đang đợi tab AI hoàn tất yêu cầu trước…');
       await WorkflowRuntime.waitFor(new Promise(resolve=>setTimeout(resolve,500)),signal);result=null;
@@ -261,7 +268,7 @@
     const target=message.chatTarget||aiChatTargets[provider];const ordered=message.type==='WORKFLOW_AI_CHECK'&&!target?tabs:[chooseChat(provider,tabs,target)];let chosen=null,lastError='';
     for(const tab of ordered){
       checkAbort();
-      try{if(message.type==='WORKFLOW_AI_GENERATE'&&chrome.tabs.update){await chrome.tabs.update(tab.id,{active:true});if(tab.windowId&&chrome.windows?.update)await chrome.windows.update(tab.windowId,{focused:true});}await chrome.scripting.executeScript({target:{tabId:tab.id},files:['composer-controls.js','ai-bridge.js']});let check=await sendMuseTabMessage(tab.id,{type:'WORKFLOW_AI_CHECK'},signal);if(message.type==='WORKFLOW_AI_GENERATE'&&check?.busy)check=await waitTabIdle(tab.id,'WORKFLOW_AI_CHECK',message.requestId,signal,check);if(check?.ok&&check.composer&&check.signedIn!==false){chosen=tab;break;}lastError=check?.error||'Chưa tìm thấy ô chat. Nếu trang đã đăng nhập, hãy tải lại tab AI để cập nhật bộ kết nối.';}
+      try{if(message.type==='WORKFLOW_AI_GENERATE'&&chrome.tabs.update){await chrome.tabs.update(tab.id,{active:true});if(tab.windowId&&chrome.windows?.update)await chrome.windows.update(tab.windowId,{focused:true});}await chrome.scripting.executeScript({target:{tabId:tab.id},files:['composer-controls.js','ai-bridge.js']});let check=await sendMuseTabMessage(tab.id,{type:'WORKFLOW_AI_CHECK'},signal);assertCurrentBridge('WORKFLOW_AI_CHECK',check);if(message.type==='WORKFLOW_AI_GENERATE'&&check?.busy)check=await waitTabIdle(tab.id,'WORKFLOW_AI_CHECK',message.requestId,signal,check);if(check?.ok&&check.composer&&check.signedIn!==false){chosen=tab;break;}lastError=check?.error||'Chưa tìm thấy ô chat. Nếu trang đã đăng nhập, hãy tải lại tab AI để cập nhật bộ kết nối.';}
       catch(error){if(error.name==='AbortError')throw error;lastError=error.message;}
     }
     if(!chosen)throw new Error(`${WorkflowAI.providers[provider].name}: ${lastError||'không kết nối được'}`);
@@ -283,12 +290,12 @@
   const generationPacer=WorkflowRuntime.pacer(5000);
   async function generateWithProvider(n,request,signal){
     if(pendingChatSelections)throw new Error('Đang cập nhật cuộc trò chuyện đã chọn. Đợi một chút rồi chạy lại.');
+    const provider=n.data.provider||(n.type==='generateText'?'gemini':'muse');request={...request,chatTarget:structuredClone(n.data.chatTarget||aiChatTargets[provider])};
     const references=[],canonical=new Map();
     for(const ref of n.id?resolveReferences(n.id):[]){const url=await blobAsDataUrlFromUrl(ref.url);if(signal?.aborted)throw new DOMException('Đã dừng.','AbortError');if(canonical.has(url)){const old=canonical.get(url);old.roles=[...new Set([...old.roles,...ref.roles])];old.aliases=[...new Set([...(old.aliases||[]),ref.componentId,...(ref.aliases||[])])];if(ref.instructions&&!old.instructions.includes(ref.instructions))old.instructions+='\n'+ref.instructions;}else{const copy={...ref,url,roles:[...ref.roles]};canonical.set(url,copy);references.push(copy);}}
     if(references.length>8)throw Error('Tác vụ có '+references.length+' ảnh tham chiếu; tối đa 8 ảnh. Tắt ảnh chung hoặc bỏ bớt ảnh riêng.');
     if(references.length)request={...request,referenceImages:references.map(ref=>ref.url)};
     const referenceNote=WorkflowTools.referenceNote(references,request.prompt);if(referenceNote)request={...request,prompt:request.prompt+'\n'+referenceNote};
-    const provider=n.data.provider||(n.type==='generateText'?'gemini':'muse');request={...request,chatTarget:n.data.chatTarget||aiChatTargets[provider]};
     WorkflowAI.validate(provider,request);
     providerJobs.set(request.requestId,{provider,phase:'queued'});renderHealth();
     let release,finishPacing,paceKey='provider:'+provider;const pace=async()=>{finishPacing=await generationPacer.wait(paceKey,signal,ms=>progressNode(n,'Đợi '+Math.ceil(ms/1000)+' giây trước khi gửi lượt AI tiếp theo…'));};try{

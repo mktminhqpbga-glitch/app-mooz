@@ -1,7 +1,7 @@
 (() => {
   if (window.__museFlowBridgeInstalled) return;
   window.__museFlowBridgeInstalled = true;
-  window.__museFlowBridgeVersion='0.35.1';
+  window.__museFlowBridgeVersion='0.35.2';
 
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     if(_sender.id!==chrome.runtime.id)return false;
@@ -49,7 +49,7 @@
     const cancel=()=>{clearTimeout(timer);signal?.removeEventListener('abort',cancel);reject(new DOMException('Generation stopped by user.','AbortError'));};
     signal?.addEventListener('abort',cancel,{once:true});
   });
-  const assistantSelector='div[class*="hatch-chat-groupable-bubble"],[data-message-author-role="assistant"],[data-testid*="assistant" i],[data-testid*="message-content" i],[class*="assistant-message" i],[class*="assistant-bubble" i],.group\\/msg';
+  const assistantSelector='[class*="hatch-chat-groupable-bubble"],[data-message-author-role="assistant"],[data-testid*="assistant" i],[data-testid*="message-content" i],[class*="assistant-message" i],[class*="assistant-bubble" i],.group\\/msg';
   const attachmentSelector='[data-testid^="hatch-chat-attachment-presentation-"]';
   const activeGenerations=new Map(),museJobs=new Map();
 
@@ -69,7 +69,7 @@
     const composer=findComposer();
     const ready=Boolean(composer&&visible(composer)&&!composer.disabled&&!composer.readOnly);
     const loginRequired=Boolean(document.querySelector('input[type="password"],button[type="submit"]'))&&/sign in|log in|登录/i.test(document.body?.innerText||'');
-    return {ok:true,jobProtocol:1,bridgeProtocol:1,bridgeVersion:window.__museFlowBridgeVersion,signedIn:ready&&!loginRequired,busy:activeGenerations.size>0||[...document.querySelectorAll('[data-testid="hatch-composer-stop-button"],button[aria-label*="Stop" i]')].some(visible),title:document.title,composer:ready,loginRequired,url:location.href};
+    return {ok:true,jobProtocol:1,bridgeProtocol:1,resultProtocol:2,bridgeVersion:window.__museFlowBridgeVersion,signedIn:ready&&!loginRequired,busy:activeGenerations.size>0||[...document.querySelectorAll('[data-testid="hatch-composer-stop-button"],button[aria-label*="Stop" i]')].some(visible),title:document.title,composer:ready,loginRequired,url:location.href};
   }
 
   async function waitHydrated(timeout,signal) {
@@ -186,10 +186,18 @@
       return visible(el)&&text!==userSnapshot.get(el)&&normalized.includes(promptText)&&!el.contains(item.el)&&Boolean(el.compareDocumentPosition(item.el)&Node.DOCUMENT_POSITION_FOLLOWING);
     });
     const normalize=text=>String(text||'').replace(/\s+/g,' ').trim();
-    const promptReceipts=()=>[...document.querySelectorAll('div,p,span,article,[role="listitem"]')].filter(el=>{
-      if(el.contains(findComposer())||el.closest('form')&&el.closest('form')===findComposer()?.closest('form')||!visible(el))return false;
-      const text=normalize(el.textContent);return text.includes(promptText)&&text.length<=promptText.length+40&&![...el.children].some(child=>normalize(child.textContent).includes(promptText));
-    });
+    const promptReceipts=()=>{
+      const editor=findComposer(),scope=editor&&composerScope(editor);
+      const eligible=el=>!el.contains(editor)&&!scope?.contains(el)&&!el.closest('[data-testid="hatch-composer-placeholder-overlay"]')&&(visible(el)||getComputedStyle(el).display==='contents'&&[...el.querySelectorAll('p,div,span')].some(visible));
+      // A sent user bubble can include file labels and controls after the prompt.
+      // Their length does not make the actual prompt receipt disappear.
+      const known=[...document.querySelectorAll(userSelector)].filter(el=>eligible(el)&&normalize(el.textContent).includes(promptText));
+      const fallback=[...document.querySelectorAll('div,p,span,article,[role="listitem"]')].filter(el=>{
+        if(!eligible(el)||el.closest(userSelector)||el.closest('[data-message-author-role="assistant"]'))return false;
+        const text=normalize(el.textContent);return text.includes(promptText)&&text.length<=promptText.length+40&&![...el.children].some(child=>normalize(child.textContent).includes(promptText));
+      });
+      return [...known,...fallback].filter((el,_,all)=>!all.some(other=>other!==el&&el.contains(other))).sort((a,b)=>a.compareDocumentPosition(b)&Node.DOCUMENT_POSITION_FOLLOWING?-1:1);
+    };
     let oldReceipts=new Set(promptReceipts());
     const newReceipts=()=>{
       const receipts=promptReceipts();
@@ -206,7 +214,7 @@
       const receipt=newReceipts().at(-1);if(!receipt)return false;
       // Muse can use the same visual bubble class for the sent prompt and its
       // reference thumbnails. Those thumbnails remain user input, even as blob URLs.
-      const userBubble=receipt.closest(userSelector)||receipt.closest('div[class*="hatch-chat-groupable-bubble"],[data-testid*="user-message" i]');
+      const userBubble=receipt.closest(userSelector)||receipt.closest('[class*="hatch-chat-groupable-bubble"],[data-testid*="user-message" i]');
       if(userBubble?.contains(el))return false;
       const editor=findComposer();let root=receipt.closest('main,[role="main"]');if(!root){root=receipt.parentElement;while(root&&!root.contains(editor))root=root.parentElement;}
       return root&&root.contains(el)&&!el.contains(receipt)&&Boolean(receipt.compareDocumentPosition(el)&Node.DOCUMENT_POSITION_FOLLOWING)&&editor&&(knownAssistant||Boolean(el.compareDocumentPosition(editor)&Node.DOCUMENT_POSITION_FOLLOWING));

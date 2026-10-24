@@ -1,8 +1,16 @@
-# Workflow · MuseFlow 0.35.1
+# Workflow · MuseFlow 0.35.2
 
 **[⬇ ĐÓNG GÓI / CẬP NHẬT APP MAC](https://github.com/mktminhqpbga-glitch/app-mooz/actions/workflows/desktop.yml)** · **[Hướng dẫn từng bước](docs/PACKAGING.md)**
 
 Bấm liên kết trên → **Run workflow** → chọn `main`. Khi build xong, tải artifact DMG đúng loại Mac. Có thể chọn tạo draft Release để chuẩn bị bản cập nhật; app nhận biết sau khi bạn Publish release mới hơn.
+
+## Nhận kết quả Gemini/Muse và phát hiện bộ nối cũ · 0.35.2
+
+Gemini phân biệt ảnh của lượt vừa gửi với lịch sử và ảnh tham chiếu. Thay ảnh trong cùng khung phản hồi vẫn được nhận ngay cả khi chữ không đổi; chờ nguồn ảnh ổn định và sao chép đúng tệp kết quả. Muse nhận cả ảnh nằm trong nút `BUTTON` và lớp `display: contents`, bỏ văn bản phản chiếu trong ô nhập khi tìm tin nhắn đã gửi, và không để tên tệp đính kèm làm mất dấu tin nhắn.
+
+App kiểm tra khả năng nhận kết quả của bộ nối trước khi chờ tab bận hoặc gửi tác vụ. Nếu tab còn mã cũ, app báo phiên bản và yêu cầu cập nhật tiện ích rồi tải lại trang AI; không tự gửi lại hay tự tải lại tab đang chạy. Phiên bản app có thể khác tiện ích khi giao thức nhận kết quả vẫn tương thích. Khóa lựa chọn AI trên node đang chạy; đổi AI khi đã dừng sẽ bỏ trạng thái lỗi và ảnh/video cũ, có thể hoàn tác.
+
+Sau khi cài bản này, thay nội dung thư mục tiện ích bằng gói mới trong `downloads/Workflow-extension.zip`, bấm **Tải lại** tại `chrome://extensions`, dừng lượt cũ rồi tải lại **các tab Muse, Gemini và ChatGPT** bằng ⌘R/Ctrl+R. Chỉ cập nhật app không thay bộ nối đã nạp trong các tab. Báo cáo thực tế từng ghi nhận tiện ích 0.35.1 nhưng tab Muse vẫn chạy 0.31.0. Các kiểm thử dùng Chromium/Electron với phản hồi AI mô phỏng; chưa xác minh nhận kết quả trong tài khoản đăng nhập thật.
 
 ## Xóa dự án trong thư viện · 0.35.1
 
@@ -166,6 +174,8 @@ node tests/browser-smoke.cjs
 node tests/bridge-smoke.cjs
 node tests/muse-smoke.cjs
 node tests/muse-result-association-smoke.cjs
+node tests/muse-receipt-layout-smoke.cjs
+node tests/gemini-image-result-smoke.cjs
 node tests/workflow-chat-smoke.cjs
 node tests/chat-media-smoke.cjs
 ```

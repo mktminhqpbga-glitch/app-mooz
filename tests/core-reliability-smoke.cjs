@@ -76,6 +76,38 @@ let chromium;try{({chromium}=require('playwright'));}catch{({chromium}=require('
   assert.equal(await page.evaluate(()=>testGenerates.length),1,'Cycles in the selected dependency graph must still prevent any AI request');
   await context.close();
   console.log('PASS selected branches ignore unrelated cycles but reject cycles in their own dependencies');
+
+  const pixel='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=';
+  const imageGraph={nodes:[node('p','prompt',{text:'Generate the current image'}),node('image','generateImage',{provider:'muse',size:'9:16',status:'error',error:'Previous Muse failure',asset:{id:'old',kind:'image',url:pixel}},350)],edges:[edge('p','image')]};
+  ({page,context}=await open(imageGraph));await page.waitForSelector('.node[data-id="image"] img');
+  const imageNode=page.locator('.node[data-id="image"]'),provider=()=>imageNode.getByLabel('AI thực hiện',{exact:true});
+  await provider().selectOption('gemini');assert.equal(await imageNode.locator('img').count(),0,'Changing provider clears the previous provider output');assert.equal(await imageNode.locator('.status.error').count(),0);
+  await provider().selectOption('muse');
+  await page.evaluate(()=>{
+    window.imageGenerates=[];window.museStarts=0;window.currentBridge=false;
+    const gemini={id:7,url:'https://gemini.google.com/app/test',title:'Gemini'},muse={id:8,url:'https://muse.ai/chat/test',title:'Muse'};
+    chrome.tabs.query=async filter=>filter.url.some(url=>url.includes('muse.ai'))?[muse]:filter.url.some(url=>url.includes('gemini'))?[gemini]:[];
+    chrome.tabs.get=async id=>id===7?gemini:muse;
+    chrome.tabs.sendMessage=async(id,message)=>{
+      if(message.type==='MUSEFLOW_CHECK_SESSION')return {ok:true,composer:true,signedIn:true,busy:true,bridgeVersion:'0.31.0',bridgeProtocol:1,jobProtocol:1};
+      if(message.type==='MUSEFLOW_JOB_START'||message.type==='MUSEFLOW_GENERATE'){museStarts++;throw Error('Old Muse bridge must not receive generation');}
+      if(message.type==='WORKFLOW_AI_CHECK')return {ok:true,composer:true,signedIn:true,busy:!currentBridge,bridgeVersion:currentBridge?'0.12.0':'0.11.0',...(currentBridge?{resultProtocol:2}:{})};
+      if(message.type==='WORKFLOW_AI_GENERATE'){imageGenerates.push(message);return new Promise(resolve=>window.finishImage=resolve);}
+      return {ok:true};
+    };
+  });
+  await imageNode.locator('.node-run-button.primary').click();await imageNode.locator('.status.error').waitFor({timeout:20000});
+  assert.match(await imageNode.locator('.status.error').innerText(),/0\.31\.0.*tải lại tab/i);assert.equal(await page.evaluate(()=>museStarts),0,'Stale busy Muse must fail before submitting or waiting for the old job');
+  await provider().selectOption('gemini');await imageNode.locator('.node-run-button.primary').click();await imageNode.locator('.status.error').waitFor({timeout:20000});
+  assert.match(await imageNode.locator('.status.error').innerText(),/0\.11\.0.*tải lại tab/i);assert.equal(await page.evaluate(()=>imageGenerates.length),0);
+  await page.evaluate(()=>window.currentBridge=true);await imageNode.locator('.node-run-button.primary').click();await page.waitForFunction(()=>imageGenerates.length===1,{},{timeout:20000});
+  assert.equal(await provider().isDisabled(),true,'The active request provider cannot change mid-flight');
+  await provider().evaluate(select=>{select.value='muse';select.dispatchEvent(new Event('change',{bubbles:true}));});
+  assert.equal(await provider().inputValue(),'gemini','Programmatic change events also preserve the active provider');
+  await page.evaluate(url=>finishImage({ok:true,url}),pixel);await imageNode.locator('.status.success').waitFor({timeout:20000});
+  assert.equal(await provider().isDisabled(),false);assert.equal(await page.evaluate(()=>imageGenerates.length),1);assert.equal(await page.evaluate(()=>museStarts),0);
+  await context.close();
+  console.log('PASS stale bridge preflight before busy waits, no prompt sent to old Muse/Gemini, provider lock during generation, stale output reset on provider change and new result accepted');
   assert.deepEqual(errors,[],'No uncaught browser errors');
  }finally{await browser.close();await new Promise(resolve=>server.close(resolve));}
 })().catch(error=>{console.error(error);process.exitCode=1;});

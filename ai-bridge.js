@@ -65,7 +65,9 @@
     return [...candidates].filter(el=>visible(el)&&!el.closest(historySelector)&&(String(el.innerText||el.textContent||'').trim()||el.querySelector('img[src],video[src],[data-file-name],[role="progressbar"]')||buttons(el).some(b=>/remove|xóa|xoá/i.test(label(b)))));
   }
   const uploading=()=>root(composer()).querySelector('[role="progressbar"],[aria-busy="true"],[data-state="uploading"],[data-status="uploading"],.animate-spin');
-  async function wait(check,ms,signal,message){const end=Date.now()+ms;while(Date.now()<end){if(signal?.aborted)throw new DOMException('Đã dừng.','AbortError');const result=check();if(result)return result;await new Promise(resolve=>setTimeout(resolve,180));}throw new Error(message);}
+  async function wait(check,ms,signal,message){const end=Date.now()+ms;while(Date.now()<end){if(signal?.aborted)throw new DOMException('Đã dừng.','AbortError');const result=await check();if(signal?.aborted)throw new DOMException('Đã dừng.','AbortError');if(result)return result;await new Promise(resolve=>setTimeout(resolve,180));}throw new Error(message);}
+  async function imageFingerprint(blob){return [...new Uint8Array(await crypto.subtle.digest('SHA-256',await blob.arrayBuffer()))].map(b=>b.toString(16).padStart(2,'0')).join('');}
+  const imageSources=el=>[...el.querySelectorAll('img')].map(img=>img.currentSrc||img.src).filter(Boolean);
   function setText(el,text){
     el.focus();
     if(el instanceof HTMLTextAreaElement){Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set.call(el,text);el.dispatchEvent(new InputEvent('input',{bubbles:true,inputType:'insertText',data:text}));}
@@ -84,9 +86,10 @@
     await wait(()=>!remove().length&&!attachments(scope).length,10000,signal,'Không dọn được tệp đính kèm cũ. Hãy xóa tệp trong ô chat rồi chạy lại.');
   }
   async function attach(urls,signal,imageCount=0){
+    const fingerprints=new Set();
     for(let i=0;i<urls.length;i++){
       const response=await fetch(urls[i],{signal});if(!response.ok)throw new Error('Không đọc được tệp tham chiếu.');let blob=await response.blob();
-      if(i<imageCount)blob=await WorkflowComposer.prepareImage(blob,signal);
+      if(i<imageCount){blob=await WorkflowComposer.prepareImage(blob,signal);fingerprints.add(await imageFingerprint(blob));}
       if(!/^(image|video)\//.test(blob.type)||!blob.size)throw new Error('Tệp tham chiếu không phải ảnh/video có thể đọc.');
       if(blob.size>100*1024*1024)throw new Error('Tệp tải qua tab vượt 100 MB.');
       const scope=root(composer());
@@ -104,6 +107,7 @@
       const appeared=Date.now();
       await wait(()=>{WorkflowComposer.assertUpload(root(composer()));return !uploading()&&Date.now()-appeared>=1500;},600000,signal,'Tệp chưa tải xong; chưa gửi prompt.');
     }
+    return fingerprints;
   }
   async function generate(request,signal){
     if(!String(request.prompt||'').trim())throw new Error('Yêu cầu trống.');
@@ -121,13 +125,24 @@
 
     const checkConversation=()=>{if(location.origin+location.pathname!==conversation)throw new Error('Cuộc trò chuyện đã thay đổi. Đã dừng để tránh gửi nhầm chat.');};
     await clearDraft(signal);
-    const before=new Map(replies().map(el=>[el,replyText(el)]));
+    const replySnapshot=el=>request.mediaType==='image'?replyText(el)+'\n'+imageSources(el).join('\n'):replyText(el);
+    const before=new Map(replies().map(el=>[el,replySnapshot(el)]));
+    const baselineImages=new Set(imageSources(document));
     const users=()=>[...document.querySelectorAll(isGPT?'[data-message-author-role="user"],[data-turn="user"]':'user-query,.user-query-container')];
-    const priorUsers=new Set(users());
+    const priorUsers=new Map(users().map(el=>[el,el.textContent]));
     let prepared=false;
     const normalize=value=>String(value||'').replace(/\s+/g,' ').trim();
-    const echo=()=>users().some(el=>!priorUsers.has(el)&&normalize(el.innerText||el.textContent).includes(normalize(request.prompt)));
-    const freshReplies=()=>replies().filter(el=>!before.has(el)||before.get(el)!==replyText(el));
+    const matchingUsers=()=>users().filter(el=>normalize(el.textContent).includes(normalize(request.prompt)));
+    let priorMatchingCount=matchingUsers().length;
+    const echoReceipts=()=>matchingUsers().slice(priorMatchingCount).filter(el=>!priorUsers.has(el)||priorUsers.get(el)!==el.textContent);
+    const echo=()=>echoReceipts().length>0;
+    const freshReplies=()=>replies().filter(el=>!before.has(el)||before.get(el)!==replySnapshot(el));
+    const currentImageReply=reply=>{
+      const receipt=echoReceipts().at(-1);if(!receipt)return isGPT;
+      if(receipt.contains(reply)||reply.contains(receipt)||!(receipt.compareDocumentPosition(reply)&Node.DOCUMENT_POSITION_FOLLOWING))return false;
+      // Do not collect a later conversation turn after another user has sent a message.
+      return !users().some(el=>el!==receipt&&!el.contains(receipt)&&(receipt.compareDocumentPosition(el)&Node.DOCUMENT_POSITION_FOLLOWING)&&(el.compareDocumentPosition(reply)&Node.DOCUMENT_POSITION_FOLLOWING));
+    };
     const submitted=()=>{
       if(!prepared)return false;
       if(markedResult()||echo())return true;
@@ -138,11 +153,12 @@
       return !ownDraft&&(!!stopped()||freshReplies().length>0);
     };
     report(request,'Đang đưa tài liệu vào cuộc trò chuyện. Chờ tải tệp hoàn tất…');
-    await attach([...(request.referenceImages||[]),...(request.referenceVideos||[])],signal,(request.referenceImages||[]).length);
+    const referenceFingerprints=await attach([...(request.referenceImages||[]),...(request.referenceVideos||[])],signal,(request.referenceImages||[]).length);
     checkConversation();
     if(!submitted()){
-      before.clear();for(const el of replies())before.set(el,replyText(el));
-      priorUsers.clear();for(const el of users())priorUsers.add(el);
+      before.clear();for(const el of replies())before.set(el,replySnapshot(el));
+      priorUsers.clear();for(const el of users())priorUsers.set(el,el.textContent);priorMatchingCount=matchingUsers().length;
+      for(const src of imageSources(document))baselineImages.add(src);
       const text=wireText;
       const editor=await wait(composer,5000,signal,'Ô nhập AI vừa thay đổi. Tải lại tab AI rồi thử lại.');
       setText(editor,text);prepared=true;
@@ -161,29 +177,36 @@
       checkConversation();WorkflowComposer.assertUpload(root(composer()));
       if(!submitted()){
         const button=await wait(()=>{checkConversation();if(submitted())return true;WorkflowComposer.assertUpload(root(composer()));return !uploading()&&send();},600000,signal,'Không tìm thấy nút Gửi sẵn sàng. Prompt chưa được gửi.');
-        if(button!==true){checkConversation();button.click();report(request,'Đã bấm Gửi. Đang xác nhận AI nhận yêu cầu…');}
+        if(button!==true){checkConversation();for(const src of imageSources(document))baselineImages.add(src);button.click();report(request,'Đã bấm Gửi. Đang xác nhận AI nhận yêu cầu…');}
       }
     }
     report(request,'Đang xác nhận AI nhận yêu cầu; không gửi lại prompt…');
     await wait(submitted,90000,signal,'Chưa xác nhận AI nhận prompt sau 90 giây. Kiểm tra tab AI; không tự gửi lại để tránh trùng lặp.');
     report(request,'AI đã nhận yêu cầu. Đang chờ phản hồi…');
-    let last='',since=Date.now(),reportedReply=false;
-    const result=await wait(()=>{
+    let last='',since=Date.now(),reportedReply=false,lastImage='',imageSince=0;
+    const imageCopies=new Map();
+    const copyImage=src=>{
+      if(!imageCopies.has(src))imageCopies.set(src,(async()=>{const r=await fetch(src,{signal});if(!r.ok)throw new Error('Không tải được ảnh kết quả từ tab AI.');const blob=await r.blob();if(!blob.size||!blob.type.startsWith('image/'))throw new Error('Kết quả AI chưa phải tệp ảnh hợp lệ.');if(referenceFingerprints.has(await imageFingerprint(blob))){baselineImages.add(src);report(request,'Bỏ qua ảnh tham chiếu hiển thị lại. Đang chờ ảnh AI tạo trong lượt này…');return null;}return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result));reader.onerror=()=>reject(reader.error);reader.readAsDataURL(blob);});})());
+      return imageCopies.get(src);
+    };
+    const result=await wait(async()=>{
       const marked=markedResult();if(marked){if(marked!==last){last=marked;since=Date.now();}if(!stopped()&&Date.now()-since>=750)return {ok:true,text:marked};return false;}
-      const fresh=freshReplies();const reply=fresh.at(-1);if(!reply)return false;
+      const fresh=freshReplies().filter(el=>request.mediaType!=='image'||currentImageReply(el));const reply=fresh.at(-1);if(!reply)return false;
       const text=replyText(reply);if(!reportedReply&&text){reportedReply=true;report(request,'Đã thấy phản hồi. Đang đợi AI hoàn tất…');}if(text!==last){last=text;since=Date.now();}
       if(stopped()||reply.matches('[aria-busy="true"],[data-is-streaming="true"]')||reply.querySelector('[aria-busy="true"],[data-is-streaming="true"]')||Date.now()-since<3500)return false;
       if(request.mediaType==='text'){if(text.includes(opening)&&!text.includes(closing))return false;const clean=text.replaceAll(opening,'').replaceAll(closing,'').trim();return clean?{ok:true,text:clean}:false;}
-      const image=[...reply.querySelectorAll('img')].filter(visible).find(img=>img.naturalWidth>=256&&img.naturalHeight>=256);
-      return image?{ok:true,url:image.currentSrc||image.src}:false;
+      const images=[...reply.querySelectorAll('img')].filter(img=>visible(img)&&img.naturalWidth>=256&&img.naturalHeight>=256&&!img.closest('user-query,[data-message-author-role="user"],[data-turn="user"]')&&!baselineImages.has(img.currentSrc||img.src));
+      const image=images.at(-1);if(!image){lastImage='';return false;}
+      const src=image.currentSrc||image.src,key=src+'|'+image.naturalWidth+'x'+image.naturalHeight;
+      if(key!==lastImage){lastImage=key;imageSince=Date.now();}if(Date.now()-imageSince<1500)return false;
+      const url=await copyImage(src);return url?{ok:true,url}:false;
     },600000,signal,'Hết thời gian chờ kết quả AI. Kiểm tra tab AI; không tự gửi lại prompt.');
-    if(result.url){const r=await fetch(result.url,{signal});if(!r.ok)throw new Error('Không tải được ảnh kết quả từ tab AI.');const blob=await r.blob();result.url=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(blob);});}
     return result;
   }
   chrome.runtime.onMessage.addListener((request,sender,respond)=>{
     if(sender.id!==chrome.runtime.id)return false;
     if(request.type==='WORKFLOW_AI_CHECK'){
-      wait(composer,3500,null,'Không nhận diện được ô nhập trên trang AI đang mở.').then(()=>respond({ok:true,signedIn:true,composer:true,busy:busy||!!stopped(),bridgeVersion:'0.11.0'}),()=>respond({ok:true,signedIn:false,composer:false,bridgeVersion:'0.11.0',error:'Tab AI đã kết nối nhưng chưa nhận diện được ô nhập đang chỉnh sửa. Mở cuộc trò chuyện và tải lại tab AI.'}));return true;
+      wait(composer,3500,null,'Không nhận diện được ô nhập trên trang AI đang mở.').then(()=>respond({ok:true,signedIn:true,composer:true,busy:busy||!!stopped(),bridgeVersion:'0.12.0',resultProtocol:2}),()=>respond({ok:true,signedIn:false,composer:false,bridgeVersion:'0.12.0',resultProtocol:2,error:'Tab AI đã kết nối nhưng chưa nhận diện được ô nhập đang chỉnh sửa. Mở cuộc trò chuyện và tải lại tab AI.'}));return true;
     }
     if(request.type==='WORKFLOW_AI_USE_RESULT'){const resolve=manualResults.get(request.requestId);if(!resolve||typeof request.text!=='string'||!request.text.trim()){respond({ok:false});return false;}resolve({ok:true,text:request.text.trim()});respond({ok:true});return false;}
     if(request.type==='WORKFLOW_AI_SEND_NOW'){const pending=active.has(request.requestId);if(pending)earlySend.add(request.requestId);respond({ok:pending});return false;}
