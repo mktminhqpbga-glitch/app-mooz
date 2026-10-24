@@ -46,6 +46,7 @@
     <section class="project-library" aria-labelledby="libraryHeading">
       <div class="library-toolbar"><div><h2 id="libraryHeading">Tất cả dự án</h2><span id="projectCount" class="count"></span></div><label class="search"><span aria-hidden="true">⌕</span><input id="searchProjects" type="search" placeholder="Tìm dự án…" aria-label="Tìm dự án theo tên"></label></div>
       <p id="libraryStatus" class="status" role="status" aria-live="polite">Đang mở thư viện…</p>
+      <div id="deleteNotice" class="delete-notice" hidden><span id="deleteNoticeText" role="status"></span><button id="undoDelete" class="secondary" type="button">Hoàn tác</button></div>
       <div id="projectGrid" class="project-grid"></div>
       <div id="emptyState" class="empty-state" hidden><div class="empty-icon" aria-hidden="true">◇</div><h3 id="emptyTitle">Chưa có dự án nào</h3><p id="emptyDescription">Tạo dự án đầu tiên để bắt đầu xây dựng workflow AI.</p><button id="emptyCreate" class="secondary">＋ Tạo dự án đầu tiên</button></div>
     </section>
@@ -59,6 +60,9 @@
   </dialog>
   <dialog id="restoreDialog">
     <h2>Khôi phục bản lưu trước?</h2><p id="restoreDescription"></p><p>Tệp hiện tại được giữ lại riêng để có thể kiểm tra sau. Bản lưu trước sẽ trở thành phiên bản đang dùng.</p><p id="restoreError" class="form-error" role="alert"></p><div class="dialog-actions"><button id="cancelRestore" class="secondary">Hủy</button><button id="confirmRestore" class="primary">Khôi phục</button></div>
+  </dialog>
+  <dialog id="deleteDialog" aria-labelledby="deleteTitle" aria-describedby="deleteDescription">
+    <h2 id="deleteTitle">Xóa dự án?</h2><p id="deleteDescription"></p><p>Dự án sẽ được chuyển khỏi thư viện. Dữ liệu vẫn được giữ trên máy; bạn có thể bấm Hoàn tác sau khi xóa.</p><p id="deleteError" class="form-error" role="alert"></p><div class="dialog-actions"><button id="cancelDelete" class="secondary" type="button" autofocus>Hủy</button><button id="confirmDelete" class="primary danger" type="button">Xóa dự án</button></div>
   </dialog>
   <dialog id="chromeDialog">
     <h2>Kết nối các tab AI trong Chrome</h2><p>Cài tiện ích đồng hành của Workflow trong Chrome, mở tiện ích rồi dán mã kết nối dưới đây. Giữ app và các tab AI mở khi chạy.</p><label class="field" for="chromePairing">Mã kết nối phiên này<input id="chromePairing" type="password" readonly autocomplete="off" spellcheck="false"></label><p>Mã này cấp quyền thao tác các tab AI qua tiện ích đồng hành. Chỉ dán vào tiện ích Workflow trên máy của bạn.</p><p id="chromeStatus" class="form-error" role="status"></p><div class="dialog-actions"><button id="revealChrome" class="secondary" type="button" aria-pressed="false">Hiện mã</button><button id="closeChrome" class="secondary">Đóng</button><button id="copyChrome" class="primary">Sao chép mã</button></div>

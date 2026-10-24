@@ -166,6 +166,45 @@ class ProjectStore {
     return { ...record.project };
   }
 
+  async trashRoot() {
+    await this.ensureRoot();
+    const dir = path.join(this.root, '.trash');
+    await fs.mkdir(dir, { recursive: true, mode: 0o700 });
+    const stat = await fs.lstat(dir);
+    if (!stat.isDirectory() || stat.isSymbolicLink()) throw new Error('Thư mục đã xóa không hợp lệ.');
+    return dir;
+  }
+
+  async trash(id) {
+    return this.serialize(id, async () => {
+      const source = await this.existingDirectory(id);
+      const target = path.join(await this.trashRoot(), id);
+      try { await fs.lstat(target); }
+      catch (error) {
+        if (error.code !== 'ENOENT') throw error;
+        await fs.rename(source, target);
+        return { id };
+      }
+      throw new Error('Dự án đã có trong mục đã xóa.');
+    });
+  }
+
+  async undoTrash(id) {
+    return this.serialize(id, async () => {
+      const target = this.directory(id);
+      const source = path.join(await this.trashRoot(), id);
+      const stat = await fs.lstat(source);
+      if (!stat.isDirectory() || stat.isSymbolicLink()) throw new Error('Dự án đã xóa không hợp lệ.');
+      try { await fs.lstat(target); }
+      catch (error) {
+        if (error.code !== 'ENOENT') throw error;
+        await fs.rename(source, target);
+        return { id };
+      }
+      throw new Error('Dự án đang tồn tại; không thể ghi đè khi hoàn tác.');
+    });
+  }
+
   async restore(id) {
     return this.serialize(id, async () => {
       const dir = await this.existingDirectory(id);

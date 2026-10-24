@@ -1,8 +1,18 @@
-# Workflow · MuseFlow 0.35.0
+# Workflow · MuseFlow 0.35.1
 
 **[⬇ ĐÓNG GÓI / CẬP NHẬT APP MAC](https://github.com/mktminhqpbga-glitch/app-mooz/actions/workflows/desktop.yml)** · **[Hướng dẫn từng bước](docs/PACKAGING.md)**
 
 Bấm liên kết trên → **Run workflow** → chọn `main`. Khi build xong, tải artifact DMG đúng loại Mac. Có thể chọn tạo draft Release để chuẩn bị bản cập nhật; app nhận biết sau khi bạn Publish release mới hơn.
+
+## Xóa dự án trong thư viện · 0.35.1
+
+Mỗi thẻ dự án có **Xóa**, hộp thoại xác nhận và **Hoàn tác**. Cần đóng cửa sổ dự án trước khi xóa. Thao tác chuyển dữ liệu dự án sang thư mục `.trash` nội bộ, giữ bản lưu trước và tệp media để hoàn tác; chưa xóa vĩnh viễn hay giải phóng dung lượng. Có thể hoàn tác lần lượt các dự án vừa xóa trong phiên mở thư viện hiện tại.
+
+Nút **Hoàn tác** chỉ có trong phiên thư viện hiện tại. Dữ liệu đã xóa vẫn giữ trên máy sau khi khởi động lại.
+
+## Nhận ảnh Muse đúng lượt · 0.35.1
+
+Ảnh kết quả phải nằm sau tin nhắn của lượt vừa gửi. URL mới hoặc bong bóng lịch sử được dựng lại không đủ để nhận là kết quả mới; với prompt lặp lại, phải thấy thêm tin nhắn khớp prompt. Bỏ ảnh trong bong bóng gửi đi và đối chiếu SHA-256 với ảnh tham chiếu đã tải để loại bản hiển thị lại bằng URL khác. Nếu chưa xác nhận được lượt gửi thì tiếp tục đợi, cho phép Dừng và không tự gửi lại prompt. Kiểm thử Chromium mô phỏng lịch sử dựng lại, bốn ảnh tham chiếu, URL blob mới, prompt trùng và kết quả dọc đến muộn; chưa xác minh trong tài khoản Muse đăng nhập thật. Nếu dùng các tab Chrome, cập nhật tiện ích đồng hành từ `downloads/Workflow-extension.zip`, bấm Reload tại `chrome://extensions` rồi tải lại tab Muse để thay bộ nối đang chạy; chỉ thay app desktop không cập nhật bộ nối đã nạp trong Chrome.
 
 ## Ứng dụng AI và tệp trong chat · 0.35.0
 
@@ -155,6 +165,7 @@ node --test tests/*.test.mjs
 node tests/browser-smoke.cjs
 node tests/bridge-smoke.cjs
 node tests/muse-smoke.cjs
+node tests/muse-result-association-smoke.cjs
 node tests/workflow-chat-smoke.cjs
 node tests/chat-media-smoke.cjs
 ```

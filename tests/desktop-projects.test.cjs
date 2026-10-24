@@ -105,3 +105,49 @@ test('invalid IDs, traversal, symbolic project paths, and invalid names are refu
   await assert.rejects(store.readStorage(project.id), /Thư mục dự án/);
   await assert.rejects(store.list(), /đường dẫn dự án/);
 });
+
+test('deleting hides only the chosen project and undo preserves saved state and recovery bytes', async t => {
+  const { root, store } = await fixture(t);
+  const first = await store.create('Xóa rồi hoàn tác');
+  const other = await store.create('Giữ lại');
+  const pending = store.writeStorage(first.id, { content: 'latest pending save' });
+  const removal = store.trash(first.id);
+  await Promise.all([pending, removal]);
+  assert.deepEqual((await store.list()).map(p => p.id), [other.id]);
+  await assert.rejects(store.readStorage(first.id), { code: 'ENOENT' });
+  const archived = path.join(root, '.trash', first.id);
+  const before = await fs.readFile(path.join(archived, 'project.json'), 'utf8');
+  const backup = await fs.readFile(path.join(archived, 'project.json.previous'), 'utf8');
+  // A fresh store can recover the hidden project after restarting the application.
+  const fresh = new ProjectStore(root);
+  await fresh.undoTrash(first.id);
+  assert.equal((await fresh.readStorage(first.id)).content, 'latest pending save');
+  assert.equal(await fs.readFile(path.join(root, first.id, 'project.json'), 'utf8'), before);
+  assert.equal(await fs.readFile(path.join(root, first.id, 'project.json.previous'), 'utf8'), backup);
+  assert.equal((await fresh.list()).length, 2);
+});
+
+test('deletion preserves corrupt files and undo refuses to overwrite an existing project', async t => {
+  const { root, store } = await fixture(t);
+  const project = await store.create('Damaged');
+  await fs.writeFile(path.join(root, project.id, 'project.json'), '{broken');
+  await store.trash(project.id);
+  await fs.mkdir(path.join(root, project.id));
+  await assert.rejects(store.undoTrash(project.id), /không thể ghi đè/);
+  assert.equal(await fs.readFile(path.join(root, '.trash', project.id, 'project.json'), 'utf8'), '{broken');
+  await fs.rmdir(path.join(root, project.id));
+  await store.undoTrash(project.id);
+  assert.equal((await store.list())[0].recoveryRequired, true);
+});
+
+test('delete and undo reject traversal and linked directories without touching external files', async t => {
+  const { root, store } = await fixture(t);
+  for (const id of ['../outside', '/etc', null, 'not-a-uuid']) {
+    await assert.rejects(store.trash(id), /Mã dự án/);
+    await assert.rejects(store.undoTrash(id), /Mã dự án/);
+  }
+  const project = await store.create('Linked trash');
+  await fs.symlink(os.tmpdir(), path.join(root, '.trash'));
+  await assert.rejects(store.trash(project.id), /Thư mục đã xóa/);
+  assert.equal((await store.list()).length, 1);
+});

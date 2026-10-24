@@ -7,6 +7,9 @@
   let recentOnly = false;
   let namingProject = null;
   let restoringProject = null;
+  let deletingProject = null;
+  const deletedProjects = [];
+  let deleting = false;
   let opening = false;
 
   function status(message = '', error = false) {
@@ -61,6 +64,21 @@
     $('restoreDialog').showModal();
   }
 
+  function deleteDialog(project) {
+    if (deleting) return;
+    deletingProject = project;
+    $('deleteDescription').textContent = 'Bạn muốn xóa dự án “' + project.name + '”?';
+    $('deleteError').textContent = '';
+    $('deleteDialog').showModal();
+    $('cancelDelete').focus();
+  }
+
+  function renderDeleteNotice() {
+    const last = deletedProjects.at(-1);
+    $('deleteNotice').hidden = !last;
+    $('deleteNoticeText').textContent = last ? 'Đã xóa “' + last.name + '” khỏi thư viện.' : '';
+  }
+
   function card(project) {
     const article = document.createElement('article');
     article.className = 'project-card';
@@ -105,7 +123,13 @@
     restore.disabled = !project.canRestore;
     restore.title = project.canRestore ? 'Dùng lại bản lưu trước gần nhất' : 'Chưa có bản lưu trước';
     restore.onclick = () => restoreDialog(project);
-    actions.append(rename, restore);
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'project-delete';
+    remove.textContent = 'Xóa';
+    remove.setAttribute('aria-label', 'Xóa dự án ' + project.name);
+    remove.onclick = () => deleteDialog(project);
+    actions.append(rename, restore, remove);
     article.append(button, actions);
     return article;
   }
@@ -187,6 +211,40 @@
   $('emptyCreate').onclick = () => nameDialog();
   $('cancelName').onclick = () => $('nameDialog').close();
   $('cancelRestore').onclick = () => $('restoreDialog').close();
+  $('cancelDelete').onclick = () => { if (!deleting) $('deleteDialog').close(); };
+  $('deleteDialog').addEventListener('cancel', event => { if (deleting) event.preventDefault(); });
+  $('confirmDelete').onclick = async () => {
+    if (!deletingProject || deleting) return;
+    deleting = true;
+    $('confirmDelete').disabled = $('cancelDelete').disabled = true;
+    $('deleteError').textContent = '';
+    try {
+      await api.deleteProject(deletingProject.id);
+      deletedProjects.push(deletingProject);
+      $('deleteDialog').close();
+      deletingProject = null;
+      await refresh();
+      renderDeleteNotice();
+    } catch (error) { $('deleteError').textContent = displayError(error); }
+    finally {
+      deleting = false;
+      $('confirmDelete').disabled = $('cancelDelete').disabled = false;
+    }
+  };
+  $('undoDelete').onclick = async () => {
+    const project = deletedProjects.at(-1);
+    if (!project || deleting) return;
+    deleting = true;
+    $('undoDelete').disabled = true;
+    try {
+      await api.undoDeleteProject(project.id);
+      deletedProjects.pop();
+      await refresh();
+      renderDeleteNotice();
+      status('Đã khôi phục dự án “' + project.name + '”.');
+    } catch (error) { status(displayError(error), true); }
+    finally { deleting = false; $('undoDelete').disabled = false; }
+  };
 
   $('nameForm').onsubmit = async event => {
     event.preventDefault();
@@ -256,6 +314,6 @@
     status('Không kết nối được ứng dụng desktop. Hãy đóng cửa sổ và mở lại Workflow.', true);
   } else {
     void refresh();
-    window.addEventListener('focus', () => { if (!$('nameDialog').open && !$('restoreDialog').open && !opening) void refresh(); });
+    window.addEventListener('focus', () => { if (!document.querySelector('dialog[open]') && !opening && !deleting) void refresh(); });
   }
 })();

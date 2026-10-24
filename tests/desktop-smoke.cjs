@@ -66,6 +66,21 @@ const path=require('node:path');
   await canvas.evaluate(async()=>{await chrome.tabs.update(909,{active:true});await chrome.windows.update(707,{focused:true});});
   peer.close();await once(peer,'close');
   await home.reload();await home.waitForSelector('.project-card');
+  // Deletion is explicit, library-only, blocked for open projects and reversible.
+  await assert.rejects(()=>canvas.evaluate(id=>window.workflowDesktop.call('projects.trash',{id}),isolated.id),/Open project library/);
+  await home.getByRole('button',{name:'Xóa dự án '+project.name,exact:true}).click();
+  await home.waitForSelector('#deleteDialog[open]');
+  await home.click('#confirmDelete');await home.waitForFunction(()=>document.querySelector('#deleteError').textContent.includes('Đóng cửa sổ'));
+  assert.equal((await home.evaluate(()=>window.workflowHome.listProjects())).length,2);await home.click('#cancelDelete');
+  await application.evaluate(async(_,{id})=>globalThis.workflowTest.store.writeStorage(id,{keep:'deleted project content'}),{id:isolated.id});
+  await home.getByRole('button',{name:'Xóa dự án '+isolated.name,exact:true}).click();
+  assert.equal(await home.locator('#cancelDelete').evaluate(el=>el===document.activeElement),true);
+  await home.click('#cancelDelete');assert.equal((await home.evaluate(()=>window.workflowHome.listProjects())).length,2);
+  await home.getByRole('button',{name:'Xóa dự án '+isolated.name,exact:true}).click();await home.click('#confirmDelete');
+  await home.waitForFunction(()=>document.querySelectorAll('.project-card').length===1&&!document.querySelector('#deleteNotice').hidden);
+  await home.screenshot({path:path.join(os.tmpdir(),'workflow-project-delete.png')});
+  await home.click('#undoDelete');await home.waitForFunction(()=>document.querySelectorAll('.project-card').length===2&&document.querySelector('#deleteNotice').hidden);
+  assert.equal(await application.evaluate(async(_,id)=>(await globalThis.workflowTest.store.readStorage(id)).keep,isolated.id),'deleted project content');
   await home.screenshot({path:path.join(os.tmpdir(),'workflow-desktop-home.png')});
   // Closing the canvas must flush a change that has not reached the debounce timer.
   const {toolbarAction}=require('./toolbar-actions.cjs');

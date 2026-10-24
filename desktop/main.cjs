@@ -15,6 +15,7 @@ if(testMode){if(!process.env.WORKFLOW_TEST_DATA)throw Error('Missing test data d
 let store,home,ai,relay,updater,chromeEverConnected=false;
 const managedProjects=new Set();
 const canvases=new Map(),sessionData=new Map(),requests=new Map(),installedSessions=new WeakSet();
+const projectTransitions=new Set();
 function notify(value){if(value.type==='update'&&home&&!home.isDestroyed())home.webContents.send('workflow:event',value);if(value.type==='relay'&&value.connected){chromeEverConnected=true;managedProjects.clear();}for(const win of canvases.values())if(!win.isDestroyed())win.webContents.send('workflow:event',value);}
 async function setupSession(ses){
   if(installedSessions.has(ses))return;installedSessions.add(ses);
@@ -41,6 +42,9 @@ async function openHome(){
   protect(home);home.on('closed',()=>{home=null;});await home.loadURL('workflow://app/desktop/home.html');
 }
 async function openProject(id){
+  if(projectTransitions.has(id))throw Error('Dự án đang được xử lý. Vui lòng thử lại.');
+  projectTransitions.add(id);
+  try{
   const info=(await store.list()).find(item=>item.id===id);if(!info)throw Error('Không tìm thấy dự án.');
   await store.readStorage(id); // Refuse corrupt project rather than replacing it with a blank one.
   const existing=canvases.get(id);if(existing&&!existing.isDestroyed()){existing.show();existing.focus();return info;}
@@ -62,6 +66,7 @@ async function openProject(id){
   win.on('close',event=>{if(!win.workflowCloseAllowed){event.preventDefault();void win.prepareToClose();}});
   win.on('closed',()=>{canvases.delete(id);sessionData.delete(id);for(const [key,value]of requests)if(key.startsWith(id+':'))value.abort();});
   await win.loadURL('workflow://app/app.html');return info;
+  }finally{projectTransitions.delete(id);}
 }
 function context(event){
   const frame=event.senderFrame;if(!frame||frame!==event.sender.mainFrame)throw Error('Only the application window can request desktop actions.');
@@ -111,6 +116,14 @@ ipcMain.handle('workflow:call',async(event,method,data={})=>{
   if(method==='projects.open'){if(!ctx.home)throw Error('Open project library first.');const info=await openProject(data.id);if(data.view==='chat')await canvases.get(data.id).webContents.executeJavaScript('window.WorkflowChat?.open()');return info;}
   if(method==='projects.rename'){if(!ctx.home)throw Error('Open project library first.');return store.rename(data.id,data.name);}
   if(method==='projects.restore'){if(!ctx.home)throw Error('Open project library first.');if(canvases.has(data.id))throw Error('Đóng cửa sổ dự án trước khi khôi phục.');return store.restore(data.id);}
+  if(method==='projects.trash'||method==='projects.undoTrash'){
+    if(!ctx.home)throw Error('Open project library first.');
+    if(canvases.has(data.id))throw Error('Đóng cửa sổ dự án trước khi xóa hoặc hoàn tác.');
+    if(projectTransitions.has(data.id))throw Error('Dự án đang được xử lý. Vui lòng thử lại.');
+    projectTransitions.add(data.id);
+    try{return await (method==='projects.trash'?store.trash(data.id):store.undoTrash(data.id));}
+    finally{projectTransitions.delete(data.id);}
+  }
   if(method==='home.open'){await openHome();return;}
   if(!id)throw Error('Project context required.');
   if(method==='project.info')return (await store.list()).find(item=>item.id===id);
