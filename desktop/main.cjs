@@ -10,6 +10,7 @@ const {PostingStore}=require('./posting-store.cjs');
 const {FacebookPublisher}=require('./facebook-publisher.cjs');
 const {PostingService}=require('./posting-service.cjs');
 const {PostingAI}=require('./posting-ai.cjs');
+const {PostingOAuth}=require('./posting-oauth.cjs');
 const {UpdateService,isDeveloperIDSigned,latestPublicRelease}=require('./updater.cjs');
 const version=require('../package.json').version;
 const root=path.resolve(__dirname,'..');
@@ -18,7 +19,7 @@ const testMode=process.env.WORKFLOW_DESKTOP_TEST==='1'&&!app.isPackaged;
 if(testMode){if(!process.env.WORKFLOW_TEST_DATA)throw Error('Missing test data directory');app.setPath('userData',path.resolve(process.env.WORKFLOW_TEST_DATA));}
 if(!app.requestSingleInstanceLock())app.exit(0);
 app.on('second-instance',()=>{if(home&&!home.isDestroyed()){home.show();home.focus();}});
-let store,home,ai,relay,updater,downloads,posting,postingAI,postingWindow,chromeEverConnected=false;
+let store,home,ai,relay,updater,downloads,posting,postingAI,postingOAuth,postingWindow,chromeEverConnected=false;
 const managedProjects=new Set();
 const canvases=new Map(),sessionData=new Map(),requests=new Map(),installedSessions=new WeakSet();
 const projectTransitions=new Set();
@@ -45,7 +46,7 @@ function protect(win){
 }
 async function openPosting(){
  if(postingWindow&&!postingWindow.isDestroyed()){postingWindow.show();postingWindow.focus();return;}
- postingWindow=new BrowserWindow({width:1400,height:930,minWidth:900,minHeight:680,title:'Đăng bài · Workflow',backgroundColor:'#111723',webPreferences:{preload:path.join(__dirname,'preload.cjs'),additionalArguments:['--workflow-version='+version],backgroundThrottling:false,contextIsolation:true,sandbox:true,nodeIntegration:false,webSecurity:true}});protect(postingWindow);postingWindow.on('closed',()=>{postingWindow=null;});await setupSession(session.defaultSession);await postingWindow.loadURL('workflow://app/desktop/posting.html');
+ postingWindow=new BrowserWindow({width:1400,height:930,minWidth:900,minHeight:680,title:'Đăng bài · Workflow',backgroundColor:'#111723',webPreferences:{preload:path.join(__dirname,'preload.cjs'),additionalArguments:['--workflow-version='+version],backgroundThrottling:false,contextIsolation:true,sandbox:true,nodeIntegration:false,webSecurity:true}});protect(postingWindow);postingWindow.on('closed',()=>{postingOAuth?.cancel();postingWindow=null;});await setupSession(session.defaultSession);await postingWindow.loadURL('workflow://app/desktop/posting.html');
 }
 async function openHome(){
   if(home&&!home.isDestroyed()){home.show();home.focus();return;}
@@ -120,6 +121,12 @@ ipcMain.handle('workflow:call',async(event,method,data={})=>{
    if(method==='posting.tabs')return postingAI.tabs();
    if(method==='posting.openAI')return ai.open('chatgpt');
    if(method==='posting.connect')return posting.publisher.connect(data);
+   if(method==='posting.youtube'){const credentials=await postingOAuth.google(data.config);return posting.publisher.connectYouTube(credentials);}
+   if(method==='posting.oauth.cancel'){postingOAuth.cancel();return;}
+   if(method==='posting.instagram')return posting.publisher.connectInstagram(data);
+   if(method==='posting.tiktok')return posting.publisher.connectTikTok(data);
+   if(method==='posting.storage')return posting.publisher.connectStorage(data);
+   if(method==='posting.verify')return posting.publisher.verify(data.id);
    if(method==='posting.webhook')return posting.publisher.connectWebhook(data);
    if(method==='posting.disconnect'){if(posting.busy())throw Error('Chờ tác vụ đăng bài hoàn tất.');return posting.publisher.disconnect(data.id);}
    if(method==='posting.settings')return posting.settingsSave(data);
@@ -194,18 +201,21 @@ app.whenReady().then(async()=>{
   ai=new AIWindows(root,version,notify,async projectId=>projectId?(await store.readStorage(projectId)).workflowMuseSendTarget:null);
   const postingRoot=path.join(app.getPath('userData'),'posting');
   const postingStore=new PostingStore(postingRoot),publisher=new FacebookPublisher({root:postingRoot,fetch:net.fetch.bind(net),safeStorage:require('electron').safeStorage});
+  postingOAuth=new PostingOAuth({fetch:net.fetch.bind(net),openExternal:url=>shell.openExternal(url)});
   postingAI=new PostingAI({ai,relay,store:postingStore});posting=new PostingService({store:postingStore,publisher,ask:(...args)=>postingAI.ask(...args),notify:()=>notify({type:'posting'})});await posting.init();posting.start();
   const signed=app.isPackaged&&process.platform==='darwin'&&await isDeveloperIDSigned(path.dirname(path.dirname(path.dirname(process.execPath))));
   updater=new UpdateService({version,packaged:app.isPackaged,platform:process.platform,signed,engine:signed?require('electron-updater').autoUpdater:null,fetchRelease:()=>latestPublicRelease(net.fetch.bind(net)),
     prepareInstall:async()=>{
+      posting.hold=true;try{
       if(posting?.busy()){await dialog.showMessageBox({type:'info',buttons:['Đóng'],message:'Chờ tác vụ đăng bài hoàn tất trước khi cài cập nhật.'});return false;}
       const answer=await dialog.showMessageBox({type:'question',buttons:['Để sau','Lưu và cài'],defaultId:0,cancelId:0,message:'Lưu công việc, dừng các workflow rồi cài và khởi động lại?',detail:'Dự án và thiết lập vẫn được giữ trên máy.'});
       if(answer.response!==1)return false;
       for(const win of [...canvases.values()])if(!await win.prepareToClose({requireSaved:true}))return false;
       return true;
-    },onInstallStart:()=>{quitApproved=true;},onInstallFailed:()=>{quitApproved=false;}});
+      }finally{if(!quitApproved)posting.hold=false;}
+    },onInstallStart:()=>{posting.hold=true;quitApproved=true;},onInstallFailed:()=>{posting.hold=false;quitApproved=false;}});
   updater.on('status',status=>notify({type:'update',status}));updater.start();
-  if(testMode)globalThis.workflowTest={store,ai,relay,updater,posting,postingAI,openProject,openHome,openPosting};
+  if(testMode)globalThis.workflowTest={store,ai,relay,updater,posting,postingAI,postingOAuth,openProject,openHome,openPosting};
   Menu.setApplicationMenu(Menu.buildFromTemplate([
     ...(process.platform==='darwin'?[{role:'appMenu'}]:[]),
     {label:'Dự án',submenu:[{label:'Thư viện dự án',accelerator:'CmdOrCtrl+Shift+P',click:()=>void openHome()},{role:'close'},{role:'quit'}]},
@@ -218,7 +228,7 @@ app.on('activate',()=>{if(!home||home.isDestroyed())void openHome();});
 app.on('window-all-closed',()=>{if(process.platform!=='darwin')app.quit();});
 let quitApproved=false,quitInProgress=false;
 app.on('before-quit',event=>{
-  if(quitApproved)return;event.preventDefault();if(quitInProgress)return;quitInProgress=true;
-  void(async()=>{try{if(posting?.busy()){const answer=await dialog.showMessageBox({type:'warning',buttons:['Ở lại','Thoát ứng dụng'],defaultId:0,cancelId:0,message:'Đăng bài đang xử lý. Thoát có thể làm gián đoạn gửi bài; kiểm tra nền tảng trước khi thử lại.'});if(answer.response!==1)return;}for(const win of [...canvases.values()])if(!await win.prepareToClose())return;quitApproved=true;app.quit();}finally{quitInProgress=false;}})();
+  if(quitApproved)return;event.preventDefault();if(quitInProgress)return;quitInProgress=true;if(posting)posting.hold=true;
+  void(async()=>{try{if(posting?.busy()){const answer=await dialog.showMessageBox({type:'warning',buttons:['Ở lại','Thoát ứng dụng'],defaultId:0,cancelId:0,message:'Đăng bài đang xử lý. Thoát có thể làm gián đoạn gửi bài; kiểm tra nền tảng trước khi thử lại.'});if(answer.response!==1)return;}for(const win of [...canvases.values()])if(!await win.prepareToClose())return;quitApproved=true;app.quit();}finally{quitInProgress=false;if(posting&&!quitApproved)posting.hold=false;}})();
 });
-app.on('will-quit',()=>{posting?.close();updater?.stop();void relay?.close();for(const controller of requests.values())controller.abort();});
+app.on('will-quit',()=>{postingOAuth?.cancel();posting?.close();updater?.stop();void relay?.close();for(const controller of requests.values())controller.abort();});

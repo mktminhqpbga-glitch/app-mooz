@@ -1,0 +1,92 @@
+'use strict';
+const {test}=require('node:test');
+const assert=require('node:assert/strict');
+const fs=require('node:fs/promises');
+const path=require('node:path');
+const os=require('node:os');
+const {PostingStore}=require('../desktop/posting-store.cjs');
+const {PostingService}=require('../desktop/posting-service.cjs');
+const {FacebookPublisher}=require('../desktop/facebook-publisher.cjs');
+const {PostingOAuth,GOOGLE_SCOPES,clientConfig}=require('../desktop/posting-oauth.cjs');
+const {tikTokChunks}=require('../desktop/posting-native.cjs');
+const {uploadURL,json}=require('../desktop/posting-http.cjs');
+const secure={isEncryptionAvailable:()=>true,getSelectedStorageBackend:()=> 'keychain',encryptString:text=>Buffer.from(text).map(x=>x^71),decryptString:bytes=>Buffer.from(bytes).map(x=>x^71).toString()};
+const channel='UCabcdefghijklmnopqrstuv';
+const google={installed:{client_id:'123-abcdef.apps.googleusercontent.com',client_secret:'GOCSPX-test-client'}};
+async function fixture(t){const root=await fs.mkdtemp(path.join(os.tmpdir(),'posting-native-'));t.after(()=>fs.rm(root,{recursive:true,force:true}));const store=new PostingStore(root);await store.init();return {root,store};}
+async function makeJob(store,{video=false,size=3,key='test'}={}){const bytes=new Uint8Array(size).fill(51),{id}=await store.begin(1,'p',{title:'Video thời trang',sourceKey:key,sourcePrompt:'private source context',media:[{kind:video?'video':'image',mime:video?'video/mp4':'image/png',size,name:video?'look.mp4':'look.png',duration:video?12:undefined}]});for(let offset=0;offset<size;offset+=1024*1024)await store.append(1,{id,index:0,offset,bytes:bytes.slice(offset,offset+1024*1024)});const job=await store.commit(1,id);job.caption='Thành phẩm mới';return job;}
+function publisher(root,fetch){return new FacebookPublisher({root,fetch,safeStorage:secure});}
+function service(store,p){return new PostingService({store,publisher:p,ask:async()=> 'Content đã viết',notify:()=>{}});}
+const creator={creator_username:'shop.test',creator_nickname:'Shop',privacy_level_options:['SELF_ONLY'],comment_disabled:true,duet_disabled:false,stitch_disabled:false,max_video_post_duration_sec:60};
+
+test('Google Desktop OAuth binds loopback, verifies state and PKCE, and obtains offline scopes',async()=>{
+ let opened,tokenRequest,redirect;const oauth=new PostingOAuth({fetch:async(url,opts)=>{assert.equal(url,'https://oauth2.googleapis.com/token');tokenRequest=new URLSearchParams(opts.body);return Response.json({access_token:'test-access',refresh_token:'test-refresh',expires_in:3600,scope:GOOGLE_SCOPES.join(' ')});},openExternal:async value=>{
+  opened=new URL(value);redirect=new URL(opened.searchParams.get('redirect_uri'));assert.equal(redirect.hostname,'127.0.0.1');
+  const bad=new URL(redirect);bad.searchParams.set('state','é'.repeat(opened.searchParams.get('state').length));assert.equal((await fetch(bad)).status,400);
+  bad.searchParams.set('state','wrong');assert.equal((await fetch(bad)).status,400);
+  const callback=new URL(redirect);callback.searchParams.set('state',opened.searchParams.get('state'));callback.searchParams.set('code','one-use-code');assert.equal((await fetch(callback)).status,200);assert.equal((await fetch(callback)).status,400);
+ }});
+ const result=await oauth.google(google);assert.equal(result.refreshToken,'test-refresh');assert.equal(opened.searchParams.get('access_type'),'offline');assert.equal(opened.searchParams.get('code_challenge_method'),'S256');assert.equal(require('node:crypto').createHash('sha256').update(tokenRequest.get('code_verifier')).digest('base64url'),opened.searchParams.get('code_challenge'));assert.equal(tokenRequest.get('redirect_uri'),redirect.href);assert.equal(oauth.sessions.size,0);await assert.rejects(fetch(redirect));
+});
+test('OAuth rejects missing permissions, supports cancellation and rejects non-Desktop configs',async()=>{
+ assert.throws(()=>clientConfig({web:google.installed}),/Desktop/);
+ const oauth=new PostingOAuth({fetch:async()=>{throw Error('No token request on cancel');},openExternal:async()=>oauth.cancel()});await assert.rejects(oauth.google(google),{name:'AbortError'});assert.equal(oauth.sessions.size,0);
+ const denied=new PostingOAuth({fetch:async()=>Response.json({access_token:'test',refresh_token:'refresh',scope:GOOGLE_SCOPES[0]}),openExternal:async value=>{const auth=new URL(value),url=new URL(auth.searchParams.get('redirect_uri'));url.searchParams.set('state',auth.searchParams.get('state'));url.searchParams.set('code','code');await fetch(url);}});await assert.rejects(denied.google(google),/đủ quyền/);
+ const timeout=new PostingOAuth({fetch,openExternal:async()=>{}});await assert.rejects(timeout.google(google,{timeout:10}),/Hết thời gian/);
+});
+test('provider upload hosts and error responses cannot leak a token through redirects or arbitrary URLs',async()=>{
+ for(const bad of ['https://evil.example/upload/youtube/','http://www.googleapis.com/upload/youtube/','https://user@www.googleapis.com/upload/youtube/','https://127.0.0.1/upload/youtube/'])assert.throws(()=>uploadURL(bad,'youtube'));
+ assert.equal(new URL(uploadURL('https://open-upload.tiktokapis.com/video/?key=test','tiktok')).hostname,'open-upload.tiktokapis.com');
+ await assert.rejects(json(Response.json({error:{message:'secret-token'}},{status:401})),error=>error.code==='AUTH_EXPIRED'&&!error.message.includes('secret-token')&&error.rejected);
+ await assert.rejects(json(Response.json({error:{}},{status:503})),error=>error.code==='PROVIDER_5XX'&&!error.rejected);
+});
+test('YouTube uploads real chunk bytes, refreshes credentials, and tracks final processing',async t=>{
+ const {root,store}=await fixture(t),job=await makeJob(store,{video:true,size:8*1024*1024+3}),calls=[];let refresh=0;
+ const p=publisher(root,async(url,opts={})=>{calls.push({url,opts});if(url==='https://oauth2.googleapis.com/token'){refresh++;return Response.json({access_token:'new-access-token',expires_in:3600});}if(url.includes('/channels?'))return Response.json({items:[{id:channel,snippet:{title:'Shop'}}]});if(url.includes('uploadType=resumable'))return new Response(null,{status:200,headers:{Location:'https://www.googleapis.com/upload/youtube/v3/videos?upload_id=fixture'}});if(opts.method==='PUT'){assert.equal(opts.headers.Authorization,'Bearer new-access-token');assert.equal(opts.body[0],51);return opts.body.length===3?Response.json({id:'abcdefghijk',status:{uploadStatus:'uploaded'}}):new Response(null,{status:308,headers:{Range:'bytes=0-8388607'}});}if(url.includes('/videos?'))return Response.json({items:[{id:'abcdefghijk',status:{uploadStatus:'processed'}}]});throw Error('Unexpected '+url);});
+ await p.connectYouTube({accessToken:'expired',refreshToken:'refresh',clientId:google.installed.client_id,clientSecret:'secret',expiresAt:Date.now()+3600000});const c=p.connections[0];c.token=JSON.stringify({...JSON.parse(c.token),expiresAt:1});job.connectionId=c.id;job.options={youtube:{privacy:'private',madeForKids:false,synthetic:true}};const phases=[];
+ const result=await p.publish(job,store,async phase=>phases.push(phase));assert.equal(refresh,1);assert.equal(result.id,'abcdefghijk');assert.equal(result.processing,true);assert.deepEqual(phases,['uploading','uploading','publishing']);const puts=calls.filter(c=>c.opts.method==='PUT');assert.equal(puts[0].opts.headers['Content-Range'],'bytes 0-8388607/8388611');assert.equal(puts[1].opts.headers['Content-Range'],'bytes 8388608-8388610/8388611');const meta=JSON.parse(calls.find(c=>c.url.includes('uploadType')).opts.body);assert.equal(meta.status.privacyStatus,'private');assert.equal(meta.status.selfDeclaredMadeForKids,false);job.result=result;assert.equal((await p.check(job)).state,'published');assert.equal(JSON.stringify(p.list()).includes('new-access-token'),false);assert.equal((await fs.readFile(path.join(root,'connections.json'),'utf8')).includes('new-access-token'),false);
+});
+test('native preflight blocks incomplete YouTube options, TikTok privacy and missing metadata',async t=>{
+ const {root,store}=await fixture(t),p=publisher(root,async()=>Response.json({data:creator,error:{code:'ok'}})),job=await makeJob(store,{video:true});await p.connectTikTok({accessToken:'token-test-123456789012345'});job.connectionId=p.list()[0].id;assert.match(p.preflight(job),/quyền riêng tư/);job.options={tiktok:{privacy:'PUBLIC_TO_EVERYONE',musicRights:true}};assert.match(p.preflight(job),/quyền riêng tư/);job.options.tiktok.privacy='SELF_ONLY';job.options.tiktok.musicRights=false;assert.match(p.preflight(job),/âm nhạc/);job.options.tiktok.musicRights=true;assert.equal(p.preflight(job),'');delete job.media[0].duration;assert.match(p.preflight(job),/thời lượng/);
+ p.connections.push({id:'yt',transport:'youtube'});job.connectionId='yt';assert.match(p.preflight(job),/trẻ em/);
+});
+test('TikTok follows creator choices, uploads only to signed provider host and polls actual result',async t=>{
+ const {root,store}=await fixture(t),job=await makeJob(store,{video:true}),calls=[];const p=publisher(root,async(url,opts)=>{calls.push({url,opts});if(url.includes('creator_info'))return Response.json({data:creator,error:{code:'ok'}});if(url.includes('video/init'))return Response.json({data:{publish_id:'v_pub_123',upload_url:'https://open-upload.tiktokapis.com/video/?signature=fixture'},error:{code:'ok'}});if(url.includes('open-upload')){assert.equal(opts.headers.Authorization,undefined);assert.equal(opts.body.length,3);return new Response(null,{status:201});}return Response.json({data:{status:'PUBLISH_COMPLETE',publicaly_available_post_id:['123456789']},error:{code:'ok'}});});
+ await p.connectTikTok({accessToken:'tiktok-access-123456789012345'});job.connectionId=p.list()[0].id;job.options={tiktok:{privacy:'SELF_ONLY',musicRights:true,synthetic:true}};const result=await p.publish(job,store,async()=>{});const init=JSON.parse(calls.find(c=>c.url.includes('video/init')).opts.body);assert.equal(init.post_info.privacy_level,'SELF_ONLY');assert.equal(init.post_info.disable_comment,true);assert.equal(init.post_info.is_aigc,true);assert.equal(init.source_info.total_chunk_count,1);job.result=result;const check=await p.check(job);assert.equal(check.state,'published');assert.match(check.result.url,/video\/123456789$/);
+ for(const size of [1,5*1024*1024,64*1024*1024+17,128*1024*1024]){const chunks=tikTokChunks(size);assert.equal(chunks.ranges[0].start,0);assert.equal(chunks.ranges.at(-1).end,size-1);assert.equal(chunks.ranges.reduce((sum,r)=>sum+r.end-r.start+1,0),size);if(chunks.count>1)assert.ok(chunks.ranges.at(-1).end-chunks.ranges.at(-1).start+1>=chunks.chunkSize);}
+});
+test('Instagram verifies linked account and hosts JPEG media before container publication',async t=>{
+ const {root,store}=await fixture(t),job=await makeJob(store),calls=[];const p=publisher(root,async(url,opts={})=>{calls.push({url,opts});if(url.includes('instagram_business_account'))return Response.json({instagram_business_account:{id:'555555',username:'shop.ig'}});if(url.includes('/resources/'))return Response.json({resources:[]});if(url.includes('api.cloudinary.com')&&url.endsWith('/upload')){assert.equal(opts.body.get('file').size,3);assert.match(opts.body.get('signature'),/^[a-f0-9]{40}$/);return Response.json({secure_url:'https://res.cloudinary.com/shop/image/upload/v1/workflow/photo.png'});}if(url.includes('status_code'))return Response.json({status_code:'FINISHED'});if(url.endsWith('/555555/media')){assert.match(opts.body.get('image_url'),/f_jpg,q_auto/);return Response.json({id:'666666'});}if(url.endsWith('/media_publish'))return Response.json({id:'777777'});if(url.includes('permalink'))return Response.json({permalink:'https://www.instagram.com/p/posted/'});throw Error('Unexpected '+url);});
+ p.connections=[{id:'fb',pageId:'123456',token:'page-token',transport:'facebook'}];await p.connectInstagram({facebookId:'fb'});job.connectionId=p.list().find(c=>c.transport==='instagram').id;assert.match(p.preflight(job),/Cloudinary/);await p.connectStorage({cloudName:'shop',apiKey:'123456789',apiSecret:'secret-for-media-123'});assert.equal(p.preflight(job),'');assert.equal(p.list().length,2);const phases=[];const result=await p.publish(job,store,async phase=>phases.push(phase));assert.equal(result.id,'777777');assert.equal(result.accountLink,false);assert.equal(phases.at(-1),'publishing');assert.equal(calls.filter(c=>c.url.endsWith('/media_publish')).length,1);assert.equal(JSON.stringify(p.storage()).includes('secret-for-media'),false);
+});
+
+test('incomplete per-platform dispatch is never sent and can recover without duplicate destinations',async t=>{
+ const {root,store}=await fixture(t),p={init:async()=>{},list:()=>[{id:'a'},{id:'b'}],publish:async()=>{throw Error('must not send');}},s=service(store,p),job=await makeJob(store);await s.edit(job.id,{caption:job.caption,connectionIds:['a','b']});const destination=store.destination.bind(store);let count=0;store.destination=async(...args)=>{if(++count===2)throw Error('disk full');return destination(...args);};await assert.rejects(s.queuePost(job.id,{}),/disk full/);assert.equal((await store.list()).find(j=>j.parentId).status,'staged');await s.tick();assert.equal((await store.list()).find(j=>j.parentId).status,'error');
+ const restart=service(new PostingStore(root),p);await restart.init();assert.equal((await restart.store.read(job.id)).status,'error');await restart.queuePost(job.id,{});const children=(await restart.store.list()).filter(j=>j.parentId);assert.equal(children.length,2);assert.ok(children.every(j=>j.status==='queued'));
+});
+test('committed dispatch resumes activation after restart, snapshots omit internal state and source context',async t=>{
+ const {root,store}=await fixture(t),p={init:async()=>{},list:()=>[{id:'a'}]},job=await makeJob(store);job.dispatch={connectionIds:['a'],committed:true};job.status='prepared';job.internal={sessionURL:'secret-upload-url'};await store.save(job);await store.destination(job,'a',null,{staged:true});const s=service(new PostingStore(root),p);await s.init();assert.equal((await s.store.list()).find(j=>j.parentId).status,'queued');const snapshot=JSON.stringify(await s.snapshot());assert.equal(snapshot.includes('secret-upload-url'),false);assert.equal(snapshot.includes('private source context'),false);assert.equal(snapshot.includes('"file"'),false);
+});
+test('pause survives restart, worker orders older jobs first and serializes each account',async t=>{
+ const {root,store}=await fixture(t),sent=[],p={init:async()=>{},list:()=>[{id:'a'}],publish:async(j,_store,phase)=>{sent.push(j.title);await phase('publishing');return {id:'ok',url:'https://example.com/post'};}},s=service(store,p);
+ for(const [key,title,createdAt]of [['new','New','2026-10-24T02:00:00Z'],['old','Old','2026-10-24T01:00:00Z']]){const j=await makeJob(store,{key});j.title=title;j.createdAt=createdAt;j.connectionId='a';j.status='queued';await store.save(j);}
+ await s.settingsSave({paused:true});await s.tick();assert.deepEqual(sent,[]);const restart=service(new PostingStore(root),p);await restart.init();assert.equal(restart.settings.paused,true);await restart.settingsSave({paused:false});await restart.tick();assert.deepEqual(sent,['Old','New']);
+});
+test('auto queue validation failure keeps generated content and makes no publishable children',async t=>{
+ const {store}=await fixture(t),p={list:()=>[{id:'youtube'}],preflight:()=> 'Thiếu quyền riêng tư'},s=service(store,p),j=await makeJob(store);await s.edit(j.id,{autoPublish:true,connectionIds:['youtube']});await assert.rejects(s.caption(j.id,{}),/Thiếu/);const saved=await store.read(j.id);assert.equal(saved.caption,'Content đã viết');assert.equal(saved.status,'draft');assert.equal(saved.autoPublish,false);assert.equal((await store.list()).length,1);
+});
+test('upload phases stay cancelable; final requests cannot be stopped or automatically resent',async t=>{
+ const {store}=await fixture(t),j=await makeJob(store),p={list:()=>[{id:'a'}]},s=service(store,p);await s.edit(j.id,{caption:j.caption,connectionIds:['a']});await s.queuePost(j.id,{});const child=(await store.list()).find(j=>j.parentId);
+ p.publish=async(job,_store,phase,signal)=>{await phase('uploading',{progress:10});assert.equal((await store.read(job.id)).status,'uploading');s.stop(job.id);signal.throwIfAborted();};await s.tick();assert.equal((await store.read(child.id)).status,'error');await s.queuePost(child.id,{});
+ p.publish=async(job,_store,phase)=>{await phase('publishing');assert.throws(()=>s.stop(job.id),/Chờ xác nhận/);throw Error('connection lost');};await s.tick();const saved=await store.read(child.id);assert.equal(saved.status,'uncertain');assert.ok(saved.history.some(e=>e.status==='publishing'));await s.tick();assert.equal((await store.read(child.id)).status,'uncertain');
+});
+test('settings writes are transactional and corrupted/symlinked media cannot enter a queue',async t=>{
+ const {root,store}=await fixture(t),s=service(store,{list:()=>[{id:'a'}]}),j=await makeJob(store);await s.edit(j.id,{caption:j.caption,connectionIds:['a']});const media=await store.mediaPath(j.id,0);await fs.rm(media);await fs.symlink(path.join(root,'settings.json'),media);await assert.rejects(s.queuePost(j.id,{}));assert.equal((await store.list()).filter(j=>j.parentId).length,0);
+ await fs.mkdir(path.join(root,'settings.json'));await assert.rejects(s.settingsSave({paused:true}));assert.equal(s.settings.paused,false);
+});
+test('destination retries cannot silently switch to an already successful account',async t=>{
+ const {store}=await fixture(t),s=service(store,{list:()=>[{id:'a'},{id:'b'}]}),j=await makeJob(store);await s.edit(j.id,{caption:j.caption,connectionIds:['a','b']});await s.queuePost(j.id,{});const child=(await store.list()).find(j=>j.parentId&&j.connectionId==='a');await s.unqueue(child.id);await assert.rejects(s.edit(child.id,{connectionIds:['b']}),/bản nháp/);assert.equal((await store.read(child.id)).connectionId,'a');
+});
+test('refreshing a Facebook Page never overwrites its linked Instagram connection',async t=>{
+ const {root}=await fixture(t),p=publisher(root,async()=>Response.json({id:'123456',name:'Page'}));p.connections=[{id:'ig',transport:'instagram',platform:'instagram',pageId:'123456',accountId:'555555',token:'old-instagram'}];await p.connect({pageId:'123456',token:'page-token-123456789012345'});assert.equal(p.connections.length,2);assert.equal(p.connections.find(c=>c.id==='ig').token,'old-instagram');
+});
