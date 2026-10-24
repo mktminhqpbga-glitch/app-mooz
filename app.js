@@ -2417,14 +2417,22 @@
     name:n=>n.data.customName||nodeDefs[n.type]?.title||n.id
   });
   WorkflowStoryReferences.bind({layout:scheduleDrawEdges,read:storyReferenceSlots,put:setStoryReference,rename:(id,tag,label)=>{const master=storyReferenceMaster(id);if(state.isRunning)throw Error('Dừng tác vụ trước khi đổi tên.');Object.defineProperty(master.data.storyReferenceLabels||={},tag,{value:String(label).slice(0,100),writable:true,enumerable:true,configurable:true});const source=storyReferenceNode(master,tag);if(source){source.data.storyReferenceLabel=String(label).slice(0,100);dirtyStoryReference(source);}scheduleAutoSave();}});
+  WorkflowChat.init({
+    refresh:refreshChatTabs,
+    picker:(provider,onChange,current)=>{const select=document.createElement('select');select.setAttribute('aria-label','Tab trò chuyện của bot');select.append(new Option('Dùng tab mặc định của dự án',''));const tabs=aiChatTabs[provider]||[];for(const tab of tabs)select.append(new Option(tab.title||tab.url,String(tab.id)));const chosen=current||aiChatTargets[provider];if(tabs.some(t=>t.id===chosen?.tabId))select.value=String(chosen.tabId);select.onchange=()=>{const tab=tabs.find(t=>String(t.id)===select.value);onChange(tab?{tabId:tab.id,url:chatKey(tab.url)}:null);};return select;},
+    context:async()=>{await workflowReady;return {nodeCount:state.nodes.filter(n=>!n.data.dockOnly).length,edgeCount:state.edges.length,nodes:state.nodes.filter(n=>!n.data.dockOnly).slice(0,50).map(n=>({id:n.id,type:n.type,title:n.data.customName||nodeDefs[n.type].title,status:n.data.status||'idle',...(n.type==='prompt'||n.type==='storyPrompt'?{prompt:String(n.data.text||'').slice(0,300)}:{})})),sharedImages:state.nodes.filter(n=>n.type==='referenceBoard'&&n.data.shared).reduce((count,n)=>count+WorkflowReferences.images(n.data).length,0)};},
+    ask:async({provider,chatTarget,prompt,rules},signal)=>{await workflowReady;const node={data:{provider,chatTarget}},request={requestId:uid('chat'),mediaType:'text',prompt,rules,referenceImages:[],referenceVideos:[]};const reply=await generateWithProvider(node,request,signal);if(!reply?.ok||!reply.text)throw Error(reply?.error||'AI chưa trả về văn bản.');return reply.text;},
+    create:async(rows,providers)=>{await workflowReady;if(state.isRunning)throw Error('Có workflow đang chạy. Dừng hoặc chờ hoàn tất trước khi áp dụng kế hoạch mới.');return WorkflowCreative.createScenes(rows,providers);},
+    run:async(ids,signal)=>{if(signal.aborted)throw new DOMException('Đã dừng.','AbortError');if(state.isRunning||autoPlan)throw Error('Có lượt chạy khác. Các node mới đã được giữ để chạy sau.');const targets=ids.filter(id=>['generateImage','generateVideo'].includes(nodeById(id)?.type));if(!targets.length||ids.some(id=>!nodeById(id)))throw Error('Node của kế hoạch không còn đầy đủ. Kiểm tra canvas.');const cancel=()=>{if(autoPlan&&[...autoPlan.ids].every(id=>targets.includes(id)))autoPlan.controller.abort();for(const id of targets)stopGeneration(id);};signal.addEventListener('abort',cancel,{once:true});try{await runAutomatic(targets);if(signal.aborted)throw new DOMException('Đã dừng.','AbortError');const done=targets.filter(id=>nodeById(id)?.data.status==='success').length;return {total:targets.length,done,failed:targets.length-done};}finally{signal.removeEventListener('abort',cancel);}}
+  });
   const workflowReady=loadState(); detectMuse();applyCanvasTransform();
   if(window.workflowDesktop){
     // The desktop host waits for this before closing a canvas; a pending
     // debounce must not discard the last edit. Keep state and credentials private.
     window.WorkflowDesktopLifecycle=Object.freeze({
       flush:async()=>{await workflowReady;clearTimeout(autoSaveTimer);await queueWorkflowSave();},
-      stop:()=>{scriptAIController?.abort();if(storyBatch)storyBatch.stopped=true;stopTimelineExport();stopAllRuns();},
-      busy:()=>state.isRunning||state.timelineExporting||!!scriptAIController
+      stop:()=>{WorkflowChat.stop();scriptAIController?.abort();if(storyBatch)storyBatch.stopped=true;stopTimelineExport();stopAllRuns();},
+      busy:()=>state.isRunning||state.timelineExporting||!!scriptAIController||WorkflowChat.busy()
     });
   }
 })();

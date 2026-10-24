@@ -1,8 +1,20 @@
-# Workflow · MuseFlow 0.33.0
+# Workflow · MuseFlow 0.34.0
 
 **[⬇ ĐÓNG GÓI / CẬP NHẬT APP MAC](https://github.com/mktminhqpbga-glitch/app-mooz/actions/workflows/desktop.yml)** · **[Hướng dẫn từng bước](docs/PACKAGING.md)**
 
 Bấm liên kết trên → **Run workflow** → chọn `main`. Khi build xong, tải artifact DMG đúng loại Mac. Có thể chọn tạo draft Release để chuẩn bị bản cập nhật; app nhận biết sau khi bạn Publish release mới hơn.
+
+## Sửa bố cục desktop · 0.34.0
+
+Sửa xung đột CSS khiến canvas bị ép vào hàng thanh trạng thái khi app có thêm thanh desktop. Canvas dùng hết vùng giữa thanh trạng thái và dòng thời gian, kể cả khi đổi kích thước cửa sổ hoặc tải lại dự án. Thanh dòng thời gian giữ nút mở/thu gọn riêng; các thao tác xuất không chồng lên tiêu đề ở cửa sổ hẹp. Quy trình đóng gói Mac nay kiểm tra bố cục bằng Electron trước khi tạo bộ cài.
+
+## Chat AI trong dự án · 0.34.0
+
+Bấm **Chat AI** ở góc phải để mở bảng chat gọn, có thể thu lại khi làm việc. Chọn Gemini hoặc ChatGPT và đúng cuộc trò chuyện đã đăng nhập; không cần API key. Nên dùng tab riêng cho bot để tránh lẫn với chat tạo ảnh/video. Có thể gửi tóm tắt canvas (tên/loại node và đoạn prompt); app không đính kèm media, khóa API hay mã ghép nối trong ngữ cảnh chat.
+
+Bot có thể trả lời, viết prompt hoặc đề xuất cảnh ảnh/video. Kế hoạch hiển thị trước; chọn **Chỉ tạo node** hoặc **Tạo & chạy**. Bật **Tự tạo & chạy kế hoạch mới** nếu muốn bot áp dụng kế hoạch trong lượt chat tiếp theo: tối đa 10 tác vụ ảnh/video, chỉ chạy các node mới do kế hoạch đó tạo, dùng chung bộ điều phối tab và thời gian chờ. AI tạo ảnh/video do bạn chọn trong thiết lập, hiện dùng các adapter tab. Tác vụ sử dụng hạn mức của dịch vụ AI.
+
+**Dừng** hủy lượt hỏi/chạy hiện tại và chặn phản hồi đến muộn tạo thêm node. Node đã tạo được giữ để kiểm tra; không tự chạy lại sau lỗi. Kế hoạch không chạy mã, không xóa/sửa node cũ và không điều khiển hệ điều hành. Mô hình chỉ nhận văn bản, chưa tự nhìn video/ảnh trong chat này; dùng Trợ lý sáng tạo để phân tích video mẫu. Hội thoại giữ trong phiên app; xóa hội thoại trong app không xóa lịch sử trên nhà cung cấp. Bản thử này vẫn cần xác minh thực tế với tài khoản AI và Chrome của người dùng.
 
 ## Ảnh tham chiếu và Trợ lý sáng tạo · 0.33.0
 

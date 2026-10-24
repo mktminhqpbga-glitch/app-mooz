@@ -54,6 +54,8 @@ jobs:
         run: npm run setup:desktop
       - name: Run unit tests
         run: npm test
+      - name: Verify desktop canvas layout in Electron
+        run: node tests/desktop-layout-smoke.cjs
       - name: Build signed and notarized packages for both Mac architectures
         run: npm exec electron-builder -- --mac --arm64 --x64 -c.forceCodeSigning=true -c.mac.notarize=true --publish never
       - name: Verify automatic update metadata exists
