@@ -63,6 +63,7 @@
   let draggedGenerationId=null;
 
   const nodeDefs = {
+    imageCollection:{title:'Tổng ảnh',inputs:[{id:'image',label:'Các ảnh kết quả',type:'image'}],outputs:[{id:'image',label:'Cả bộ ảnh',type:'image'}]},
     referenceBoard:{title:'Ảnh tham chiếu chung',outputs:WorkflowReferences.outputs},
     videoInput: {title:'Video đầu vào',outputs:[{id:'video',label:'video gốc',type:'video'}]},
     generateText: {title:'Tạo văn bản',inputs:[{id:'prompt',label:'Yêu cầu',type:'text'},{id:'rules',label:'Quy tắc',type:'text'},{id:'reference',label:'Ảnh',type:'image'},{id:'video',label:'Video gốc',type:'video'}],outputs:[{id:'text',label:'Văn bản',type:'text'}]},
@@ -399,6 +400,16 @@
   const studioTemplatesReady=chrome.storage.local.get('workflowTemplates').then(saved=>{studioTemplates=Array.isArray(saved.workflowTemplates)?saved.workflowTemplates.filter(t=>t?.version===1&&typeof t.name==='string'&&Array.isArray(t.nodes)&&Array.isArray(t.edges)).slice(0,20):[];}).catch(()=>{});
   function studioSelect(body,node,key,label,options,fallback){const wrap=document.createElement('label');wrap.textContent=label;const select=document.createElement('select');select.setAttribute('aria-label',label);for(const [value,title] of options)select.append(new Option(title,value));select.value=node.data[key]||fallback;select.onchange=()=>{node.data[key]=select.value;if(WorkflowStudio.effects.has(node.type))storyTouch(node.id);scheduleAutoSave();};wrap.append(select);body.append(wrap);return select;}
   function studioButton(body,label,action,{disabled=false,cls='tool-action'}={}){const b=document.createElement('button');b.type='button';b.className=cls;b.textContent=label;b.disabled=disabled;b.onclick=()=>void Promise.resolve().then(action).catch(error=>setRunStatus(error.message,'error'));body.append(b);return b;}
+  function postingAssets(node,visited=new Set()){
+    if(!node||visited.has(node.id)||node.data.storyDirty||['running','error'].includes(node.data.status))return [];const next=new Set(visited);next.add(node.id);
+    if(node.type==='imageCollection'){const assets=[];for(const edge of getIncoming(node.id,'image')){const source=nodeById(edge.source);if(edge.sourcePort==='endFrame'){if(frameMatchesVideo(source))assets.push({...source.data.endFrame,kind:'image'});}else if(source?.type==='referenceBoard'){assets.push(...WorkflowReferences.select(source.data,edge.sourcePort).map(m=>({...m,kind:'image'})));}else assets.push(...postingAssets(source,next).filter(a=>a.kind==='image'));}return assets.filter((a,i)=>assets.findIndex(b=>b.url===a.url)===i);}
+    const asset=node.data.asset;if(asset?.url&&['image','video'].includes(asset.kind))return [{...asset,name:asset.name||node.data.customName||node.data.componentId}];
+    if(['imageInput','videoInput'].includes(node.type)&&node.data.localDataUrl)return [{id:node.id,kind:node.type==='videoInput'?'video':'image',url:node.data.localDataUrl,name:node.data.fileName||node.data.customName||node.data.componentId}];return [];
+  }
+  function postingButton(node,body,read){const b=studioButton(body,'＋ Thêm vào hàng chờ',async()=>{
+    if(b.disabled)return;b.disabled=true;try{const assets=read();if(!assets.length)throw Error('Chưa có kết quả hoàn tất để thêm.');if(node.type==='imageCollection'&&getIncoming(node.id,'image').some(e=>{const s=nodeById(e.source);return e.sourcePort==='endFrame'?!frameMatchesVideo(s):s?.type==='referenceBoard'?!WorkflowReferences.select(s.data,e.sourcePort).length:!postingAssets(s).length;}))throw Error('Một nguồn ảnh chưa có kết quả. Chạy đủ các nguồn trước.');const prompts=[],seen=new Set();const visit=n=>{if(!n||seen.has(n.id))return;seen.add(n.id);if(['generateImage','generateVideo'].includes(n.type))prompts.push(resolvePrompt(n.id));for(const e of getIncoming(n.id))visit(nodeById(e.source));};visit(node);await WorkflowPosting.enqueue({assets,title:node.data.customName||node.data.componentId||nodeDefs[node.type].title,sourceKey:node.id+':'+assets.map(a=>a.id||a.url.slice(-120)).join(':'),sourcePrompt:prompts.join('\n\n').slice(0,12000),progress:text=>{b.textContent=text;}});setRunStatus('Đã thêm bản sao kết quả vào ứng dụng Đăng bài.','ok');}finally{b.disabled=false;b.textContent='＋ Thêm vào hàng chờ';}
+  },{disabled:!!runForNode(node.id)||!read().length,cls:'tool-action posting-action'});const download=[...body.querySelectorAll('button')].find(el=>el.textContent==='Tải kết quả');if(download)download.after(b);return b;}
+  function renderImageCollection(node,body){const images=postingAssets(node),hint=document.createElement('p');hint.className='hint';hint.textContent=images.length+' ảnh kết quả · Nối nhiều cổng ảnh vào Các ảnh kết quả. Thứ tự theo dây nối; bỏ dây để bỏ ảnh.';body.append(hint);const grid=document.createElement('div');grid.className='image-collection-grid';for(const [index,image]of images.entries()){const entry=document.createElement('figure'),img=document.createElement('img'),caption=document.createElement('figcaption');img.src=image.url;img.alt='Ảnh '+(index+1);caption.textContent='Ảnh '+(index+1);entry.append(img,caption);grid.append(entry);}body.append(grid);studioButton(body,'Tải kết quả',async()=>{for(const [i,image]of images.entries()){const response=await fetch(image.url);if(!response.ok)throw Error('Không đọc được ảnh kết quả.');const blob=await response.blob(),ext=({'image/jpeg':'jpg','image/webp':'webp','image/gif':'gif'})[blob.type]||'png',url=URL.createObjectURL(blob);try{await chrome.downloads.download({url,filename:WorkflowTools.safeName(node.data.customName||node.data.componentId)+'-'+(i+1)+'.'+ext,saveAs:false});}finally{setTimeout(()=>URL.revokeObjectURL(url),60000);}}},{disabled:!images.length});postingButton(node,body,()=>postingAssets(node));}
   function finalOutputEdges(node){const edges=getIncoming(node.id,'video'),ids=WorkflowStudio.outputOrder(edges.map(e=>e.source),state.nodes,state.nodes.find(n=>n.type==='timeline')?.data.clipOrder||[],node.data.outputOrder||[]);return ids.map(id=>edges.find(e=>e.source===id));}
   function connectOutputVideos(node){
     if(state.isRunning)throw Error('Dừng chạy trước khi nối video.');
@@ -864,6 +875,7 @@
   function portCompatible(from, targetNodeId, targetPortId) {
     const sourceNode = nodeById(from.nodeId), targetNode = nodeById(targetNodeId);
     if (!sourceNode || !targetNode || sourceNode.id === targetNode.id) return false;
+    if(sourceNode.type==='imageCollection'&&!['imageCollection','generateImage','generateVideo','generateText','references','imageRoles','review'].includes(targetNode.type))return false;
     const out = (nodeDefs[sourceNode.type].outputs || []).find(p => p.id === from.portId);
     const input = (nodeDefs[targetNode.type].inputs || []).find(p => p.id === targetPortId);
     return Boolean(out && input && canConnectTypes(out.type,input.type));
@@ -872,8 +884,8 @@
   function connectionChoices(from){
     const source=nodeById(from.nodeId),output=nodeDefs[source?.type]?.outputs?.find(port=>port.id===from.portId);if(!source||!output)return{existing:[],create:[]};
     const existing=[];for(const target of state.nodes){if(target.id===source.id)continue;for(const input of nodeDefs[target.type]?.inputs||[]){if(!portCompatible(from,target.id,input.id))continue;if(target.type==='timeline'&&getIncoming(target.id,input.id).length)continue;if(wouldCreateCycle(source.id,target.id,isMultiInput(target.type,input.id)?null:input.id))continue;existing.push({kind:'existing',targetId:target.id,targetPort:input.id,label:`${nodeDefs[target.type].title} · ${input.label}${target.data?.dockOnly?' (Timeline dock)':''}`});}}
-    const candidates=output.type==='image'?[['references','reference1','References · image 1'],['preview','media','Preview · image'],['imageResize','image','Image Resize'],['generateImage','reference','Generate Image · reference'],['generateVideo','reference','Generate Video · reference']]:output.type==='video'?[['finalOutput','video','Output · Xuất video cuối'],['audioMix','video','Âm thanh / nhạc nền'],['preview','media','Preview · video'],['timeline','clip1','Timeline · add clip']]:output.type==='text'?[['generateImage','prompt','Generate Image · prompt'],['generateVideo','prompt','Generate Video · prompt'],['textAppend','text','Text Append'],['textConcat','text','Text Merge · text']]:output.type==='audio'?[['finalOutput','audio','Output · Xuất video cuối'],['audioMix','audio','Âm thanh / nhạc nền'],['voiceSync','audio','Đồng bộ lời đọc – cảnh']]:output.type==='negative'?[['generateImage','negative','Generate Image · negative'],['generateVideo','negative','Generate Video · negative']]:[];
-    const create=candidates.map(([type,port,label])=>({kind:'create',type,targetPort:port,label}));return{existing,create};
+    const candidates=output.type==='image'?[['imageCollection','image','Tổng ảnh · Các ảnh kết quả'],['references','reference1','References · image 1'],['preview','media','Preview · image'],['imageResize','image','Image Resize'],['generateImage','reference','Generate Image · reference'],['generateVideo','reference','Generate Video · reference']]:output.type==='video'?[['finalOutput','video','Output · Xuất video cuối'],['audioMix','video','Âm thanh / nhạc nền'],['preview','media','Preview · video'],['timeline','clip1','Timeline · add clip']]:output.type==='text'?[['generateImage','prompt','Generate Image · prompt'],['generateVideo','prompt','Generate Video · prompt'],['textAppend','text','Text Append'],['textConcat','text','Text Merge · text']]:output.type==='audio'?[['finalOutput','audio','Output · Xuất video cuối'],['audioMix','audio','Âm thanh / nhạc nền'],['voiceSync','audio','Đồng bộ lời đọc – cảnh']]:output.type==='negative'?[['generateImage','negative','Generate Image · negative'],['generateVideo','negative','Generate Video · negative']]:[];
+    const create=candidates.filter(([type])=>source.type!=='imageCollection'||!['preview','imageResize'].includes(type)).map(([type,port,label])=>({kind:'create',type,targetPort:port,label}));return{existing,create};
   }
 
   function openConnectionPicker(from,x,y){
@@ -945,7 +957,7 @@
     return best;
   }
   function canConnectTypes(outputType,inputType){return outputType===inputType||inputType==='media'&&['image','video'].includes(outputType);}
-  function isMultiInput(nodeType,portId){return nodeType==='finalOutput'&&portId==='video'||nodeType==='masterScript'&&portId==='reference'||nodeType==='videoAssembly'&&portId==='video'||nodeType==='voiceSync'&&['video','audio'].includes(portId)||nodeType==='bundleSave'||nodeType==='review'&&portId==='reference'||['generateImage','generateVideo','generateText'].includes(nodeType)&&['prompt','reference'].includes(portId)||nodeType==='references'&&portId.startsWith('reference')||nodeType==='textConcat'&&portId==='text';}
+  function isMultiInput(nodeType,portId){return nodeType==='imageCollection'&&portId==='image'||nodeType==='finalOutput'&&portId==='video'||nodeType==='masterScript'&&portId==='reference'||nodeType==='videoAssembly'&&portId==='video'||nodeType==='voiceSync'&&['video','audio'].includes(portId)||nodeType==='bundleSave'||nodeType==='review'&&portId==='reference'||['generateImage','generateVideo','generateText'].includes(nodeType)&&['prompt','reference'].includes(portId)||nodeType==='references'&&portId.startsWith('reference')||nodeType==='textConcat'&&portId==='text';}
   function connectReferenceNode(references,generator){if(!references||!generator||!['generateImage','generateVideo','generateText'].includes(generator.type))return;const duplicate=state.edges.some(edge=>edge.source===references.id&&edge.sourcePort==='image'&&edge.target===generator.id&&edge.targetPort==='reference');if(!duplicate)state.edges.push({id:uid('edge'),source:references.id,sourcePort:'image',target:generator.id,targetPort:'reference'});}
   function syncReferenceFanOut(references){for(const generator of state.nodes.filter(node=>['generateImage','generateVideo','generateText'].includes(node.type)))connectReferenceNode(references,generator);}
 
@@ -1235,6 +1247,8 @@
       else { const empty=document.createElement('div'); empty.className='empty preview-empty'; empty.textContent='Run workflow'; body.appendChild(empty); }
     }
 
+    if(n.type==='imageCollection')renderImageCollection(n,body);
+    if(n.type!=='imageCollection'){const assets=postingAssets(n);if(assets.length){if(['generateImage','generateVideo','imageInput','videoInput','preview','imageResize'].includes(n.type))studioButton(body,'Tải kết quả',()=>chrome.downloads.download({url:assets[0].url,filename:assets[0].name||n.data.componentId+(assets[0].kind==='video'?'.mp4':'.png'),saveAs:false}),{cls:'tool-action posting-action'});postingButton(n,body,()=>postingAssets(n));}}
     el.appendChild(body);
     addPorts(el, n);
     if(['generateImage','generateVideo','generateText'].includes(n.type))studioButton(body,'Xóa kết quả cũ',()=>clearNodeOutput(n),{disabled:!!runForNode(n.id)});
@@ -1248,7 +1262,7 @@
     if(!['generateImage','generateVideo'].includes(node.type))return;
     body.classList.add('compact-generation');
     const children=[...body.children],provider=body.querySelector('.provider-controls'),controls=body.querySelector('.gen-controls'),status=body.querySelector('.status'),actions=body.querySelector('.node-generation-actions');
-    const media=children.find(el=>el.matches('video,.image-link')),options=document.createElement('div');options.className='node-options';
+    const media=children.find(el=>el.matches('video,.image-link')),postingActions=children.filter(el=>el.matches('.posting-action')),options=document.createElement('div');options.className='node-options';
     const sections={};
     for(const [key,name] of [['connection','Kết nối AI'],['frames',node.type==='generateVideo'?'Khung hình':'Ảnh tham chiếu'],['tools','Công cụ'],['info','Chi tiết']]){
       const details=document.createElement('details');details.className='node-option';details.dataset.panel=key;const summary=document.createElement('summary');summary.textContent=name;const content=document.createElement('div');content.className='node-option-content';summary.title=key==='frames'?'Ảnh tham chiếu, khung mở đầu và khung cuối':name;details.append(summary,content);options.append(details);sections[key]={details,content};
@@ -1257,7 +1271,7 @@
     }
     if(provider){const first=provider.querySelector('select[aria-label="AI thực hiện"]');for(const el of [...provider.children])if(el!==first)sections.connection.content.append(el);}
     for(const el of children){
-      if([provider,controls,status,actions,media].includes(el))continue;
+      if([provider,controls,status,actions,media,...postingActions].includes(el))continue;
       if(el.matches('.tool-action,.video-timeline-drag')){
         if(/khung cuối/.test(el.textContent))sections.frames.content.append(el);else sections.tools.content.append(el);
       }else if(el.matches('.reference-id-list,.continuity-toggle,.end-frame-thumb,.end-frame-input')||/Khung (?:cuối|mở đầu)/.test(el.textContent))sections.frames.content.append(el);
@@ -1269,7 +1283,7 @@
     const sharedLabel=document.createElement('label');sharedLabel.className='shared-reference-toggle';const sharedCheck=document.createElement('input');sharedCheck.type='checkbox';sharedCheck.checked=!node.data.excludeSharedReferences;sharedCheck.disabled=!!node.data.freezeSharedReferences;sharedCheck.onchange=()=>{createUndoSnapshot('Đổi ảnh chung');node.data.excludeSharedReferences=!sharedCheck.checked;render();};sharedLabel.append(sharedCheck,document.createTextNode(node.data.freezeSharedReferences?'Ảnh đã chốt trong hàng đợi':'Dùng ảnh tham chiếu chung'));sections.frames.content.append(sharedLabel);
     const refs=sections.frames.content.querySelector('.reference-id-list');if(refs){refs.title=refs.textContent;sections.frames.details.querySelector('summary').textContent=(node.type==='generateVideo'?'Khung hình':'Ảnh tham chiếu')+' · '+resolveReferences(node.id).length;}
     if(node.data.status==='error')sections.info.details.open=true;
-    body.replaceChildren(...[provider,controls,status,media,actions,options].filter(Boolean));
+    body.replaceChildren(...[provider,controls,status,media,actions,...postingActions,options].filter(Boolean));
   }
 
   function createNodeRunActions(node){
@@ -1783,7 +1797,7 @@
     const visit=(source,sourcePort,visited=new Set(),roles=[])=>{
       if(!source||visited.has(source.id))return;const next=new Set(visited);next.add(source.id);
       if(source.type==='referenceBoard'){for(const image of WorkflowReferences.select(source.data,sourcePort))add(image.url,image.name,source.data.componentId+'-IMG'+image.slot,roles,image.notes||'');return;}
-      if(['references','imageRoles','review'].includes(source.type)){
+      if(['references','imageRoles','review','imageCollection'].includes(source.type)){
         for(const edge of getIncoming(source.id).filter(edge=>source.type!=='review'||edge.targetPort==='reference'))visit(nodeById(edge.source),edge.sourcePort,next,source.type==='imageRoles'?[...roles,({character:'Nhân vật',background:'Bối cảnh',clothing:'Trang phục',pose:'Tư thế'})[edge.targetPort]]:roles);return;
       }
       if(source.type==='characterLock'){add(source.data.lockedAsset?.url,'Ảnh nhân vật đã khóa',source.data.componentId,roles,resolveText(source.id));return;}

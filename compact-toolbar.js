@@ -22,6 +22,7 @@
  const caption=document.createElement('p');caption.className='studio-nav-caption';caption.textContent='KHÔNG GIAN SÁNG TẠO';
  const quick=document.createElement('div');quick.className='studio-quick-actions';
  for(const [id,label,mark] of [['referenceBoardBtn','Ảnh tham chiếu','▧'],['creativeToolsBtn','Trợ lý sáng tạo','✧'],['batchManagerBtn','Hàng đợi','☷'],['flowStudioBtn','Flow Studio','▦']]){const button=document.createElement('button');button.type='button';button.dataset.studioAction=id;button.title=label;button.setAttribute('aria-label',label);button.innerHTML='<span aria-hidden="true">'+mark+'</span><span>'+label+'</span>';button.onclick=()=>{close();document.getElementById(id).click();};quick.append(button);}
+ const posting=document.createElement('button');posting.id='studioPosting';posting.type='button';posting.innerHTML='<span aria-hidden="true">↗</span><span>Đăng bài</span>';posting.onclick=()=>{if(window.workflowDesktop)void window.workflowDesktop.call('posting.open');else alert('Mở ứng dụng Workflow desktop để dùng Đăng bài.');};quick.append(posting);
  const footer=document.createElement('div');footer.className='studio-sidebar-footer';footer.textContent='Ý tưởng → Thành phẩm';
  sidebar.append(brand,caption,quick,nav,footer);document.body.prepend(sidebar);
  const heading=document.createElement('div');heading.className='studio-heading';heading.innerHTML='<span class="studio-breadcrumb">KHÔNG GIAN LÀM VIỆC / CANVAS</span><strong>Quy trình sáng tạo</strong>';

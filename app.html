@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Workflow · MuseFlow 0.35.4</title>
+  <title>Workflow · MuseFlow 0.36.0</title>
   <link rel="icon" type="image/png" sizes="128x128" href="icons/icon128.png" />
   <link rel="stylesheet" href="styles.css" />
   <link rel="stylesheet" href="studio.css" />
@@ -11,7 +11,7 @@
 </head>
 <body>
   <header class="toolbar">
-    <div class="brand"><img class="brand-logo" src="icons/workflow-mark.svg" alt="" /><strong class="brand-name">Workflow</strong><span class="brand-version">0.35.4</span></div>
+    <div class="brand"><img class="brand-logo" src="icons/workflow-mark.svg" alt="" /><strong class="brand-name">Workflow</strong><span class="brand-version">0.36.0</span></div>
     <div class="toolbar-tools" aria-label="Add workflow nodes">
       <button id="creativeToolsBtn" type="button">Trợ lý sáng tạo</button><button id="referenceBoardBtn" type="button">Ảnh tham chiếu chung</button><button id="mediaLibraryBtn" type="button">⇩ Tải media</button><button id="promptLibraryBtn" type="button">Kho prompt</button>
       <button id="batchManagerBtn" type="button">Hàng đợi · Kho ảnh</button><button id="flowStudioBtn" type="button">Tạo hàng loạt</button><button id="batchImagesBtn" type="button">＋ Tạo ảnh hàng loạt</button><button id="scriptImportBtn" type="button">＋ Script → Nodes</button>
@@ -33,7 +33,7 @@
     </div>
   </header>
 
-  <div id="addNodeMenu" class="add-node-menu hidden" role="menu" aria-label="Add node">
+  <div id="addNodeMenu" class="add-node-menu hidden" role="menu" aria-label="Add node"><button type="button" data-add="imageCollection">▦ Tổng ảnh</button>
     <div class="add-node-group"><span>Text</span><button type="button" role="menuitem" data-add="masterScript">Kịch bản tổng</button><button type="button" role="menuitem" data-add="videoAssembly">Ghép video hoàn chỉnh</button>
       <button type="button" role="menuitem" data-add="characterLock">Khóa nhân vật</button><button type="button" role="menuitem" data-add="imageRoles">Gán vai trò ảnh</button><button type="button" role="menuitem" data-add="videoAnalysis">Phân tích video</button><button type="button" role="menuitem" data-add="sceneSplit">Chia cảnh tự động</button><button type="button" role="menuitem" data-add="review">Duyệt trước khi chạy</button><button type="button" role="menuitem" data-add="qualityCheck">Kiểm tra kết quả</button><button type="button" role="menuitem" data-add="promptVariants">Biến thể prompt</button><button type="button" role="menuitem" data-add="bundleSave">Lưu theo bộ</button><button type="button" role="menuitem" data-add="generateText">Tạo văn bản</button><button type="button" role="menuitem" data-add="videoInput">Video đầu vào</button><button type="button" role="menuitem" data-add="prompt">Prompt</button>
       <button type="button" role="menuitem" data-add="negativePrompt">Negative prompt</button>
@@ -223,6 +223,7 @@
   <script src="reference-board.js"></script>
   <script src="creative-tools.js"></script>
   <script src="workflow-chat.js"></script>
+  <script src="workflow-posting.js"></script>
   <script src="app.js"></script>
   <script src="compact-toolbar.js"></script>
 </body>

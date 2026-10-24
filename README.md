@@ -1,8 +1,16 @@
-# Workflow · MuseFlow 0.35.4
+# Workflow · MuseFlow 0.36.0
 
 **[⬇ ĐÓNG GÓI / CẬP NHẬT APP MAC](https://github.com/mktminhqpbga-glitch/app-mooz/actions/workflows/desktop.yml)** · **[Hướng dẫn từng bước](docs/PACKAGING.md)**
 
 Bấm liên kết trên → **Run workflow** → chọn `main`. Khi build xong, tải artifact DMG đúng loại Mac. Có thể chọn tạo draft Release để chuẩn bị bản cập nhật; app nhận biết sau khi bạn Publish release mới hơn.
+
+## Ứng dụng Đăng bài · 0.36.0
+
+Thêm **Đăng bài** vào danh mục ứng dụng và sidebar canvas. Kết quả ảnh/video có nút **Thêm vào hàng chờ** dưới nút tải; node **Tổng ảnh** gom nhiều nguồn thành một bộ ảnh để soạn bài. Kho đăng bài giữ bản sao media riêng trên máy, không đổi theo kết quả canvas chạy lại.
+
+Mỗi thẻ có viết content bằng ChatGPT từ prompt chung, chỉnh nội dung, chọn nhiều nơi đăng, **Đăng ngay** hoặc hẹn giờ. Hàng chờ tách theo tài khoản/nền tảng; mục lỗi có lý do và có thể rút/sửa/xếp lại mà không gửi lại nơi đã thành công. Lịch chạy khi máy thức và app còn mở. Facebook Page có API trực tiếp; Instagram/TikTok/YouTube và các nền tảng khác kết nối qua webhook n8n/Make của bạn với hợp đồng xác nhận và chống đăng trùng. Cần tài khoản/quyền đăng thực tế; app không cung cấp sẵn ứng dụng OAuth đã được các nền tảng duyệt. [Cách dùng, kết nối và hợp đồng webhook](docs/PUBLISHING.md).
+
+Đã kiểm tra Electron thật với media thật và phản hồi ChatGPT/nền tảng mô phỏng; chưa đăng thử trên tài khoản thật. Token/URL webhook dùng kho khóa hệ điều hành khi hỗ trợ; nếu không, kết nối chỉ giữ trong phiên.
 
 ## Xuất tệp không chặn cửa sổ · 0.35.4
 
