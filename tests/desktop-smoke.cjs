@@ -12,6 +12,7 @@ const path=require('node:path');
   application=await electron.launch({args:['--no-sandbox',...(process.platform==='linux'&&!env.DISPLAY?['--ozone-platform=headless','--disable-gpu']:[]),path.resolve(__dirname,'..')],env,timeout:60000});
   const home=await application.firstWindow();home.setDefaultTimeout(20000);const errors=[];home.on('pageerror',error=>errors.push(error.message));
   await home.waitForSelector('#newProject');
+  await fs.mkdir(path.join(data,'exports'));await application.evaluate(({app},directory)=>app.setPath('downloads',directory),path.join(data,'exports'));
   clipboardBefore=await application.evaluate(({clipboard})=>clipboard.readText());
   async function clipboardMatches(expected){for(let i=0;i<60;i++){if(await application.evaluate(async({clipboard},value)=>(await clipboard.readText())===value,expected))return true;await new Promise(resolve=>setTimeout(resolve,40));}return false;}
 
@@ -43,6 +44,21 @@ const path=require('node:path');
   const info=await canvas.evaluate(()=>window.workflowDesktop.call('project.info'));assert.equal(info.id,project.id);
   const savedFile=path.join(data,'chat-result.txt');await application.evaluate(({dialog},filePath)=>{globalThis.workflowTest.previousSaveDialog=dialog.showSaveDialog;dialog.showSaveDialog=async()=>({canceled:false,filePath});},savedFile);
   try{await canvas.evaluate(async()=>{const url=URL.createObjectURL(new Blob(['Chat download verified'],{type:'text/plain'}));try{await chrome.downloads.download({url,filename:'chat-result.txt',saveAs:true});}finally{URL.revokeObjectURL(url);}});assert.equal(await fs.readFile(savedFile,'utf8'),'Chat download verified');}finally{await application.evaluate(({dialog})=>{dialog.showSaveDialog=globalThis.workflowTest.previousSaveDialog;delete globalThis.workflowTest.previousSaveDialog;});}
+
+  // Native anchors + explicit downloads stream blob data without whole-file IPC or save dialogs.
+  await application.evaluate(({dialog})=>{globalThis.workflowTest.previousSaveDialog=dialog.showSaveDialog;dialog.showSaveDialog=async()=>{throw Error('Unexpected save dialog for automatic export');};});
+  try{
+   await fs.writeFile(path.join(data,'exports','NODE-result.mp4'),'keep existing video');
+   await canvas.evaluate(async()=>{const url=URL.createObjectURL(new Blob([new Uint8Array(32*1024*1024).fill(17)],{type:'video/mp4'}));try{const ids=await Promise.all([chrome.downloads.download({url,filename:'NODE-result.mp4',saveAs:false}),chrome.downloads.download({url,filename:'NODE-result.mp4',saveAs:false})]);if(ids[0]!==ids[1])throw Error('Repeated click created duplicate exports');}finally{URL.revokeObjectURL(url);}});
+   assert.equal(await fs.readFile(path.join(data,'exports','NODE-result.mp4'),'utf8'),'keep existing video');
+   const bytes=await fs.readFile(path.join(data,'exports','NODE-result (1).mp4'));assert.equal(bytes.length,32*1024*1024);assert.ok(bytes.every(x=>x===17));
+   assert.equal((await fs.readdir(path.join(data,'exports'))).length,2);
+   await canvas.evaluate(()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['anchor export'],{type:'text/plain'}));a.download='anchor.txt';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),5000);});
+   await canvas.waitForFunction(()=>document.querySelector('#desktopDownloadStatus').textContent==='Đã lưu: anchor.txt');assert.equal(await fs.readFile(path.join(data,'exports','anchor.txt'),'utf8'),'anchor export');
+   assert.equal(await canvas.locator('#desktopRevealDownload').isVisible(),true);
+   await canvas.evaluate(()=>chrome.downloads.download({url:'data:text/plain;base64,ZGF0YSBleHBvcnQ=',filename:'data.txt',saveAs:false}));assert.equal(await fs.readFile(path.join(data,'exports','data.txt'),'utf8'),'data export');await canvas.screenshot({path:path.join(os.tmpdir(),'workflow-export-status.png')});
+   await assert.rejects(()=>canvas.evaluate(()=>chrome.downloads.download({url:'file:///etc/passwd'})),/chưa được cho phép/);
+  }finally{await application.evaluate(({dialog})=>{dialog.showSaveDialog=globalThis.workflowTest.previousSaveDialog;delete globalThis.workflowTest.previousSaveDialog;});}
 
   await assert.rejects(()=>canvas.evaluate(()=>window.workflowDesktop.call('network.fetch',{url:'http://169.254.169.254/latest/meta-data',requestId:'blocked'})),/chưa được cho phép/);
   // Intercept a supported origin inside the managed browser, with no login/API call.
@@ -102,6 +118,6 @@ const path=require('node:path');
     finally{t.store.writeStorage=original;dialog.showMessageBox=show;}
   });
   assert.deepEqual(errors,[]);
-  console.log('PASS real Electron: home, canvas, IPC storage + restart, project isolation, network refusal, isolated AI window, bridge send/receive and authenticated Chrome relay routing, native pairing copy/paste with web clipboard blocked, reveal/reset controls and project-scoped Chat AI app launch and native attachment/result save transport. AI response fixture only.');
+  console.log('PASS real Electron: home, canvas, IPC storage + restart, project isolation, network refusal, isolated AI window, bridge send/receive and authenticated Chrome relay routing, native pairing copy/paste with web clipboard blocked, reveal/reset controls and project-scoped Chat AI app launch and native attachment/result save transport, 32 MB Blob export without a modal, duplicate click coalescing, filename collision preservation, anchor and data URL downloads. AI response fixture only.');
  }finally{if(application&&clipboardBefore!==undefined)try{await application.evaluate(({clipboard},value)=>clipboard.writeText(value),clipboardBefore);}catch{}await application?.close();await fs.rm(data,{recursive:true,force:true});}
 })().catch(error=>{console.error(error);process.exitCode=1;});

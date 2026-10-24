@@ -3,6 +3,18 @@
   const host = window.workflowDesktop;
   if (!host) return;
   const call = (method, data) => host.call(method, data);
+  const activeDownloads=new Map();
+  function download(options){
+    const key=options.url+'\n'+(options.filename||'');if(activeDownloads.has(key))return activeDownloads.get(key);
+    const task=(async()=>{let local;try{
+      let url=options.url;
+      if(!url.startsWith('blob:')){
+        const response=url.startsWith('data:')?await fetch(url):await call('network.fetch',{url,method:'GET',requestId:crypto.randomUUID(),redirect:'error'}).then(result=>new Response(result.bytes,{status:result.status,headers:result.headers}));
+        if(!response.ok)throw Error('Không tải được tệp để lưu.');url=local=URL.createObjectURL(await response.blob());
+      }
+      return await call('download.url',{...options,url});
+    }finally{if(local)URL.revokeObjectURL(local);activeDownloads.delete(key);}})();activeDownloads.set(key,task);return task;
+  }
   const listeners = {message: new Set(), updated: new Set(), created: new Set()};
   const event = name => ({addListener: fn => listeners[name].add(fn), removeListener: fn => listeners[name].delete(fn)});
   const get = async (area, keys) => {
@@ -41,13 +53,7 @@
       }
       return call('tabs.script', {id: details.target?.tabId, files: details.files, operation});
     }},
-    downloads: {download: async options => {
-      if (/^(blob:|data:)/.test(options.url)) {
-        const blob = await (await fetch(options.url)).blob();
-        return call('download.bytes', {bytes: new Uint8Array(await blob.arrayBuffer()), name: options.filename, saveAs: options.saveAs});
-      }
-      return call('download.url', options);
-    }}
+    downloads: {download}
   };
   host.onEvent(value => {
     if (value.type === 'message') for (const fn of listeners.message) fn(value.message, {id: 'workflow-desktop', tab: {id: value.tabId}});
@@ -88,6 +94,13 @@
     pairingDialog.querySelector('#canvasChromeCopy').onclick=async()=>{try{await call('relay.copy');pairingStatus.textContent='Đã sao chép. Dán vào Kết nối app desktop trong Chrome.';}catch{pairingStatus.textContent='Chưa sao chép được. Bấm Hiện mã, chọn mã rồi nhấn ⌘C trên Mac hoặc Ctrl+C.';}};
     (document.getElementById('studioConnections')||bar).append(connect);
     bar.append(title, status, projects);
+    const downloadStatus=document.createElement('span');downloadStatus.id='desktopDownloadStatus';downloadStatus.style.cssText='max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';downloadStatus.setAttribute('role','status');downloadStatus.setAttribute('aria-live','polite');
+    const revealDownload=document.createElement('button');revealDownload.id='desktopRevealDownload';revealDownload.textContent='Mở thư mục';revealDownload.hidden=true;let lastDownload;
+    revealDownload.onclick=()=>void call('download.reveal',{id:lastDownload}).catch(error=>{downloadStatus.textContent=error.message;});bar.append(downloadStatus,revealDownload);
+    host.onEvent(value=>{if(value.type!=='download')return;
+      downloadStatus.textContent=value.state==='completed'?'Đã lưu: '+value.name:value.state==='saving'?'Đang lưu: '+value.name+(value.total?' · '+Math.min(99,Math.round(value.received/value.total*100)||0)+'%':''):value.message||'Đã hủy lưu tệp.';
+      if(value.state==='completed'){lastDownload=value.id;revealDownload.hidden=false;}
+    });
     for (const [id, label] of [['chatgpt', 'Mở ChatGPT'], ['gemini', 'Mở Gemini'], ['muse', 'Mở Muse']]) {
       const button = document.createElement('button'); button.textContent = label;
       button.onclick = async () => {try {await call('provider.open', {provider: id});} catch(error) {status.textContent = error.message; status.dataset.state = 'error';}};

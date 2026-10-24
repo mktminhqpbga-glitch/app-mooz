@@ -1,24 +1,25 @@
 const {app,BrowserWindow,ipcMain,protocol,net,dialog,Menu,shell,session,clipboard} = require('electron');
 const path=require('node:path');
-const fs=require('node:fs/promises');
 const {pathToFileURL}=require('node:url');
 const {ProjectStore}=require('./project-store.cjs');
 const {providerForURL,allowedNetworkURL,resolveAppPath}=require('./policy.cjs');
 const {AIWindows}=require('./ai-windows.cjs');
 const {ChromeRelay}=require('./chrome-relay.cjs');
+const {Downloads}=require('./downloads.cjs');
 const {UpdateService,isDeveloperIDSigned,latestPublicRelease}=require('./updater.cjs');
 const version=require('../package.json').version;
 const root=path.resolve(__dirname,'..');
 protocol.registerSchemesAsPrivileged([{scheme:'workflow',privileges:{standard:true,secure:true,supportFetchAPI:true,corsEnabled:true,stream:true}}]);
 const testMode=process.env.WORKFLOW_DESKTOP_TEST==='1'&&!app.isPackaged;
 if(testMode){if(!process.env.WORKFLOW_TEST_DATA)throw Error('Missing test data directory');app.setPath('userData',path.resolve(process.env.WORKFLOW_TEST_DATA));}
-let store,home,ai,relay,updater,chromeEverConnected=false;
+let store,home,ai,relay,updater,downloads,chromeEverConnected=false;
 const managedProjects=new Set();
 const canvases=new Map(),sessionData=new Map(),requests=new Map(),installedSessions=new WeakSet();
 const projectTransitions=new Set();
 function notify(value){if(value.type==='update'&&home&&!home.isDestroyed())home.webContents.send('workflow:event',value);if(value.type==='relay'&&value.connected){chromeEverConnected=true;managedProjects.clear();}for(const win of canvases.values())if(!win.isDestroyed())win.webContents.send('workflow:event',value);}
 async function setupSession(ses){
   if(installedSessions.has(ses))return;installedSessions.add(ses);
+  downloads.install(ses);
   ses.setPermissionRequestHandler((_wc,_permission,callback)=>callback(false));
   ses.protocol.handle('workflow',async request=>{
     try{
@@ -92,15 +93,6 @@ async function fetchBounded(id,data){
     return {status:response.status,headers:Object.fromEntries(response.headers),bytes:new Uint8Array(Buffer.concat(chunks))};
   }finally{clearTimeout(timer);requests.delete(requestId);}
 }
-async function download(win,data){
-  const name=path.basename(String(data.name||data.filename||'workflow-download'));
-  const choice=await dialog.showSaveDialog(win,{defaultPath:path.join(app.getPath('downloads'),name)});
-  if(choice.canceled)return null;
-  let bytes=data.bytes;
-  if(!bytes){if(!allowedNetworkURL(data.url))throw Error('Nguồn tải chưa được cho phép trên desktop.');const result=await fetchBounded(win.projectId,{url:data.url,requestId:require('node:crypto').randomUUID(),method:'GET',redirect:'error'});if(result.status<200||result.status>=300)throw Error('Tải tệp thất bại: HTTP '+result.status);bytes=result.bytes;}
-  if(bytes.byteLength>128*1024*1024)throw Error('Tệp vượt giới hạn 128 MB.');
-  await fs.writeFile(choice.filePath,Buffer.from(bytes));return 1;
-}
 ipcMain.handle('workflow:call',async(event,method,data={})=>{
   const ctx=context(event),{win,id}=ctx;
   if(method==='updates.status')return updater.status();
@@ -152,10 +144,12 @@ ipcMain.handle('workflow:call',async(event,method,data={})=>{
   }
   if(method==='network.fetch')return fetchBounded(id,data);
   if(method==='network.cancel'){requests.get(id+':'+data.requestId)?.abort();return;}
-  if(method==='download.bytes'||method==='download.url')return download(win,data);
+  if(method==='download.url')return downloads.download(win,data);
+  if(method==='download.reveal')return downloads.show(win,data.id);
   throw Error('Unknown desktop operation.');
 });
 app.whenReady().then(async()=>{
+  downloads=new Downloads({directory:()=>app.getPath('downloads'),windowFor:contents=>contents?BrowserWindow.fromWebContents(contents):null,dialog,notify:send,reveal:file=>shell.showItemInFolder(file)});
   store=new ProjectStore(path.join(app.getPath('userData'),'projects'));
   relay=new ChromeRelay(notify);await relay.start();
   ai=new AIWindows(root,version,notify,async projectId=>projectId?(await store.readStorage(projectId)).workflowMuseSendTarget:null);

@@ -1,8 +1,14 @@
-# Workflow · MuseFlow 0.35.3
+# Workflow · MuseFlow 0.35.4
 
 **[⬇ ĐÓNG GÓI / CẬP NHẬT APP MAC](https://github.com/mktminhqpbga-glitch/app-mooz/actions/workflows/desktop.yml)** · **[Hướng dẫn từng bước](docs/PACKAGING.md)**
 
 Bấm liên kết trên → **Run workflow** → chọn `main`. Khi build xong, tải artifact DMG đúng loại Mac. Có thể chọn tạo draft Release để chuẩn bị bản cập nhật; app nhận biết sau khi bạn Publish release mới hơn.
+
+## Xuất tệp không chặn cửa sổ · 0.35.4
+
+Tải kết quả và xuất tự động trên desktop lưu thẳng vào **Tải về**, thêm ` (1)`, ` (2)` khi trùng tên và giữ tệp cũ. Trạng thái lưu và nút **Mở thư mục** xuất hiện trên thanh desktop. Bấm lặp trong lúc cùng tệp đang tải được gộp thành một lượt; các thao tác có yêu cầu **Lưu dưới dạng** vẫn cho chọn nơi lưu. Tệp được tải trực tiếp bằng Chromium, tránh chuyển cả video lớn qua IPC; giới hạn tải desktop vẫn là 128 MB.
+
+Kết quả xử lý video cục bộ dùng URL Blob thay cho chuỗi base64 lớn trong canvas và vẫn lưu bằng IndexedDB. Chèn/thay nhạc vào video H.264 giữ nguyên luồng hình đã nén, chỉ xử lý âm thanh. Các codec video khác vẫn được chuyển sang H.264 khi cần xuất MP4. Kiểm tra bằng Electron với tệp 32 MB, trùng tên/bấm lặp, cùng FFmpeg thật để đối chiếu luồng hình, thứ tự cảnh, thời lượng và âm thanh.
 
 ## Nhận kết quả khi AI ở nền · 0.35.3
 

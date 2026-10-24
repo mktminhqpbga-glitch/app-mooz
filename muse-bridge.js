@@ -1,7 +1,7 @@
 (() => {
   if (window.__museFlowBridgeInstalled) return;
   window.__museFlowBridgeInstalled = true;
-  window.__museFlowBridgeVersion='0.35.3';
+  window.__museFlowBridgeVersion='0.35.4';
   const activity=globalThis.WorkflowAIActivity;
 
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
