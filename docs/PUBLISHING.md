@@ -43,7 +43,7 @@ Tạo ứng dụng tại [TikTok for Developers](https://developers.tiktok.com/)
 
 Chọn **TikTok · token đã cấp quyền** và nhập access token. Để tự làm mới, cung cấp refresh token cùng client key/client secret đã cấp token. Không có refresh token thì cần kết nối lại khi hết hạn. App đọc creator info, tên tài khoản, các quyền riêng tư và giới hạn thời lượng được nền tảng cho phép.
 
-Trên thẻ video, chủ động chọn ai được xem, xác nhận quyền dùng nội dung/âm nhạc và khai báo AIGC/quảng bá thương hiệu khi áp dụng. Không mặc định đăng công khai. Quyền bình luận/Duet/Stitch bị TikTok khóa không thể bật lại từ app. App kiểm tra lại tài khoản/khả năng trước upload, gửi video bằng FILE_UPLOAD theo quy tắc chia khối TikTok, rồi kiểm tra publish status. Chỉ mở liên kết bài cụ thể nếu API trả post ID công khai; bài riêng tư có thể chỉ có liên kết tài khoản. Tài khoản/app chưa audit có giới hạn riêng tư và hạn mức do TikTok áp dụng.
+Trên thẻ video, chủ động chọn ai được xem, xác nhận quyền dùng nội dung/âm nhạc và khai báo AIGC/quảng bá thương hiệu khi áp dụng. Không mặc định đăng công khai. Bình luận/Duet/Stitch mặc định tắt; bạn chủ động bật nếu muốn. Quyền nào bị TikTok khóa thì không thể bật lại từ app. App kiểm tra lại tài khoản/khả năng trước upload, gửi video bằng FILE_UPLOAD theo quy tắc chia khối TikTok, rồi kiểm tra publish status. Chỉ mở liên kết bài cụ thể nếu API trả post ID công khai; bài riêng tư có thể chỉ có liên kết tài khoản. Tài khoản/app chưa audit có giới hạn riêng tư và hạn mức do TikTok áp dụng.
 
 Kết nối trực tiếp này nhận **một video**, chưa hỗ trợ Photo Post hoặc đăng khi app/máy đã tắt. Với luồng khác có thể dùng cổng máy chủ đã cấu hình.
 

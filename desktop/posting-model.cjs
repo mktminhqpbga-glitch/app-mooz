@@ -12,7 +12,7 @@ function options(value={}){
  }
  if(value.tiktok){
   const v=value.tiktok;if(v.privacy&&!PRIVACY.includes(v.privacy))throw Error('Thiết lập quyền riêng tư TikTok không hợp lệ.');
-  result.tiktok={privacy:v.privacy||'',musicRights:v.musicRights===true,synthetic:v.synthetic===true,branded:v.branded===true,ownBrand:v.ownBrand===true,disableComment:v.disableComment===true,disableDuet:v.disableDuet===true,disableStitch:v.disableStitch===true};
+  result.tiktok={privacy:v.privacy||'',musicRights:v.musicRights===true,synthetic:v.synthetic===true,branded:v.branded===true,ownBrand:v.ownBrand===true,disableComment:v.disableComment!==false,disableDuet:v.disableDuet!==false,disableStitch:v.disableStitch!==false};
  }
  return result;
 }

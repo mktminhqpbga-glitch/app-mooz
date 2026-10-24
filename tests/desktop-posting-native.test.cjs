@@ -8,6 +8,7 @@ const {PostingStore}=require('../desktop/posting-store.cjs');
 const {PostingService}=require('../desktop/posting-service.cjs');
 const {FacebookPublisher}=require('../desktop/facebook-publisher.cjs');
 const {PostingOAuth,GOOGLE_SCOPES,clientConfig}=require('../desktop/posting-oauth.cjs');
+const {options:postingOptions}=require('../desktop/posting-model.cjs');
 const {tikTokChunks}=require('../desktop/posting-native.cjs');
 const {uploadURL,json}=require('../desktop/posting-http.cjs');
 const secure={isEncryptionAvailable:()=>true,getSelectedStorageBackend:()=> 'keychain',encryptString:text=>Buffer.from(text).map(x=>x^71),decryptString:bytes=>Buffer.from(bytes).map(x=>x^71).toString()};
@@ -52,7 +53,7 @@ test('native preflight blocks incomplete YouTube options, TikTok privacy and mis
 });
 test('TikTok follows creator choices, uploads only to signed provider host and polls actual result',async t=>{
  const {root,store}=await fixture(t),job=await makeJob(store,{video:true}),calls=[];const p=publisher(root,async(url,opts)=>{calls.push({url,opts});if(url.includes('creator_info'))return Response.json({data:creator,error:{code:'ok'}});if(url.includes('video/init'))return Response.json({data:{publish_id:'v_pub_123',upload_url:'https://open-upload.tiktokapis.com/video/?signature=fixture'},error:{code:'ok'}});if(url.includes('open-upload')){assert.equal(opts.headers.Authorization,undefined);assert.equal(opts.body.length,3);return new Response(null,{status:201});}return Response.json({data:{status:'PUBLISH_COMPLETE',publicaly_available_post_id:['123456789']},error:{code:'ok'}});});
- await p.connectTikTok({accessToken:'tiktok-access-123456789012345'});job.connectionId=p.list()[0].id;job.options={tiktok:{privacy:'SELF_ONLY',musicRights:true,synthetic:true}};const result=await p.publish(job,store,async()=>{});const init=JSON.parse(calls.find(c=>c.url.includes('video/init')).opts.body);assert.equal(init.post_info.privacy_level,'SELF_ONLY');assert.equal(init.post_info.disable_comment,true);assert.equal(init.post_info.is_aigc,true);assert.equal(init.source_info.total_chunk_count,1);job.result=result;const check=await p.check(job);assert.equal(check.state,'published');assert.match(check.result.url,/video\/123456789$/);
+ await p.connectTikTok({accessToken:'tiktok-access-123456789012345'});job.connectionId=p.list()[0].id;job.options={tiktok:{privacy:'SELF_ONLY',musicRights:true,synthetic:true}};const result=await p.publish(job,store,async()=>{});const init=JSON.parse(calls.find(c=>c.url.includes('video/init')).opts.body);assert.equal(init.post_info.privacy_level,'SELF_ONLY');assert.equal(init.post_info.disable_comment,true);assert.equal(init.post_info.disable_duet,true);assert.equal(init.post_info.disable_stitch,true);assert.equal(init.post_info.is_aigc,true);assert.equal(init.source_info.total_chunk_count,1);job.result=result;const check=await p.check(job);assert.equal(check.state,'published');assert.match(check.result.url,/video\/123456789$/);
  for(const size of [1,5*1024*1024,64*1024*1024+17,128*1024*1024]){const chunks=tikTokChunks(size);assert.equal(chunks.ranges[0].start,0);assert.equal(chunks.ranges.at(-1).end,size-1);assert.equal(chunks.ranges.reduce((sum,r)=>sum+r.end-r.start+1,0),size);if(chunks.count>1)assert.ok(chunks.ranges.at(-1).end-chunks.ranges.at(-1).start+1>=chunks.chunkSize);}
 });
 test('Instagram verifies linked account and hosts JPEG media before container publication',async t=>{
@@ -90,3 +91,5 @@ test('destination retries cannot silently switch to an already successful accoun
 test('refreshing a Facebook Page never overwrites its linked Instagram connection',async t=>{
  const {root}=await fixture(t),p=publisher(root,async()=>Response.json({id:'123456',name:'Page'}));p.connections=[{id:'ig',transport:'instagram',platform:'instagram',pageId:'123456',accountId:'555555',token:'old-instagram'}];await p.connect({pageId:'123456',token:'page-token-123456789012345'});assert.equal(p.connections.length,2);assert.equal(p.connections.find(c=>c.id==='ig').token,'old-instagram');
 });
+
+test('TikTok interactions require explicit opt-in and cannot override creator restrictions',()=>{const defaults=postingOptions({tiktok:{}}).tiktok;assert.equal(defaults.disableComment,true);assert.equal(defaults.disableDuet,true);assert.equal(defaults.disableStitch,true);assert.equal(postingOptions({tiktok:{disableDuet:false}}).tiktok.disableDuet,false);});
