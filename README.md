@@ -1,8 +1,16 @@
-# Workflow · MuseFlow 0.34.1
+# Workflow · MuseFlow 0.35.0
 
 **[⬇ ĐÓNG GÓI / CẬP NHẬT APP MAC](https://github.com/mktminhqpbga-glitch/app-mooz/actions/workflows/desktop.yml)** · **[Hướng dẫn từng bước](docs/PACKAGING.md)**
 
 Bấm liên kết trên → **Run workflow** → chọn `main`. Khi build xong, tải artifact DMG đúng loại Mac. Có thể chọn tạo draft Release để chuẩn bị bản cập nhật; app nhận biết sau khi bạn Publish release mới hơn.
+
+## Ứng dụng AI và tệp trong chat · 0.35.0
+
+Màn hình chính có mục **Ứng dụng AI** ở thanh bên: **Workflow Studio** mở thư viện, **Chat AI** cho chọn dự án hoặc tạo dự án chat mới rồi mở bảng chat tại đó. **Lồng tiếng AI** đang ghi rõ **Chờ tích hợp**, chưa kết nối nhà cung cấp hay tạo giọng nói.
+
+Trong Chat AI, bấm **＋ Tệp** hoặc kéo thả vào ô soạn để gửi PNG/JPG/WebP, MP4/WebM/MOV và TXT/MD. Mỗi tin nhắn tối đa 8 tệp, tổng 20 MB; mỗi ảnh tối đa 8 MB, tối đa một video và hai tệp văn bản (80 KB và 20.000 ký tự/tệp). Chỉ gửi khi bấm **Gửi**. Chọn Gemini để phân tích video; giới hạn thực tế còn phụ thuộc dịch vụ. Tệp TXT/MD được đưa vào yêu cầu dưới dạng nội dung văn bản.
+
+Ảnh đính kèm được chốt vào bảng tham chiếu riêng khi bạn áp dụng kế hoạch tạo nội dung; xóa hội thoại không xóa ảnh đã đưa vào workflow. Kết quả node do bot chạy có xem trước và **Tải ảnh / Tải video** ngay trong hội thoại. Câu trả lời tải thành TXT; kế hoạch tải thành JSON. Định dạng tệp ảnh/video được lấy từ MIME kết quả, không đổi WebM thành MP4 chỉ bằng cách đặt tên. Hội thoại và tệp chờ gửi chỉ giữ trong phiên; nhà cung cấp AI có thể giữ nội dung bạn gửi trong chat của họ.
 
 ## Sửa sao chép mã kết nối · 0.34.1
 
@@ -18,7 +26,7 @@ Bấm **Chat AI** ở góc phải để mở bảng chat gọn, có thể thu l�
 
 Bot có thể trả lời, viết prompt hoặc đề xuất cảnh ảnh/video. Kế hoạch hiển thị trước; chọn **Chỉ tạo node** hoặc **Tạo & chạy**. Bật **Tự tạo & chạy kế hoạch mới** nếu muốn bot áp dụng kế hoạch trong lượt chat tiếp theo: tối đa 10 tác vụ ảnh/video, chỉ chạy các node mới do kế hoạch đó tạo, dùng chung bộ điều phối tab và thời gian chờ. AI tạo ảnh/video do bạn chọn trong thiết lập, hiện dùng các adapter tab. Tác vụ sử dụng hạn mức của dịch vụ AI.
 
-**Dừng** hủy lượt hỏi/chạy hiện tại và chặn phản hồi đến muộn tạo thêm node. Node đã tạo được giữ để kiểm tra; không tự chạy lại sau lỗi. Kế hoạch không chạy mã, không xóa/sửa node cũ và không điều khiển hệ điều hành. Mô hình chỉ nhận văn bản, chưa tự nhìn video/ảnh trong chat này; dùng Trợ lý sáng tạo để phân tích video mẫu. Hội thoại giữ trong phiên app; xóa hội thoại trong app không xóa lịch sử trên nhà cung cấp. Bản thử này vẫn cần xác minh thực tế với tài khoản AI và Chrome của người dùng.
+**Dừng** hủy lượt hỏi/chạy hiện tại và chặn phản hồi đến muộn tạo thêm node. Node đã tạo được giữ để kiểm tra; không tự chạy lại sau lỗi. Kế hoạch không chạy mã, không xóa/sửa node cũ và không điều khiển hệ điều hành. Ở bản 0.34.0, chat chỉ nhận văn bản; từ 0.35.0 có thể đính kèm ảnh/video như mô tả ở đầu tài liệu. Hội thoại giữ trong phiên app; xóa hội thoại trong app không xóa lịch sử trên nhà cung cấp. Bản thử này vẫn cần xác minh thực tế với tài khoản AI và Chrome của người dùng.
 
 ## Ảnh tham chiếu và Trợ lý sáng tạo · 0.33.0
 
@@ -147,6 +155,8 @@ node --test tests/*.test.mjs
 node tests/browser-smoke.cjs
 node tests/bridge-smoke.cjs
 node tests/muse-smoke.cjs
+node tests/workflow-chat-smoke.cjs
+node tests/chat-media-smoke.cjs
 ```
 
 Harness chạy DOM Chromium thật với `chrome.*` và dịch vụ AI giả lập. Kiểm tra luồng node, lưu/nhập workflow, dữ liệu video gốc, dọn tệp, chờ upload, gửi đúng một lần và hủy. **Không thay thế kiểm thử trên tài khoản AI thật.** Môi trường phát triển chặn cài extension qua tự động hóa; chưa xác minh Load unpacked tự động, API tạo nội dung trả phí, chat AI đăng nhập và Motion Control đầu cuối. Đã chạy xuất MP4 thật bằng FFmpeg WASM trong Chromium: ghép hai clip khác kích thước, đầu ra H.264 + AAC khoảng 2 giây. Chưa xác minh trên Chrome/Edge cài extension thật hoặc timeline dài. Xem [báo cáo kiểm thử lại](docs/TEST-REPORT.md).

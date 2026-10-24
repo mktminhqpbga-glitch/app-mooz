@@ -30,5 +30,5 @@
   $('creativeCheck').onclick=safe(async()=>{const button=$('creativeCheck');button.disabled=true;try{const report=await api.preflight();const list=$('creativeChecks');list.replaceChildren();for(const issue of report.issues){const item=document.createElement('button');item.type='button';item.textContent=issue.title+' · '+issue.message;item.onclick=()=>{dialog.close();api.focus(issue.id);};list.append(item);}status(report.issues.length?report.issues.length+' mục cần kiểm tra. Bấm từng mục để tới node.':'Đã kiểm tra '+report.checked+' node tạo nội dung; chưa thấy thiếu đầu vào hoặc thiết lập bắt buộc.',!!report.issues.length);}finally{button.disabled=false;}});
   show=(text)=>{if(!dialog.open)dialog.showModal();if(typeof text==='string'){tab('split');$('creativeAnswer').value=text;invalidate();}else tab('sample');};document.getElementById('creativeToolsBtn').onclick=()=>show();
  }
- globalThis.WorkflowCreative={parse,init,createScenes:(rows,providers)=>toolsAPI.createScenes(rows,providers),open:text=>show?.(text)};
+ globalThis.WorkflowCreative={parse,init,createScenes:(rows,providers,options)=>toolsAPI.createScenes(rows,providers,options),open:text=>show?.(text)};
 })();

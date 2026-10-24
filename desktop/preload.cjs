@@ -1,7 +1,7 @@
 const {contextBridge, ipcRenderer} = require('electron');
 const call = (method, data) => ipcRenderer.invoke('workflow:call', method, data);
 contextBridge.exposeInMainWorld('workflowDesktop', {
-  version: process.argv.find(arg => arg.startsWith('--workflow-version='))?.slice('--workflow-version='.length) || '0.34.1',
+  version: process.argv.find(arg => arg.startsWith('--workflow-version='))?.slice('--workflow-version='.length) || '0.35.0',
   call,
   onEvent(callback) {
     const listener = (_event, value) => callback(value);
@@ -14,7 +14,7 @@ contextBridge.exposeInMainWorld('workflowHome', {
   copyChrome: () => call('relay.copy'),
   listProjects: () => call('projects.list'),
   createProject: name => call('projects.create', {name}),
-  openProject: id => call('projects.open', {id}),
+  openProject: (id, view) => call('projects.open', {id, view}),
   renameProject: (id, name) => call('projects.rename', {id, name}),
   restoreProject: id => call('projects.restore', {id})
 });

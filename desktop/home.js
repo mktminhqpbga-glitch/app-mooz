@@ -140,6 +140,48 @@
     $('allProjects').removeAttribute('aria-current');
     render();
   };
+  let launchingApp = false;
+  $('aiAppsWorkflow').onclick = () => {
+    $('allProjects').click();
+    document.querySelector('.project-library').scrollIntoView({block:'start', behavior:'smooth'});
+  };
+  $('aiAppsChat').onclick = async () => {
+    $('appProjectError').textContent = '';
+    await refresh();
+    const select = $('appProjectSelect');
+    select.replaceChildren();
+    for (const project of projects) {
+      const option = new Option(project.name, project.id);
+      option.disabled = !!project.recoveryRequired;
+      select.append(option);
+    }
+    const first = projects.find(project => !project.recoveryRequired);
+    if (first) select.value = first.id;
+    else select.append(new Option('Chưa có dự án sẵn sàng', ''));
+    $('appProjectOpen').disabled = !first;
+    $('appProjectDialog').showModal();
+  };
+  $('appProjectCancel').onclick = () => { if (!launchingApp) $('appProjectDialog').close(); };
+  async function launchChat(createNew = false) {
+    if (launchingApp) return;
+    launchingApp = true;
+    $('appProjectError').textContent = '';
+    for (const id of ['appProjectCancel', 'appProjectNew', 'appProjectOpen']) $(id).disabled = true;
+    try {
+      const id = createNew ? (await api.createProject('Chat AI')).id : $('appProjectSelect').value;
+      if (!id) throw Error('Chọn dự án hoặc tạo một dự án Chat mới.');
+      await api.openProject(id, 'chat');
+      $('appProjectDialog').close();
+    } catch (error) {
+      $('appProjectError').textContent = displayError(error);
+    } finally {
+      launchingApp = false;
+      for (const id of ['appProjectCancel', 'appProjectNew']) $(id).disabled = false;
+      $('appProjectOpen').disabled = !$('appProjectSelect').value;
+    }
+  }
+  $('appProjectOpen').onclick = () => void launchChat(false);
+  $('appProjectNew').onclick = () => void launchChat(true);
   $('searchProjects').oninput = render;
   $('newProject').onclick = () => nameDialog();
   $('emptyCreate').onclick = () => nameDialog();
@@ -207,6 +249,7 @@
   };
 
   if (!api) {
+    $('aiAppsChat').disabled = true;
     $('connectChrome').disabled = true;
     $('newProject').disabled = true;
     $('emptyCreate').disabled = true;

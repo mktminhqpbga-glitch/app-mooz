@@ -108,7 +108,7 @@ ipcMain.handle('workflow:call',async(event,method,data={})=>{
   if(method==='relay.status')return relay.status();
   if(method==='projects.list')return store.list();
   if(method==='projects.create'){if(!ctx.home)throw Error('Open project library first.');return store.create(data.name);}
-  if(method==='projects.open'){if(!ctx.home)throw Error('Open project library first.');return openProject(data.id);}
+  if(method==='projects.open'){if(!ctx.home)throw Error('Open project library first.');const info=await openProject(data.id);if(data.view==='chat')await canvases.get(data.id).webContents.executeJavaScript('window.WorkflowChat?.open()');return info;}
   if(method==='projects.rename'){if(!ctx.home)throw Error('Open project library first.');return store.rename(data.id,data.name);}
   if(method==='projects.restore'){if(!ctx.home)throw Error('Open project library first.');if(canvases.has(data.id))throw Error('Đóng cửa sổ dự án trước khi khôi phục.');return store.restore(data.id);}
   if(method==='home.open'){await openHome();return;}
