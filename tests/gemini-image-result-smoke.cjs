@@ -24,7 +24,7 @@ const path=require('node:path');
         setTimeout(()=>{reused.querySelector('img').src=expected;},10000);
       };
     });
-    for(const file of ['composer-controls.js','ai-bridge.js'])await page.addScriptTag({path:path.resolve(__dirname,'../'+file)});
+    for(const file of ['ai-activity.js','composer-controls.js','ai-bridge.js'])await page.addScriptTag({path:path.resolve(__dirname,'../'+file)});
     await page.evaluate(()=>handler({type:'WORKFLOW_AI_GENERATE',requestId:'gemini-current-image',mediaType:'image',prompt:'Create a full body portrait from this reference',size:'9:16',referenceImages:[reference]},{id:'test'},r=>window.result=r));
     for(let i=0;i<50&&!(await page.evaluate(()=>sent));i++)await page.clock.runFor(200);
     assert.equal(await page.evaluate(()=>sent),1);

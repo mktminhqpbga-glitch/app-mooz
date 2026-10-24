@@ -1,8 +1,16 @@
-# Workflow · MuseFlow 0.35.2
+# Workflow · MuseFlow 0.35.3
 
 **[⬇ ĐÓNG GÓI / CẬP NHẬT APP MAC](https://github.com/mktminhqpbga-glitch/app-mooz/actions/workflows/desktop.yml)** · **[Hướng dẫn từng bước](docs/PACKAGING.md)**
 
 Bấm liên kết trên → **Run workflow** → chọn `main`. Khi build xong, tải artifact DMG đúng loại Mac. Có thể chọn tạo draft Release để chuẩn bị bản cập nhật; app nhận biết sau khi bạn Publish release mới hơn.
+
+## Nhận kết quả khi AI ở nền · 0.35.3
+
+Các cửa sổ Electron của app và AI không bị giảm nhịp timer khi ở nền. Bộ nối theo dõi thay đổi nội dung và nhận nhịp kiểm tra từ tiện ích Chrome trong lúc có tác vụ; bộ kiểm tra không tự chuyển tab/cửa sổ và không gửi lại prompt. Tab AI được tạm giữ khỏi Memory Saver (`autoDiscardable: false`), rồi khôi phục giá trị cũ khi hết tác vụ, bị dừng, mất bộ nối hoặc chuyển sang trang khác. Trạng thái lưu trong phiên và được đối chiếu lại khi service worker khởi động lại; giới hạn một lượt giữ tab là 45 phút.
+
+Ảnh của đúng lượt có thể được tải và giải mã trực tiếp khi trình duyệt chưa tải ảnh xem trước hoặc bỏ bố cục ngoài vùng nhìn. Nội dung ẩn thực sự và ảnh tham chiếu vẫn bị loại. Việc mở tab ban đầu để nhập/gửi và thao tác chọn kết quả thủ công giữ nguyên; bước thu kết quả không tự đảo tab. Máy vẫn cần thức, app/Chrome và các tab AI vẫn cần mở. Nếu website chưa đưa kết quả vào trang khi ở nền, bộ nối chưa thể đọc dữ liệu chưa xuất hiện.
+
+Đã kiểm thử Electron khi ẩn cửa sổ app và AI, cùng Chrome với tab không được focus, mô phỏng trạng thái ẩn/timer bị ngưng/bố cục chưa tải; ảnh Muse/Gemini và văn bản Gemini/ChatGPT vẫn được thu, Dừng giải phóng tác vụ và không gửi lặp. Phản hồi AI trong các kiểm thử là dữ liệu mô phỏng, chưa xác minh trực tiếp trên phiên AI đăng nhập thật. Cần cập nhật cả tiện ích và tải lại các tab AI để dùng bộ nhận nền mới.
 
 ## Nhận kết quả Gemini/Muse và phát hiện bộ nối cũ · 0.35.2
 
@@ -176,6 +184,7 @@ node tests/muse-smoke.cjs
 node tests/muse-result-association-smoke.cjs
 node tests/muse-receipt-layout-smoke.cjs
 node tests/gemini-image-result-smoke.cjs
+node tests/ai-background-smoke.cjs
 node tests/workflow-chat-smoke.cjs
 node tests/chat-media-smoke.cjs
 ```

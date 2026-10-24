@@ -38,7 +38,7 @@ function protect(win){
 async function openHome(){
   if(home&&!home.isDestroyed()){home.show();home.focus();return;}
   await setupSession(session.defaultSession);
-  home=new BrowserWindow({width:1200,height:830,minWidth:860,minHeight:650,backgroundColor:'#0d111b',title:'Workflow',webPreferences:{preload:path.join(__dirname,'preload.cjs'),additionalArguments:['--workflow-version='+version],contextIsolation:true,sandbox:true,nodeIntegration:false,webSecurity:true}});
+  home=new BrowserWindow({width:1200,height:830,minWidth:860,minHeight:650,backgroundColor:'#0d111b',title:'Workflow',webPreferences:{preload:path.join(__dirname,'preload.cjs'),additionalArguments:['--workflow-version='+version],backgroundThrottling:false,contextIsolation:true,sandbox:true,nodeIntegration:false,webSecurity:true}});
   protect(home);home.on('closed',()=>{home=null;});await home.loadURL('workflow://app/desktop/home.html');
 }
 async function openProject(id){
@@ -49,7 +49,7 @@ async function openProject(id){
   await store.readStorage(id); // Refuse corrupt project rather than replacing it with a blank one.
   const existing=canvases.get(id);if(existing&&!existing.isDestroyed()){existing.show();existing.focus();return info;}
   const ses=session.fromPartition('persist:workflow-project-'+id);await setupSession(ses);
-  const win=new BrowserWindow({width:1500,height:960,minWidth:1000,minHeight:700,title:info.name,backgroundColor:'#111723',webPreferences:{session:ses,preload:path.join(__dirname,'preload.cjs'),additionalArguments:['--workflow-version='+version],contextIsolation:true,sandbox:true,nodeIntegration:false,webSecurity:true}});
+  const win=new BrowserWindow({width:1500,height:960,minWidth:1000,minHeight:700,title:info.name,backgroundColor:'#111723',webPreferences:{session:ses,preload:path.join(__dirname,'preload.cjs'),additionalArguments:['--workflow-version='+version],backgroundThrottling:false,contextIsolation:true,sandbox:true,nodeIntegration:false,webSecurity:true}});
   win.projectId=id;canvases.set(id,win);sessionData.set(id,{});protect(win);
   win.prepareToClose=async({requireSaved=false}={})=>{
     if(win.isDestroyed()||win.workflowCloseAllowed)return true;

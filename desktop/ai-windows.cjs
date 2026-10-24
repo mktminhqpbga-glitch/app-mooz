@@ -3,7 +3,7 @@ const fs = require('node:fs/promises');
 const path = require('node:path');
 const {providerForURL, matchesPattern} = require('./policy.cjs');
 const WORLD = 1001;
-const FILES = new Set(['composer-controls.js', 'ai-bridge.js', 'muse-bridge.js', 'result-picker.js', 'muse-support.js']);
+const FILES = new Set(['ai-activity.js', 'composer-controls.js', 'ai-bridge.js', 'muse-bridge.js', 'result-picker.js', 'muse-support.js']);
 const TYPES = new Set(['WORKFLOW_AI_CHECK', 'WORKFLOW_AI_GENERATE', 'WORKFLOW_AI_STOP', 'WORKFLOW_AI_SEND_NOW', 'WORKFLOW_AI_USE_RESULT', 'MUSEFLOW_CHECK_SESSION', 'MUSEFLOW_GENERATE', 'MUSEFLOW_STOP_GENERATION', 'MUSEFLOW_JOB_STATUS', 'MUSEFLOW_JOB_START', 'MUSEFLOW_JOB_ACK']);
 const URLS = {chatgpt: 'https://chatgpt.com/', gemini: 'https://gemini.google.com/app', muse: 'https://muse.ai/'};
 class AIWindows {
@@ -13,11 +13,11 @@ class AIWindows {
   list(patterns) {return [...this.windows.values()].filter(win=>!win.isDestroyed() && providerForURL(win.webContents.getURL())).map(win=>this.tab(win)).filter(tab=>!patterns || (Array.isArray(patterns)?patterns:[patterns]).some(pattern=>matchesPattern(tab.url,pattern)));}
   open(provider) {
     if(!Object.hasOwn(URLS,provider))throw Error('AI không được hỗ trợ.');
-    const win=new BrowserWindow({width:1100,height:850,title:provider,webPreferences:{partition:'persist:workflow-ai-'+provider,contextIsolation:true,sandbox:true,nodeIntegration:false,webSecurity:true}});
+    const win=new BrowserWindow({width:1100,height:850,title:provider,webPreferences:{partition:'persist:workflow-ai-'+provider,backgroundThrottling:false,contextIsolation:true,sandbox:true,nodeIntegration:false,webSecurity:true}});
     const id=win.webContents.id;this.windows.set(id,win);
     win.webContents.setWindowOpenHandler(({url})=>{
       if(!/^https:\/\//.test(url))return {action:'deny'};
-      return {action:'allow',overrideBrowserWindowOptions:{webPreferences:{partition:'persist:workflow-ai-'+provider,contextIsolation:true,sandbox:true,nodeIntegration:false,webSecurity:true}}};
+      return {action:'allow',overrideBrowserWindowOptions:{webPreferences:{partition:'persist:workflow-ai-'+provider,backgroundThrottling:false,contextIsolation:true,sandbox:true,nodeIntegration:false,webSecurity:true}}};
     });
     win.webContents.on('will-navigate',(event,url)=>{if(!/^https:\/\//.test(url))event.preventDefault();});
     win.webContents.session.setPermissionRequestHandler((_wc,_permission,callback)=>callback(false));

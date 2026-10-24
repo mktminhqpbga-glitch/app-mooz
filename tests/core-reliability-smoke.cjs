@@ -91,7 +91,7 @@ let chromium;try{({chromium}=require('playwright'));}catch{({chromium}=require('
     chrome.tabs.sendMessage=async(id,message)=>{
       if(message.type==='MUSEFLOW_CHECK_SESSION')return {ok:true,composer:true,signedIn:true,busy:true,bridgeVersion:'0.31.0',bridgeProtocol:1,jobProtocol:1};
       if(message.type==='MUSEFLOW_JOB_START'||message.type==='MUSEFLOW_GENERATE'){museStarts++;throw Error('Old Muse bridge must not receive generation');}
-      if(message.type==='WORKFLOW_AI_CHECK')return {ok:true,composer:true,signedIn:true,busy:!currentBridge,bridgeVersion:currentBridge?'0.12.0':'0.11.0',...(currentBridge?{resultProtocol:2}:{})};
+      if(message.type==='WORKFLOW_AI_CHECK')return {ok:true,composer:true,signedIn:true,busy:!currentBridge,bridgeVersion:currentBridge?'0.12.0':'0.11.0',...(currentBridge?{resultProtocol:2,backgroundProtocol:1}:{})};
       if(message.type==='WORKFLOW_AI_GENERATE'){imageGenerates.push(message);return new Promise(resolve=>window.finishImage=resolve);}
       return {ok:true};
     };

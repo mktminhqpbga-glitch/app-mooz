@@ -1,4 +1,5 @@
 importScripts('desktop/chrome-relay-worker.js');
+importScripts('desktop/ai-activity-worker.js');
 chrome.action.onClicked.addListener(async () => {
   const url = chrome.runtime.getURL('app.html');
   const tabs = await chrome.tabs.query({ url });

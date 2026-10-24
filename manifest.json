@@ -4,7 +4,7 @@
     "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';"
   },
   "name": "Workflow · MuseFlow",
-  "version": "0.35.2",
+  "version": "0.35.3",
   "description": "Canvas tạo văn bản, ảnh và video với Muse, Gemini, ChatGPT hoặc API.",
   "action": {
     "default_title": "Open MuseFlow",
@@ -53,6 +53,7 @@
         "https://*.muse.ai/*"
       ],
       "js": [
+        "ai-activity.js",
         "composer-controls.js",
         "muse-bridge.js"
       ],
@@ -66,6 +67,7 @@
         "https://chat.openai.com/*"
       ],
       "js": [
+        "ai-activity.js",
         "composer-controls.js",
         "ai-bridge.js"
       ],

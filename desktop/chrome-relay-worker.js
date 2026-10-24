@@ -1,7 +1,7 @@
 /* Companion transport for the installed Chrome extension. No page can pair it. */
 (() => {
  if(globalThis.WorkflowChromeRelay)return;
- const ALLOWED_FILES=new Set(['composer-controls.js','ai-bridge.js','muse-bridge.js','result-picker.js','muse-support.js']);
+ const ALLOWED_FILES=new Set(['ai-activity.js','composer-controls.js','ai-bridge.js','muse-bridge.js','result-picker.js','muse-support.js']);
  const ALLOWED_TYPES=new Set(['WORKFLOW_AI_CHECK','WORKFLOW_AI_GENERATE','WORKFLOW_AI_STOP','WORKFLOW_AI_SEND_NOW','WORKFLOW_AI_USE_RESULT','MUSEFLOW_CHECK_SESSION','MUSEFLOW_GENERATE','MUSEFLOW_STOP_GENERATION','MUSEFLOW_JOB_START','MUSEFLOW_JOB_STATUS','MUSEFLOW_JOB_ACK']);
  const SETTINGS='workflowDesktopRelay';
  let socket=null,connection=null,state='disconnected',heartbeat=null;

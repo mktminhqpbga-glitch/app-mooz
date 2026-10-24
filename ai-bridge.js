@@ -4,13 +4,14 @@
   const isGPT=/(^|\.)chatgpt\.com$/.test(location.hostname)||location.hostname==='chat.openai.com';
   const active=new Map(),earlySend=new Set(),manualResults=new Map();let busy=false;
   const visible=el=>el&&el.getClientRects().length&&getComputedStyle(el).visibility!=='hidden';
+  const activity=globalThis.WorkflowAIActivity,readable=el=>activity?activity.readable(el):visible(el);
   function composer(){
     const selectors=isGPT
       ? '#prompt-textarea,textarea[data-id="root"],#composer-background [contenteditable="true"],form [contenteditable="true"],[contenteditable="true"][role="textbox"],main [contenteditable="true"],textarea[placeholder],textarea[aria-label]'
       : 'rich-textarea [contenteditable="true"],[contenteditable="true"][role="textbox"],textarea';
     const score=el=>(!isGPT&&el.closest('rich-textarea')?40:0)+(el.id==='prompt-textarea'?100:0)+(el.closest('#composer-background,[data-testid="composer"],form')?30:0)+(el.getAttribute('role')==='textbox'?10:0)+(/hỏi chatgpt|ask chatgpt|ask anything|message|gửi|nhắn|prompt/i.test([el.getAttribute('placeholder'),el.getAttribute('aria-label'),el.getAttribute('data-placeholder')].join(' '))?20:0);
     const candidates=[...document.querySelectorAll(selectors)].filter(el=>
-      (el instanceof HTMLTextAreaElement||el.isContentEditable)&&visible(el)&&!el.matches(':disabled')&&!el.readOnly&&el.getAttribute('aria-disabled')!=='true'&&el.getAttribute('aria-readonly')!=='true'&&!el.closest('article,[data-message-author-role],[data-turn],[data-testid*="writing-block"],[data-type="writing-block"],.writing-block,[data-testid="canvas-editor"],[data-testid="canvas"],model-response,user-query,pre,code,[role="dialog"],[role="search"],nav,header')&&score(el)>0
+      (el instanceof HTMLTextAreaElement||el.isContentEditable)&&(visible(el)||activity&&busy&&readable(el))&&!el.matches(':disabled')&&!el.readOnly&&el.getAttribute('aria-disabled')!=='true'&&el.getAttribute('aria-readonly')!=='true'&&!el.closest('article,[data-message-author-role],[data-turn],[data-testid*="writing-block"],[data-type="writing-block"],.writing-block,[data-testid="canvas-editor"],[data-testid="canvas"],model-response,user-query,pre,code,[role="dialog"],[role="search"],nav,header')&&score(el)>0
     );
     return candidates.sort((a,b)=>score(b)-score(a))[0]||null;
   }
@@ -31,7 +32,7 @@
   }
   const buttons=(scope=document)=>[...scope.querySelectorAll('button,[role="button"]')].filter(visible);
   const label=el=>`${el.getAttribute('aria-label')||''} ${el.getAttribute('data-testid')||''} ${el.getAttribute('title')||''} ${el.textContent||''}`;
-  const stopped=()=>buttons().find(el=>!el.disabled&&el.getAttribute('aria-disabled')!=='true'&&(/stop generating|stop streaming|stop response|dừng phát trực tuyến|dừng phản hồi|dừng trả lời|dừng tạo|stop-button/i.test(label(el))||el.matches('.stop-button,[data-testid="stop-button"]')));
+  const stopped=()=>[...document.querySelectorAll('button,[role="button"]')].filter(readable).find(el=>!el.disabled&&el.getAttribute('aria-disabled')!=='true'&&(/stop generating|stop streaming|stop response|dừng phát trực tuyến|dừng phản hồi|dừng trả lời|dừng tạo|stop-button/i.test(label(el))||el.matches('.stop-button,[data-testid="stop-button"]')));
   const send=()=>WorkflowComposer.findSend(root(composer()));
   const writingSelector='[data-testid="writing-block"],[data-testid^="writing-block-"],[data-type="writing-block"],.writing-block';
   function replies(){
@@ -40,12 +41,13 @@
     if(isGPT)for(const turn of document.querySelectorAll('article[data-testid^="conversation-turn-"],[data-testid^="conversation-turn-"]')){if(!turn.matches('[data-turn="user"]')&&!turn.querySelector('[data-message-author-role="user"],[data-turn="user"]')&&turn.querySelector('[data-testid="copy-turn-action-button"],'+writingSelector+',.markdown.prose'))nodes.push(turn);}
     if(isGPT)for(const copy of document.querySelectorAll('[data-testid="copy-turn-action-button"]')){const turn=copy.closest('article,[data-testid^="conversation-turn-"]');if(turn&&!turn.querySelector('[data-message-author-role="user"],[data-turn="user"]'))nodes.push(turn);}
     const candidates=[...new Set(nodes)].filter(el=>!el.closest('user-query,[data-message-author-role="user"],[data-turn="user"]')&&(!composer()||!el.contains(composer())));
-    const rendered=candidates.filter(el=>visible(el)||[...el.querySelectorAll('p,div,img,pre')].some(visible));
+    const rendered=candidates.filter(el=>readable(el)||[...el.querySelectorAll('p,div,img,pre')].some(readable));
     return rendered.filter(el=>!rendered.some(parent=>parent!==el&&parent.contains(el)));
   }
   function replyText(el){
     const writing=el.matches(writingSelector)?el:el.querySelector(writingSelector);
     const content=writing?(writing.querySelector('[data-testid="writing-block-content"],[data-writing-block-content],.ProseMirror,[contenteditable="true"],.markdown')||writing):(el.querySelector('message-content,.model-response-text,.markdown-main-panel,.markdown')||el);
+    if(activity)return activity.text(content);
     if(writing&&content===writing){const copy=content.cloneNode(true);copy.querySelectorAll('button,header,[role="toolbar"]').forEach(node=>node.remove());return String(copy.textContent||'').trim();}
     return String(content.innerText||content.textContent||'').trim();
   }
@@ -65,7 +67,7 @@
     return [...candidates].filter(el=>visible(el)&&!el.closest(historySelector)&&(String(el.innerText||el.textContent||'').trim()||el.querySelector('img[src],video[src],[data-file-name],[role="progressbar"]')||buttons(el).some(b=>/remove|xóa|xoá/i.test(label(b)))));
   }
   const uploading=()=>root(composer()).querySelector('[role="progressbar"],[aria-busy="true"],[data-state="uploading"],[data-status="uploading"],.animate-spin');
-  async function wait(check,ms,signal,message){const end=Date.now()+ms;while(Date.now()<end){if(signal?.aborted)throw new DOMException('Đã dừng.','AbortError');const result=await check();if(signal?.aborted)throw new DOMException('Đã dừng.','AbortError');if(result)return result;await new Promise(resolve=>setTimeout(resolve,180));}throw new Error(message);}
+  async function wait(check,ms,signal,message){const end=Date.now()+ms;while(Date.now()<end){if(signal?.aborted)throw new DOMException('Đã dừng.','AbortError');const result=await check();if(signal?.aborted)throw new DOMException('Đã dừng.','AbortError');if(result)return result;if(activity)await activity.wait(180,signal);else await new Promise(resolve=>setTimeout(resolve,180));}throw new Error(message);}
   async function imageFingerprint(blob){return [...new Uint8Array(await crypto.subtle.digest('SHA-256',await blob.arrayBuffer()))].map(b=>b.toString(16).padStart(2,'0')).join('');}
   const imageSources=el=>[...el.querySelectorAll('img')].map(img=>img.currentSrc||img.src).filter(Boolean);
   function setText(el,text){
@@ -97,7 +99,7 @@
       const input=()=>{const all=[...document.querySelectorAll('input[type="file"]')].filter(el=>!el.disabled&&accepts(el));return all.find(el=>scope.contains(el))||all[0];};
       if(!input()){
         const upload=buttons(scope).find(b=>/attach|upload|add files|thêm tệp|tải tệp|đính kèm|open.*menu/i.test(label(b)));if(upload)upload.click();
-        await new Promise(resolve=>setTimeout(resolve,250));
+        if(activity)await activity.sleep(250,signal);else await new Promise(resolve=>setTimeout(resolve,250));
         if(!input()){const menu=buttons().find(b=>/upload files|upload from computer|tải.*máy|tải tệp/i.test(label(b)));if(menu)menu.click();}
       }
       const field=await wait(input,5000,signal,'Không tìm thấy ô tải tệp của AI. Giao diện có thể đã thay đổi.');
@@ -162,7 +164,7 @@
       const text=wireText;
       const editor=await wait(composer,5000,signal,'Ô nhập AI vừa thay đổi. Tải lại tab AI rồi thử lại.');
       setText(editor,text);prepared=true;
-      await new Promise(resolve=>setTimeout(resolve,300));
+      if(activity)await activity.sleep(300,signal);else await new Promise(resolve=>setTimeout(resolve,300));
       const normalized=value=>String(value||'').replace(/\s+/g,' ').trim();
       if(normalized(composer()?.value??composer()?.innerText)!==normalized(text))throw new Error('AI không giữ được prompt trong ô nhập. Chưa gửi yêu cầu; hãy tải lại tab AI.');
       if(request.stageBeforeSend&&request.mediaType==='text'){
@@ -186,7 +188,7 @@
     let last='',since=Date.now(),reportedReply=false,lastImage='',imageSince=0;
     const imageCopies=new Map();
     const copyImage=src=>{
-      if(!imageCopies.has(src))imageCopies.set(src,(async()=>{const r=await fetch(src,{signal});if(!r.ok)throw new Error('Không tải được ảnh kết quả từ tab AI.');const blob=await r.blob();if(!blob.size||!blob.type.startsWith('image/'))throw new Error('Kết quả AI chưa phải tệp ảnh hợp lệ.');if(referenceFingerprints.has(await imageFingerprint(blob))){baselineImages.add(src);report(request,'Bỏ qua ảnh tham chiếu hiển thị lại. Đang chờ ảnh AI tạo trong lượt này…');return null;}return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result));reader.onerror=()=>reject(reader.error);reader.readAsDataURL(blob);});})());
+      if(!imageCopies.has(src))imageCopies.set(src,(async()=>{let blob;if(activity){const result=await activity.image(src,signal);if(result.width<256||result.height<256){baselineImages.add(src);return null;}blob=result.blob;}else{const r=await fetch(src,{signal});if(!r.ok)throw new Error('Không tải được ảnh kết quả từ tab AI.');blob=await r.blob();}if(!blob.size||!blob.type.startsWith('image/'))throw new Error('Kết quả AI chưa phải tệp ảnh hợp lệ.');if(referenceFingerprints.has(await imageFingerprint(blob))){baselineImages.add(src);report(request,'Bỏ qua ảnh tham chiếu hiển thị lại. Đang chờ ảnh AI tạo trong lượt này…');return null;}return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result));reader.onerror=()=>reject(reader.error);reader.readAsDataURL(blob);});})());
       return imageCopies.get(src);
     };
     const result=await wait(async()=>{
@@ -195,7 +197,7 @@
       const text=replyText(reply);if(!reportedReply&&text){reportedReply=true;report(request,'Đã thấy phản hồi. Đang đợi AI hoàn tất…');}if(text!==last){last=text;since=Date.now();}
       if(stopped()||reply.matches('[aria-busy="true"],[data-is-streaming="true"]')||reply.querySelector('[aria-busy="true"],[data-is-streaming="true"]')||Date.now()-since<3500)return false;
       if(request.mediaType==='text'){if(text.includes(opening)&&!text.includes(closing))return false;const clean=text.replaceAll(opening,'').replaceAll(closing,'').trim();return clean?{ok:true,text:clean}:false;}
-      const images=[...reply.querySelectorAll('img')].filter(img=>visible(img)&&img.naturalWidth>=256&&img.naturalHeight>=256&&!img.closest('user-query,[data-message-author-role="user"],[data-turn="user"]')&&!baselineImages.has(img.currentSrc||img.src));
+      const images=[...reply.querySelectorAll('img')].filter(img=>readable(img)&&(activity||img.naturalWidth>=256&&img.naturalHeight>=256)&&!img.closest('user-query,[data-message-author-role="user"],[data-turn="user"],[data-testid*="avatar" i],[class*="avatar" i]')&&!baselineImages.has(img.currentSrc||img.src)&&Boolean(img.currentSrc||img.src));
       const image=images.at(-1);if(!image){lastImage='';return false;}
       const src=image.currentSrc||image.src,key=src+'|'+image.naturalWidth+'x'+image.naturalHeight;
       if(key!==lastImage){lastImage=key;imageSince=Date.now();}if(Date.now()-imageSince<1500)return false;
@@ -206,15 +208,15 @@
   chrome.runtime.onMessage.addListener((request,sender,respond)=>{
     if(sender.id!==chrome.runtime.id)return false;
     if(request.type==='WORKFLOW_AI_CHECK'){
-      wait(composer,3500,null,'Không nhận diện được ô nhập trên trang AI đang mở.').then(()=>respond({ok:true,signedIn:true,composer:true,busy:busy||!!stopped(),bridgeVersion:'0.12.0',resultProtocol:2}),()=>respond({ok:true,signedIn:false,composer:false,bridgeVersion:'0.12.0',resultProtocol:2,error:'Tab AI đã kết nối nhưng chưa nhận diện được ô nhập đang chỉnh sửa. Mở cuộc trò chuyện và tải lại tab AI.'}));return true;
+      wait(composer,3500,null,'Không nhận diện được ô nhập trên trang AI đang mở.').then(()=>respond({ok:true,signedIn:true,composer:true,busy:busy||!!stopped(),bridgeVersion:'0.13.0',resultProtocol:2,backgroundProtocol:activity?1:0}),()=>respond({ok:true,signedIn:false,composer:false,bridgeVersion:'0.13.0',resultProtocol:2,backgroundProtocol:activity?1:0,error:'Tab AI đã kết nối nhưng chưa nhận diện được ô nhập đang chỉnh sửa. Mở cuộc trò chuyện và tải lại tab AI.'}));return true;
     }
     if(request.type==='WORKFLOW_AI_USE_RESULT'){const resolve=manualResults.get(request.requestId);if(!resolve||typeof request.text!=='string'||!request.text.trim()){respond({ok:false});return false;}resolve({ok:true,text:request.text.trim()});respond({ok:true});return false;}
     if(request.type==='WORKFLOW_AI_SEND_NOW'){const pending=active.has(request.requestId);if(pending)earlySend.add(request.requestId);respond({ok:pending});return false;}
     if(request.type==='WORKFLOW_AI_STOP'){const controller=active.get(request.requestId);if(controller){controller.abort();stopped()?.click();}respond({ok:true,stopped:!!controller});return false;}
     if(request.type!=='WORKFLOW_AI_GENERATE')return false;
     if(busy){respond({ok:false,error:'Tab AI đang xử lý một yêu cầu khác.'});return false;}
-    busy=true;const controller=new AbortController();active.set(request.requestId,controller);
+    busy=true;const controller=new AbortController();active.set(request.requestId,controller);activity?.start(request.requestId);
     const manual=new Promise(resolve=>manualResults.set(request.requestId,resolve));
-    Promise.race([generate(request,controller.signal),manual]).then(respond,error=>respond({ok:false,error:error.message})).finally(()=>{controller.abort();busy=false;active.delete(request.requestId);earlySend.delete(request.requestId);manualResults.delete(request.requestId);});return true;
+    Promise.race([generate(request,controller.signal),manual]).then(respond,error=>respond({ok:false,error:error.message})).finally(()=>{controller.abort();busy=false;active.delete(request.requestId);earlySend.delete(request.requestId);manualResults.delete(request.requestId);activity?.finish(request.requestId);});return true;
   });
 })();

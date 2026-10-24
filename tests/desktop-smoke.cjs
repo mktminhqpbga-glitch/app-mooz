@@ -53,9 +53,12 @@ const path=require('node:path');
   const aiPromise=application.waitForEvent('window');const tab=await canvas.evaluate(()=>window.workflowDesktop.call('provider.open',{provider:'chatgpt'}));const ai=await aiPromise;await ai.waitForSelector('textarea');
   assert.equal(await ai.evaluate(()=>typeof require),'undefined');assert.equal(await ai.evaluate(()=>typeof window.workflowDesktop),'undefined');
   const tabs=await canvas.evaluate(()=>chrome.tabs.query({url:['https://chatgpt.com/*']}));assert.ok(tabs.some(item=>item.id===tab.id));
-  await canvas.evaluate(id=>chrome.scripting.executeScript({target:{tabId:id},files:['composer-controls.js','ai-bridge.js']}),tab.id);
+  await canvas.evaluate(id=>chrome.scripting.executeScript({target:{tabId:id},files:['ai-activity.js','composer-controls.js','ai-bridge.js']}),tab.id);
   const check=await canvas.evaluate(id=>chrome.tabs.sendMessage(id,{type:'WORKFLOW_AI_CHECK'}),tab.id);assert.equal(check.composer,true);
+  assert.equal(check.backgroundProtocol,1);
+  await application.evaluate(({BrowserWindow})=>{for(const win of BrowserWindow.getAllWindows()){if(win.webContents.getBackgroundThrottling()!==false)throw Error('Managed window still throttles background work');if(win.projectId||win.webContents.getURL().startsWith('https://chatgpt.com'))win.hide();}});
   const result=await canvas.evaluate(id=>chrome.tabs.sendMessage(id,{type:'WORKFLOW_AI_GENERATE',requestId:'desktop-smoke',mediaType:'text',prompt:'Describe the workflow',sendMode:'auto'}),tab.id);assert.equal(result.ok,true);assert.equal(result.text,'Desktop bridge verified');
+  await application.evaluate(({BrowserWindow})=>{for(const win of BrowserWindow.getAllWindows())if(win.projectId)win.show();});
   // Exercise the authenticated Chrome relay through the real Electron IPC path.
   const {WebSocket}=require('ws');const {once}=require('node:events');
   const pair=await home.evaluate(()=>window.workflowHome.connectChrome());const pairURL=new URL(pair.url);

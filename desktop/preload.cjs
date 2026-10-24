@@ -1,7 +1,7 @@
 const {contextBridge, ipcRenderer} = require('electron');
 const call = (method, data) => ipcRenderer.invoke('workflow:call', method, data);
 contextBridge.exposeInMainWorld('workflowDesktop', {
-  version: process.argv.find(arg => arg.startsWith('--workflow-version='))?.slice('--workflow-version='.length) || '0.35.2',
+  version: process.argv.find(arg => arg.startsWith('--workflow-version='))?.slice('--workflow-version='.length) || '0.35.3',
   call,
   onEvent(callback) {
     const listener = (_event, value) => callback(value);

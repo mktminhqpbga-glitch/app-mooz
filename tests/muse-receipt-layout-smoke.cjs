@@ -17,7 +17,7 @@ const path=require('node:path');
         const reply=document.createElement('div');reply.dataset.testid='hatch-chat-attachment-presentation-image';const contents=document.createElement('span');contents.style.display='contents';const bubble=document.createElement('button');bubble.type='button';bubble.className='hatch-chat-groupable-bubble';bubble.setAttribute('aria-busy','false');const image=new Image();image.src=expected;bubble.append(image);contents.append(bubble);reply.append(contents);document.querySelector('#thread').append(reply);
       };
     });
-    for(const file of ['composer-controls.js','muse-bridge.js'])await page.addScriptTag({path:path.resolve(__dirname,'../'+file)});
+    for(const file of ['ai-activity.js','composer-controls.js','muse-bridge.js'])await page.addScriptTag({path:path.resolve(__dirname,'../'+file)});
     await page.evaluate(()=>handler({type:'MUSEFLOW_GENERATE',requestId:'composer-overlay',prompt:'Create this next portrait image',mediaType:'image',size:'9:16',timeoutSec:30},{id:'test'},r=>window.result=r));
     await page.clock.runFor(8000);
     assert.equal(await page.evaluate(()=>result?.ok),true,'Composer mirror is not a historical receipt and user attachment filenames must not hide the real receipt');

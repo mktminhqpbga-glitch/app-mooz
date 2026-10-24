@@ -1,7 +1,8 @@
 (() => {
   if (window.__museFlowBridgeInstalled) return;
   window.__museFlowBridgeInstalled = true;
-  window.__museFlowBridgeVersion='0.35.2';
+  window.__museFlowBridgeVersion='0.35.3';
+  const activity=globalThis.WorkflowAIActivity;
 
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     if(_sender.id!==chrome.runtime.id)return false;
@@ -19,14 +20,14 @@
       if(activeGenerations.size){sendResponse({ok:false,error:'Muse đang xử lý yêu cầu khác.'});return false;}
       for(const [key,job] of museJobs)if(job.result&&Date.now()-(job.finishedAt||job.createdAt)>1200000)museJobs.delete(key);
       const completed=[...museJobs].filter(([,job])=>job.result);while(completed.length>=3)museJobs.delete(completed.shift()[0]);
-      const controller=new AbortController(),job={createdAt:Date.now(),result:null};museJobs.set(id,job);activeGenerations.set(id,controller);
-      generate(message,controller.signal).then(result=>{job.result={...result,conversationUrl:location.href};job.finishedAt=Date.now();},error=>{job.finishedAt=Date.now();job.result={ok:false,code:error.code||'MUSE_ERROR',error:error.message||String(error)};}).finally(()=>activeGenerations.delete(id));
+      const controller=new AbortController(),job={createdAt:Date.now(),result:null};museJobs.set(id,job);activeGenerations.set(id,controller);activity?.start(id);
+      generate(message,controller.signal).then(result=>{job.result={...result,conversationUrl:location.href};job.finishedAt=Date.now();},error=>{job.finishedAt=Date.now();job.result={ok:false,code:error.code||'MUSE_ERROR',error:error.message||String(error)};}).finally(()=>{activeGenerations.delete(id);activity?.finish(id);});
       sendResponse({ok:true,accepted:true,requestId:id});return false;
     }
     if (message?.type === 'MUSEFLOW_GENERATE') {
       if(activeGenerations.size){sendResponse({ok:false,error:'Muse đang xử lý yêu cầu khác.'});return false;}
-      const controller=new AbortController();activeGenerations.set(message.requestId,controller);
-      generate(message,controller.signal).then(result=>sendResponse({...result,conversationUrl:location.href}), error => sendResponse({ ok: false, code:error.code||'MUSE_ERROR', error: error.message || String(error) })).finally(()=>activeGenerations.delete(message.requestId));
+      const controller=new AbortController();activeGenerations.set(message.requestId,controller);activity?.start(message.requestId);
+      generate(message,controller.signal).then(result=>sendResponse({...result,conversationUrl:location.href}), error => sendResponse({ ok: false, code:error.code||'MUSE_ERROR', error: error.message || String(error) })).finally(()=>{activeGenerations.delete(message.requestId);activity?.finish(message.requestId);});
       return true;
     }
     if(message?.type==='MUSEFLOW_STOP_GENERATION'){
@@ -36,14 +37,15 @@
   });
 
   function findComposer() {
-    const candidates=[...document.querySelectorAll('textarea')].filter(el=>visible(el)&&!el.disabled);
+    const candidates=[...document.querySelectorAll('textarea')].filter(el=>(visible(el)||activity&&activeGenerations.size&&readable(el))&&!el.disabled);
     return candidates.find(el=>/message|消息/i.test(el.getAttribute('placeholder')||''))||candidates[0]||null;
   }
 
   function composerScope(el){return WorkflowComposer.scopeFor(el);}
 
   function visible(el) { return Boolean(el && el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden'); }
-  const delay = (ms,signal) => new Promise((resolve,reject)=>{
+  const readable=el=>activity?activity.readable(el):visible(el);
+  const delay = (ms,signal) => activity?activity.sleep(ms,signal):new Promise((resolve,reject)=>{
     if(signal?.aborted){reject(new DOMException('Generation stopped by user.','AbortError'));return;}
     const timer=setTimeout(()=>{signal?.removeEventListener('abort',cancel);resolve();},ms);
     const cancel=()=>{clearTimeout(timer);signal?.removeEventListener('abort',cancel);reject(new DOMException('Generation stopped by user.','AbortError'));};
@@ -69,7 +71,7 @@
     const composer=findComposer();
     const ready=Boolean(composer&&visible(composer)&&!composer.disabled&&!composer.readOnly);
     const loginRequired=Boolean(document.querySelector('input[type="password"],button[type="submit"]'))&&/sign in|log in|登录/i.test(document.body?.innerText||'');
-    return {ok:true,jobProtocol:1,bridgeProtocol:1,resultProtocol:2,bridgeVersion:window.__museFlowBridgeVersion,signedIn:ready&&!loginRequired,busy:activeGenerations.size>0||[...document.querySelectorAll('[data-testid="hatch-composer-stop-button"],button[aria-label*="Stop" i]')].some(visible),title:document.title,composer:ready,loginRequired,url:location.href};
+    return {ok:true,jobProtocol:1,bridgeProtocol:1,resultProtocol:2,backgroundProtocol:activity?1:0,bridgeVersion:window.__museFlowBridgeVersion,signedIn:ready&&!loginRequired,busy:activeGenerations.size>0||[...document.querySelectorAll('[data-testid="hatch-composer-stop-button"],button[aria-label*="Stop" i]')].some(visible),title:document.title,composer:ready,loginRequired,url:location.href};
   }
 
   async function waitHydrated(timeout,signal) {
@@ -90,10 +92,10 @@
     for(const el of document.querySelectorAll('video,[data-video-src],[data-video-url],[data-download-url],a[download],a[href]')){
       if(el.matches('video,[data-video-src],[data-video-url]')||/\.(mp4|webm|mov|m4v)(?:$|[?#])/i.test(el.href||el.getAttribute('download')||el.getAttribute('data-download-url')||''))candidates.add(tile(el));
     }
-    for(const img of document.querySelectorAll('img'))if(img.naturalWidth>=128&&img.naturalHeight>=128)candidates.add(tile(img));
+    for(const img of document.querySelectorAll('img'))if(activity||img.naturalWidth>=128&&img.naturalHeight>=128)candidates.add(tile(img));
     const found=new Map();
     for(const el of candidates){
-      if(!(visible(el)||getComputedStyle(el).display==='contents'&&[...el.querySelectorAll('video,img,a')].some(visible))||el.closest('[data-testid*="placeholder" i],[data-testid*="loading" i],[data-state="loading"],[aria-busy="true"]')||(scope?.contains(el)&&!(el.compareDocumentPosition(composer)&Node.DOCUMENT_POSITION_FOLLOWING))||el.closest('[class*="chat-user-bubble"],[data-message-author-role="user"],user-query,[data-testid="hatch-composer-placeholder-overlay"]'))continue;
+      if(!(readable(el)||getComputedStyle(el).display==='contents'&&[...el.querySelectorAll('video,img,a')].some(readable))||el.closest('[data-testid*="placeholder" i],[data-testid*="loading" i],[data-state="loading"],[aria-busy="true"]')||(scope?.contains(el)&&!(el.compareDocumentPosition(composer)&Node.DOCUMENT_POSITION_FOLLOWING))||el.closest('[class*="chat-user-bubble"],[data-message-author-role="user"],user-query,[data-testid="hatch-composer-placeholder-overlay"]'))continue;
       const tid=el.getAttribute('data-testid')||'',video=el.matches('video')?el:el.querySelector('video'),image=el.matches('img')?el:el.querySelector('img');
       const nodes=[el,...el.querySelectorAll('a[href],source[src],[data-video-src],[data-video-url],[data-download-url]')];
       const urls=nodes.map(item=>({url:item.getAttribute('data-video-src')||item.getAttribute('data-video-url')||item.getAttribute('data-download-url')||item.href||item.src||'',download:item.getAttribute('download')||'',type:item.getAttribute('type')||'',explicitVideo:item.hasAttribute('data-video-src')||item.hasAttribute('data-video-url')})).filter(item=>item.url);
@@ -113,6 +115,7 @@
   window.WorkflowMuseBridgeDiagnostics=()=>({lastScan,version:window.__museFlowBridgeVersion,activeJobs:activeGenerations.size,trackedJobs:museJobs.size,recognizedAttachments:attachments().length,assistantContainers:assistantMessageElements().length});
 
   function waitForAttachmentChange(timeoutMs,signal){
+    if(activity)return activity.wait(timeoutMs,signal);
     return new Promise(resolve=>{
       let timer;
       const observer=new MutationObserver(()=>finish());
@@ -124,7 +127,7 @@
   }
 
   function assistantMessageElements(){
-    return [...document.querySelectorAll(assistantSelector)].filter(el=>visible(el)&&!el.closest('[class*="chat-user-bubble"],[data-message-author-role="user"],[data-testid*="user-message" i]'));
+    return [...document.querySelectorAll(assistantSelector)].filter(el=>readable(el)&&!el.closest('[class*="chat-user-bubble"],[data-message-author-role="user"],[data-testid*="user-message" i]'));
   }
 
   function readNewAssistantContext(previousBubbleTexts){
@@ -154,7 +157,7 @@
     await waitHydrated(15000,signal);
     throwIfAborted();
     let composer=findComposer();
-    if(!visible(composer))throw new Error('Muse message box is not visible. Open the chat composer and retry.');
+    if(!(visible(composer)||activity&&readable(composer)))throw new Error('Muse message box is not visible. Open the chat composer and retry.');
     const draftSetter=Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value')?.set;
     if(draftSetter){draftSetter.call(composer,'');composer.dispatchEvent(new Event('input',{bubbles:true}));}
     const removeDraft=()=>WorkflowComposer.removeButtons(composerScope(findComposer()),findComposer());
@@ -188,7 +191,7 @@
     const normalize=text=>String(text||'').replace(/\s+/g,' ').trim();
     const promptReceipts=()=>{
       const editor=findComposer(),scope=editor&&composerScope(editor);
-      const eligible=el=>!el.contains(editor)&&!scope?.contains(el)&&!el.closest('[data-testid="hatch-composer-placeholder-overlay"]')&&(visible(el)||getComputedStyle(el).display==='contents'&&[...el.querySelectorAll('p,div,span')].some(visible));
+      const eligible=el=>!el.contains(editor)&&!scope?.contains(el)&&!el.closest('[data-testid="hatch-composer-placeholder-overlay"]')&&(readable(el)||getComputedStyle(el).display==='contents'&&[...el.querySelectorAll('p,div,span')].some(readable));
       // A sent user bubble can include file labels and controls after the prompt.
       // Their length does not make the actual prompt receipt disappear.
       const known=[...document.querySelectorAll(userSelector)].filter(el=>eligible(el)&&normalize(el.textContent).includes(promptText));
@@ -220,13 +223,13 @@
       return root&&root.contains(el)&&!el.contains(receipt)&&Boolean(receipt.compareDocumentPosition(el)&Node.DOCUMENT_POSITION_FOLLOWING)&&editor&&(knownAssistant||Boolean(el.compareDocumentPosition(editor)&Node.DOCUMENT_POSITION_FOLLOWING));
     };
     const beforeSendCount=bubbleCount(),previousTexts=new Set(priorBubbleTexts.values());
-    const activity=()=>!!findComposer()&&!findComposer().value.trim()&&(bubbleCount()>beforeSendCount||newReceipts().length>0||attachments().some(item=>!baseline.has(item.src))||assistantMessageElements().some(el=>{const text=(el.innerText||el.textContent||'').replace(/\s+/g,' ').trim();return text&&!previousTexts.has(text);})||[...document.querySelectorAll('[data-testid="hatch-composer-stop-button"],button[aria-label*="Stop" i],button[aria-label*="停止"]')].some(visible));
+    const sendActivity=()=>!!findComposer()&&!findComposer().value.trim()&&(bubbleCount()>beforeSendCount||newReceipts().length>0||attachments().some(item=>!baseline.has(item.src))||assistantMessageElements().some(el=>{const text=(el.innerText||el.textContent||'').replace(/\s+/g,' ').trim();return text&&!previousTexts.has(text);})||[...document.querySelectorAll('[data-testid="hatch-composer-stop-button"],button[aria-label*="Stop" i],button[aria-label*="停止"]')].some(visible));
     report(requestId,'Muse: đã điền prompt, đang chờ nút Gửi…');
     let sendButton=null,submitted=false,keyboardSend=false;
     for(let i=0;i<900;i++){
       throwIfAborted();
       // A user may press Send while our selector is still waiting. Never send twice.
-      if(activity()){submitted=true;break;}
+      if(sendActivity()){submitted=true;break;}
       WorkflowComposer.assertUpload(composerScope(findComposer()));
       sendButton=WorkflowComposer.findSend(composerScope(findComposer()));
       if(sendButton)break;
@@ -247,26 +250,28 @@
       submitted=true;
     }
     let accepted=false;
-    for(let i=0;i<150;i++){throwIfAborted();if(activity()){accepted=true;break;}await delay(100,signal);}
+    for(let i=0;i<150;i++){throwIfAborted();if(sendActivity()){accepted=true;break;}await delay(100,signal);}
     if(!accepted)throw new Error('Chưa xác nhận Muse nhận prompt. Không tự gửi lại để tránh trùng lặp.');
     report(requestId,'Muse đã nhận yêu cầu. Đang tìm video/ảnh kết quả mới…');
     const deadline=Date.now()+Math.min(900,Math.max(30,Number(timeoutSec)||600))*1000;
     let lastProgress=Date.now(),firstWrongRatioAt=0,wrongMediaSince=0,lastCandidate='',candidateSince=0;
-    let refusalContext='',refusalContextSince=0;const openedPlayers=new Set();
+    let refusalContext='',refusalContextSince=0;const openedPlayers=new Set(),imageCopies=new Map();
     while(Date.now()<deadline){
       throwIfAborted();
       const scanned=attachments(contextualReply);lastScan={kind:mediaType,candidates:scanned.length,baselineExcluded:scanned.filter(a=>baseline.has(a.src)).length,receipts:newReceipts().length};
       const conversationChanged=initialConversation!==location.origin+location.pathname;lastScan.conversationChanged=conversationChanged;
       const requireCurrentTurn=mediaType==='image'||newReceipts().length>0;
       const fresh=scanned.filter(a=>!baseline.has(a.src)&&(requireCurrentTurn?contextualReply(a.media,!!a.bubble):(!conversationChanged||followsReceipt(a))&&!priorBubbleTexts.has(a.bubble)));
-      if(mediaType==='video')for(const item of fresh.filter(a=>a.isVideo&&!a.videoUrl&&!openedPlayers.has(a.src))){const play=[...item.el.querySelectorAll('button[aria-label],button[title],[role="button"][aria-label]')].find(button=>visible(button)&&/^(?:play|phát|播放)(?:\b|\s|$)/i.test(button.getAttribute('aria-label')||button.title||''));if(play){openedPlayers.add(item.src);play.click();report(requestId,'Muse: đã mở trình phát của kết quả mới, đang đọc đường dẫn video…');}}
+      if(mediaType==='video')for(const item of fresh.filter(a=>a.isVideo&&!a.videoUrl&&!openedPlayers.has(a.src))){const play=[...item.el.querySelectorAll('button[aria-label],button[title],[role="button"][aria-label]')].find(button=>readable(button)&&/^(?:play|phát|播放)(?:\b|\s|$)/i.test(button.getAttribute('aria-label')||button.title||''));if(play){openedPlayers.add(item.src);play.click();report(requestId,'Muse: đã mở trình phát của kết quả mới, đang đọc đường dẫn video…');}}
       const matching=fresh.filter(a=>mediaType==='video'?a.isVideo:!a.isVideo);Object.assign(lastScan,{fresh:fresh.length,matching:matching.length});
+      if(activity&&mediaType==='image')for(const item of matching){if(item.width&&item.height)continue;try{if(!imageCopies.has(item.src))imageCopies.set(item.src,activity.image(item.src,signal));const data=await imageCopies.get(item.src);item.width=data.width;item.height=data.height;}catch(error){if(signal?.aborted)throw error;lastScan.imageProbeError=error.name;imageCopies.delete(item.src);}}
+      lastScan.decodedImages=matching.filter(item=>item.width>0&&item.height>0).length;
       if(Date.now()-lastProgress>=5000){lastProgress=Date.now();report(requestId,matching.length?`Muse: đã thấy ${mediaType==='video'?'video':'ảnh'} mới, đang chờ dữ liệu sẵn sàng…`:`Muse: đã gửi một lần; đang đối chiếu ${mediaType==='video'?'video':'ảnh'} với tin nhắn vừa gửi. Không gửi lại prompt.`);}
       const wrongMedia=fresh.find(a=>mediaType==='image'?a.isVideo:!a.isVideo);
       if(wrongMedia&&mediaType!=='video'){if(!wrongMediaSince)wrongMediaSince=Date.now();if(Date.now()-wrongMediaSince>=1800){const expected=mediaType==='image'?'image':'video',actual=mediaType==='image'?'video':'image';const error=new Error(`Muse returned a ${actual} for a Generate ${expected==='image'?'Image':'Video'} node. Switch the Muse composer to ${expected} generation, then retry.`);error.code='MEDIA_TYPE_MISMATCH';throw error;}}
       else wrongMediaSince=0;
       const [ratioW,ratioH]=String(size||'1:1').split(':').map(Number),expectedRatio=ratioW>0&&ratioH>0?ratioW/ratioH:1;
-      const measured=matching.filter(a=>a.width>0&&a.height>0).sort((a,b)=>{
+      const measured=matching.filter(a=>a.width>0&&a.height>0&&(mediaType!=='image'||a.width>=128&&a.height>=128)).sort((a,b)=>{
         const scoreA=Math.abs(Math.log((a.width/a.height)/expectedRatio)),scoreB=Math.abs(Math.log((b.width/b.height)/expectedRatio));
         if(Math.abs(scoreA-scoreB)>.015)return scoreA-scoreB;
         return a.el.compareDocumentPosition(b.el)&Node.DOCUMENT_POSITION_FOLLOWING?1:-1;
@@ -277,6 +282,7 @@
       const result=(best&&(bestRatioError<=.09||Date.now()-firstWrongRatioAt>=3500)?best:null)||(mediaType==='video'?matching.find(item=>item.videoUrl&&(!item.width||!item.height)):null);
       if(result){
         const responding=[...document.querySelectorAll('[data-testid="hatch-composer-stop-button"],button[aria-label*="Stop" i],button[aria-label*="停止"]')].some(visible);
+        lastScan.responding=responding;
         if(lastCandidate!==result.src){lastCandidate=result.src;candidateSince=Date.now();}
         if(responding||Date.now()-candidateSince<1500){await waitForAttachmentChange(Math.min(500,deadline-Date.now()),signal);continue;}
         report(requestId,'Đã tìm thấy kết quả Muse. Đang chuyển về Workflow…');
@@ -287,9 +293,7 @@
         if(!src){firstWrongRatioAt=firstWrongRatioAt||Date.now();await waitForAttachmentChange(Math.min(500,deadline-Date.now()),signal);continue;}
         if(src.startsWith('data:')&&!referenceFingerprints.size)return {ok:true,url:src};
         try{
-          const response=await fetch(src,{credentials:'include',signal});
-          if(!response.ok)throw new Error(`${mediaType} download returned HTTP ${response.status}.`);
-          const blob=await response.blob();
+          let blob;if(imageCopies.has(src))blob=(await imageCopies.get(src)).blob;else{const response=await fetch(src,{credentials:'include',signal});if(!response.ok)throw new Error(`${mediaType} download returned HTTP ${response.status}.`);blob=await response.blob();}
           // Sent reference tiles can be remounted with fresh blob/CDN URLs and
           // no user-role attribute. Their bytes are still input, never output.
           if(mediaType==='image'&&referenceFingerprints.has(await imageFingerprint(blob))){
