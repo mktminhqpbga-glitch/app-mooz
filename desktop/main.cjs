@@ -1,4 +1,4 @@
-const {app,BrowserWindow,ipcMain,protocol,net,dialog,Menu,shell,session} = require('electron');
+const {app,BrowserWindow,ipcMain,protocol,net,dialog,Menu,shell,session,clipboard} = require('electron');
 const path=require('node:path');
 const fs=require('node:fs/promises');
 const {pathToFileURL}=require('node:url');
@@ -103,6 +103,8 @@ ipcMain.handle('workflow:call',async(event,method,data={})=>{
   if(method==='updates.install')return updater.install();
   if(method==='updates.release'){await shell.openExternal(updater.releaseURL());return;}
   if(method==='relay.pair')return {url:relay.pairingURI()};
+  // Copy only the host-generated pairing code; no renderer-supplied text or clipboard reads.
+  if(method==='relay.copy'){await clipboard.writeText(relay.pairingURI());return {copied:true};}
   if(method==='relay.status')return relay.status();
   if(method==='projects.list')return store.list();
   if(method==='projects.create'){if(!ctx.home)throw Error('Open project library first.');return store.create(data.name);}

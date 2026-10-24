@@ -1,27 +1,39 @@
-/* Real Electron host + real renderer. Provider response below is a local fixture. */
+/* Real Electron host + real renderer. Provider response below is a local fixture.
+   Clipboard checks need a desktop session on Linux (for example xvfb-run -a). */
 const {_electron:electron}=require('playwright');
 const assert=require('node:assert/strict');
 const fs=require('node:fs/promises');
 const os=require('node:os');
 const path=require('node:path');
 (async()=>{
- const data=await fs.mkdtemp(path.join(os.tmpdir(),'workflow-desktop-'));let application;
+ const data=await fs.mkdtemp(path.join(os.tmpdir(),'workflow-desktop-'));let application,clipboardBefore;
  try{
   const env={...process.env,WORKFLOW_DESKTOP_TEST:'1',WORKFLOW_TEST_DATA:data,XDG_CACHE_HOME:path.join(data,'cache')};delete env.ELECTRON_RUN_AS_NODE;
   application=await electron.launch({args:['--no-sandbox',...(process.platform==='linux'&&!env.DISPLAY?['--ozone-platform=headless','--disable-gpu']:[]),path.resolve(__dirname,'..')],env,timeout:60000});
   const home=await application.firstWindow();home.setDefaultTimeout(20000);const errors=[];home.on('pageerror',error=>errors.push(error.message));
   await home.waitForSelector('#newProject');
+  clipboardBefore=await application.evaluate(({clipboard})=>clipboard.readText());
+  async function clipboardMatches(expected){for(let i=0;i<60;i++){if(await application.evaluate(async({clipboard},value)=>(await clipboard.readText())===value,expected))return true;await new Promise(resolve=>setTimeout(resolve,40));}return false;}
+
+
   await home.click('#desktopUpdateButton');await home.waitForSelector('#desktopUpdateDialog[open]');assert.match(await home.locator('#desktopUpdateStatus').innerText(),/bản cài macOS/);await application.evaluate(()=>globalThis.workflowTest.updater.set({mode:'native',state:'downloading',latestVersion:'0.32.0',progress:{percent:42},message:'Đang tải bản cập nhật trong nền…'}));
   await home.waitForFunction(()=>document.querySelector('#desktopUpdateDialog progress').value===42);assert.equal(await home.locator('#desktopCheckUpdate').isDisabled(),true);
   await application.evaluate(()=>globalThis.workflowTest.updater.set({state:'downloaded',progress:null,message:'Bản mới đã tải xong.'}));await home.waitForSelector('#desktopInstallUpdate:visible');
   await application.evaluate(()=>globalThis.workflowTest.updater.set({mode:'unavailable',state:'disabled',latestVersion:null,message:'Cập nhật ứng dụng dùng trong bản cài macOS.'}));
   await home.locator('#desktopUpdateDialog button').filter({hasText:'Đóng'}).click();
+  // Keep web clipboard unavailable; explicit pairing copies must use native Electron IPC.
+  await home.evaluate(()=>{window.webClipboardCalls=0;Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async()=>{window.webClipboardCalls++;throw Error('Web clipboard blocked');}}});});
+  await home.click('#connectChrome');await home.waitForSelector('#chromeDialog[open]');const homePair=await home.locator('#chromePairing').inputValue();assert.equal(await home.locator('#chromePairing').getAttribute('type'),'password');await home.click('#copyChrome');await home.waitForFunction(()=>document.querySelector('#chromeStatus').textContent.includes('Đã sao chép'));assert.ok(await clipboardMatches(homePair),'Home copy writes the exact pairing URI to the native clipboard');assert.equal(await home.evaluate(()=>webClipboardCalls),0);await home.click('#revealChrome');assert.equal(await home.locator('#chromePairing').getAttribute('type'),'text');await home.click('#closeChrome');await home.waitForFunction(()=>document.querySelector('#chromePairing').value==='');assert.ok((await home.locator('#chromePairing').inputValue())==='');assert.equal(await home.locator('#chromePairing').getAttribute('type'),'password');
   const project=await home.evaluate(()=>window.workflowHome.createProject('Dự án kiểm thử desktop'));
   const canvasPromise=application.waitForEvent('window');await home.evaluate(id=>window.workflowHome.openProject(id),project.id);const canvas=await canvasPromise;canvas.setDefaultTimeout(20000);canvas.on('pageerror',error=>errors.push(error.message));
   await canvas.waitForSelector('.node');
   await canvas.click('#workflowChatLauncher');assert.equal(await canvas.locator('#workflowChatPanel').isVisible(),true);assert.equal(await canvas.locator('#workflowChatAuto').isChecked(),false);await canvas.click('#workflowChatMinimize');
 
-  await canvas.click('#desktopConnectChrome');await canvas.waitForSelector('#canvasChromeDialog[open]');assert.match(await canvas.locator('#canvasChromePairing').inputValue(),/^workflow-connect:\/\/127\.0\.0\.1:/);await canvas.click('#canvasChromeClose');assert.equal(await canvas.locator('#canvasChromePairing').inputValue(),'');
+  await canvas.evaluate(()=>{window.webClipboardCalls=0;Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async()=>{window.webClipboardCalls++;throw Error('Web clipboard blocked');}}});});
+  await canvas.click('#desktopConnectChrome');await canvas.waitForSelector('#canvasChromeDialog[open]');const canvasPair=await canvas.locator('#canvasChromePairing').inputValue();assert.match(canvasPair,/^workflow-connect:\/\/127\.0\.0\.1:/);await application.evaluate(({clipboard})=>clipboard.writeText('clipboard-test-sentinel'));await canvas.click('#canvasChromeCopy');await canvas.waitForFunction(()=>document.querySelector('#canvasChromeStatus').textContent.includes('Đã sao chép'));assert.ok(await clipboardMatches(canvasPair),'Canvas copy writes the exact pairing URI to native clipboard');assert.equal(await canvas.evaluate(()=>webClipboardCalls),0);
+  await canvas.click('#canvasChromeReveal');assert.equal(await canvas.locator('#canvasChromePairing').getAttribute('type'),'text');await application.evaluate(async({clipboard,BrowserWindow})=>{await clipboard.writeText('manual-copy-sentinel');BrowserWindow.getAllWindows().find(w=>w.projectId).webContents.copy();});assert.ok(await clipboardMatches(canvasPair),'Revealed readonly text supports native manual copy');await canvas.click('#canvasChromeClose');await canvas.waitForFunction(()=>document.querySelector('#canvasChromePairing').value==='');assert.ok((await canvas.locator('#canvasChromePairing').inputValue())==='');assert.equal(await canvas.locator('#canvasChromePairing').getAttribute('type'),'password');
+  await home.click('#newProject');await home.locator('#projectName').focus();await application.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows().find(w=>!w.projectId).webContents.paste());await home.waitForFunction(value=>document.querySelector('#projectName').value===value,canvasPair);assert.ok((await home.locator('#projectName').inputValue())===canvasPair,'Pairing code can be pasted into another app window');await home.click('#cancelName');
+
 
   assert.equal(await canvas.evaluate(()=>chrome.runtime.getManifest().version),require('../package.json').version);
   await canvas.evaluate(()=>chrome.storage.local.set({desktopSmoke:'saved',museflow:{nodes:[],edges:[],groups:[],notes:[],settings:{}}}));
@@ -69,6 +81,6 @@ const path=require('node:path');
     finally{t.store.writeStorage=original;dialog.showMessageBox=show;}
   });
   assert.deepEqual(errors,[]);
-  console.log('PASS real Electron: home, canvas, IPC storage + restart, project isolation, network refusal, isolated AI window, bridge send/receive and authenticated Chrome relay routing. AI response fixture only.');
- }finally{await application?.close();await fs.rm(data,{recursive:true,force:true});}
+  console.log('PASS real Electron: home, canvas, IPC storage + restart, project isolation, network refusal, isolated AI window, bridge send/receive and authenticated Chrome relay routing, native pairing copy/paste with web clipboard blocked and reveal/reset controls. AI response fixture only.');
+ }finally{if(application&&clipboardBefore!==undefined)try{await application.evaluate(({clipboard},value)=>clipboard.writeText(value),clipboardBefore);}catch{}await application?.close();await fs.rm(data,{recursive:true,force:true});}
 })().catch(error=>{console.error(error);process.exitCode=1;});

@@ -1,8 +1,12 @@
-# Workflow · MuseFlow 0.34.0
+# Workflow · MuseFlow 0.34.1
 
 **[⬇ ĐÓNG GÓI / CẬP NHẬT APP MAC](https://github.com/mktminhqpbga-glitch/app-mooz/actions/workflows/desktop.yml)** · **[Hướng dẫn từng bước](docs/PACKAGING.md)**
 
 Bấm liên kết trên → **Run workflow** → chọn `main`. Khi build xong, tải artifact DMG đúng loại Mac. Có thể chọn tạo draft Release để chuẩn bị bản cập nhật; app nhận biết sau khi bạn Publish release mới hơn.
+
+## Sửa sao chép mã kết nối · 0.34.1
+
+Nút **Sao chép mã** ở thư viện dự án và canvas dùng clipboard native của Electron, hoạt động ngay cả khi Web Clipboard bị chặn. App chỉ cho sao chép mã ghép nối do tiến trình chính tạo, không mở quyền đọc clipboard cho trang AI. **Hiện mã / Ẩn mã** cho phép sao chép thủ công; đóng hộp thoại sẽ xóa mã trong ô và che lại ở lần mở sau. Quy trình đóng gói Mac kiểm tra sao chép/dán thực tế trong Electron cùng với bố cục canvas.
 
 ## Sửa bố cục desktop · 0.34.0
 

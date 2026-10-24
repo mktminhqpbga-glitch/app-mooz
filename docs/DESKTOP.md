@@ -140,3 +140,7 @@ Build macOS trong CI chỉ được coi là đạt khi xem được kết quả 
 - Cấu hình secrets cho workflow signed release, ký/notarize và kiểm tra cài cập nhật trên Mac thật.
 - Hoàn thiện phiên bản dữ liệu, sao lưu media và phục hồi tác vụ nếu cần chạy nền lâu dài.
 - Giữ các thông báo giấy phép GPL-2.0-or-later và bên thứ ba khi phân phối.
+
+### Kiểm thử clipboard native
+
+`npm run test:desktop` kiểm tra sao chép mã ghép nối ở thư viện và canvas, dán sang cửa sổ khác, Hiện/Ẩn mã và xóa mã khi đóng hộp thoại. Web Clipboard bị chặn trong kiểm thử để xác minh đường IPC native. Trên Linux cần phiên X11/Wayland có clipboard; có thể chạy `xvfb-run -a npm run test:desktop`. Các kiểm thử không gửi tài khoản AI thật.

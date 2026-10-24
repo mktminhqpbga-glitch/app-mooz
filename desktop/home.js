@@ -182,15 +182,14 @@
     finally { $('connectChrome').disabled = false; }
   };
   $('closeChrome').onclick = () => $('chromeDialog').close();
-  $('chromeDialog').addEventListener('close', () => { $('chromePairing').value = ''; });
+  $('chromeDialog').addEventListener('close', () => { $('chromePairing').value = ''; $('chromePairing').type = 'password'; $('revealChrome').textContent = 'Hiện mã'; $('revealChrome').setAttribute('aria-pressed', 'false'); });
+  $('revealChrome').onclick = () => { const show = $('chromePairing').type === 'password'; $('chromePairing').type = show ? 'text' : 'password'; $('revealChrome').textContent = show ? 'Ẩn mã' : 'Hiện mã'; $('revealChrome').setAttribute('aria-pressed', String(show)); if (show) { $('chromePairing').focus(); $('chromePairing').select(); } };
   $('copyChrome').onclick = async () => {
     try {
-      await navigator.clipboard.writeText($('chromePairing').value);
+      await api.copyChrome();
       $('chromeStatus').textContent = 'Đã sao chép. Dán mã vào tiện ích đồng hành trong Chrome.';
     } catch {
-      $('chromePairing').focus();
-      $('chromePairing').select();
-      $('chromeStatus').textContent = 'Chọn mã rồi nhấn ⌘C trên Mac hoặc Ctrl+C để sao chép.';
+      $('chromeStatus').textContent = 'Chưa sao chép được. Bấm Hiện mã, chọn mã rồi nhấn ⌘C trên Mac hoặc Ctrl+C.';
     }
   };
 
