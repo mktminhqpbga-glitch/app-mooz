@@ -67,3 +67,10 @@ test('restart marks interrupted work without replaying AI and a damaged job does
  const {service,root,calls}=await fixture(t),j=await service.create({url:affiliate,target:{id:1,transport:'native'}});await done(service,j.id);await service.save(j.id,{status:'writer'});await service.close();
  const orphan=await service.store.create('Tác vụ chưa ghi xong');const restarted=new AffiliateService({root,ai:service.ai,decodeImage:async()=>image});await restarted.init();assert.equal((await restarted.get(j.id)).status,'error');assert.equal((await restarted.snapshot()).jobs.length,2);assert.equal((await restarted.snapshot()).jobs.find(j=>j.id===orphan.id).recoveryRequired,true);assert.equal(calls(),4);assert.equal(restarted.paused,true);await restarted.close();
 });
+test('a withdrawn queued job cannot be claimed from an older queue snapshot',async t=>{
+ const {service,calls}=await fixture(t);let fetches=0;const fetchImpl=service.fetchImpl;service.fetchImpl=(...args)=>{fetches++;return fetchImpl(...args);};const original=service.all.bind(service);let release,captured,held=false;
+ const gate=new Promise(resolve=>release=resolve),listed=new Promise(resolve=>captured=resolve);
+ service.all=async()=>{const rows=await original();if(!held&&rows.some(j=>j.status==='queued')){held=true;captured();await gate;}return rows;};
+ const {id}=await service.create({url:affiliate,target:{id:1,transport:'native'}});await listed;await service.cancel(id);const pending=service.working;release();await pending;
+ assert.equal(fetches,0,'A withdrawn job must not fetch the product');assert.equal(calls(),0,'A queue withdrawal must win before any AI request');assert.equal((await service.get(id)).status,'cancelled');
+});
