@@ -118,7 +118,9 @@
   async function generate(request,signal){
     if(!String(request.prompt||'').trim())throw new Error('Yêu cầu trống.');
     const deadline=Date.now()+120000,initialOrigin=location.origin;let conversation=initialOrigin+location.pathname;
-    const startsNewChat=isGPT?/^\/$/.test(location.pathname):/^\/app\/?$/.test(location.pathname);
+    const initialPath=location.pathname.replace(/\/$/,'');
+    const startsNewChat=isGPT?/^(?:|\/g\/[^/]+(?:\/project)?)$/.test(initialPath):/^(?:\/u\/\d+)?\/app$/.test(initialPath);
+    const assignedPrefix=isGPT?(initialPath.replace(/\/project$/,'')+'/c/'):initialPath+'/';
     let conversationAssigned=false;
     const markerId=crypto.randomUUID().replaceAll('-',''),opening=`[[WF:${markerId}]]`,closing=`[[/WF:${markerId}]]`;
     const format=request.mediaType==='text'?`Dòng đầu chỉ ghi ${opening}; dòng cuối chỉ ghi ${closing}. Đặt toàn bộ kết quả ở giữa, không thêm lời dẫn.`:'';
@@ -174,7 +176,7 @@
     };
     const checkConversation=()=>{
       const next=location.origin+location.pathname;if(next===conversation)return;
-      const assigned=isGPT?/^\/c\/[^/]+\/?$/.test(location.pathname):/^\/app\/[^/]+\/?$/.test(location.pathname);
+      const assigned=location.pathname.startsWith(assignedPrefix)&&/^[^/]+\/?$/.test(location.pathname.slice(assignedPrefix.length));
       // Normal first-send navigation creates an ID. Never adopt another existing chat.
       if(prepared&&startsNewChat&&!conversationAssigned&&assigned&&location.origin===initialOrigin&&(echo()||freshReplies().some(currentReply))){conversation=next;conversationAssigned=true;return;}
       throw new Error('Cuộc trò chuyện đã thay đổi. Đã dừng để tránh lấy kết quả từ chat khác.');

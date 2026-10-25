@@ -5,11 +5,11 @@ const path=require('node:path');
 (async()=>{
  const browser=await chromium.launch({executablePath:'/usr/bin/chromium',headless:true,args:['--no-sandbox']});
  try{
-  for(const provider of ['gemini','chatgpt'])for(const kind of ['text','image']){
-   const page=await browser.newPage(),host=provider==='gemini'?'gemini.google.com':'chatgpt.com';
+  for(const provider of ['gemini','chatgpt'])for(const kind of ['text','image'])for(const alternate of [false,true]){
+   const page=await browser.newPage(),host=provider==='gemini'?'gemini.google.com':'chatgpt.com',basePath=provider==='gemini'?(alternate?'/u/1/app':'/app'):(alternate?'/g/g-fixture/project':'/');
    await page.route('https://'+host+'/**',r=>r.fulfill({contentType:'text/html',body:`<main id="thread"><div ${provider==='gemini'?'class="model-response"':'data-turn="assistant"'}>Old answer</div></main><form><textarea ${provider==='chatgpt'?'id="prompt-textarea"':''} placeholder="Message"></textarea><button type="button" aria-label="Send">Send</button></form>`}));
-   await page.goto('https://'+host+(provider==='gemini'?'/app':'/'));await page.clock.install();
-   await page.evaluate(({provider,kind})=>{
+   await page.goto('https://'+host+basePath);await page.clock.install();
+   await page.evaluate(({provider,kind,basePath})=>{
     window.handlers=[];window.sent=0;window.result=null;window.fetches=[];
     window.chrome={runtime:{id:'test',sendMessage:async()=>{},onMessage:{addListener:f=>handlers.push(f)}}};
     window.call=req=>new Promise(resolve=>{for(const handler of handlers)handler(req,{id:'test'},resolve);});
@@ -29,7 +29,7 @@ const path=require('node:path');
      if(provider==='chatgpt')user.dataset.turn='user';
      const body=document.createElement('div');if(provider==='gemini')body.className='user-query-container';
      body.textContent=provider==='gemini'?window.promptText.slice(0,190)+'…':wire;user.append(body);document.querySelector('main').append(user);editor.value='';
-     history.pushState({},'',provider==='gemini'?'/app/current-request':'/c/current-request');
+     history.pushState({},'',provider==='gemini'?basePath+'/current-request':basePath.replace(/\/project$/,'').replace(/\/$/,'')+'/c/current-request');
      const reply=document.createElement('div');if(provider==='gemini')reply.className='model-response';else reply.dataset.turn='assistant';reply.id='current';reply.setAttribute('data-is-streaming','true');document.querySelector('main').append(reply);
      const markers=[...wire.matchAll(/\[\[\/?WF:[a-f0-9]+\]\]/g)].map(m=>m[0]);
      if(kind==='text'){
@@ -41,7 +41,7 @@ const path=require('node:path');
      }
     };
     window.promptText='Create a complete description of the current product and its verified characteristics. '.repeat(8);
-   },{provider,kind});
+   },{provider,kind,basePath});
    for(const file of ['ai-activity.js','composer-controls.js','ai-bridge.js'])await page.addScriptTag({path:path.resolve(__dirname,'../'+file)});
    await page.evaluate(kind=>{void call({type:'WORKFLOW_AI_GENERATE',requestId:'current',mediaType:kind,prompt:promptText}).then(r=>result=r);},kind);
    await page.clock.runFor(6500);assert.equal(await page.evaluate(()=>result),null,provider+' must await stream/CDN readiness');

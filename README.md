@@ -1,8 +1,14 @@
-# Workflow · MuseFlow 0.38.2
+# Workflow · MuseFlow 0.39.0
 
 **[⬇ ĐÓNG GÓI / CẬP NHẬT APP MAC](https://github.com/mktminhqpbga-glitch/app-mooz/actions/workflows/desktop.yml)** · **[Hướng dẫn từng bước](docs/PACKAGING.md)**
 
 Bấm liên kết trên → **Run workflow** → chọn `main`. Khi build xong, tải artifact DMG đúng loại Mac. Có thể chọn tạo draft Release để chuẩn bị bản cập nhật; app nhận biết sau khi bạn Publish release mới hơn.
+
+## Affiliate Shopee · 0.39.0
+
+Ứng dụng mới tại **Thư viện → Affiliate Shopee**: link sản phẩm → hồ sơ dữ kiện nguồn → ba góc kể chuyện → kịch bản từng cảnh → kiểm tra → tạo workflow video, tùy chọn lời đọc AI. Giữ nguyên link affiliate, dùng ảnh nguồn riêng từng cảnh, hạn chế kịch bản gần trùng, lưu/hủy/tạm dừng tác vụ và khôi phục sau gián đoạn. Kết quả cuối thêm vào Đăng bài sẽ giữ cả content và link gốc trong bản nháp. Không cần chạy backend Python bên ngoài.
+
+Chỉ đọc dữ liệu Shopee công khai; nguồn bị chặn/thiếu metadata sẽ báo lỗi, không tự đoán. Video/giọng nói cần tài khoản hoặc API tương ứng và chỉ chạy khi người dùng chọn chạy canvas. Đã kiểm tra bằng Electron với nguồn/AI mô phỏng và MP4 thật, chưa xác minh nguồn Shopee hoặc tài khoản dịch vụ thật. [Cách dùng và giới hạn](docs/AFFILIATE-SHOPEE.md).
 
 ## Sửa nhận kết quả Gemini / ChatGPT · 0.38.2
 

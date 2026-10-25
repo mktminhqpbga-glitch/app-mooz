@@ -165,6 +165,7 @@
     render();
   };
   let launchingApp = false;
+  $('aiAppsAffiliate').onclick=()=>void window.workflowDesktop.call('affiliate.open').catch(error=>status(displayError(error),true));
   $('aiAppsHub').onclick=()=>void window.workflowDesktop.call('posting.open',{view:'overview'}).catch(error=>status(displayError(error),true));
   $('aiAppsPosting').onclick=()=>void window.workflowDesktop.call('posting.open').catch(error=>status(displayError(error),true));
   $('aiAppsWorkflow').onclick = () => {

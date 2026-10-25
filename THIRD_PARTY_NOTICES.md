@@ -29,3 +29,7 @@ Copyright and license notices (Bitstream Vera / DejaVu) are reproduced in
 ## yt-dlp (optional local runtime)
 
 The local media helper installs yt-dlp separately through pip; its code and binaries are not bundled in the extension ZIP. Project and licensing information: https://github.com/yt-dlp/yt-dlp . See the installed package's license and dependency notices.
+
+## Affiliate product HTML parser
+
+The desktop app uses parse5 8.0.0 (MIT) and entities 6.0.1 (BSD-2-Clause). Full notices: [parse5](licenses/parse5-MIT.txt), [entities](licenses/entities-BSD-2-Clause.txt). These dependencies parse public product metadata; no Shopee code or authenticated API is bundled.

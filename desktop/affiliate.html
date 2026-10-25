@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'"><title>Affiliate Shopee · Workflow</title><link rel="stylesheet" href="affiliate.css"></head>
+<body>
+ <header class="top"><div><span class="mark">↗</span><div><strong>Affiliate Shopee</strong><small>WORKFLOW · PRODUCT STUDIO</small></div></div><nav><button id="home">Thư viện</button><button id="posting">Đăng bài ↗</button></nav></header>
+ <main class="layout">
+  <aside class="intake">
+   <span class="eyebrow">01 / NGUỒN SẢN PHẨM</span><h1>Một link.<br>Một câu chuyện riêng.</h1><p class="muted">Từ dữ liệu sản phẩm đến kịch bản có nguồn và workflow video của bạn.</p>
+   <form id="createForm"><label>Link affiliate Shopee<input id="productLink" type="url" required maxlength="4096" placeholder="https://s.shopee.vn/…" autocomplete="off"></label><label>ChatGPT viết kịch bản<select id="chatTarget" required><option value="">Chọn cuộc trò chuyện…</option></select></label><div class="row"><button id="refreshTabs" type="button">↻ Làm mới tab</button><button id="openAI" type="button">Mở ChatGPT ↗</button></div><button id="create" type="submit" class="primary">＋ Tạo kịch bản từ link</button></form>
+   <p class="note">Giữ nguyên link affiliate gốc. Chỉ đọc dữ liệu Shopee công khai; nguồn yêu cầu đăng nhập/CAPTCHA sẽ báo lỗi. Chưa tạo video hay đăng bài khi bạn bấm tạo kịch bản.</p>
+   <div id="message" role="status" aria-live="polite"></div>
+   <section class="queue"><div class="section-title"><h2>Tác vụ gần đây</h2><button id="pause" type="button">Tạm dừng</button></div><p id="queueState" class="muted"></p><div id="jobs"></div></section>
+  </aside>
+  <section class="workspace"><div class="workspace-title"><span class="eyebrow">02 / KỊCH BẢN SẢN PHẨM</span><span class="local">● Lưu trên máy</span></div><div id="detail"><div class="empty"><span>✧</span><h2>Bắt đầu từ một sản phẩm</h2><p>Hồ sơ nguồn, góc kể chuyện và từng cảnh sẽ xuất hiện tại đây.</p></div></div></section>
+ </main>
+ <script src="affiliate.js"></script>
+</body></html>
