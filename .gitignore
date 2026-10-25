@@ -4,3 +4,9 @@ tools/media-helper/.venv/
 node_modules/
 dist/
 .electron-test/
+
+# Credentials for optional hosted services
+.env
+.env.*
+!*.example
+*.env

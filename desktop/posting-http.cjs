@@ -15,11 +15,11 @@ function problem(code,message,{rejected=false}={}){
  return Object.assign(new Error(message||MESSAGES[code]||MESSAGES.INVALID_RESPONSE),{code,rejected});
 }
 
-async function json(response,provider='Nền tảng'){
+async function json(response,provider='Nền tảng',{maxBytes=1024*1024}={}){
  let text='';const decoder=new TextDecoder();
  if(response.body?.getReader){
   const reader=response.body.getReader();let size=0;
-  try{for(;;){const {value,done}=await reader.read();if(done)break;size+=value.byteLength;if(size>1024*1024){await reader.cancel();throw problem('INVALID_RESPONSE');}text+=decoder.decode(value,{stream:true});}text+=decoder.decode();}
+  try{for(;;){const {value,done}=await reader.read();if(done)break;size+=value.byteLength;if(size>Math.min(maxBytes,16*1024*1024)){await reader.cancel();throw problem('INVALID_RESPONSE');}text+=decoder.decode(value,{stream:true});}text+=decoder.decode();}
   finally{reader.releaseLock();}
  }else text=await response.text();
  let value;try{value=JSON.parse(text);}catch{throw problem(response.status>=500?'PROVIDER_5XX':'INVALID_RESPONSE',provider+': phản hồi không đọc được.');}

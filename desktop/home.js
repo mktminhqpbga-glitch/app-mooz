@@ -165,6 +165,7 @@
     render();
   };
   let launchingApp = false;
+  $('aiAppsHub').onclick=()=>void window.workflowDesktop.call('posting.open',{view:'overview'}).catch(error=>status(displayError(error),true));
   $('aiAppsPosting').onclick=()=>void window.workflowDesktop.call('posting.open').catch(error=>status(displayError(error),true));
   $('aiAppsWorkflow').onclick = () => {
     $('allProjects').click();

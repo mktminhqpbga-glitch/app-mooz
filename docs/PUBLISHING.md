@@ -14,6 +14,8 @@ Lịch dùng múi giờ hệ điều hành và lưu mốc UTC. Máy phải thứ
 
 ## Facebook Page trực tiếp
 
+Từ 0.38.0, có thể vào **Trung tâm điều hành → Tài khoản & Page** để đăng nhập và chọn nhiều Page trong một lượt thiết lập. [Hướng dẫn dịch vụ Meta OAuth và nhập User token](META-LOGIN.md). Cách nhập một Page bằng token dưới đây vẫn được giữ.
+
 Mở **Kết nối nền tảng → Facebook Page trực tiếp**, nhập Page ID và **Page access token**. App kiểm tra token có thuộc đúng Page trước khi lưu. Cần quyền đăng của người quản lý Page và các quyền API phù hợp, gồm `pages_manage_posts` và `pages_read_engagement`. Cấp quyền/lấy token thực hiện trong công cụ và ứng dụng Meta của bạn; tích hợp này không cung cấp ứng dụng OAuth Meta đã được duyệt sẵn. Token hết hạn hoặc thiếu quyền sẽ báo lỗi để kết nối lại.
 
 Ảnh được tải lên ở chế độ chưa công khai trước; sau đó gửi một bài feed gắn toàn bộ ảnh. Video được gửi bằng API video của Page; trạng thái **Đã gửi · đang xử lý** được kiểm tra lại để nhận biết xử lý hoàn tất/thất bại. Không dùng tự click trình duyệt Facebook và không sao chép cookie tài khoản.

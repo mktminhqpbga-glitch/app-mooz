@@ -6,13 +6,13 @@ const {options,event,summary}=require('./posting-model.cjs');
 const SENT=['published','submitted','uncertain'];
 const FROZEN=[...SENT,'prepared','scheduled','queued','staged'];
 class PostingService{
- constructor({store,publisher,ask,notify=()=>{}}){
-  Object.assign(this,{store,publisher,ask,notify});this.active=new Map();this.accounts=new Set();this.settingsWrites=Promise.resolve();this.closed=false;
-  this.settings={paused:false,prompt:'Viết content đăng mạng xã hội bằng tiếng Việt, tự nhiên, ngắn gọn. Dựa vào hình và ngữ cảnh được cung cấp; không bịa thông số, giá, công dụng hay khuyến mãi. Thêm lời kêu gọi hành động phù hợp và tối đa 5 hashtag. Chỉ trả nội dung bài đăng.'};
+ constructor({store,publisher,ask,brands,notify=()=>{}}){
+  Object.assign(this,{store,publisher,ask,brands,notify});this.active=new Map();this.accounts=new Set();this.settingsWrites=Promise.resolve();this.closed=false;
+  this.settings={paused:false,metaBrokerURL:'',prompt:'Viết content đăng mạng xã hội bằng tiếng Việt, tự nhiên, ngắn gọn. Dựa vào hình và ngữ cảnh được cung cấp; không bịa thông số, giá, công dụng hay khuyến mãi. Thêm lời kêu gọi hành động phù hợp và tối đa 5 hashtag. Chỉ trả nội dung bài đăng.'};
  }
  async init(){
   await this.store.init();await this.publisher.init();
-  try{const saved=JSON.parse(await fs.readFile(path.join(this.store.root,'settings.json'),'utf8'));if(typeof saved.prompt==='string'&&saved.prompt.trim()&&saved.prompt.length<=12000)this.settings.prompt=saved.prompt;this.settings.paused=saved.paused===true;}
+  try{const saved=JSON.parse(await fs.readFile(path.join(this.store.root,'settings.json'),'utf8'));if(typeof saved.prompt==='string'&&saved.prompt.trim()&&saved.prompt.length<=12000)this.settings.prompt=saved.prompt;this.settings.paused=saved.paused===true;if(saved.metaBrokerURL)this.settings.metaBrokerURL=this.brokerURL(saved.metaBrokerURL);}
   catch(error){if(error.code!=='ENOENT'){this.settings.paused=true;this.settingsError='Không đọc được thiết lập đã lưu. Hàng chờ đã tạm dừng; lưu lại thiết lập rồi tiếp tục.';}}
   await this.recoverDispatch();
  }
@@ -24,25 +24,30 @@ class PostingService{
    else{if(!children.length&&parent.status==='error')continue;parent.status='error';parent.autoPublish=false;parent.error='App dừng khi chia bài cho các nền tảng. Chưa gửi bài; kiểm tra và xếp lại.';event(parent,'error',parent.error,'QUEUE_INTERRUPTED');await this.store.save(parent);for(const child of children){child.status='error';child.error=parent.error;await this.store.save(child);}}
   }
  }
- async snapshot(){return {jobs:(await this.store.list()).map(summary),connections:this.publisher.list(),storage:this.publisher.storage?.()||{connected:false},settings:{...this.settings},connectionError:this.publisher.loadError||'',settingsError:this.settingsError||'',schedulerError:this.schedulerError||''};}
+ async snapshot(){return {jobs:(await this.store.list()).map(summary),connections:this.publisher.list(),brands:this.brands?(await this.brands.list()).map(b=>this.brands.public(b)):[],storage:this.publisher.storage?.()||{connected:false},settings:{...this.settings},connectionError:this.publisher.loadError||'',settingsError:this.settingsError||'',schedulerError:this.schedulerError||''};}
  async changed(){this.notify();}
  settingsSave(data){
   const write=this.settingsWrites.catch(()=>{}).then(async()=>{
    const next={...this.settings};if(data.prompt!==undefined){if(typeof data.prompt!=='string'||!data.prompt.trim()||data.prompt.length>12000)throw Error('Prompt chung cần từ 1 đến 12.000 ký tự.');next.prompt=data.prompt;}
    if(data.paused!==undefined){if(typeof data.paused!=='boolean')throw Error('Trạng thái hàng chờ không hợp lệ.');next.paused=data.paused;}
+   if(data.metaBrokerURL!==undefined)next.metaBrokerURL=this.brokerURL(data.metaBrokerURL);
    const file=path.join(this.store.root,'settings.json'),temp=file+'.'+randomUUID()+'.tmp';
    try{await fs.writeFile(temp,JSON.stringify(next),{mode:0o600});await fs.rename(temp,file);}finally{await fs.rm(temp,{force:true});}
    this.settings=next;this.settingsError='';await this.changed();return {...next};
   });this.settingsWrites=write;return write;
  }
+ brokerURL(value){if(value==='')return '';let url;try{url=new URL(value);}catch{throw Error('URL dịch vụ Meta OAuth không hợp lệ.');}if(url.protocol!=='https:'||url.username||url.password||url.search||url.hash||url.pathname!=='/'||value.length>2000)throw Error('Dùng URL gốc HTTPS của dịch vụ Meta OAuth.');return url.origin+'/';}
  locked(id,fn){
   if(this.active.has(id))throw Error('Bài đang được xử lý.');const controller=new AbortController();this.active.set(id,controller);
   return Promise.resolve().then(()=>fn(controller)).finally(()=>{this.active.delete(id);void this.changed();});
  }
  async edit(id,data){return this.locked(id,async()=>{
   const j=await this.store.read(id);if(FROZEN.includes(j.status))throw Error('Rút bài khỏi hàng chờ trước khi sửa; bài đã gửi không được đăng lại.');
-  if(typeof data.caption==='string'){if(data.caption.length>60000)throw Error('Content quá dài.');j.caption=data.caption;j.status='draft';}
+  if(typeof data.caption==='string'){if(data.caption.length>60000)throw Error('Content quá dài.');if(j.caption!==data.caption)j.reviewState='draft';j.caption=data.caption;j.status='draft';}
   if(data.connectionIds!==undefined){this.validateConnections(data.connectionIds,true);if(j.parentId&&(data.connectionIds.length!==1||data.connectionIds[0]!==j.connectionId))throw Error('Mỗi mục trong hàng chờ gắn với một nơi đăng. Dùng lại thành bản nháp để đổi tài khoản.');j.connectionIds=[...new Set(data.connectionIds)];j.connectionId=j.connectionIds[0]||'';}
+  if(data.brandId!==undefined){if(typeof data.brandId!=='string')throw Error('Thương hiệu không hợp lệ.');const brand=data.brandId?data.brandId===j.brandId&&j.brandSnapshot&&data.refreshBrand!==true?j.brandSnapshot:await this.brands?.snapshot(data.brandId):null;if(data.brandId&&!brand)throw Error('Không tìm thấy thương hiệu.');if(j.brandId!==data.brandId||JSON.stringify(j.brandSnapshot)!==JSON.stringify(brand))j.reviewState='draft';j.brandId=data.brandId;j.brandSnapshot=brand;}
+  if(data.captionVariants!==undefined){const variants=data.captionVariants;if(!variants||typeof variants!=='object'||Array.isArray(variants)||Object.keys(variants).length>8||Object.keys(variants).some(k=>!['facebook','instagram','youtube','tiktok','linkedin','pinterest','x','other'].includes(k))||Object.values(variants).some(v=>typeof v!=='string'||v.length>60000)||JSON.stringify(variants).length>128000)throw Error('Nội dung riêng theo nền tảng không hợp lệ.');if(JSON.stringify(j.captionVariants||{})!==JSON.stringify(variants))j.reviewState='draft';j.captionVariants={...variants};}
+  if(data.requireApproval!==undefined)j.requireApproval=data.requireApproval===true;
   if(data.options!==undefined)j.options=options(data.options);
   if(data.autoPublish!==undefined)j.autoPublish=data.autoPublish===true;
   if(data.scheduledAt!==undefined)j.scheduledAt=this.schedule(data.scheduledAt);
@@ -54,9 +59,10 @@ class PostingService{
   if(SENT.includes(j.status))throw Error('Bài đã gửi hoặc chưa rõ kết quả; không gửi lại.');
   // Repeating the parent action never requeues a previously dispatched destination.
   if(j.status==='prepared')return summary(j);
+  if(j.requireApproval&&j.reviewState!=='approved')throw Error('Duyệt nội dung trước khi xếp hàng đăng.');
   const when=this.schedule(scheduledAt);if(!j.caption?.trim())throw Error('Viết content trước khi đưa vào hàng chờ đăng.');this.validateConnections(connectionIds);
   if(j.parentId&&(connectionIds.length!==1||connectionIds[0]!==j.connectionId))throw Error('Giữ nguyên nơi đăng của bài con. Tạo bản nháp riêng nếu muốn đổi.');
-  for(const connectionId of new Set(connectionIds)){const error=this.publisher.preflight?.({...j,connectionId});if(error)throw Error(error);}
+  for(const connectionId of new Set(connectionIds)){const c=this.publisher.list().find(c=>c.id===connectionId),error=this.publisher.preflight?.({...j,connectionId,caption:j.parentId?j.caption:j.captionVariants?.[c?.platform]?.trim()||j.caption});if(error)throw Error(error);}
   for(let index=0;index<j.media.length;index++)await this.store.mediaPath(j.id,index);
   if(j.parentId){j.scheduledAt=when;j.status=when?'scheduled':'queued';j.error='';j.autoPublish=false;event(j,j.status,'Đã xác nhận xếp hàng.');await this.store.save(j);}
   else{
@@ -65,7 +71,7 @@ class PostingService{
    for(const connectionId of j.dispatch.connectionIds){
     let child=await this.store.destination(j,connectionId,when,{staged:true});
     if(!SENT.includes(child.status)&&!['uploading','publishing','queued','scheduled'].includes(child.status)){
-     child.caption=j.caption;child.options=structuredClone(j.options||{});child.scheduledAt=when;child.status='staged';child.error='';await this.store.save(child);
+     const c=this.publisher.list().find(c=>c.id===connectionId);child.destination=c?{id:c.id,name:c.name||c.id,platform:c.platform,pageId:c.pageId,accountId:c.accountId}:null;child.caption=j.captionVariants?.[c?.platform]?.trim()||j.caption;child.brandId=j.brandId||'';child.brandSnapshot=structuredClone(j.brandSnapshot||null);child.reviewState=j.reviewState;child.requireApproval=j.requireApproval===true;child.options=structuredClone(j.options||{});child.scheduledAt=when;child.status='staged';child.error='';await this.store.save(child);
     }children.push(child);
    }
    j.status='prepared';j.dispatch.committed=true;j.autoPublish=false;j.error='';event(j,'prepared','Đã lưu đủ hàng chờ theo từng nền tảng.');await this.store.save(j);
@@ -78,7 +84,7 @@ class PostingService{
  caption(id,target){return this.locked(id,async controller=>{
   const j=await this.store.read(id);if(FROZEN.includes(j.status))throw Error('Rút bài khỏi hàng chờ trước khi viết lại.');if(j.autoPublish&&!(j.connectionIds||[]).length)throw Error('Chọn nơi đăng trước khi bật tự đăng.');
   j.status='captioning';j.error='';event(j,'captioning','Đang yêu cầu ChatGPT viết content.');await this.store.save(j);await this.changed();
-  try{const text=await this.ask(j,this.settings.prompt,target,controller.signal);controller.signal.throwIfAborted();if(typeof text!=='string'||!text.trim()||text.length>60000)throw Error('ChatGPT chưa trả content hợp lệ.');j.caption=text.trim();j.status='ready';event(j,'ready','Đã nhận content để kiểm tra.');await this.store.save(j);await this.changed();if(j.autoPublish)return await this.enqueueLocked(j);return summary(j);}
+  try{const text=await this.ask(j,this.settings.prompt,target,controller.signal);controller.signal.throwIfAborted();if(typeof text!=='string'||!text.trim()||text.length>60000)throw Error('ChatGPT chưa trả content hợp lệ.');j.caption=text.trim();j.reviewState='draft';j.status='ready';event(j,'ready','Đã nhận content để kiểm tra.');await this.store.save(j);await this.changed();if(j.autoPublish)return await this.enqueueLocked(j);return summary(j);}
   catch(error){if(!SENT.includes(j.status)&&j.status!=='prepared'){j.status='draft';j.autoPublish=false;j.error=error.name==='AbortError'?'Đã dừng viết content.':error.message;event(j,'draft',j.error,error.code);await this.store.save(j);}throw error;}
  });}
  async publishLocked(j,controller){
@@ -95,6 +101,10 @@ class PostingService{
  }
  publish(id){return this.locked(id,async controller=>{const j=await this.store.read(id);if(SENT.includes(j.status))throw Error('Bài đã gửi hoặc chưa rõ kết quả. Không tự đăng lại.');if(!['queued','scheduled'].includes(j.status))throw Error('Bài đã được rút khỏi hàng chờ.');if(this.closed||this.settings.paused||this.hold||j.scheduledAt&&Date.parse(j.scheduledAt)>Date.now())return summary(j);if(this.accounts.has(j.connectionId))return summary(j);this.accounts.add(j.connectionId);try{return await this.publishLocked(j,controller);}finally{this.accounts.delete(j.connectionId);}});}
  resolve(id,confirmed){return this.locked(id,async()=>{const j=await this.store.read(id);if(j.status!=='uncertain'||confirmed!==true)throw Error('Kiểm tra nền tảng trước khi xác nhận chưa đăng.');j.status='draft';j.autoPublish=false;j.error='Bạn đã xác nhận bài chưa được đăng. Kiểm tra content và xếp lại khi sẵn sàng.';event(j,'draft',j.error,'MANUAL_REVIEW');await this.store.save(j);return summary(j);});}
+ approve(id){return this.locked(id,async()=>{const j=await this.store.read(id);if(FROZEN.includes(j.status)||!j.caption?.trim())throw Error('Chỉ duyệt bản nháp đã có content.');for(let i=0;i<j.media.length;i++)await this.store.mediaPath(j.id,i);j.reviewState='approved';j.reviewedAt=new Date().toISOString();event(j,j.status,'Đã duyệt nội dung và các bản riêng theo nền tảng.');await this.store.save(j);return summary(j);});}
+ reschedule(id,data){return this.locked(id,async()=>{const j=await this.store.read(id);if(!['queued','scheduled'].includes(j.status))throw Error('Chỉ đổi lịch bài đang chờ, chưa bắt đầu gửi.');if(data.expectedUpdatedAt!==j.updatedAt)throw Error('Bài vừa thay đổi. Làm mới lịch rồi thử lại.');const when=this.schedule(data.scheduledAt);if(!when)throw Error('Chọn ngày và giờ đăng.');j.scheduledAt=when;j.status='scheduled';event(j,'scheduled','Đã đổi lịch đăng thành '+when);await this.store.save(j);return summary(j);});}
+ catalog(id,data){return this.locked(id,async()=>{const j=await this.store.read(id);if(data.favorite!==undefined)j.favorite=data.favorite===true;if(data.tags!==undefined){if(!Array.isArray(data.tags)||data.tags.length>10||data.tags.some(t=>typeof t!=='string'||!t.trim()||t.length>32))throw Error('Tối đa 10 nhãn, mỗi nhãn 32 ký tự.');j.tags=[...new Set(data.tags.map(t=>t.trim()))];}await this.store.save(j);return summary(j);});}
+ metrics(id){return this.locked(id,async()=>{const j=await this.store.read(id);if(!['published','submitted'].includes(j.status)||!j.result?.id)throw Error('Chỉ đọc thống kê bài đã được nền tảng nhận.');try{const values=await this.publisher.metrics(j);j.stats={values,checkedAt:new Date().toISOString(),error:''};}catch(error){j.stats={...j.stats,error:error.message,attemptedAt:new Date().toISOString()};}await this.store.save(j);return summary(j);});}
  stop(id){const controller=this.active.get(id);if(controller?.finalRequest)throw Error('Nền tảng đang nhận yêu cầu đăng. Chờ xác nhận để tránh gửi trùng.');controller?.abort();}
  remove(id){return this.locked(id,async()=>{const j=await this.store.read(id).catch(()=>null);if(j&&['queued','scheduled','staged'].includes(j.status))throw Error('Rút bài khỏi hàng chờ trước khi xóa.');await this.store.remove(id);});}
  copy(id){return this.locked(id,async()=>summary(await this.store.copyDraft(await this.store.read(id))));}

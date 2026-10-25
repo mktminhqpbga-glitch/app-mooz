@@ -11,6 +11,10 @@ const {FacebookPublisher}=require('./facebook-publisher.cjs');
 const {PostingService}=require('./posting-service.cjs');
 const {PostingAI}=require('./posting-ai.cjs');
 const {PostingOAuth}=require('./posting-oauth.cjs');
+const {BrandStore}=require('./brand-store.cjs');
+const {ChatStore}=require('./chat-store.cjs');
+const {FacebookPages}=require('./facebook-pages.cjs');
+const {FacebookLogin}=require('./facebook-login.cjs');
 const {UpdateService,isDeveloperIDSigned,latestPublicRelease}=require('./updater.cjs');
 const version=require('../package.json').version;
 const root=path.resolve(__dirname,'..');
@@ -19,11 +23,11 @@ const testMode=process.env.WORKFLOW_DESKTOP_TEST==='1'&&!app.isPackaged;
 if(testMode){if(!process.env.WORKFLOW_TEST_DATA)throw Error('Missing test data directory');app.setPath('userData',path.resolve(process.env.WORKFLOW_TEST_DATA));}
 if(!app.requestSingleInstanceLock())app.exit(0);
 app.on('second-instance',()=>{if(home&&!home.isDestroyed()){home.show();home.focus();}});
-let store,home,ai,relay,updater,downloads,posting,postingAI,postingOAuth,postingWindow,chromeEverConnected=false;
+let store,home,ai,relay,updater,downloads,posting,postingAI,postingOAuth,brands,chats,facebookPages,facebookLogin,postingWindow,chromeEverConnected=false;
 const managedProjects=new Set();
 const canvases=new Map(),sessionData=new Map(),requests=new Map(),installedSessions=new WeakSet();
 const projectTransitions=new Set();
-function notify(value){if(postingWindow&&!postingWindow.isDestroyed())postingWindow.webContents.send('workflow:event',value);if(value.type==='update'&&home&&!home.isDestroyed())home.webContents.send('workflow:event',value);if(value.type==='relay'&&value.connected){chromeEverConnected=true;managedProjects.clear();}for(const win of canvases.values())if(!win.isDestroyed())win.webContents.send('workflow:event',value);}
+function notify(value){if(postingWindow&&!postingWindow.isDestroyed())postingWindow.webContents.send('workflow:event',value);if(['update','brands'].includes(value.type)&&home&&!home.isDestroyed())home.webContents.send('workflow:event',value);if(value.type==='relay'&&value.connected){chromeEverConnected=true;managedProjects.clear();}for(const win of canvases.values())if(!win.isDestroyed())win.webContents.send('workflow:event',value);}
 async function setupSession(ses){
   if(installedSessions.has(ses))return;installedSessions.add(ses);
   downloads.install(ses);
@@ -31,7 +35,8 @@ async function setupSession(ses){
   ses.protocol.handle('workflow',async request=>{
     try{
       const media=/^workflow:\/\/app\/posting-media\/([a-f0-9-]{36})\/(\d{1,2})$/.exec(request.url);
-      const file=media?await posting.store.mediaPath(media[1],Number(media[2])):resolveAppPath(root,request.url);if(!file)return new Response('Not found',{status:404});
+      const brandMedia=/^workflow:\/\/app\/brand-media\/([a-f0-9-]{36})\/([a-f0-9-]{36})$/.exec(request.url);
+      const file=media?await posting.store.mediaPath(media[1],Number(media[2])):brandMedia?await brands.assetPath(brandMedia[1],brandMedia[2]):resolveAppPath(root,request.url);if(!file)return new Response('Not found',{status:404});
       const response=await net.fetch(pathToFileURL(file).href,{headers:request.headers.get('Range')?{Range:request.headers.get('Range')}:{}});
       const headers=new Headers(response.headers);
       headers.set('Content-Security-Policy',"default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; connect-src 'self' data: blob: https: http://127.0.0.1:9473; worker-src 'self' blob:; object-src 'none'; frame-src 'none'; base-uri 'none'");
@@ -46,7 +51,7 @@ function protect(win){
 }
 async function openPosting(){
  if(postingWindow&&!postingWindow.isDestroyed()){postingWindow.show();postingWindow.focus();return;}
- postingWindow=new BrowserWindow({width:1400,height:930,minWidth:900,minHeight:680,title:'Đăng bài · Workflow',backgroundColor:'#111723',webPreferences:{preload:path.join(__dirname,'preload.cjs'),additionalArguments:['--workflow-version='+version],backgroundThrottling:false,contextIsolation:true,sandbox:true,nodeIntegration:false,webSecurity:true}});protect(postingWindow);postingWindow.on('closed',()=>{postingOAuth?.cancel();postingWindow=null;});await setupSession(session.defaultSession);await postingWindow.loadURL('workflow://app/desktop/posting.html');
+ postingWindow=new BrowserWindow({width:1400,height:930,minWidth:900,minHeight:680,title:'Đăng bài · Workflow',backgroundColor:'#111723',webPreferences:{preload:path.join(__dirname,'preload.cjs'),additionalArguments:['--workflow-version='+version],backgroundThrottling:false,contextIsolation:true,sandbox:true,nodeIntegration:false,webSecurity:true}});protect(postingWindow);postingWindow.on('closed',()=>{postingOAuth?.cancel();facebookLogin?.cancel();facebookPages?.clear();postingWindow=null;});await setupSession(session.defaultSession);await postingWindow.loadURL('workflow://app/desktop/posting.html');
 }
 async function openHome(){
   if(home&&!home.isDestroyed()){home.show();home.focus();return;}
@@ -107,11 +112,21 @@ async function fetchBounded(id,data){
 }
 ipcMain.handle('workflow:call',async(event,method,data={})=>{
   const ctx=context(event),{win,id}=ctx;
-  if(method==='posting.open')return openPosting();
+  if(method==='posting.open'){await openPosting();if(data.view)postingWindow.webContents.send('workflow:event',{type:'posting.view',view:data.view});return;}
+  if(method.startsWith('brands.')){
+   if(!ctx.home&&!ctx.posting&&!id)throw Error('Mở không gian làm việc trước.');
+   if(method==='brands.list')return (await brands.list()).map(b=>brands.public(b));
+   if(method==='brands.get')return brands.public(await brands.get(data.id));
+   if(method==='brands.project'){if(!id)throw Error('Mở dự án trước.');const saved=await store.readStorage(id);return {brandId:saved.workflowBrandId||''};}
+   if(method==='brands.select'){if(!id)throw Error('Mở dự án trước.');if(data.id)await brands.snapshot(data.id);await store.writeStorage(id,{workflowBrandId:data.id||''});return;}
+   if(!ctx.home&&!ctx.posting)throw Error('Sửa thương hiệu trong Trung tâm điều hành.');
+   let result;if(method==='brands.save')result=await brands.save(data);else if(method==='brands.asset.add')result=await brands.addAsset(data);else if(method==='brands.asset.remove')result=await brands.removeAsset(data.id,data.assetId,data.expectedUpdatedAt);else if(method==='brands.archive')result=await brands.archive(data.id);else throw Error('Thao tác thương hiệu không hợp lệ.');notify({type:'brands'});return brands.public(result);
+  }
+  if(method.startsWith('chat.')){if(!id)throw Error('Hội thoại thuộc từng dự án.');if(method==='chat.get')return chats.get(id);if(method==='chat.save')return chats.save(id,data);throw Error('Thao tác hội thoại không hợp lệ.');}
   if(method.startsWith('posting.')){
    if(['posting.begin','posting.append','posting.commit','posting.abort'].includes(method)){
     if(!id)throw Error('Thêm kết quả từ cửa sổ dự án.');
-    if(method==='posting.begin')return posting.store.begin(win.webContents.id,id,data);
+    if(method==='posting.begin'){const saved=await store.readStorage(id);const job=await posting.store.begin(win.webContents.id,id,data);const draft=posting.store.drafts.get(job.id);if(saved.workflowBrandId&&draft){try{draft.job.brandSnapshot=await brands.snapshot(saved.workflowBrandId);draft.job.brandId=saved.workflowBrandId;}catch{}}return job;}
     if(method==='posting.append')return posting.store.append(win.webContents.id,data);
     if(method==='posting.abort')return posting.store.abort(win.webContents.id,data.id);
     const job=await posting.store.commit(win.webContents.id,data.id);await posting.changed();return {id:job.id};
@@ -120,6 +135,16 @@ ipcMain.handle('workflow:call',async(event,method,data={})=>{
    if(method==='posting.snapshot')return posting.snapshot();
    if(method==='posting.tabs')return postingAI.tabs();
    if(method==='posting.openAI')return ai.open('chatgpt');
+   if(method==='posting.facebook.login')return facebookLogin.login(data.url);
+   if(method==='posting.facebook.discover')return facebookPages.discover(data.token);
+   if(method==='posting.facebook.import'){if(data.brandId)await brands.snapshot(data.brandId);return facebookPages.import(data);}
+   if(method==='posting.facebook.clear'){facebookLogin.cancel();facebookPages.clear();return;}
+   if(method==='posting.connection.brand'){if(data.brandId)await brands.snapshot(data.brandId);return posting.publisher.assignBrand(data.id,data.brandId||'');}
+   if(method==='posting.finishing'){const j=await posting.store.read(data.id),outputs=j.media.map((m,index)=>({...m,index})).filter(m=>m.role==='output');if(!['frameFit','subtitles','watermark'].includes(data.kind)||outputs.length!==1||outputs[0].kind!=='video')throw Error('Chọn một video và công cụ hậu kỳ hợp lệ.');let logoURL;if(data.kind==='watermark'){if(!j.brandId)throw Error('Gắn thương hiệu có logo trên thẻ Soạn bài trước.');const b=brands.public(await brands.get(j.brandId)),logo=b.assets.find(a=>a.role==='logo');if(!logo)throw Error('Thương hiệu này chưa có logo.');logoURL=logo.url;}const projects=await store.list();let project=projects.find(p=>p.id===j.projectId);if(!project)project=await store.create('Hậu kỳ · '+j.title);await openProject(project.id);return canvases.get(project.id).webContents.executeJavaScript('window.WorkflowFinishing.create('+JSON.stringify({mediaURL:'workflow://app/posting-media/'+j.id+'/'+outputs[0].index,title:j.title,kind:data.kind,logoURL})+')');}
+   if(method==='posting.reschedule')return posting.reschedule(data.id,data);
+   if(method==='posting.approve')return posting.approve(data.id);
+   if(method==='posting.catalog')return posting.catalog(data.id,data);
+   if(method==='posting.metrics')return posting.metrics(data.id);
    if(method==='posting.connect')return posting.publisher.connect(data);
    if(method==='posting.youtube'){const credentials=await postingOAuth.google(data.config);return posting.publisher.connectYouTube(credentials);}
    if(method==='posting.oauth.cancel'){postingOAuth.cancel();return;}
@@ -201,8 +226,10 @@ app.whenReady().then(async()=>{
   ai=new AIWindows(root,version,notify,async projectId=>projectId?(await store.readStorage(projectId)).workflowMuseSendTarget:null);
   const postingRoot=path.join(app.getPath('userData'),'posting');
   const postingStore=new PostingStore(postingRoot),publisher=new FacebookPublisher({root:postingRoot,fetch:net.fetch.bind(net),safeStorage:require('electron').safeStorage});
+  brands=new BrandStore(path.join(app.getPath('userData'),'brands'));await brands.init();chats=new ChatStore(path.join(app.getPath('userData'),'chats'));
+  facebookPages=new FacebookPages(publisher);facebookLogin=new FacebookLogin({fetch:net.fetch.bind(net),openExternal:url=>shell.openExternal(url),pages:facebookPages});
   postingOAuth=new PostingOAuth({fetch:net.fetch.bind(net),openExternal:url=>shell.openExternal(url)});
-  postingAI=new PostingAI({ai,relay,store:postingStore});posting=new PostingService({store:postingStore,publisher,ask:(...args)=>postingAI.ask(...args),notify:()=>notify({type:'posting'})});await posting.init();posting.start();
+  postingAI=new PostingAI({ai,relay,store:postingStore});posting=new PostingService({store:postingStore,publisher,brands,ask:(...args)=>postingAI.ask(...args),notify:()=>notify({type:'posting'})});await posting.init();posting.start();
   const signed=app.isPackaged&&process.platform==='darwin'&&await isDeveloperIDSigned(path.dirname(path.dirname(path.dirname(process.execPath))));
   updater=new UpdateService({version,packaged:app.isPackaged,platform:process.platform,signed,engine:signed?require('electron-updater').autoUpdater:null,fetchRelease:()=>latestPublicRelease(net.fetch.bind(net)),
     prepareInstall:async()=>{
@@ -215,7 +242,7 @@ app.whenReady().then(async()=>{
       }finally{if(!quitApproved)posting.hold=false;}
     },onInstallStart:()=>{posting.hold=true;quitApproved=true;},onInstallFailed:()=>{posting.hold=false;quitApproved=false;}});
   updater.on('status',status=>notify({type:'update',status}));updater.start();
-  if(testMode)globalThis.workflowTest={store,ai,relay,updater,posting,postingAI,postingOAuth,openProject,openHome,openPosting};
+  if(testMode)globalThis.workflowTest={store,ai,relay,updater,posting,postingAI,postingOAuth,brands,chats,facebookPages,facebookLogin,openProject,openHome,openPosting};
   Menu.setApplicationMenu(Menu.buildFromTemplate([
     ...(process.platform==='darwin'?[{role:'appMenu'}]:[]),
     {label:'Dự án',submenu:[{label:'Thư viện dự án',accelerator:'CmdOrCtrl+Shift+P',click:()=>void openHome()},{role:'close'},{role:'quit'}]},
@@ -229,6 +256,6 @@ app.on('window-all-closed',()=>{if(process.platform!=='darwin')app.quit();});
 let quitApproved=false,quitInProgress=false;
 app.on('before-quit',event=>{
   if(quitApproved)return;event.preventDefault();if(quitInProgress)return;quitInProgress=true;if(posting)posting.hold=true;
-  void(async()=>{try{if(posting?.busy()){const answer=await dialog.showMessageBox({type:'warning',buttons:['Ở lại','Thoát ứng dụng'],defaultId:0,cancelId:0,message:'Đăng bài đang xử lý. Thoát có thể làm gián đoạn gửi bài; kiểm tra nền tảng trước khi thử lại.'});if(answer.response!==1)return;}for(const win of [...canvases.values()])if(!await win.prepareToClose())return;quitApproved=true;app.quit();}finally{quitInProgress=false;if(posting&&!quitApproved)posting.hold=false;}})();
+  void(async()=>{try{await brands?.writes.catch(()=>{});if(chats)await Promise.allSettled([...chats.writes.values()]);if(posting?.busy()){const answer=await dialog.showMessageBox({type:'warning',buttons:['Ở lại','Thoát ứng dụng'],defaultId:0,cancelId:0,message:'Đăng bài đang xử lý. Thoát có thể làm gián đoạn gửi bài; kiểm tra nền tảng trước khi thử lại.'});if(answer.response!==1)return;}for(const win of [...canvases.values()])if(!await win.prepareToClose())return;quitApproved=true;app.quit();}finally{quitInProgress=false;if(posting&&!quitApproved)posting.hold=false;}})();
 });
-app.on('will-quit',()=>{postingOAuth?.cancel();posting?.close();updater?.stop();void relay?.close();for(const controller of requests.values())controller.abort();});
+app.on('will-quit',()=>{postingOAuth?.cancel();facebookLogin?.cancel();facebookPages?.clear();posting?.close();updater?.stop();void relay?.close();for(const controller of requests.values())controller.abort();});

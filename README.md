@@ -1,8 +1,21 @@
-# Workflow · MuseFlow 0.37.0
+# Workflow · MuseFlow 0.38.0
 
 **[⬇ ĐÓNG GÓI / CẬP NHẬT APP MAC](https://github.com/mktminhqpbga-glitch/app-mooz/actions/workflows/desktop.yml)** · **[Hướng dẫn từng bước](docs/PACKAGING.md)**
 
 Bấm liên kết trên → **Run workflow** → chọn `main`. Khi build xong, tải artifact DMG đúng loại Mac. Có thể chọn tạo draft Release để chuẩn bị bản cập nhật; app nhận biết sau khi bạn Publish release mới hơn.
+
+## Trung tâm điều hành ALL IN ONE · 0.38.0
+
+**Trung tâm điều hành** nối Workflow Studio, Chat AI và Đăng bài với bộ thương hiệu, kho thành phẩm, lịch nội dung và hiệu quả bài đăng:
+
+- **Tài khoản & Page:** đăng nhập Facebook qua dịch vụ Meta OAuth của bạn hoặc dùng User token để chọn nhiều Page trong một lần; giữ ID kết nối cũ khi cập nhật token, nhóm theo thương hiệu, kiểm tra trạng thái và báo kết nối lỗi. Có mã dịch vụ + Dockerfile, chưa có máy chủ/App Meta được cấp sẵn. [Thiết lập Facebook Login](docs/META-LOGIN.md).
+- **Thương hiệu:** lưu thông tin sản phẩm, giọng văn, khách hàng, quy tắc, màu sắc, logo và ảnh mẫu. Chat AI dùng bộ đã chọn, chỉ gửi ảnh khi bật tùy chọn. Bài đăng giữ snapshot riêng; hồ sơ thay đổi không làm đổi hàng chờ cũ.
+- **Lịch nội dung:** xem tuần/tháng, lọc thương hiệu/nền tảng, kéo đổi ngày rồi kiểm tra giờ; cập nhật cùng mục hàng chờ, không tạo lượt đăng mới. Có content riêng từng nền tảng và tùy chọn yêu cầu duyệt trước khi xếp hàng.
+- **Kho thành phẩm:** nhóm phiên bản từ cùng node, gắn nhãn/yêu thích, tải tệp, tạo bản nháp đăng bài. Mở bản sao video vào node đổi tỷ lệ, phụ đề hoặc gắn logo; xử lý MP4 bằng FFmpeg cục bộ, không đổi bài đang chờ/đã gửi.
+- **Trợ lý AI:** lưu văn bản/kế hoạch theo dự án để mở lại; không tự tạo/chạy lại kế hoạch cũ. Ảnh/video đính kèm không lưu trong lịch sử chat. Kết quả chat có nút chuyển sang hàng chờ đăng.
+- **Hiệu quả:** đọc chỉ số API cho bài đã gửi qua app trên Facebook/YouTube/Instagram khi có quyền; không bịa số 0 khi thiếu dữ liệu. TikTok/webhook chưa có adapter thống kê, app ghi rõ.
+
+[Hướng dẫn toàn bộ luồng](docs/WORKSPACE.md). Lịch vẫn cần app mở và máy thức. Đã kiểm thử giao diện Electron và FFmpeg thật, API/AI dùng phản hồi mô phỏng; chưa xác minh tài khoản thật vì chưa có cấu hình và quyền của người dùng. Lồng tiếng AI chưa tích hợp thêm nhà cung cấp mới.
 
 ## Ứng dụng Đăng bài · 0.37.0
 

@@ -1,0 +1,8 @@
+**
+!desktop/
+!desktop/facebook-pages.cjs
+!desktop/posting-http.cjs
+!services/
+!services/meta-auth/
+!services/meta-auth/server.cjs
+!services/meta-auth/Dockerfile
