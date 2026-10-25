@@ -18,7 +18,15 @@
  // Explicitly hidden content remains excluded.
  function readable(el){if(!el?.isConnected)return false;for(let node=el;node instanceof Element;node=node.parentElement){const style=getComputedStyle(node);if(node.hidden||style.display==='none'||style.visibility==='hidden'||style.visibility==='collapse')return false;}return true;}
  function text(el){if(!el)return '';const copy=el.cloneNode(true),originals=[...el.querySelectorAll('*')],clones=[...copy.querySelectorAll('*')];originals.forEach((node,i)=>{const style=getComputedStyle(node);if(node.matches('button,header,[role="toolbar"],script,style,template,[hidden],[aria-hidden="true"]')||style.display==='none'||style.visibility==='hidden')clones[i].remove();});copy.querySelectorAll('br').forEach(node=>node.replaceWith('\n'));for(const node of copy.querySelectorAll('p,div,li,pre,blockquote,h1,h2,h3,tr'))node.append('\n');return String(copy.textContent||'').trim();}
- async function image(src,signal){const response=await fetch(src,{credentials:'include',signal});if(!response.ok)throw Error('Không tải được ảnh AI: HTTP '+response.status);const blob=await response.blob();if(!blob.size||blob.size>50*1024*1024||!blob.type.startsWith('image/'))throw Error('Ảnh AI chưa sẵn sàng hoặc vượt giới hạn 50 MB.');const bitmap=await createImageBitmap(blob);try{if(!bitmap.width||!bitmap.height||bitmap.width*bitmap.height>40000000)throw Error('Kích thước ảnh AI không hợp lệ.');return {blob,width:bitmap.width,height:bitmap.height};}finally{bitmap.close();}}
+ async function image(src,signal){
+  let response;try{response=await fetch(src,{credentials:'include',signal});}catch(error){
+   if(signal?.aborted||new URL(src,location.href).origin===location.origin)throw error;
+   // Public image CDNs often send Access-Control-Allow-Origin: *; that response
+   // cannot be read with credentials. Retry the same URL without cookies.
+   response=await fetch(src,{credentials:'omit',signal});
+  }
+  if(!response.ok)throw Error('Không tải được ảnh AI: HTTP '+response.status);const blob=await response.blob();if(!blob.size||blob.size>50*1024*1024||!blob.type.startsWith('image/'))throw Error('Ảnh AI chưa sẵn sàng hoặc vượt giới hạn 50 MB.');const bitmap=await createImageBitmap(blob);try{if(!bitmap.width||!bitmap.height||bitmap.width*bitmap.height>40000000)throw Error('Kích thước ảnh AI không hợp lệ.');return {blob,width:bitmap.width,height:bitmap.height};}finally{bitmap.close();}
+ }
  for(const event of ['load','loadedmetadata','visibilitychange'])document.addEventListener(event,wake,true);
  chrome.runtime.onMessage.addListener((message,sender,respond)=>{if(sender.id!==chrome.runtime.id||message?.type!=='WORKFLOW_AI_PULSE')return false;wake();respond({ok:true,activeRequestIds:[...jobs]});return false;});
  globalThis.WorkflowAIActivity={start,finish,wait,sleep,readable,text,image};

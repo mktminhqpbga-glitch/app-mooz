@@ -248,7 +248,7 @@
   function assertCurrentBridge(type,result){
     if(!result?.bridgeVersion)return;
     const muse=type==='MUSEFLOW_CHECK_SESSION';
-    if(result.resultProtocol!==2||result.backgroundProtocol!==1)throw Error('Bộ nối trên tab '+(muse?'Muse':'Gemini/ChatGPT')+' đang là bản '+result.bridgeVersion+' và chưa hỗ trợ bộ nhận kết quả mới. Cập nhật tiện ích đồng hành, dừng lượt cũ trên trang AI. Tải lại tab '+(muse?'Muse':'Gemini/ChatGPT')+' bằng ⌘R/Ctrl+R. Chưa gửi prompt mới.');
+    if(result.resultProtocol!==(muse?2:3)||result.backgroundProtocol!==1)throw Error('Bộ nối trên tab '+(muse?'Muse':'Gemini/ChatGPT')+' đang là bản '+result.bridgeVersion+' và chưa hỗ trợ bộ nhận kết quả mới. Cập nhật tiện ích đồng hành, dừng lượt cũ trên trang AI. Tải lại tab '+(muse?'Muse':'Gemini/ChatGPT')+' bằng ⌘R/Ctrl+R. Chưa gửi prompt mới.');
   }
   async function waitTabIdle(tabId,type,requestId,signal,first){
     let result=first;const end=Date.now()+600000;

@@ -21,7 +21,7 @@ const {chromium}=require('playwright');const assert=require('node:assert/strict'
  for(const file of ['composer-controls.js','ai-bridge.js'])await page.addScriptTag({path:path.resolve(__dirname,'../'+file)});
  await page.evaluate(()=>startRequest());await page.clock.runFor(5000);assert.equal(await page.evaluate(()=>clicks),0);assert.equal(await page.locator('[role="progressbar"]').count(),1);
  await page.evaluate(()=>document.querySelector('[role="progressbar"]').remove());await page.clock.runFor(6000);assert.equal(await page.evaluate(()=>clicks),1);assert.equal(await page.evaluate(()=>result),null,'Inline marker instructions in user prompt and incomplete response must not become a result');
- await page.clock.runFor(10000);const result=await page.evaluate(()=>result);assert.deepEqual(result,{ok:true,text:'Complete script\nSecond paragraph'});assert.equal(await page.evaluate(()=>clicks),1);await page.close();
+ await page.clock.runFor(13000);const result=await page.evaluate(()=>result);assert.deepEqual(result,{ok:true,text:'Complete script\nSecond paragraph'});assert.equal(await page.evaluate(()=>clicks),1);await page.close();
  }
  console.log('PASS automatic GPT/Gemini text: waits for video upload, sends once without manual action, unique result markers survive unknown DOM, incomplete output waits, protocol stripped.');
 }finally{await browser.close();}})().catch(error=>{console.error(error);process.exitCode=1});

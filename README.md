@@ -1,8 +1,14 @@
-# Workflow · MuseFlow 0.38.1
+# Workflow · MuseFlow 0.38.2
 
 **[⬇ ĐÓNG GÓI / CẬP NHẬT APP MAC](https://github.com/mktminhqpbga-glitch/app-mooz/actions/workflows/desktop.yml)** · **[Hướng dẫn từng bước](docs/PACKAGING.md)**
 
 Bấm liên kết trên → **Run workflow** → chọn `main`. Khi build xong, tải artifact DMG đúng loại Mac. Có thể chọn tạo draft Release để chuẩn bị bản cập nhật; app nhận biết sau khi bạn Publish release mới hơn.
+
+## Sửa nhận kết quả Gemini / ChatGPT · 0.38.2
+
+Bộ nhận kết quả phiên bản 3 theo đúng lượt gửi cho cả ảnh và văn bản: hỗ trợ URL tự đổi khi tạo chat mới, prompt rút gọn, nhiều khối văn bản và phản hồi đang streaming. Không ghép dấu phân cách từ cả trang, không lấy ảnh tham chiếu hoặc kết quả của chat khác. Tải ảnh CDN công khai có phương án không gửi cookie khi CORS từ chối; lỗi tải tạm thời được thử lại với khoảng nghỉ, không gửi lại prompt. Muse giữ giao thức riêng hiện có.
+
+Sau khi thay app, cập nhật tiện ích Chrome rồi tải lại **từng tab Gemini/ChatGPT** bằng ⌘R/Ctrl+R. Cửa sổ AI trong app cũng cần tải lại nếu đang mở. Tab còn giữ bộ nối cũ sẽ được chặn trước khi gửi. Đã kiểm thử DOM mô phỏng trong Chromium và cửa sổ Electron thật; chưa xác minh phiên tài khoản AI của người dùng.
 
 ## Sửa thiết lập kết nối Facebook · 0.38.1
 
