@@ -23,6 +23,9 @@ const {affiliate,image,sourceHTML,answer}=require('./fixtures/affiliate-fixture.
   await studio.screenshot({path:'/tmp/workflow-affiliate-studio.png',fullPage:true});await studio.locator('.workspace').evaluate(node=>node.scrollTop=0);await studio.screenshot({path:'/tmp/workflow-affiliate-overview.png'});
   await studio.check('#includeVoice');const canvasPromise=application.waitForEvent('window');await studio.click('#buildWorkflow');const canvas=await canvasPromise;canvas.setDefaultTimeout(25000);canvas.on('pageerror',e=>errors.push(e.message));await canvas.waitForSelector('.node[data-type="voiceSync"]');
   assert.equal(await canvas.locator('.node[data-type="generateVideo"]').count(),3);assert.equal(await canvas.locator('.node[data-type="voiceover"]').count(),3);assert.equal(await canvas.locator('.node[data-type="imageInput"]').count(),3);assert.equal(await canvas.locator('.node').count(),14,'No unrelated starter nodes');
+  // Rendering precedes the IndexedDB/project-file commit. Assert the durable
+  // snapshot only after the host operation has acknowledged its save.
+  await studio.waitForFunction(()=>document.querySelector('#message').textContent.includes('Đã mở workflow'));
   const graph=await canvas.evaluate(async()=> (await chrome.storage.local.get('museflow')).museflow);assert.equal(graph.edges.filter(e=>e.targetPort==='reference').length,3);assert.equal(graph.nodes.find(n=>n.type==='voiceSync').data.affiliateCaption,saved.caption);assert.ok(graph.nodes.every(n=>n.data.status!=='running'));
   await studio.click('#buildWorkflow');assert.equal((await home.evaluate(()=>workflowHome.listProjects())).length,1);assert.equal(await canvas.locator('.node').count(),14,'Repeated opening must not create duplicate nodes/projects');
   await studio.reload();await studio.waitForSelector('#buildWorkflow');assert.equal(await studio.inputValue('#affiliateCaption'),saved.caption);
