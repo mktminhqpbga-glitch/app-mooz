@@ -135,6 +135,7 @@ ipcMain.handle('workflow:call',async(event,method,data={})=>{
    if(method==='posting.snapshot')return posting.snapshot();
    if(method==='posting.tabs')return postingAI.tabs();
    if(method==='posting.openAI')return ai.open('chatgpt');
+   if(method==='posting.facebook.check')return facebookLogin.check(data.url);
    if(method==='posting.facebook.login')return facebookLogin.login(data.url);
    if(method==='posting.facebook.discover')return facebookPages.discover(data.token);
    if(method==='posting.facebook.import'){if(data.brandId)await brands.snapshot(data.brandId);return facebookPages.import(data);}

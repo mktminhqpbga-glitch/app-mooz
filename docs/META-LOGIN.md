@@ -1,6 +1,6 @@
 # Facebook một lần đăng nhập → chọn nhiều Page
 
-Trong **Trung tâm điều hành → Tài khoản & Page**, chọn **Đăng nhập Facebook · chọn nhiều Page**. Có hai cách lấy danh sách:
+Trong **Trung tâm điều hành → Tài khoản & Page**, chọn **Kết nối Facebook · chọn nhiều Page**. Có hai cách lấy danh sách:
 
 - **Đăng nhập Facebook**: dùng dịch vụ Meta OAuth do bạn triển khai. Facebook mở trong trình duyệt, người dùng cấp quyền; app hiện danh sách Page để chọn. Không nhập mật khẩu Facebook vào Workflow.
 - **User access token**: nếu đã có token tài khoản được ứng dụng Meta cấp quyền `pages_show_list`, nhập token để đọc `/me/accounts`, rồi chọn Page. Đây là nhập token thủ công, không phải đăng nhập OAuth.
@@ -54,9 +54,9 @@ Không bật ghi đầy đủ query string trên đường callback ở reverse 
 
 ## 3. Kết nối trong Workflow
 
-1. Mở **Tài khoản & Page → Đăng nhập Facebook**.
+1. Mở **Tài khoản & Page → Kết nối Facebook · chọn nhiều Page**. Nếu chưa có dịch vụ OAuth, phần User access token được mở sẵn để nhập token thủ công.
 2. Nhập URL gốc HTTPS của dịch vụ bạn quản lý. URL này được lưu để dùng lại; không dán URL chứa token.
-3. Bấm **Đăng nhập Facebook**, cấp quyền và chọn Page tại Facebook nếu được hỏi.
+3. Bấm **Kiểm tra dịch vụ**. App xác nhận `/health` và giao thức `workflow-meta-oauth-v1` trước khi bật **Đăng nhập Facebook**. Sau đó đăng nhập, cấp quyền và chọn Page tại Facebook nếu được hỏi.
 4. Quay lại app, chọn một hay nhiều Page, chọn bộ thương hiệu nếu muốn, bấm **Kết nối Page đã chọn**.
 
 Chỉ Page bạn chọn mới được nhập. Page đã kết nối được cập nhật token, giữ ID kết nối nên không mất liên kết với hàng chờ cũ. App kiểm tra token thuộc đúng Page trước khi lưu toàn bộ lựa chọn trong một giao dịch; lỗi lưu sẽ giữ danh sách cũ. Page không có quyền tạo nội dung không được chọn.

@@ -1,8 +1,12 @@
-# Workflow · MuseFlow 0.38.0
+# Workflow · MuseFlow 0.38.1
 
 **[⬇ ĐÓNG GÓI / CẬP NHẬT APP MAC](https://github.com/mktminhqpbga-glitch/app-mooz/actions/workflows/desktop.yml)** · **[Hướng dẫn từng bước](docs/PACKAGING.md)**
 
 Bấm liên kết trên → **Run workflow** → chọn `main`. Khi build xong, tải artifact DMG đúng loại Mac. Có thể chọn tạo draft Release để chuẩn bị bản cập nhật; app nhận biết sau khi bạn Publish release mới hơn.
+
+## Sửa thiết lập kết nối Facebook · 0.38.1
+
+Khi chưa có dịch vụ Meta OAuth, app mở sẵn hướng nhập User access token và khóa nút đăng nhập. Nhập URL dịch vụ, bấm Kiểm tra dịch vụ để xác nhận HTTPS/health/protocol trước khi đăng nhập. Lỗi Meta hiện phân biệt token hết hạn, thiếu quyền, nhầm Page token và yêu cầu appsecret_proof, kèm mã số an toàn để chẩn đoán; không hiển thị token hoặc thông báo thô của nhà cung cấp. Page thiếu token vẫn hiển thị lý do, không bị bỏ âm thầm; lấy danh sách mới sẽ xóa lựa chọn cũ đã hết hiệu lực. Chưa có dịch vụ hay ứng dụng Meta đã được cấu hình sẵn.
 
 ## Trung tâm điều hành ALL IN ONE · 0.38.0
 

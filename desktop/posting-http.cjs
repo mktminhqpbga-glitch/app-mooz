@@ -15,6 +15,20 @@ function problem(code,message,{rejected=false}={}){
  return Object.assign(new Error(message||MESSAGES[code]||MESSAGES.INVALID_RESPONSE),{code,rejected});
 }
 
+const META_MESSAGES={
+ USER_TOKEN_REQUIRED:'Đây là token của Page. Để lấy danh sách nhiều Page, dùng User access token có pages_show_list. Muốn nối một Page, dùng Facebook Page trực tiếp.',
+ APP_SECRET_PROOF_REQUIRED:'Ứng dụng Meta yêu cầu appsecret_proof. Kết nối bằng dịch vụ Meta OAuth đã cấu hình để tạo proof; nhập token thủ công chưa đáp ứng yêu cầu này.',
+ META_INVALID_REQUEST:'Meta chưa chấp nhận yêu cầu. Kiểm tra loại token, các quyền Page và cấu hình ứng dụng Meta.'
+};
+function metaProblem(value,status=400){
+ const error=value?.error||{},number=Number.isSafeInteger(error.code)?error.code:null,subcode=Number.isSafeInteger(error.error_subcode)?error.error_subcode:null,detail=typeof error.message==='string'?error.message.slice(0,4096):'';
+ let code=status>=500?'PROVIDER_5XX':status===401||[102,190].includes(number)?'AUTH_EXPIRED':/appsecret_proof/i.test(detail)?'APP_SECRET_PROOF_REQUIRED':number===100&&/accounts|permissions/i.test(detail)&&/\bpage\b/i.test(detail)&&/nonexisting|cannot query|does not exist|unknown field/i.test(detail)?'USER_TOKEN_REQUIRED':[10,200,294].includes(number)||status===403?'PERMISSION_DENIED':[4,17,32,341,613].includes(number)||status===429?'RATE_LIMIT':'META_INVALID_REQUEST';
+ let message=META_MESSAGES[code]||MESSAGES[code];if(code==='AUTH_EXPIRED')message='Token Facebook đã hết hạn, bị thu hồi hoặc không hợp lệ. Tạo token mới và cấp lại quyền cho các Page.';
+ if(code==='PERMISSION_DENIED')message='Meta chưa cấp đủ quyền Page hoặc tài khoản chưa có vai trò phù hợp. Kiểm tra pages_show_list, pages_read_engagement, pages_manage_posts và quyền của ứng dụng.';
+ const suffix=number!==null?' [Meta '+number+(subcode!==null?'/'+subcode:'')+']':' [HTTP '+status+']';
+ return Object.assign(problem(code,message+suffix,{rejected:status<500}),{metaCode:number,metaSubcode:subcode,httpStatus:status});
+}
+
 async function json(response,provider='Nền tảng',{maxBytes=1024*1024}={}){
  let text='';const decoder=new TextDecoder();
  if(response.body?.getReader){
@@ -23,6 +37,7 @@ async function json(response,provider='Nền tảng',{maxBytes=1024*1024}={}){
   finally{reader.releaseLock();}
  }else text=await response.text();
  let value;try{value=JSON.parse(text);}catch{throw problem(response.status>=500?'PROVIDER_5XX':'INVALID_RESPONSE',provider+': phản hồi không đọc được.');}
+ if(provider==='Meta'&&(!response.ok||value?.error))throw metaProblem(value,response.status);
  if(!response.ok){
   const reason=value.error?.errors?.[0]?.reason||value.error;
   const code=response.status===401||['invalid_grant','invalid_token'].includes(reason)?'AUTH_EXPIRED':/quota|LimitExceeded|rateLimit/i.test(typeof reason==='string'?reason:'')?'RATE_LIMIT':response.status===403?'PERMISSION_DENIED':response.status===429?'RATE_LIMIT':response.status>=500?'PROVIDER_5XX':'MEDIA_UNSUPPORTED';
@@ -52,4 +67,4 @@ function sleep(ms,signal){return new Promise((resolve,reject)=>{
  signal?.addEventListener('abort',cancel,{once:true});
 });}
 
-module.exports={MESSAGES,problem,json,request,uploadURL,sleep};
+module.exports={MESSAGES,META_MESSAGES,metaProblem,problem,json,request,uploadURL,sleep};
