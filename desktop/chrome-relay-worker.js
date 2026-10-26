@@ -4,7 +4,9 @@
  const ALLOWED_FILES=new Set(['ai-activity.js','composer-controls.js','ai-bridge.js','muse-bridge.js','result-picker.js','muse-support.js']);
  const ALLOWED_TYPES=new Set(['WORKFLOW_AI_CHECK','WORKFLOW_AI_GENERATE','WORKFLOW_AI_STOP','WORKFLOW_AI_SEND_NOW','WORKFLOW_AI_USE_RESULT','MUSEFLOW_CHECK_SESSION','MUSEFLOW_GENERATE','MUSEFLOW_STOP_GENERATION','MUSEFLOW_JOB_START','MUSEFLOW_JOB_STATUS','MUSEFLOW_JOB_ACK']);
  const SETTINGS='workflowDesktopRelay';
- let socket=null,connection=null,state='disconnected',heartbeat=null;
+ let socket=null,connection=null,state='disconnected',heartbeat=null,appVersion=null;
+ const PROTOCOL=1,releaseURL='https://raw.githubusercontent.com/mktminhqpbga-glitch/app-mooz/main/extension/companion-release.json';
+ let updateInfo=null,updateTask=null,lastUpdateAttempt=0;
  const knownTabs=new Set();
  function supportedURL(value){try{const url=new URL(value);return url.protocol==='https:'&&!url.username&&!url.password&&!url.port&&(/^(?:chatgpt\.com|www\.chatgpt\.com|chat\.openai\.com|gemini\.google\.com|(?:[a-z0-9-]+\.)*muse\.ai)$/.test(url.hostname));}catch{return false;}}
  function parseURI(value){
@@ -12,7 +14,17 @@
   if(uri.protocol!=='workflow-connect:'||uri.hostname!=='127.0.0.1'||!/^\d+$/.test(uri.port)||Number(uri.port)<1||Number(uri.port)>65535||uri.username||uri.password||uri.search||uri.hash||!/^\/[a-f0-9]{64}$/.test(uri.pathname))throw Error('Mã kết nối không hợp lệ. Sao chép lại từ ứng dụng Workflow.');
   return {port:Number(uri.port),token:uri.pathname.slice(1)};
  }
- function status(){return {connected:state==='connected',state,port:connection?.port||null};}
+ function status(){return {connected:state==='connected',state,port:connection?.port||null,protocol:PROTOCOL,appVersion,extensionVersion:chrome.runtime.getManifest?.()?.version||'',update:updateInfo};}
+ async function checkUpdate(){
+  if(updateTask)return updateTask;if(typeof fetch!=='function')return status();
+  updateTask=(async()=>{try{
+   const cached=(await chrome.storage.local?.get('workflowCompanionUpdate'))?.workflowCompanionUpdate;
+   if(cached&&cached.installedVersion===chrome.runtime.getManifest?.()?.version&&Date.now()-cached.checkedAt<86400000){updateInfo=cached;return;}
+   if(Date.now()-lastUpdateAttempt<3600000)return;lastUpdateAttempt=Date.now();const response=await fetch(releaseURL,{credentials:'omit',redirect:'error',signal:AbortSignal.timeout(7000)});if(!response.ok)return;const raw=await response.text();if(raw.length>16000)return;const info=JSON.parse(raw);if(!/^\d+\.\d+\.\d+$/.test(info.version)||!Number.isInteger(info.protocol))return;
+   const current=(chrome.runtime.getManifest?.()?.version||'0.0.0').split('.').map(Number),latest=info.version.split('.').map(Number);let available=false;for(let i=0;i<3;i++){if(latest[i]!==current[i]){available=latest[i]>current[i];break;}}
+   updateInfo={installedVersion:chrome.runtime.getManifest?.()?.version||'',checkedAt:Date.now(),version:info.version,protocol:info.protocol,available};await chrome.storage.local?.set({workflowCompanionUpdate:updateInfo});
+  }catch{}finally{if(updateInfo){void chrome.action?.setBadgeText?.({text:updateInfo.available?'↑':''});if(updateInfo.available)void chrome.action?.setBadgeBackgroundColor?.({color:'#7054b4'});}}})();try{await updateTask;}finally{updateTask=null;}return status();
+ }
  function send(value){if(socket?.readyState!==WebSocket.OPEN)return;const text=JSON.stringify(value);if(text.length>128*1024*1024||socket.bufferedAmount+text.length>128*1024*1024){socket.close();throw Error('Dữ liệu vượt giới hạn kết nối.');}socket.send(text);}
  async function checkedTab(id){if(!Number.isInteger(id)||id<0)throw Error('Tab AI không hợp lệ.');const tab=await chrome.tabs.get(id);if(!supportedURL(tab.url))throw Error('Tab không thuộc trang AI được hỗ trợ.');knownTabs.add(id);return tab;}
  function publicTab(tab){return {id:tab.id,windowId:tab.windowId,url:tab.url,title:tab.title,active:tab.active};}
@@ -49,24 +61,26 @@
   return new Promise((resolve,reject)=>{
    const current=new WebSocket(`ws://127.0.0.1:${next.port}/`);socket=current;
    const timeout=setTimeout(()=>{current.close();reject(Error('Không kết nối được ứng dụng Workflow. Mở ứng dụng và lấy mã mới.'));},7000);
-   current.onopen=()=>current.send(JSON.stringify({type:'auth',token:next.token}));
+   current.onopen=()=>current.send(JSON.stringify({type:'auth',token:next.token,protocol:PROTOCOL,extensionVersion:chrome.runtime.getManifest?.()?.version||''}));
    current.onmessage=event=>{
     let message;try{message=JSON.parse(event.data);}catch{return;}
     if(message.type==='ready'){
-     if(socket!==current)return;clearTimeout(timeout);state='connected';void chrome.storage.session.set({[SETTINGS]:next});heartbeat=setInterval(()=>{try{send({type:'ping'});}catch{}},20000);resolve(status());return;
+     if(message.protocol!==undefined&&message.protocol!==PROTOCOL){clearTimeout(timeout);current.close();reject(Error('App dùng giao thức kết nối khác. Cập nhật app hoặc tiện ích tương thích.'));return;}
+     appVersion=typeof message.appVersion==='string'?message.appVersion:null;
+     if(socket!==current)return;clearTimeout(timeout);state='connected';void chrome.storage.session.set({[SETTINGS]:next});heartbeat=setInterval(()=>{try{send({type:'ping'});}catch{}void checkUpdate();},20000);resolve(status());return;
     }
     if(state!=='connected'||socket!==current||message.type!=='request'||typeof message.id!=='string')return;
     void perform(message.operation,message.payload).then(result=>{if(socket===current)send({type:'response',id:message.id,result});},error=>{if(socket===current)send({type:'response',id:message.id,error:error?.message||'Không thực hiện được thao tác Chrome.'});}).catch(()=>{});
    };
    current.onerror=()=>{clearTimeout(timeout);reject(Error('Không kết nối được ứng dụng Workflow. Kiểm tra ứng dụng đã mở và mã kết nối còn hiệu lực.'));};
-   current.onclose=()=>{clearTimeout(timeout);if(socket===current){socket=null;state='disconnected';clearInterval(heartbeat);heartbeat=null;}reject(Error('Kết nối đã đóng. Lấy mã mới trong ứng dụng Workflow và kết nối lại.'));};
+   current.onclose=event=>{clearTimeout(timeout);if(socket===current){socket=null;state='disconnected';clearInterval(heartbeat);heartbeat=null;}reject(Error(event?.code===1008&&/protocol/i.test(event.reason||'')?'App và tiện ích cần cập nhật giao thức kết nối tương thích.':'Kết nối đã đóng. Lấy mã mới trong ứng dụng Workflow và kết nối lại.'));};
   });
  }
  function extensionPage(sender){const prefix=chrome.runtime.getURL('');return sender.id===chrome.runtime.id&&typeof sender.url==='string'&&sender.url.startsWith(prefix)&&(!sender.tab?.url||sender.tab.url.startsWith(prefix));}
  chrome.runtime.onMessage.addListener((message,sender,reply)=>{
-  if(['DESKTOP_CONNECT','DESKTOP_STATUS','DESKTOP_DISCONNECT'].includes(message?.type)){
+  if(['DESKTOP_CONNECT','DESKTOP_STATUS','DESKTOP_DISCONNECT','DESKTOP_CHECK_UPDATE'].includes(message?.type)){
    if(!extensionPage(sender)){reply({ok:false,error:'Chỉ trang tiện ích Workflow được phép ghép nối.'});return false;}
-   const action=message.type==='DESKTOP_CONNECT'?()=>connect(message.uri):message.type==='DESKTOP_DISCONNECT'?disconnect:async()=>status();
+   const action=message.type==='DESKTOP_CONNECT'?()=>connect(message.uri):message.type==='DESKTOP_DISCONNECT'?disconnect:message.type==='DESKTOP_CHECK_UPDATE'?checkUpdate:async()=>status();
    void action().then(result=>reply({ok:true,...result}),error=>reply({ok:false,error:error.message}));return true;
   }
   if(message?.type==='WORKFLOW_AI_PROGRESS'&&sender.id===chrome.runtime.id&&supportedURL(sender.tab?.url)&&typeof message.requestId==='string'&&typeof message.text==='string'){
@@ -78,6 +92,7 @@
  chrome.tabs.onCreated.addListener(tab=>{if(supportedURL(tab.url)){knownTabs.add(tab.id);try{send({type:'notification',event:{type:'created',tab:publicTab(tab)}});}catch{}}});
  chrome.tabs.onRemoved.addListener(tabId=>{if(knownTabs.delete(tabId))try{send({type:'notification',event:{type:'removed',tabId}});}catch{}});
  globalThis.WorkflowChromeRelay={connect,disconnect,status};
+ if(typeof fetch==='function')setTimeout(()=>void checkUpdate(),5000);
  // A restarted service worker attempts its existing session once, never an endless retry loop.
  void chrome.storage.session.get(SETTINGS).then(saved=>{const last=saved[SETTINGS];if(last&&!socket)return connect(`workflow-connect://127.0.0.1:${last.port}/${last.token}`);}).catch(()=>{});
 })();

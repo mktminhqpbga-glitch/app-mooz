@@ -14,7 +14,7 @@ function setVersion(root,version){
   const escape=value=>value.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
   pkg.version=version;lock.version=version;
   if(!lock.packages?.[''])throw Error('Lockfile không có thông tin package gốc. Chưa thay đổi tệp nào.');
-  lock.packages[''].version=version;manifest.version=version;
+  lock.packages[''].version=version;if(!fs.existsSync(path.join(root,'extension/companion-release.json')))manifest.version=version;
   const pending={'package.json':JSON.stringify(pkg,null,2)+'\n','package-lock.json':JSON.stringify(lock,null,2)+'\n','manifest.json':JSON.stringify(manifest,null,2)+'\n'};
   for(const [name,text]of Object.entries(texts))pending[name]=name==='README.md'?text.replace(/^# Workflow · MuseFlow .*$/m,'# Workflow · MuseFlow '+version):text.replace(new RegExp(escape(previous),'g'),version);
   for(const [name,text]of Object.entries(pending))fs.writeFileSync(path.join(root,name),text);

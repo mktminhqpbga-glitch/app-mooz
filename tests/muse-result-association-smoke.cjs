@@ -90,7 +90,7 @@ const path=require('node:path');
     assert.equal(await echoed.evaluate(()=>sends),1);
     await echoed.clock.runFor(8000);
     assert.equal(await echoed.evaluate(()=>reply===null),true,'The uploaded reference bytes must be rejected despite a fresh blob URL and ambiguous role');
-    assert.equal(await echoed.evaluate(()=>progress.some(text=>text.includes('bỏ qua ảnh tham chiếu'))),true);
+    assert.equal(await echoed.evaluate(()=>progress.some(text=>/bỏ qua (ảnh|tệp) tham chiếu/.test(text))),true);
     await echoed.clock.runFor(6000);
     await echoed.waitForFunction(()=>reply!==null,{},{timeout:5000});
     assert.equal(await echoed.evaluate(()=>reply?.ok),true);

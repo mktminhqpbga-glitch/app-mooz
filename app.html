@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Workflow · MuseFlow 0.39.0</title>
+  <title>Workflow · MuseFlow 0.39.1</title>
   <link rel="icon" type="image/png" sizes="128x128" href="icons/icon128.png" />
   <link rel="stylesheet" href="styles.css" />
   <link rel="stylesheet" href="studio.css" />
@@ -11,7 +11,7 @@
 </head>
 <body>
   <header class="toolbar">
-    <div class="brand"><img class="brand-logo" src="icons/workflow-mark.svg" alt="" /><strong class="brand-name">Workflow</strong><span class="brand-version">0.39.0</span></div>
+    <div class="brand"><img class="brand-logo" src="icons/workflow-mark.svg" alt="" /><strong class="brand-name">Workflow</strong><span class="brand-version">0.39.1</span></div>
     <div class="toolbar-tools" aria-label="Add workflow nodes">
       <button id="creativeToolsBtn" type="button">Trợ lý sáng tạo</button><button id="referenceBoardBtn" type="button">Ảnh tham chiếu chung</button><button id="mediaLibraryBtn" type="button">⇩ Tải media</button><button id="promptLibraryBtn" type="button">Kho prompt</button>
       <button id="batchManagerBtn" type="button">Hàng đợi · Kho ảnh</button><button id="flowStudioBtn" type="button">Tạo hàng loạt</button><button id="batchImagesBtn" type="button">＋ Tạo ảnh hàng loạt</button><button id="scriptImportBtn" type="button">＋ Script → Nodes</button>
@@ -155,7 +155,7 @@
       <h2 id="scriptModalTitle">Build nodes from a scene script</h2>
       <p>Paste a scene script using the Grumbo &amp; Snowy form. MuseFlow reads each scene’s opening/ending frames, timed actions, image/video prompts, audio, shared locks and negative prompt, then connects the scene nodes and orders videos on the Timeline.</p>
       <p class="script-template-hint">Download the strict template to fill in yourself or give to an AI. Keep the headings and field order unchanged.</p>
-      <label for="scriptAIPrompt">Nội dung muốn AI viết</label><textarea id="scriptAIPrompt" placeholder="Ví dụ: Viết 6 cảnh về một chú mèo khám phá thành phố, mỗi cảnh 10 giây"></textarea><select id="scriptAIProvider"><option value="gemini">Gemini · tab</option><option value="chatgpt">ChatGPT · tab</option><option value="google">Google · API</option><option value="openai">OpenAI · API</option></select><button id="scriptAIButton" type="button">Tạo kịch bản bằng AI</button><p id="scriptAIStatus" role="status" aria-live="polite"></p><div class="batch-options"><label>Tạo loại node<select id="scriptOutputMode"><option value="all">Ảnh và video</option><option value="images">Chỉ ảnh</option><option value="videos">Chỉ video</option></select></label><label>AI cho node ảnh<select id="scriptImageProvider"><option value="muse">Muse.ai · tab</option><option value="gemini">Gemini · tab</option><option value="chatgpt">ChatGPT · tab</option><option value="google">Google · API</option><option value="openai">OpenAI · API</option></select></label></div><label for="scriptInput">Kịch bản</label>
+      <label for="scriptAIPrompt">Nội dung muốn AI viết</label><textarea id="scriptAIPrompt" placeholder="Ví dụ: Viết 6 cảnh về một chú mèo khám phá thành phố, mỗi cảnh 10 giây"></textarea><select id="scriptAIProvider"><option value="gemini">Gemini · tab</option><option value="muse">Muse.ai · tab</option><option value="chatgpt">ChatGPT · tab</option><option value="google">Google · API</option><option value="openai">OpenAI · API</option></select><button id="scriptAIButton" type="button">Tạo kịch bản bằng AI</button><p id="scriptAIStatus" role="status" aria-live="polite"></p><div class="batch-options"><label>Tạo loại node<select id="scriptOutputMode"><option value="all">Ảnh và video</option><option value="images">Chỉ ảnh</option><option value="videos">Chỉ video</option></select></label><label>AI cho node ảnh<select id="scriptImageProvider"><option value="muse">Muse.ai · tab</option><option value="gemini">Gemini · tab</option><option value="chatgpt">ChatGPT · tab</option><option value="google">Google · API</option><option value="openai">OpenAI · API</option></select></label></div><label for="scriptInput">Kịch bản</label>
       <textarea id="scriptInput" placeholder="CẢNH 1 (0:00 đến 0:10): Scene title&#10;Khung đầu: ...&#10;Khung cuối: ...&#10;Diễn biến: 1. 0-2s: ...&#10;Prompt ảnh khung đầu: ...&#10;Prompt video: ...&#10;Audio: ..."></textarea>
       <div id="scriptImportStatus" role="status"></div>
       <div class="modal-actions">

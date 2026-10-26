@@ -1,11 +1,17 @@
 (() => {
   if (window.__museFlowBridgeInstalled) return;
   window.__museFlowBridgeInstalled = true;
-  window.__museFlowBridgeVersion='0.39.0';
+  window.__museFlowBridgeVersion=chrome.runtime.getManifest?.()?.version||'1.0.0';
   const activity=globalThis.WorkflowAIActivity;
 
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     if(_sender.id!==chrome.runtime.id)return false;
+    if(message?.type==='WORKFLOW_AI_SEND_NOW'||message?.type==='WORKFLOW_AI_USE_RESULT'){
+      const state=textStates.get(message.requestId);if(!state){sendResponse({ok:false});return false;}
+      if(message.type==='WORKFLOW_AI_SEND_NOW')state.early=true;
+      else{if(typeof message.text!=='string'||!message.text.trim()||message.text.length>100000){sendResponse({ok:false});return false;}state.manual=message.text.trim();}
+      sendResponse({ok:true});return false;
+    }
     if (message?.type === 'MUSEFLOW_CHECK_SESSION') {
       checkSession().then(sendResponse,error=>sendResponse({ok:false,error:error.message||String(error)}));
       return true;
@@ -21,13 +27,13 @@
       for(const [key,job] of museJobs)if(job.result&&Date.now()-(job.finishedAt||job.createdAt)>1200000)museJobs.delete(key);
       const completed=[...museJobs].filter(([,job])=>job.result);while(completed.length>=3)museJobs.delete(completed.shift()[0]);
       const controller=new AbortController(),job={createdAt:Date.now(),result:null};museJobs.set(id,job);activeGenerations.set(id,controller);activity?.start(id);
-      generate(message,controller.signal).then(result=>{job.result={...result,conversationUrl:location.href};job.finishedAt=Date.now();},error=>{job.finishedAt=Date.now();job.result={ok:false,code:error.code||'MUSE_ERROR',error:error.message||String(error)};}).finally(()=>{activeGenerations.delete(id);activity?.finish(id);});
+      generate(message,controller.signal).then(result=>{job.result={...result,conversationUrl:location.href};job.finishedAt=Date.now();},error=>{job.finishedAt=Date.now();job.result={ok:false,code:error.code||'MUSE_ERROR',error:error.message||String(error)};}).finally(()=>{activeGenerations.delete(id);textStates.delete(id);activity?.finish(id);});
       sendResponse({ok:true,accepted:true,requestId:id});return false;
     }
     if (message?.type === 'MUSEFLOW_GENERATE') {
       if(activeGenerations.size){sendResponse({ok:false,error:'Muse đang xử lý yêu cầu khác.'});return false;}
       const controller=new AbortController();activeGenerations.set(message.requestId,controller);activity?.start(message.requestId);
-      generate(message,controller.signal).then(result=>sendResponse({...result,conversationUrl:location.href}), error => sendResponse({ ok: false, code:error.code||'MUSE_ERROR', error: error.message || String(error) })).finally(()=>{activeGenerations.delete(message.requestId);activity?.finish(message.requestId);});
+      generate(message,controller.signal).then(result=>sendResponse({...result,conversationUrl:location.href}), error => sendResponse({ ok: false, code:error.code||'MUSE_ERROR', error: error.message || String(error) })).finally(()=>{activeGenerations.delete(message.requestId);textStates.delete(message.requestId);activity?.finish(message.requestId);});
       return true;
     }
     if(message?.type==='MUSEFLOW_STOP_GENERATION'){
@@ -53,7 +59,7 @@
   });
   const assistantSelector='[class*="hatch-chat-groupable-bubble"],[data-message-author-role="assistant"],[data-testid*="assistant" i],[data-testid*="message-content" i],[class*="assistant-message" i],[class*="assistant-bubble" i],.group\\/msg';
   const attachmentSelector='[data-testid^="hatch-chat-attachment-presentation-"]';
-  const activeGenerations=new Map(),museJobs=new Map();
+  const activeGenerations=new Map(),museJobs=new Map(),textStates=new Map();
 
   function clickMuseStop(){
     const button=[...document.querySelectorAll('[data-testid="hatch-composer-stop-button"],button[aria-label*="Stop" i],button[aria-label*="停止"]')].find(visible);
@@ -71,7 +77,7 @@
     const composer=findComposer();
     const ready=Boolean(composer&&visible(composer)&&!composer.disabled&&!composer.readOnly);
     const loginRequired=Boolean(document.querySelector('input[type="password"],button[type="submit"]'))&&/sign in|log in|登录/i.test(document.body?.innerText||'');
-    return {ok:true,jobProtocol:1,bridgeProtocol:1,resultProtocol:2,backgroundProtocol:activity?1:0,bridgeVersion:window.__museFlowBridgeVersion,signedIn:ready&&!loginRequired,busy:activeGenerations.size>0||[...document.querySelectorAll('[data-testid="hatch-composer-stop-button"],button[aria-label*="Stop" i]')].some(visible),title:document.title,composer:ready,loginRequired,url:location.href};
+    return {ok:true,jobProtocol:1,bridgeProtocol:1,resultProtocol:2,textProtocol:1,videoReferenceProtocol:1,backgroundProtocol:activity?1:0,bridgeVersion:window.__museFlowBridgeVersion,signedIn:ready&&!loginRequired,busy:activeGenerations.size>0||[...document.querySelectorAll('[data-testid="hatch-composer-stop-button"],button[aria-label*="Stop" i]')].some(readable),title:document.title,composer:ready,loginRequired,url:location.href};
   }
 
   async function waitHydrated(timeout,signal) {
@@ -149,10 +155,15 @@
 
   function report(requestId,text){const job=museJobs.get(requestId);if(job)job.progress=text;if(chrome.runtime.sendMessage)void chrome.runtime.sendMessage({type:'WORKFLOW_AI_PROGRESS',requestId,text}).catch(()=>{});}
 
-  async function generate({prompt,timeoutSec=600,mediaType='image',referenceImage='',referenceImages=[],size='1:1',requestId},signal) {
+  async function generate({prompt,rules='',stageBeforeSend=false,timeoutSec=600,mediaType='image',referenceImage='',referenceImages=[],referenceVideos=[],size='1:1',requestId},signal) {
     const throwIfAborted=()=>{if(signal?.aborted)throw new DOMException('Generation stopped by user.','AbortError');};
     throwIfAborted();
     if(!String(prompt||'').trim())throw new Error('Prompt is empty.');
+    if(!['text','image','video'].includes(mediaType))throw Error('Muse không hỗ trợ loại kết quả này.');
+
+    const receiptTag=mediaType==='text'?'WF-TEXT-'+crypto.randomUUID():'';
+    if(mediaType==='text')textStates.set(requestId,{early:false,manual:''});
+    if(mediaType==='text')prompt=[`Mã lượt: ${receiptTag}. Không nhắc lại mã trong câu trả lời.`,rules,prompt].filter(Boolean).join('\n\n');
     try{const saved=await chrome.storage?.local?.get('workflowMuseSendTarget');WorkflowComposer.setPreferred(saved?.workflowMuseSendTarget);}catch{WorkflowComposer.setPreferred(null);}
     await waitHydrated(15000,signal);
     throwIfAborted();
@@ -166,7 +177,8 @@
     if(removeDraft().length)throw new Error('Không xóa được tệp cũ trong Muse. Xóa tệp trong ô chat trước khi chạy lại.');
     const referenceList=Array.isArray(referenceImages)&&referenceImages.length?referenceImages:referenceImage?[referenceImage]:[];
     let referenceFingerprints=new Set();
-    if(referenceList.length){report(requestId,'Muse: đang tải ảnh tham chiếu…');referenceFingerprints=await attachReferences(referenceList,signal);}
+    if(referenceList.length||referenceVideos.length){report(requestId,'Muse: đang tải tệp tham chiếu…');referenceFingerprints=await attachReferences([...referenceList,...referenceVideos],signal,referenceVideos.length>0);}
+    if(mediaType==='text'&&textStates.get(requestId)?.manual)return {ok:true,text:textStates.get(requestId).manual};
     composer=findComposer();if(!composer?.isConnected)throw new Error('Ô nhập Muse đã thay đổi. Hãy tải lại tab Muse rồi thử lại.');
     throwIfAborted();
     const baseline=new Set([...attachments().map(a=>a.src),...[...document.querySelectorAll('img,video,source,a[download],[data-video-url],[data-video-src]')].flatMap(el=>[el.currentSrc,el.src,el.href,el.getAttribute('data-video-url'),el.getAttribute('data-video-src')]).filter(Boolean),...assistantMessageElements().flatMap(el=>[...el.querySelectorAll('img')].map(img=>img.currentSrc||img.src))]);
@@ -182,6 +194,7 @@
     const userSelector='[data-message-author-role="user"],user-query,[class*="chat-user-bubble"]';
     const userSnapshot=new Map([...document.querySelectorAll(userSelector)].map(el=>[el,(el.innerText||el.textContent||'').trim()]));
     const promptText=String(prompt).replace(/\s+/g,' ').trim();
+    const matchesReceipt=text=>text.includes(promptText)||receiptTag&&text.includes(receiptTag)&&text.includes(promptText.slice(0,Math.min(160,promptText.length)));
     // A reply container can be reused, or already exist as an empty streaming shell.
     // Only unlock it when a new user receipt containing THIS prompt precedes the media.
     const followsReceipt=item=>[...document.querySelectorAll(userSelector)].some(el=>{
@@ -194,10 +207,10 @@
       const eligible=el=>!el.contains(editor)&&!scope?.contains(el)&&!el.closest('[data-testid="hatch-composer-placeholder-overlay"]')&&(readable(el)||getComputedStyle(el).display==='contents'&&[...el.querySelectorAll('p,div,span')].some(readable));
       // A sent user bubble can include file labels and controls after the prompt.
       // Their length does not make the actual prompt receipt disappear.
-      const known=[...document.querySelectorAll(userSelector)].filter(el=>eligible(el)&&normalize(el.textContent).includes(promptText));
+      const known=[...document.querySelectorAll(userSelector)].filter(el=>eligible(el)&&matchesReceipt(normalize(el.textContent)));
       const fallback=[...document.querySelectorAll('div,p,span,article,[role="listitem"]')].filter(el=>{
         if(!eligible(el)||el.closest(userSelector)||el.closest('[data-message-author-role="assistant"]'))return false;
-        const text=normalize(el.textContent);return text.includes(promptText)&&text.length<=promptText.length+40&&![...el.children].some(child=>normalize(child.textContent).includes(promptText));
+        const text=normalize(el.textContent);return matchesReceipt(text)&&text.length<=promptText.length+40&&![...el.children].some(child=>matchesReceipt(normalize(child.textContent)));
       });
       return [...known,...fallback].filter((el,_,all)=>!all.some(other=>other!==el&&el.contains(other))).sort((a,b)=>a.compareDocumentPosition(b)&Node.DOCUMENT_POSITION_FOLLOWING?-1:1);
     };
@@ -225,9 +238,14 @@
     const beforeSendCount=bubbleCount(),previousTexts=new Set(priorBubbleTexts.values());
     const sendActivity=()=>!!findComposer()&&!findComposer().value.trim()&&(bubbleCount()>beforeSendCount||newReceipts().length>0||attachments().some(item=>!baseline.has(item.src))||assistantMessageElements().some(el=>{const text=(el.innerText||el.textContent||'').replace(/\s+/g,' ').trim();return text&&!previousTexts.has(text);})||[...document.querySelectorAll('[data-testid="hatch-composer-stop-button"],button[aria-label*="Stop" i],button[aria-label*="停止"]')].some(visible));
     report(requestId,'Muse: đã điền prompt, đang chờ nút Gửi…');
+    if(mediaType==='text'&&stageBeforeSend){const readyAt=Date.now()+120000;let second=-1;while(Date.now()<readyAt&&!textStates.get(requestId)?.early&&!sendActivity()){
+      throwIfAborted();if(textStates.get(requestId)?.manual)return {ok:true,text:textStates.get(requestId).manual};if(location.origin+location.pathname!==initialConversation)throw Error('Cuộc trò chuyện Muse đã đổi trước khi gửi.');
+      const remaining=Math.ceil((readyAt-Date.now())/1000);if(remaining!==second){second=remaining;report(requestId,`Muse: tệp đã sẵn sàng. Tự gửi sau ${remaining} giây; có thể bấm Gửi ngay.`);}await delay(200,signal);
+    }}
     let sendButton=null,submitted=false,keyboardSend=false;
     for(let i=0;i<900;i++){
       throwIfAborted();
+      if(mediaType==='text'&&textStates.get(requestId)?.manual)return {ok:true,text:textStates.get(requestId).manual};
       // A user may press Send while our selector is still waiting. Never send twice.
       if(sendActivity()){submitted=true;break;}
       WorkflowComposer.assertUpload(composerScope(findComposer()));
@@ -252,8 +270,25 @@
     let accepted=false;
     for(let i=0;i<150;i++){throwIfAborted();if(sendActivity()){accepted=true;break;}await delay(100,signal);}
     if(!accepted)throw new Error('Chưa xác nhận Muse nhận prompt. Không tự gửi lại để tránh trùng lặp.');
-    report(requestId,'Muse đã nhận yêu cầu. Đang tìm video/ảnh kết quả mới…');
+    report(requestId,mediaType==='text'?'Muse đã nhận yêu cầu. Đang chờ văn bản của lượt này…':'Muse đã nhận yêu cầu. Đang tìm video/ảnh kết quả mới…');
     const deadline=Date.now()+Math.min(900,Math.max(30,Number(timeoutSec)||600))*1000;
+    if(mediaType==='text'){
+      let last='',stableSince=Date.now(),conversation=location.origin+location.pathname,assigned=false;
+      while(Date.now()<deadline){
+        throwIfAborted();const manual=textStates.get(requestId)?.manual;if(manual)return {ok:true,text:manual};const next=location.origin+location.pathname;
+        if(next!==conversation){if(!assigned&&initialConversation===location.origin+'/'&&newReceipts().length){conversation=next;assigned=true;}else throw Error('Cuộc trò chuyện Muse đã thay đổi. Không lấy văn bản từ chat khác.');}
+        const receipt=newReceipts().at(-1),users=[...document.querySelectorAll(userSelector)];
+        const candidates=assistantMessageElements().filter(el=>contextualReply(el,true)&&!el.closest(attachmentSelector)&&(!receipt||!users.some(user=>user!==receipt&&!user.contains(receipt)&&(receipt.compareDocumentPosition(user)&Node.DOCUMENT_POSITION_FOLLOWING)&&(user.compareDocumentPosition(el)&Node.DOCUMENT_POSITION_FOLLOWING))));
+        const replies=candidates.filter(el=>!candidates.some(parent=>parent!==el&&parent.contains(el)));
+        const text=replies.map(el=>activity?activity.text(el):el.innerText||el.textContent||'').map(t=>t.trim()).filter(Boolean).join('\n\n');
+        const streaming=[...document.querySelectorAll('[data-testid="hatch-composer-stop-button"],button[aria-label*="Stop" i],button[aria-label*="停止"],button[aria-label*="Dừng" i]')].some(readable)||replies.some(el=>el.matches('[aria-busy="true"],[data-is-streaming="true"]')||el.querySelector('[aria-busy="true"],[data-is-streaming="true"]'));
+        lastScan={kind:'text',receipts:newReceipts().length,matching:replies.length,streaming};
+        if(text!==last){last=text;stableSince=Date.now();}
+        if(text&&!streaming&&Date.now()-stableSince>=3500){report(requestId,'Đã nhận văn bản Muse. Đang chuyển về Workflow…');return {ok:true,text};}
+        await waitForAttachmentChange(Math.min(250,deadline-Date.now()),signal);
+      }
+      throw Error('Chưa nhận đủ văn bản từ Muse. Kiểm tra đúng cuộc trò chuyện; không tự gửi lại prompt.');
+    }
     let lastProgress=Date.now(),firstWrongRatioAt=0,wrongMediaSince=0,lastCandidate='',candidateSince=0;
     let refusalContext='',refusalContextSince=0;const openedPlayers=new Set(),imageCopies=new Map();
     while(Date.now()<deadline){
@@ -296,9 +331,9 @@
           let blob;if(imageCopies.has(src))blob=(await imageCopies.get(src)).blob;else{const response=await fetch(src,{credentials:'include',signal});if(!response.ok)throw new Error(`${mediaType} download returned HTTP ${response.status}.`);blob=await response.blob();}
           // Sent reference tiles can be remounted with fresh blob/CDN URLs and
           // no user-role attribute. Their bytes are still input, never output.
-          if(mediaType==='image'&&referenceFingerprints.has(await imageFingerprint(blob))){
+          if(referenceFingerprints.size&&referenceFingerprints.has(await imageFingerprint(blob))){
             baseline.add(src);lastCandidate='';candidateSince=0;
-            report(requestId,'Muse: bỏ qua ảnh tham chiếu được hiển thị lại, đang chờ ảnh kết quả của lượt này…');
+            report(requestId,'Muse: bỏ qua tệp tham chiếu được hiển thị lại, đang chờ kết quả của lượt này…');
             continue;
           }
           return {ok:true,url:await blobToDataUrl(blob)};
@@ -321,16 +356,16 @@
     throw new Error(`Timed out waiting for a new Muse ${mediaType} attachment. Prompt was submitted once; it was not resubmitted.`);
   }
 
-  async function attachReferences(references,signal){
+  async function attachReferences(references,signal,allowVideo=false){
     const rawFiles=await Promise.all(references.map(async(reference,index)=>{
       const url=typeof reference==='string'?reference:reference?.url;
       if(!url)throw new Error(`Reference image ${index+1} has no URL.`);
       const response=await fetch(url,{credentials:'include',signal});
       if(!response.ok)throw new Error(`Could not load reference image ${index+1} (${response.status}).`);
       let blob=await response.blob();
-      blob=await WorkflowComposer.prepareImage(blob,signal);
-      if(!blob.type.startsWith('image/')||!blob.size)throw new Error(`Reference ${index+1} is not a readable image.`);
-      const extension=(blob.type.split('/')[1]||'png').replace('jpeg','jpg').replace(/[^a-z0-9]/gi,'')||'png';
+      if(blob.type.startsWith('video/')&&allowVideo){if(!['video/mp4','video/webm','video/quicktime'].includes(blob.type)||!blob.size||blob.size>100*1024*1024)throw Error('Video Muse cần MP4/WebM/MOV, tối đa 100 MB.');}else blob=await WorkflowComposer.prepareImage(blob,signal);
+      if(!(blob.type.startsWith('image/')||allowVideo&&blob.type.startsWith('video/'))||!blob.size)throw new Error(`Reference ${index+1} is not a readable image.`);
+      const extension=(blob.type==='video/quicktime'?'mov':blob.type.split('/')[1]||'png').replace('jpeg','jpg').replace(/[^a-z0-9]/gi,'')||'png';
       return new File([blob],`museflow-reference-${String(index+1).padStart(2,'0')}.${extension}`,{type:blob.type});
     }));
     const fingerprints=new Set(),files=[];
@@ -339,7 +374,7 @@
     const composerRoot=composerScope(composer);
     const acceptsImage=input=>{
       const accept=(input.accept||'').toLowerCase();
-      return !accept||accept.includes('image')||accept.includes('*/*')||/\.(png|jpe?g|webp|gif|bmp|avif)/.test(accept);
+      return files.every(file=>!accept||accept.includes('*/*')||accept.includes(file.type)||accept.includes(file.type.split('/')[0]+'/*')||accept.split(',').some(ext=>ext.trim().startsWith('.')&&file.name.endsWith(ext.trim())));
     };
     const findInput=()=>{
       const all=[...document.querySelectorAll('input[type="file"]')].filter(input=>!input.disabled&&acceptsImage(input));
@@ -354,11 +389,11 @@
       const uploadButton=roots.flatMap(root=>[...root.querySelectorAll('button,[role="button"],label')]).filter(visible).find(el=>/attach|upload|image|photo|file|đính kèm|tải lên/i.test(`${el.getAttribute('aria-label')||''} ${el.getAttribute('title')||''} ${el.innerText||''}`));
       if(uploadButton){uploadButton.click();await delay(250,signal);input=findInput();}
     }
-    if(!input)throw new Error('Muse image upload control was not found near the chat composer; the prompt was not submitted.');
-    const previewSelector='img,[role="img"],[data-testid*="attachment" i],[data-testid*="upload" i],[class*="attachment" i],[class*="upload" i]';
+    if(!input)throw new Error('Muse không có ô tải tệp phù hợp với ảnh/video này. Prompt chưa được gửi.');
+    const previewSelector='img,video,[data-file-name],[role="img"],[data-testid*="attachment" i],[data-testid*="upload" i],[class*="attachment" i],[class*="upload" i]';
     const previewElements=()=>[...composerScope(findComposer()).querySelectorAll(previewSelector)].filter(visible);
     const previewKey=el=>{
-      const src=el.matches('img')?(el.currentSrc||el.src||''):/url\(["']?(blob:|data:image\/|https?:)[^)]*\)/i.exec(getComputedStyle(el).backgroundImage)?.[0]||'';
+      const src=el.matches('img,video')?(el.currentSrc||el.src||''):/url\(["']?(blob:|data:image\/|https?:)[^)]*\)/i.exec(getComputedStyle(el).backgroundImage)?.[0]||'';
       return `${src}|${el.getAttribute('data-testid')||''}|${el.getAttribute('class')||''}|${el.getAttribute('aria-label')||''}|${el.getAttribute('title')||''}`;
     };
     const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'files')?.set;

@@ -4,17 +4,17 @@ Mở **Thư viện → Ứng dụng → Affiliate Shopee**. Đây là một cử
 
 ## Luồng dùng
 
-1. Mở và đăng nhập ChatGPT trong Chrome đã kết nối hoặc cửa sổ AI của app. Chọn cuộc trò chuyện tại Affiliate Shopee; mỗi lượt xử lý dùng riêng một cuộc trò chuyện, tránh nhập thêm khi đang chạy.
+1. Mở và đăng nhập Muse, Gemini hoặc ChatGPT trong Chrome đã kết nối hoặc cửa sổ AI của app. Chọn cuộc trò chuyện tại Affiliate Shopee; mỗi lượt xử lý dùng riêng một cuộc trò chuyện, tránh nhập thêm khi đang chạy.
 2. Dán link affiliate Shopee Việt Nam hoặc link ngắn `s.shopee.vn` / `shp.ee`, bấm **Tạo kịch bản từ link**. Link tracking gốc được giữ nguyên; app không tạo link affiliate, không kiểm tra quyền nhận hoa hồng.
 3. App mở link công khai, lấy tên/mô tả/ảnh từ JSON-LD Product hoặc Open Graph. Link chưa mở tới sản phẩm, trang yêu cầu JavaScript/đăng nhập/CAPTCHA, CDN bị chặn hoặc thiếu metadata sẽ báo lỗi trước bước AI. Không gọi API Shopee nội bộ, dùng cookie Chrome hay vượt CAPTCHA.
-4. Bốn lượt ChatGPT: hồ sơ từ trích dẫn nguồn → ba góc kể chuyện và chọn góc → 3–5 cảnh có lời đọc/ảnh nguồn/thời lượng/chỉ dẫn hình → lượt kiểm tra nội dung riêng. Trích dẫn không có trong nguồn, ảnh/thời lượng sai, thiếu công bố liên kết tiếp thị hoặc thiếu kiểm tra từng cảnh sẽ dừng. Kịch bản được so với lịch sử đã lưu, kể cả mục xóa khỏi danh sách, để hạn chế bản gần trùng sau khi đổi tên sản phẩm.
+4. Bốn lượt AI đã chọn: hồ sơ từ trích dẫn nguồn → ba góc kể chuyện và chọn góc → 3–5 cảnh có lời đọc/ảnh nguồn/thời lượng/chỉ dẫn hình → lượt kiểm tra nội dung riêng. Trích dẫn không có trong nguồn, ảnh/thời lượng sai, thiếu công bố liên kết tiếp thị hoặc thiếu kiểm tra từng cảnh sẽ dừng. Kịch bản được so với lịch sử đã lưu, kể cả mục xóa khỏi danh sách, để hạn chế bản gần trùng sau khi đổi tên sản phẩm.
 5. Xem lại từng cảnh, tải JSON/content nếu cần. Chọn Muse hoặc Google Veo, tùy chọn lời đọc OpenAI, bấm **Tạo workflow trên canvas**. Tạo node không tự gửi yêu cầu video/giọng nói. Chọn tab AI hoặc cấu hình API trong dự án rồi **Chạy workflow** khi sẵn sàng.
 6. Mỗi cảnh giữ ảnh nguồn riêng, nối vào tạo video; lời đọc tùy chọn có node riêng. Node cuối ghép cảnh hoặc đồng bộ từng bản đọc. Kết quả hoàn tất có **Tải kết quả / Thêm vào hàng chờ**. Hàng chờ nhận bản sao tệp cùng content và link gốc, ở trạng thái bản nháp.
 7. Trong **Đăng bài**, kiểm tra nội dung, chọn tài khoản/nền tảng đã kết nối, đăng ngay hoặc hẹn giờ. Mục Affiliate không tự đăng bài hoặc tự kết nối tài khoản.
 
 ## Điều kiện và giới hạn
 
-- Kịch bản dùng ChatGPT web qua bộ kết nối hiện có, không cần API key viết kịch bản. Bốn lượt được kiểm tra định dạng, không tự gọi lại khi AI trả sai. Không bảo đảm AI luôn trả đúng định dạng hoặc mọi tuyên bố đều chính xác; dữ liệu người bán cũng cần kiểm chứng.
+- Kịch bản dùng Muse/Gemini/ChatGPT web qua bộ kết nối hiện có, không cần API key viết kịch bản. Bốn lượt được kiểm tra định dạng, không tự gọi lại khi AI trả sai. Không bảo đảm AI luôn trả đúng định dạng hoặc mọi tuyên bố đều chính xác; dữ liệu người bán cũng cần kiểm chứng.
 - Tạo video cần tài khoản Muse có quyền/hạn mức hoặc API Google Veo. Lồng tiếng dùng OpenAI API cần khóa/số dư trong Kết nối AI của dự án; đăng nhập ChatGPT web không cấp quyền TTS. Có thể tính phí theo nhà cung cấp. Chưa kiểm chứng sinh video người cầm sản phẩm hay chất lượng giọng thật trong tài khoản người dùng.
 - Một tác vụ biên tập mỗi lượt để giữ trật tự trong tab AI; tối đa 50 tác vụ chờ/chạy, 200 tác vụ lưu cục bộ. Tạm dừng chỉ ngừng nhận việc tiếp theo. Dừng tác vụ hủy chờ/gửi đang quản lý, không tự bắt đầu bước kế tiếp. Thoát app dừng việc đang chạy; mở lại giữ hàng chờ tạm dừng, đánh dấu lượt bị gián đoạn để người dùng kiểm tra trước khi tạo phiên bản mới.
 - Ảnh thu nhỏ tối đa 1600px, giữ tỷ lệ; giới hạn tải 8 MB/ảnh, 20 MB tổng byte nguồn. Ảnh lưu thành tệp riêng, thông tin hàng chờ không chứa base64 lớn. Không tải lên máy chủ Workflow. Chỉ nội dung kịch bản được gửi tới tab AI đã chọn; ảnh nguồn đi vào canvas và được gửi khi chạy node tạo video.

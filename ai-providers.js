@@ -1,7 +1,7 @@
 /* Provider adapters. Keys remain in session storage, outside exported workflows. */
 (() => {
   const providers = {
-    muse: {name:'Muse.ai · tab', types:['image','video'], urls:['https://muse.ai/*','https://*.muse.ai/*']},
+    muse: {name:'Muse.ai · tab', types:['text','image','video'], urls:['https://muse.ai/*','https://*.muse.ai/*']},
     chatgpt: {name:'ChatGPT · tab', types:['text','image'], urls:['https://chatgpt.com/*','https://www.chatgpt.com/*','https://chat.openai.com/*']},
     gemini: {name:'Gemini · tab', types:['text','image'], urls:['https://gemini.google.com/*']},
     google: {name:'Google Gemini / Veo · API', types:['text','image','video']},

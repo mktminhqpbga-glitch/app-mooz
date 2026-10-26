@@ -4,7 +4,9 @@ import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 vm.runInThisContext(readFileSync(new URL('../muse-jobs.js',import.meta.url),'utf8'));
 const request={requestId:'r1',prompt:'Only once',timeoutSec:30};
-const options={interval:0,messageTimeout:10,timeout:150,reconnect:15};
+// Allow scheduler contention from the parallel packaging/desktop suites. These
+// are fixture deadlines; production uses seconds/minutes, not 10–150 ms.
+const options={interval:0,messageTimeout:100,timeout:2000,reconnect:100};
 test('lost start ACK and status connection recover without a second submission',async()=>{
  let starts=0,reads=0,acks=0;
  const result=await WorkflowMuseJobs.run(async msg=>{

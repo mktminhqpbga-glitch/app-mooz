@@ -127,7 +127,7 @@ ipcMain.handle('workflow:call',async(event,method,data={})=>{
    if(method==='affiliate.snapshot')return affiliate.snapshot();
    if(method==='affiliate.get')return affiliate.get(data.id);
    if(method==='affiliate.tabs')return postingAI.tabs();
-   if(method==='affiliate.openAI')return ai.open('chatgpt');
+   if(method==='affiliate.openAI')return ai.open(data.provider||'chatgpt');
    if(method==='affiliate.create')return affiliate.create(data);
    if(method==='affiliate.pause')return affiliate.pause(data.paused);
    if(method==='affiliate.cancel')return affiliate.cancel(data.id);
@@ -168,7 +168,7 @@ ipcMain.handle('workflow:call',async(event,method,data={})=>{
    if(!ctx.posting)throw Error('Mở ứng dụng Đăng bài trước.');
    if(method==='posting.snapshot')return posting.snapshot();
    if(method==='posting.tabs')return postingAI.tabs();
-   if(method==='posting.openAI')return ai.open('chatgpt');
+   if(method==='posting.openAI')return ai.open(data.provider||'chatgpt');
    if(method==='posting.facebook.check')return facebookLogin.check(data.url);
    if(method==='posting.facebook.login')return facebookLogin.login(data.url);
    if(method==='posting.facebook.discover')return facebookPages.discover(data.token);
@@ -257,7 +257,7 @@ ipcMain.handle('workflow:call',async(event,method,data={})=>{
 app.whenReady().then(async()=>{
   downloads=new Downloads({directory:()=>app.getPath('downloads'),windowFor:contents=>contents?BrowserWindow.fromWebContents(contents):null,dialog,notify:send,reveal:file=>shell.showItemInFolder(file)});
   store=new ProjectStore(path.join(app.getPath('userData'),'projects'));
-  relay=new ChromeRelay(notify);await relay.start();
+  relay=new ChromeRelay({notify,version});await relay.start();
   ai=new AIWindows(root,version,notify,async projectId=>projectId?(await store.readStorage(projectId)).workflowMuseSendTarget:null);
   const postingRoot=path.join(app.getPath('userData'),'posting');
   const postingStore=new PostingStore(postingRoot),publisher=new FacebookPublisher({root:postingRoot,fetch:net.fetch.bind(net),safeStorage:require('electron').safeStorage});

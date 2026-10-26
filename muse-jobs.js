@@ -3,7 +3,7 @@
  const abort=signal=>{if(signal?.aborted)throw new DOMException('Đã dừng.','AbortError');};
  const pause=(ms,signal)=>new Promise((resolve,reject)=>{abort(signal);const stop=()=>{clearTimeout(timer);signal?.removeEventListener('abort',stop);reject(new DOMException('Đã dừng.','AbortError'));};const timer=setTimeout(()=>{signal?.removeEventListener('abort',stop);resolve();},ms);signal?.addEventListener('abort',stop,{once:true});});
  async function short(send,message,signal,timeout){abort(signal);let timer,stop;try{return await Promise.race([Promise.resolve().then(()=>{abort(signal);return send(message);}),new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('Kết nối Muse tạm thời không phản hồi.')),timeout);stop=()=>reject(new DOMException('Đã dừng.','AbortError'));signal?.addEventListener('abort',stop,{once:true});})]);}finally{clearTimeout(timer);signal?.removeEventListener('abort',stop);}}
- async function run(send,request,signal,{interval=1000,messageTimeout=12000,timeout=Math.min(900,Math.max(30,Number(request.timeoutSec)||600))*1000+(request.referenceImages?.length||0)*120000+180000,reconnect=25000,onReconnect=()=>{},onProgress=()=>{}}={}){
+ async function run(send,request,signal,{interval=1000,messageTimeout=12000,timeout=Math.min(900,Math.max(30,Number(request.timeoutSec)||600))*1000+((request.referenceImages?.length||0)+(request.referenceVideos?.length||0))*120000+180000,reconnect=25000,onReconnect=()=>{},onProgress=()=>{}}={}){
   const id=request.requestId;if(typeof id!=='string'||!id)throw Error('Thiếu mã tác vụ Muse.');
   let started;try{started=await short(send,{...request,type:'MUSEFLOW_JOB_START'},signal,messageTimeout);}catch(error){if(error.name==='AbortError')throw error;onReconnect();}
   if(started?.ok===false)throw Error(started.error||'Muse chưa nhận tác vụ.');
@@ -24,4 +24,5 @@
   throw Error('Hết thời gian chờ Muse. Không gửi lại prompt; kiểm tra kết quả trên tab Muse trước khi chạy lại.');
  }
  globalThis.WorkflowMuseJobs={run};
+ if(typeof module!=='undefined'&&module.exports)module.exports={run};
 })();

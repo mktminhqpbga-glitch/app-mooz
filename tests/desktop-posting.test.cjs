@@ -5,6 +5,9 @@ const fs=require('node:fs/promises');
 const path=require('node:path');
 const os=require('node:os');
 const {PostingStore}=require('../desktop/posting-store.cjs');
+test('caption adapter selects Muse or Gemini by URL and rejects an old Muse bridge before sending',async()=>{
+ for(const provider of ['muse','gemini']){const messages=[],url=provider==='muse'?'https://muse.ai/chat/example':'https://gemini.google.com/app/example';let old=false;const ai={list:()=>[{id:42,url}],script:async()=>{},message:async(_id,value)=>{messages.push(value);if(value.type==='MUSEFLOW_CHECK_SESSION')return {composer:true,signedIn:true,textProtocol:old?0:1};if(value.type==='WORKFLOW_AI_CHECK')return {composer:true,signedIn:true,resultProtocol:3};if(value.type==='MUSEFLOW_JOB_START')return {ok:true};if(value.type==='MUSEFLOW_JOB_STATUS')return {ok:true,state:'done',result:{ok:true,text:'Content Muse'}};return {ok:true,text:'Content Gemini'};}};const adapter=new PostingAI({ai,relay:{status:()=>({connected:false})},store:{}}),job={title:'Test',media:[]},target={id:42,transport:'native'};assert.equal(await adapter.ask(job,'Viết',target,new AbortController().signal),'Content '+(provider==='muse'?'Muse':'Gemini'));if(provider==='muse'){assert.equal(messages.filter(m=>m.type==='MUSEFLOW_JOB_START').length,1);old=true;await assert.rejects(adapter.ask(job,'Viết',target,new AbortController().signal),/nhận văn bản/);assert.equal(messages.filter(m=>m.type==='MUSEFLOW_JOB_START').length,1);}}
+});
 const {PostingService}=require('../desktop/posting-service.cjs');
 const {FacebookPublisher}=require('../desktop/facebook-publisher.cjs');
 const {PostingAI}=require('../desktop/posting-ai.cjs');

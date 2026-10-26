@@ -8,10 +8,11 @@ const EXTENSION_ORIGIN=/^chrome-extension:\/\/([a-p]{32})$/;
 class ChromeRelay {
  constructor(options={}) {
   this.notify=typeof options==='function'?options:options.notify||(()=>{});
+  this.appVersion=typeof options==='object'?options.version||null:null;this.companion=null;
   this.server=null;this.client=null;this.extensionId=null;this.port=null;this.token=null;this.pending=new Map();
  }
  get isConnected(){return this.client?.readyState===WebSocket.OPEN;}
- status(){return {connected:!!this.isConnected,port:this.port,extensionId:this.extensionId};}
+ status(){return {connected:!!this.isConnected,port:this.port,extensionId:this.extensionId,companion:this.companion};}
  async start(){
   if(this.server)return this.status();
   this.token=randomBytes(32).toString('hex');
@@ -40,8 +41,10 @@ class ChromeRelay {
     const supplied=typeof message.token==='string'&&/^[a-f0-9]{64}$/.test(message.token)?Buffer.from(message.token,'hex'):null;
     if(message.type!=='auth'||!supplied||!this.token||!timingSafeEqual(supplied,Buffer.from(this.token,'hex'))){socket.close(1008,'Authentication failed');return;}
     if(this.isConnected){socket.close(1013,'Already connected');return;}
+    if(message.protocol!==undefined&&message.protocol!==1){socket.close(1008,'Companion protocol update required');return;}
     authenticated=true;clearTimeout(authTimer);this.client=socket;this.extensionId=EXTENSION_ORIGIN.exec(request.headers.origin)[1];
-    this.send(socket,{type:'ready'});this.changed();return;
+    this.companion={protocol:message.protocol||1,version:typeof message.extensionVersion==='string'&&/^\d+\.\d+\.\d+$/.test(message.extensionVersion)?message.extensionVersion:null};
+    this.send(socket,{type:'ready',protocol:1,appVersion:this.appVersion});this.changed();return;
    }
    if(socket!==this.client)return;
    if(message.type==='ping'){try{this.send(socket,{type:'pong'});}catch{}return;}
@@ -57,7 +60,7 @@ class ChromeRelay {
   });
  }
  clearClient(){
-  this.client=null;this.extensionId=null;
+  this.client=null;this.extensionId=null;this.companion=null;
   for(const item of this.pending.values()){clearTimeout(item.timer);item.reject(Error('Chrome đã ngắt kết nối. Kiểm tra tab AI trước khi chạy lại; không tự gửi lại yêu cầu.'));}
   this.pending.clear();this.changed();
  }

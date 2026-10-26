@@ -1,0 +1,16 @@
+/* Real Chromium DOM; Muse upload/generation are fixtures. */
+const {chromium}=require('playwright'),assert=require('node:assert/strict'),path=require('node:path'),fs=require('node:fs');
+(async()=>{const browser=await chromium.launch({executablePath:'/usr/bin/chromium',headless:true,args:['--no-sandbox']});try{
+ for(const accepts of [true,false]){
+  const page=await browser.newPage();await page.route('https://muse.ai/**',r=>r.fulfill({contentType:'text/html',body:`<main><section id="thread"></section><form><textarea placeholder="Message"></textarea><input type="file" accept="${accepts?'video/*,image/*':'image/*'}"><button type="button" aria-label="Send">Send</button></form></main>`}));await page.goto('https://muse.ai/chat/video-ref');await page.clock.install();
+  await page.evaluate(expected=>{window.result=null;window.sent=0;window.uploaded=null;window.expected=expected;window.listeners=[];window.chrome={runtime:{id:'test',sendMessage:async()=>{},onMessage:{addListener:f=>listeners.push(f)}}};window.call=req=>new Promise(resolve=>{for(const f of listeners)f(req,{id:'test'},resolve);});document.querySelector('input').onchange=event=>{uploaded={type:event.target.files[0].type,size:event.target.files[0].size};const card=document.createElement('div');card.dataset.testid='upload-attachment';card.innerHTML='<video src="data:video/mp4;base64,AQID"></video>';document.querySelector('form').append(card);};
+   document.querySelector('button').onclick=()=>{sent++;const box=document.querySelector('textarea'),user=document.createElement('div');user.dataset.messageAuthorRole='user';user.textContent=box.value;box.value='';document.querySelector('#thread').append(user);document.querySelectorAll('form [data-testid]').forEach(e=>e.remove());const reply=document.createElement('div');reply.dataset.messageAuthorRole='assistant';const video=document.createElement('video');video.src=expected;reply.append(video);document.querySelector('#thread').append(reply);};
+  },'data:video/mp4;base64,'+fs.readFileSync(path.join(__dirname,'fixtures/posting-sample.mp4')).toString('base64'));
+  for(const file of ['ai-activity.js','composer-controls.js','muse-bridge.js'])await page.addScriptTag({path:path.resolve(__dirname,'../'+file)});
+  await page.evaluate(()=>{void call({type:'MUSEFLOW_GENERATE',requestId:'motion',prompt:'Continue the reference video',mediaType:'video',referenceVideos:['data:video/mp4;base64,AQID'],size:'16:9'}).then(r=>result=r);});
+  for(let i=0;i<50&&!(await page.evaluate(()=>result));i++){await page.clock.runFor(400);await page.waitForTimeout(10);}
+  if(accepts){assert.equal(await page.evaluate(()=>result?.ok),true,JSON.stringify(await page.evaluate(()=>result)));assert.equal(await page.evaluate(()=>result.url===expected),true);assert.deepEqual(await page.evaluate(()=>uploaded),{type:'video/mp4',size:3});assert.equal(await page.evaluate(()=>sent),1);}
+  else{assert.equal(await page.evaluate(()=>result?.ok),false);assert.equal(await page.evaluate(()=>sent),0);assert.match(await page.evaluate(()=>result.error),/tệp phù hợp/);}
+  await page.close();console.log('PASS Muse video reference '+accepts+': upload capability checked before Send; current output collected, never a reference echo.');
+ }
+}finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1});

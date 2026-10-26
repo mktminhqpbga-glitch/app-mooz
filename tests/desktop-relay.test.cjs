@@ -25,6 +25,9 @@ test('invalid authentication cannot acquire the relay',async t=>{
  assert.equal((await closed)[0],1008);assert.equal(relay.isConnected,false);
  await assert.rejects(relay.request('tabs.query',{url:['https://chatgpt.com/*']}),/Chưa kết nối/);
 });
+test('app and companion versions differ safely when relay protocol matches; unsupported protocol is rejected',async t=>{
+ const relay=new ChromeRelay({version:'99.0.0'});await relay.start();t.after(()=>relay.close());const socket=await open(relay),ready=once(socket,'message');socket.send(JSON.stringify({type:'auth',token:new URL(relay.pairingURI()).pathname.slice(1),protocol:1,extensionVersion:'1.0.0'}));const hello=JSON.parse((await ready)[0]);assert.equal(hello.protocol,1);assert.equal(hello.appVersion,'99.0.0');assert.equal(relay.status().companion.version,'1.0.0');const closed=once(socket,'close');socket.close();await closed;const bad=await open(relay),rejected=once(bad,'close');bad.send(JSON.stringify({type:'auth',token:new URL(relay.pairingURI()).pathname.slice(1),protocol:9,extensionVersion:'1.0.0'}));assert.equal((await rejected)[0],1008);assert.equal(relay.isConnected,false);
+});
 
 test('authenticated RPC returns tab results and forwards AI progress',async t=>{
  const events=[],relay=new ChromeRelay(event=>events.push(event));await relay.start();t.after(()=>relay.close());

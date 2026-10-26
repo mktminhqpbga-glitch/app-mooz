@@ -8,6 +8,7 @@ afterEach(()=>globalThis.fetch=originalFetch);
 globalThis.FileReader=class {readAsDataURL(blob){blob.arrayBuffer().then(bytes=>{this.result=`data:${blob.type};base64,${Buffer.from(bytes).toString('base64')}`;this.onload();},()=>this.onerror());}};
 const response=data=>new Response(JSON.stringify(data),{headers:{'Content-Type':'application/json'}});
 test('capabilities reject unsupported output and incomplete motion control',()=>{
+ assert.doesNotThrow(()=>validate('muse',{mediaType:'text',referenceVideos:['video']}));assert.doesNotThrow(()=>validate('muse',{mediaType:'video',referenceVideos:['video'],duration:40}));
  assert.throws(()=>validate('chatgpt',{mediaType:'video'}));
  assert.throws(()=>validate('openai',{mediaType:'text',referenceVideos:['video']}));
  assert.throws(()=>validate('google',{mediaType:'video',duration:60}));

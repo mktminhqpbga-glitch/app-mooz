@@ -1,15 +1,14 @@
-"""Build a load-unpacked ZIP from the maintained extension sources."""
+"""Build only the Chrome companion; the desktop app owns the workspace UI."""
+import argparse
 from pathlib import Path
 from zipfile import ZipFile, ZIP_DEFLATED
 
 root = Path(__file__).resolve().parents[1]
-files = [
-    'manifest.json', 'app.html', 'app.js', 'background.js', 'muse-bridge.js', 'muse-jobs.js', 'muse-support.js',
-    'ai-activity.js', 'ai-bridge.js', 'result-picker.js', 'composer-controls.js', 'ai-providers.js', 'workflow-tools.js', 'workflow-runtime.js', 'media-studio.js', 'media-library.js', 'story-workflow.js', 'story-references.js', 'story-dashboard.js', 'compact-toolbar.js', 'flow-studio.js', 'batch-manager.js', 'reference-board.js', 'creative-tools.js', 'workflow-chat.js', 'workflow-posting.js', 'batch-images.js', 'i18n.js', 'styles.css', 'studio.css', 'README.md',
-    'LICENSE', 'THIRD_PARTY_NOTICES.md', 'desktop/ai-activity-worker.js', 'desktop/renderer.js', 'desktop/update-ui.js', 'desktop/update-ui.css', 'desktop/chrome-connect.js', 'desktop/chrome-relay-worker.js', 'desktop/connect.html', 'desktop/connect.js',
-]
-directories = ['icons', 'licenses', 'vendor', 'templates', 'extension', 'data', 'docs', 'tools/media-helper']
-output = root / 'downloads' / 'Workflow-extension.zip'
+files = ['manifest.json','background.js','ai-activity.js','composer-controls.js','ai-bridge.js','muse-bridge.js','muse-support.js','result-picker.js','desktop/ai-activity-worker.js','desktop/chrome-relay-worker.js','desktop/connect.html','desktop/connect.js','desktop/connect.css','LICENSE']
+directories = ['icons']
+parser=argparse.ArgumentParser()
+parser.add_argument('--output',type=Path,default=root/'downloads'/'Workflow-extension.zip')
+output=parser.parse_args().output
 output.parent.mkdir(exist_ok=True)
 with ZipFile(output, 'w', ZIP_DEFLATED) as archive:
     for name in files:

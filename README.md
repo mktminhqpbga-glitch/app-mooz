@@ -1,8 +1,14 @@
-# Workflow · MuseFlow 0.39.0
+# Workflow · MuseFlow 0.39.1
 
 **[⬇ ĐÓNG GÓI / CẬP NHẬT APP MAC](https://github.com/mktminhqpbga-glitch/app-mooz/actions/workflows/desktop.yml)** · **[Hướng dẫn từng bước](docs/PACKAGING.md)**
 
 Bấm liên kết trên → **Run workflow** → chọn `main`. Khi build xong, tải artifact DMG đúng loại Mac. Có thể chọn tạo draft Release để chuẩn bị bản cập nhật; app nhận biết sau khi bạn Publish release mới hơn.
+
+## Workflow Connect và sửa AI/video · 0.39.1
+
+Tiện ích Chrome được tách thành **Workflow Connect 1.0.0**, chỉ có bảng kết nối với app và thông báo cập nhật, ZIP khoảng 64 KB. App/tiện ích có số phiên bản riêng, dùng chung khi giao thức tương thích. Không kèm canvas hay FFmpeg trong tiện ích. Muse đã có nhận văn bản, video tham chiếu và lựa chọn ở các công cụ văn bản/viết content. Node ảnh/video luôn hiển thị nút chuyển sang Đăng bài cùng lý do nếu chưa dùng được.
+
+Thời lượng clip thực tế được hiển thị cạnh mục tiêu. Với clip 10 giây và mục tiêu 40 giây, **Công cụ → Tiếp nối đủ 40 giây** tạo ba đoạn tiếp từ khung cuối và Output ghép đúng mục tiêu khi đủ nguồn. Không tự gửi thêm AI khi chỉ tạo luồng. [Cài tiện ích, tương thích và hướng dẫn sửa video](docs/CHROME-CONNECT.md).
 
 ## Affiliate Shopee · 0.39.0
 
