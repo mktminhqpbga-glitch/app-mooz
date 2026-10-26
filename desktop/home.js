@@ -170,8 +170,9 @@
   };
   let launchingApp = false;
   $('aiAppsAffiliate').onclick=()=>void window.workflowDesktop.call('affiliate.open').catch(error=>status(displayError(error),true));
-  $('aiAppsHub').onclick=()=>void window.workflowDesktop.call('posting.open',{view:'overview'}).catch(error=>status(displayError(error),true));
-  $('aiAppsPosting').onclick=()=>void window.workflowDesktop.call('posting.open').catch(error=>status(displayError(error),true));
+  // Trung tâm điều hành và Đăng bài gộp thành một nút: mở hub ở tab Tổng quan,
+  // bên trong hub vẫn chuyển được sang Đăng bài, Lịch, Thương hiệu, Thành phẩm.
+  $('aiAppsHubPosting').onclick=()=>void window.workflowDesktop.call('posting.open',{view:'overview'}).catch(error=>status(displayError(error),true));
   $('aiAppsWorkflow').onclick = () => {
     $('allProjects').click();
     document.querySelector('.project-library').scrollIntoView({block:'start', behavior:'smooth'});
@@ -179,7 +180,6 @@
   let appTool = 'chat';
   function pickProject(tool) {appTool=tool;$('appProjectTitle').textContent=tool==='voiceover'?'Lồng tiếng trong canvas':'Mở Chat AI';$('appProjectDescription').textContent=tool==='voiceover'?'Lồng tiếng hiện có trong canvas bằng OpenAI API: Thêm node → Lồng tiếng, nhập lời đọc hoặc nối Văn bản, cấu hình khóa OpenAI trong Kết nối AI, rồi bấm Thực hiện. Dịch vụ có thể tính phí. Ứng dụng lồng tiếng riêng vẫn chờ tích hợp.':'Chọn dự án để trò chuyện và giao việc cho AI. Ảnh, video và node được giữ trong đúng dự án đó.';$('appProjectOpen').textContent=tool==='voiceover'?'Mở canvas lồng tiếng':'Mở Chat AI';$('appProjectNew').textContent=tool==='voiceover'?'＋ Dự án lồng tiếng':'＋ Dự án Chat mới';void selectProject();}
   $('aiAppsVoice').onclick = ()=>pickProject('voiceover');
-  $('aiAppsChat').onclick = ()=>pickProject('chat');
   async function selectProject() {
     $('appProjectError').textContent = '';
     await refresh();
@@ -318,7 +318,6 @@
   };
 
   if (!api) {
-    $('aiAppsChat').disabled = true;
     $('connectChrome').disabled = true;
     $('newProject').disabled = true;
     $('emptyCreate').disabled = true;
