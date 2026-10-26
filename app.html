@@ -7,6 +7,7 @@
   <link rel="icon" type="image/png" sizes="128x128" href="icons/icon128.png" />
   <link rel="stylesheet" href="styles.css" />
   <link rel="stylesheet" href="studio.css" />
+  <link rel="stylesheet" href="film-canvas.css" />
   <link rel="stylesheet" href="desktop/update-ui.css">
 </head>
 <body>
@@ -15,7 +16,7 @@
     <div class="toolbar-tools" aria-label="Add workflow nodes">
       <button id="creativeToolsBtn" type="button">Trợ lý sáng tạo</button><button id="referenceBoardBtn" type="button">Ảnh tham chiếu chung</button><button id="mediaLibraryBtn" type="button">⇩ Tải media</button><button id="promptLibraryBtn" type="button">Kho prompt</button>
       <button id="batchManagerBtn" type="button">Hàng đợi · Kho ảnh</button><button id="flowStudioBtn" type="button">Tạo hàng loạt</button><button id="batchImagesBtn" type="button">＋ Tạo ảnh hàng loạt</button><button id="scriptImportBtn" type="button">＋ Script → Nodes</button>
-      <button id="storyDashboardBtn" type="button">Bảng điều khiển kịch bản</button>
+      <button id="storyDashboardBtn" type="button">Bảng điều khiển kịch bản</button><button id="filmCanvasBtn" type="button">Canvas phim</button>
       <button id="masterScriptBtn" type="button">＋ Kịch bản tổng</button>
       <button id="clearPromptsBtn" type="button" title="Xóa nội dung prompt trên canvas; giữ node, kết nối và Kho prompt. Ctrl+Z để hoàn tác">Xóa prompt canvas</button>
       <button id="duplicateSelectionBtn" type="button" title="Nhân bản các node đang chọn và dây nối nội bộ · D">Nhân bản nhóm · D</button>
@@ -224,6 +225,7 @@
   <script src="creative-tools.js"></script>
   <script src="workflow-chat.js"></script>
   <script src="workflow-posting.js"></script>
+  <script src="film-canvas.js"></script>
   <script src="app.js"></script>
   <script src="compact-toolbar.js"></script>
 </body>

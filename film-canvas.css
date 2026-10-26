@@ -1,0 +1,18 @@
+/* Film Canvas panel — dùng chung tông với studio.css, không đổi layout canvas chính. */
+.film-canvas-dialog { max-width: 860px; width: calc(100vw - 40px); border: 1px solid #444; border-radius: 12px; padding: 20px; background: #111; color: #eee; }
+.film-canvas-dialog header { display: flex; justify-content: space-between; gap: 16px; }
+.film-canvas-dialog textarea { width: 100%; box-sizing: border-box; margin-top: 6px; }
+.film-canvas-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+.film-canvas-file { cursor: pointer; border: 1px solid #666; border-radius: 6px; padding: 6px 10px; }
+.film-canvas-minimap { border: 1px solid #333; border-radius: 8px; margin: 8px 0; background: #0a0a0a; }
+.film-canvas-minimap svg { width: 100%; height: 200px; display: block; }
+.film-canvas-minimap .film-edge { stroke: #777; stroke-width: 1; }
+.film-canvas-minimap .film-node-film { fill: #f5c542; }
+.film-canvas-minimap .film-node-character { fill: #7ec8ff; }
+.film-canvas-minimap .film-node-style { fill: #b48cff; }
+.film-canvas-minimap .film-node-scene { fill: #7dff9a; }
+.film-canvas-minimap .film-node-shot { fill: #ff8a7a; }
+.film-canvas-list { display: grid; gap: 10px; max-height: 40vh; overflow: auto; }
+.film-canvas-list article { border: 1px solid #333; border-radius: 8px; padding: 10px; }
+.film-canvas-list pre { white-space: pre-wrap; word-break: break-word; font-size: 13px; }
+.film-canvas-dialog .error { color: #ff8a7a; }
