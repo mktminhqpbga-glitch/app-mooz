@@ -3,6 +3,7 @@ const path=require('node:path');
 const {pathToFileURL}=require('node:url');
 const {ProjectStore}=require('./project-store.cjs');
 const {UIPreferences}=require('./ui-preferences.cjs');
+const {AIConnections}=require('./ai-connections.cjs');
 const {providerForURL,allowedNetworkURL,resolveAppPath}=require('./policy.cjs');
 const {AIWindows}=require('./ai-windows.cjs');
 const {ChromeRelay}=require('./chrome-relay.cjs');
@@ -27,11 +28,11 @@ const testMode=process.env.WORKFLOW_DESKTOP_TEST==='1'&&!app.isPackaged;
 if(testMode){if(!process.env.WORKFLOW_TEST_DATA)throw Error('Missing test data directory');app.setPath('userData',path.resolve(process.env.WORKFLOW_TEST_DATA));}
 if(!app.requestSingleInstanceLock())app.exit(0);
 app.on('second-instance',()=>{if(home&&!home.isDestroyed()){home.show();home.focus();}});
-let uiPreferences,store,home,ai,relay,updater,downloads,posting,postingAI,postingOAuth,brands,chats,facebookPages,facebookLogin,postingWindow,affiliate,affiliateWindow,chromeEverConnected=false;
+let aiConnections,uiPreferences,store,home,ai,relay,updater,downloads,posting,postingAI,postingOAuth,brands,chats,facebookPages,facebookLogin,postingWindow,affiliate,affiliateWindow,chromeEverConnected=false;
 const managedProjects=new Set();
 const canvases=new Map(),sessionData=new Map(),requests=new Map(),installedSessions=new WeakSet();
 const projectTransitions=new Set(),affiliateTransitions=new Set();
-function notify(value){if(affiliateWindow&&!affiliateWindow.isDestroyed())affiliateWindow.webContents.send('workflow:event',value);if(postingWindow&&!postingWindow.isDestroyed())postingWindow.webContents.send('workflow:event',value);if(['update','brands','projects','appearance'].includes(value.type)&&home&&!home.isDestroyed())home.webContents.send('workflow:event',value);if(value.type==='relay'&&value.connected){chromeEverConnected=true;managedProjects.clear();}for(const win of canvases.values())if(!win.isDestroyed())win.webContents.send('workflow:event',value);}
+function notify(value){if(affiliateWindow&&!affiliateWindow.isDestroyed())affiliateWindow.webContents.send('workflow:event',value);if(postingWindow&&!postingWindow.isDestroyed())postingWindow.webContents.send('workflow:event',value);if(['update','brands','projects','appearance','aiConnections'].includes(value.type)&&home&&!home.isDestroyed())home.webContents.send('workflow:event',value);if(value.type==='relay'&&value.connected){chromeEverConnected=true;managedProjects.clear();}for(const win of canvases.values())if(!win.isDestroyed())win.webContents.send('workflow:event',value);}
 async function setupSession(ses){
   if(installedSessions.has(ses))return;installedSessions.add(ses);
   downloads.install(ses);
@@ -56,7 +57,7 @@ function protect(win){
 }
 async function openPosting(){
  if(postingWindow&&!postingWindow.isDestroyed()){postingWindow.show();postingWindow.focus();return;}
- postingWindow=new BrowserWindow({width:1400,height:930,minWidth:900,minHeight:680,title:'Đăng bài · Workflow',backgroundColor:'#111723',webPreferences:{preload:path.join(__dirname,'preload.cjs'),additionalArguments:['--workflow-version='+version],backgroundThrottling:false,contextIsolation:true,sandbox:true,nodeIntegration:false,webSecurity:true}});protect(postingWindow);postingWindow.on('closed',()=>{postingOAuth?.cancel();facebookLogin?.cancel();facebookPages?.clear();postingWindow=null;});await setupSession(session.defaultSession);await postingWindow.loadURL('workflow://app/desktop/posting.html');
+ postingWindow=new BrowserWindow({width:1400,height:930,minWidth:900,minHeight:680,title:'Đăng bài & điều hành · Workflow',backgroundColor:'#111723',webPreferences:{preload:path.join(__dirname,'preload.cjs'),additionalArguments:['--workflow-version='+version],backgroundThrottling:false,contextIsolation:true,sandbox:true,nodeIntegration:false,webSecurity:true}});protect(postingWindow);postingWindow.on('closed',()=>{postingOAuth?.cancel();facebookLogin?.cancel();facebookPages?.clear();postingWindow=null;});await setupSession(session.defaultSession);await postingWindow.loadURL('workflow://app/desktop/posting.html');
 }
 async function openHome(){
   if(home&&!home.isDestroyed()){home.show();home.focus();return;}
@@ -131,6 +132,7 @@ ipcMain.handle('workflow:call',async(event,method,data={})=>{
    if(method==='affiliate.tabs')return postingAI.tabs();
    if(method==='affiliate.openAI')return ai.open(data.provider||'chatgpt');
    if(method==='affiliate.create')return affiliate.create(data);
+   if(method==='affiliate.generate')return affiliate.generate(data);
    if(method==='affiliate.pause')return affiliate.pause(data.paused);
    if(method==='affiliate.cancel')return affiliate.cancel(data.id);
    if(method==='affiliate.archive')return affiliate.archive(data.id);
@@ -142,7 +144,7 @@ ipcMain.handle('workflow:call',async(event,method,data={})=>{
      if(!['muse','google'].includes(data.videoProvider||'muse'))throw Error('AI video không hợp lệ.');
      let project=job.projectId&&(await store.list()).find(p=>p.id===job.projectId);
      if(!project){project=await store.create(('Affiliate · '+job.product.title).slice(0,100));await store.writeStorage(project.id,{museflow:{nodes:[],edges:[],groups:[],notes:[],settings:{}}});await affiliate.save(job.id,{projectId:project.id});notify({type:'projects'});}
-     try{await openProject(project.id);await canvases.get(project.id).webContents.executeJavaScript('window.WorkflowAffiliate.create('+JSON.stringify({jobId:job.id,title:job.product.title,affiliate:job.affiliate,caption:job.caption,scenes:job.story.scenes,images:await affiliate.readImages(job.id),videoProvider:data.videoProvider||'muse',voice:!!data.voice})+')');await affiliate.save(job.id,{workflowError:''});return {id:project.id};}
+     try{await openProject(project.id);await canvases.get(project.id).webContents.executeJavaScript('window.WorkflowAffiliate.create('+JSON.stringify({jobId:job.id,title:job.product.title,affiliate:job.affiliate,caption:job.caption,scenes:job.story.scenes,scriptOrigin:job.story.origin||'ai',images:await affiliate.readImages(job.id),videoProvider:data.videoProvider||'muse',voice:!!data.voice})+')');await affiliate.save(job.id,{workflowError:''});return {id:project.id};}
      catch(error){await affiliate.save(job.id,{workflowError:'Tạo workflow bị gián đoạn. Bấm Mở / khôi phục workflow để kiểm tra và tiếp tục trong cùng dự án.'});throw error;}
     }finally{affiliateTransitions.delete(data.id);}
    }
@@ -227,6 +229,11 @@ ipcMain.handle('workflow:call',async(event,method,data={})=>{
     try{const result=await (method==='projects.trash'?store.trash(data.id):store.undoTrash(data.id));notify({type:'projects'});return result;}
     finally{projectTransitions.delete(data.id);}
   }
+  if(method==='aiConnections.list')return aiConnections.list();
+  if(method==='aiConnections.save'||method==='aiConnections.remove'){const result=await (method.endsWith('save')?aiConnections.save(data):aiConnections.remove(data.id));notify({type:'aiConnections'});return result;}
+  if(method==='aiConnections.ask'){const key=event.sender.id+':custom:'+data.requestId;if(typeof data.requestId!=='string'||data.requestId.length>100||requests.has(key))throw Error('Mã yêu cầu AI không hợp lệ.');const controller=new AbortController(),cancel=()=>controller.abort();event.sender.once('destroyed',cancel);requests.set(key,controller);try{return await aiConnections.ask(data.id,data.request,controller.signal);}finally{requests.delete(key);event.sender.removeListener('destroyed',cancel);}}
+  if(method==='aiConnections.cancel'){requests.get(event.sender.id+':custom:'+data.requestId)?.abort();return;}
+  if(method==='extension.download')return downloads.download(win,{url:'data:application/octet-stream;base64,'+(await require('node:fs/promises').readFile(path.join(root,'extension/Workflow-Connect.zip'))).toString('base64'),filename:'Workflow-Connect.zip',saveAs:false});
   if(method==='appearance.get')return uiPreferences.get();
   if(method==='appearance.save'){const value=await uiPreferences.save(data);notify({type:'appearance',value});return value;}
   if(method==='windows.list')return [...(home&&!home.isDestroyed()?[{key:'home',name:'Thư viện dự án',win:home}]:[]),...(postingWindow&&!postingWindow.isDestroyed()?[{key:'posting',name:'Đăng bài / Điều hành',win:postingWindow}]:[]),...(affiliateWindow&&!affiliateWindow.isDestroyed()?[{key:'affiliate',name:'Affiliate Shopee',win:affiliateWindow}]:[]),...[...canvases].filter(([,w])=>!w.isDestroyed()).map(([key,w])=>({key,name:w.getTitle(),win:w}))].map(w=>({key:w.key,name:w.name,active:w.win===win}));
@@ -274,7 +281,8 @@ app.whenReady().then(async()=>{
   brands=new BrandStore(path.join(app.getPath('userData'),'brands'));await brands.init();chats=new ChatStore(path.join(app.getPath('userData'),'chats'));
   facebookPages=new FacebookPages(publisher);facebookLogin=new FacebookLogin({fetch:net.fetch.bind(net),openExternal:url=>shell.openExternal(url),pages:facebookPages});
   postingOAuth=new PostingOAuth({fetch:net.fetch.bind(net),openExternal:url=>shell.openExternal(url)});
-  postingAI=new PostingAI({ai,relay,store:postingStore});publisher.muse=new MusePublishing({client:postingAI});posting=new PostingService({store:postingStore,publisher,brands,ask:(...args)=>postingAI.ask(...args),notify:()=>notify({type:'posting'})});await posting.init();posting.start();
+  aiConnections=new AIConnections(app.getPath('userData'),net.fetch.bind(net));await aiConnections.init();
+  postingAI=new PostingAI({ai,relay,store:postingStore,connections:aiConnections});publisher.muse=new MusePublishing({client:postingAI});posting=new PostingService({store:postingStore,publisher,brands,ask:(...args)=>postingAI.ask(...args),notify:()=>notify({type:'posting'})});await posting.init();posting.start();
   affiliate=new AffiliateService({root:path.join(app.getPath('userData'),'affiliate'),ai:postingAI,fetchImpl:net.fetch.bind(net),notify:()=>notify({type:'affiliate'}),decodeImage:bytes=>{let image=nativeImage.createFromBuffer(bytes);if(image.isEmpty())throw Error('Không giải mã được ảnh sản phẩm.');const {width,height}=image.getSize();if(width*height>25000000)throw Error('Ảnh sản phẩm quá lớn.');const scale=Math.min(1,1600/Math.max(width,height));if(scale<1)image=image.resize({width:Math.round(width*scale),height:Math.round(height*scale),quality:'best'});const jpeg=image.toJPEG(90);if(jpeg.length>4*1024*1024)throw Error('Ảnh sản phẩm sau thu nhỏ vẫn quá lớn.');return 'data:image/jpeg;base64,'+jpeg.toString('base64');}});await affiliate.init();
   const signed=app.isPackaged&&process.platform==='darwin'&&await isDeveloperIDSigned(path.dirname(path.dirname(path.dirname(process.execPath))));
   updater=new UpdateService({version,packaged:app.isPackaged,platform:process.platform,signed,engine:signed?require('electron-updater').autoUpdater:null,fetchRelease:()=>latestPublicRelease(net.fetch.bind(net)),
@@ -289,7 +297,7 @@ app.whenReady().then(async()=>{
       }finally{if(!quitApproved)posting.hold=false;}
     },onInstallStart:()=>{posting.hold=true;quitApproved=true;},onInstallFailed:()=>{posting.hold=false;quitApproved=false;}});
   updater.on('status',status=>notify({type:'update',status}));updater.start();
-  if(testMode)globalThis.workflowTest={store,ai,relay,updater,posting,postingAI,postingOAuth,brands,chats,facebookPages,facebookLogin,affiliate,openProject,openHome,openPosting,openAffiliate};
+  if(testMode)globalThis.workflowTest={aiConnections,store,ai,relay,updater,posting,postingAI,postingOAuth,brands,chats,facebookPages,facebookLogin,affiliate,openProject,openHome,openPosting,openAffiliate};
   Menu.setApplicationMenu(Menu.buildFromTemplate([
     ...(process.platform==='darwin'?[{role:'appMenu'}]:[]),
     {label:'Dự án',submenu:[{label:'Thư viện dự án',accelerator:'CmdOrCtrl+Shift+P',click:()=>void openHome()},{role:'close'},{role:'quit'}]},

@@ -29,3 +29,11 @@ Video H.264 cùng định dạng (có AAC hoặc không có âm thanh) được 
 Kiểm thử bằng FFmpeg thật trong Electron: 9 clip 900×1600, 30fps, không tiếng → một MP4 1,8 giây giữ kích thước, đúng thứ tự màu và không mã hóa lại; thử thêm clip khác kích thước/fps/có tiếng để kiểm tra nhánh mã hóa. Một thành phẩm tạo đúng một bản nháp Đăng bài với một tệp output gốc. Không gửi AI hoặc đăng bài thật.
 
 Đề xuất thiết kế hiện đại ở [designs](../designs/README.md) là bản xem thử riêng. Chưa đưa giao diện tổng thể mới vào runtime hay gói cài đặt.
+
+## Công cụ nằm bên trái · 0.42.0
+
+Thanh trái chứa **chính các nút thao tác**: Ảnh tham chiếu chung, Trợ lý sáng tạo, Hàng đợi/Kho ảnh, Tạo hàng loạt, Tạo ảnh hàng loạt, Kịch bản → Node, Bảng điều khiển kịch bản, Kho prompt, Tải media, nhập/xuất workflow, sắp xếp và bảo trì. Cuộn thanh công cụ để tới các mục bên dưới; không còn mở menu “Thêm” để tìm chúng. Lối về dự án/Đăng bài/Chat trong dự án/Cửa sổ nằm gọn ở cuối thanh.
+
+Trạng thái Muse/Gemini/GPT và nút chạy/lưu/thêm node dùng chung thanh trên, bỏ tiêu đề “Quy trình sáng tạo” và hàng trạng thái riêng. Bản đồ nằm ở góc trên trái canvas, ngay dưới cụm zoom. Giữ chức năng kéo bản đồ để di chuyển và giới hạn zoom. Thư viện bỏ thẻ Chat AI độc lập; Chat trong dự án vẫn hoạt động. **Đăng bài & điều hành** là một mục ứng dụng duy nhất, bao gồm soạn bài, lịch, thương hiệu, kho thành phẩm, tài khoản và hiệu quả.
+
+Cài đặt chung ở **Cài đặt & kết nối AI**: tải tiện ích, kết nối Chrome, giao diện, kết nối API tùy chỉnh và lối tới thiết lập AI của dự án. [Hướng dẫn kết nối AI khác](AI-CONNECTIONS.md).

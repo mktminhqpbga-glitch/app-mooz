@@ -4,12 +4,13 @@ const {randomUUID}=require('node:crypto');
 const {providerForURL}=require('./policy.cjs');
 const {run:runMuse}=require('../muse-jobs.js');
 class PostingAI{
- constructor({ai,relay,store}){Object.assign(this,{ai,relay,store});this.lastSend=0;this.running=false;}
- async tabs(){const patterns=['https://chatgpt.com/*','https://www.chatgpt.com/*','https://chat.openai.com/*','https://gemini.google.com/*','https://muse.ai/*','https://*.muse.ai/*'];const native=this.ai.list(patterns).map(tab=>({...tab,transport:'native',provider:providerForURL(tab.url)}));if(!this.relay.status().connected)return native;const tabs=await this.relay.request('tabs.query',{url:patterns});return [...native,...tabs.map(tab=>({...tab,transport:'chrome',provider:providerForURL(tab.url)}))];}
+ constructor({ai,relay,store,connections}){Object.assign(this,{ai,relay,store,connections});this.lastSend=0;this.running=false;}
+ async tabs(){const patterns=['https://chatgpt.com/*','https://www.chatgpt.com/*','https://chat.openai.com/*','https://gemini.google.com/*','https://muse.ai/*','https://*.muse.ai/*'];const native=[...this.ai.list(patterns).map(tab=>({...tab,transport:'native',provider:providerForURL(tab.url)})),...(this.connections?.list()||[]).map(c=>({id:c.id,transport:'api',provider:c.id,title:c.name+' · '+c.model,url:c.baseURL}))];if(!this.relay.status().connected)return native;const tabs=await this.relay.request('tabs.query',{url:patterns});return [...native,...tabs.map(tab=>({...tab,transport:'chrome',provider:providerForURL(tab.url)}))];}
  async ask(job,prompt,target,signal,{rules}={}){
   if(this.running)throw Error('Một bài khác đang viết content. Chờ hoàn tất.');this.running=true;
   try{
    const tab=(await this.tabs()).find(t=>t.id===target?.id&&t.transport===target?.transport);if(!tab)throw Error('Chọn cuộc trò chuyện Muse, Gemini hoặc ChatGPT đang mở.');
+   if(tab.transport==='api'){const refs=[];for(const [index,m]of job.media.entries()){if(m.kind==='image')refs.push('data:'+m.mime+';base64,'+(await fs.readFile(await this.store.mediaPath(job.id,index))).toString('base64'));}return (await this.connections.ask(tab.id,{mediaType:'text',prompt:prompt+'\n\nNgữ cảnh: '+JSON.stringify({title:job.title,brand:job.brandSnapshot,sourcePrompt:job.sourcePrompt}),rules:rules||'Chỉ trả nội dung, không đăng bài.',referenceImages:refs},signal)).text;}
    const script=files=>tab.transport==='chrome'?this.relay.request('tabs.script',{id:tab.id,files}):this.ai.script(tab.id,files,null,null);
    const message=value=>tab.transport==='chrome'?this.relay.request('tabs.message',{id:tab.id,message:value}):this.ai.message(tab.id,value,null);
    const muse=providerForURL(tab.url)==='muse';

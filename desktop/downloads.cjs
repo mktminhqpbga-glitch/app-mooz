@@ -26,8 +26,9 @@ class Downloads{
  fail(entry,error){clearTimeout(entry.timer);if(this.pending.get(entry.key)===entry)this.pending.delete(entry.key);entry.reject?.(error);this.notify(entry.win,{type:'download',id:entry.id,state:'error',name:entry.name,message:error.message});}
  receive(event,item,contents){
   const win=this.windowFor(contents),url=item.getURL();
-  if(!win?.projectId||!sourceAllowed(url)){event.preventDefault();return;}
+  if(!win||!sourceAllowed(url)){event.preventDefault();return;}
   const key=this.key(win,url);let entry=this.pending.get(key);
+  if(!win.projectId&&!entry){event.preventDefault();return;}
   // Native anchor downloads use the same manager as explicit chrome.downloads calls.
   if(entry?.item){event.preventDefault();return;}
   if(!entry){entry={win,key,id:randomUUID(),saveAs:false};entry.promise=new Promise((resolve,reject)=>Object.assign(entry,{resolve,reject}));void entry.promise.catch(()=>{});this.pending.set(key,entry);}

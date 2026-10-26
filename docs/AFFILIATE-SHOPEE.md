@@ -30,3 +30,14 @@ Electron smoke chạy parser và giải mã ảnh gốc bằng nativeImage thậ
 Đã thử kết nối link sản phẩm Shopee shop `1053077389`, item `25176208160` từ môi trường làm việc ngày 25/10/2026 nhưng yêu cầu mạng thất bại. Chưa có bằng chứng đọc sản phẩm này hoặc chạy AI/TTS/video/social thật. Cần thử nguồn và tài khoản thực tế trên máy người dùng trước khi coi luồng sẵn sàng vận hành.
 
 Thiết kế tham khảo luồng được người dùng cung cấp trong [reup-shopee-aff](https://github.com/mktminhqpbga-glitch/reup-shopee-aff), viết lại để dùng dịch vụ desktop và canvas hiện có; không nhúng backend Python, khóa dịch vụ hoặc runtime của repo đó.
+
+## Luồng chọn kịch bản · 0.42.0
+
+1. Dán link → **Lấy thông tin & ảnh**. Bước này chỉ đọc nguồn Shopee công khai và giải mã ảnh, không cần chọn AI và chưa gọi AI.
+2. Xem tên, ảnh và mô tả sản phẩm đã lấy. Lỗi quyền đọc/CAPTCHA/thiếu ảnh được báo ở tác vụ, không tự bịa dữ liệu hay gọi AI tiếp.
+3. Chọn **AI viết kịch bản** hoặc **Dùng kịch bản của tôi**.
+   - AI viết: chọn tab hoặc kết nối API đã cấu hình; có thể dán kịch bản mẫu để tham khảo cấu trúc/nhịp kể. Tiếp tục bốn bước hồ sơ → góc kể → từng cảnh → kiểm tra nguồn. Mẫu không được dùng làm nguồn dữ kiện về sản phẩm.
+   - Kịch bản của tôi: nhập tối đa 12.000 ký tự, mỗi đoạn ngăn bằng một dòng trống là một cảnh (tối đa 12 cảnh, 1.800 ký tự/cảnh). Xác nhận đã kiểm tra nội dung. App giữ nguyên lời đọc từng đoạn, không gọi AI viết lại và ghi rõ đây là nội dung bạn xác nhận, chưa kiểm chứng bằng AI. Ước tính thời lượng/gắn ảnh chỉ là điểm bắt đầu; xem lại trên canvas. Không tự thêm công bố affiliate vào lời đọc; content xuất ra có dòng “Có liên kết tiếp thị” và link gốc.
+4. Xem từng cảnh → **Tạo workflow trên canvas**. Có thể thêm lời đọc. Bấm tạo workflow chưa gọi sinh video/giọng hoặc đăng bài. Kết quả cuối đưa sang ứng dụng Đăng bài & điều hành như trước.
+
+Tác vụ nguồn và lựa chọn/kịch bản đã gửi được lưu trên máy; mở lại giữ nguyên nội dung. Không tự gửi lại AI sau lỗi/gián đoạn. Nếu đã có workflow, tạo tác vụ sản phẩm mới để làm một phiên bản khác, tránh ghi đè workflow đang dùng. Nguồn đã lấy xong được dùng cho bước kịch bản, không tải lại ảnh chỉ vì chuyển nhánh.

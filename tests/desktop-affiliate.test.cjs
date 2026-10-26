@@ -74,3 +74,14 @@ test('a withdrawn queued job cannot be claimed from an older queue snapshot',asy
  const {id}=await service.create({url:affiliate,target:{id:1,transport:'native'}});await listed;await service.cancel(id);const pending=service.working;release();await pending;
  assert.equal(fetches,0,'A withdrawn job must not fetch the product');assert.equal(calls(),0,'A queue withdrawal must win before any AI request');assert.equal((await service.get(id)).status,'cancelled');
 });
+test('staged product import never calls AI; own script is preserved without a rewrite',async t=>{
+ const {service,calls}=await fixture(t),{id}=await service.create({url:affiliate,prepareOnly:true});let job;
+ for(let i=0;i<300;i++){job=await service.get(id);if(job.status==='sourced')break;await new Promise(r=>setTimeout(r,5));}
+ assert.equal(job.status,'sourced',job.error);assert.equal(calls(),0);const script='Đây là cảnh mở đầu của tôi.\n\nCận cảnh chiếc áo từ ảnh nguồn.';
+ await assert.rejects(service.generate({id,mode:'own',script}),/Xác nhận/);await service.generate({id,mode:'own',script,confirmed:true});job=await done(service,id);assert.equal(job.status,'ready',job.error);assert.equal(calls(),0);assert.equal(job.story.scenes.map(s=>s.narration).join('\n\n'),script);assert.equal(job.story.review.mode,'user');assert.ok(job.caption.endsWith(affiliate));
+});
+test('staged AI generation receives reference script as context and keeps all four validation phases',async t=>{
+ const seen=[],{service}=await fixture(t),ask=service.ai.ask;service.ai.ask=async(...args)=>{seen.push(args[1]);return ask(...args);};const {id}=await service.create({url:affiliate,prepareOnly:true});
+ for(let i=0;i<300&&(await service.get(id)).status!=='sourced';i++)await new Promise(r=>setTimeout(r,5));
+ await service.generate({id,mode:'auto',reference:'Mở bằng câu hỏi, rồi soi chi tiết.',target:{id:1,transport:'native'}});assert.equal((await done(service,id)).status,'ready');assert.equal(seen.length,4);assert.ok(seen[1].includes('Mở bằng câu hỏi, rồi soi chi tiết.'));
+});

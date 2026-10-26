@@ -10,7 +10,7 @@
   const appVersion = chrome.runtime.getManifest().version;
 
   function compareVersions(a,b){const left=String(a).split('.').map(Number),right=String(b).split('.').map(Number);for(let i=0;i<Math.max(left.length,right.length);i++){const delta=(left[i]||0)-(right[i]||0);if(delta)return delta;}return 0;}
-  async function checkForAppUpdate(){try{const response=await fetch(`https://raw.githubusercontent.com/mktminhqpbga-glitch/app-mooz/main/manifest.json?check=${Date.now()}`,{cache:'no-store'});if(!response.ok)return;const latest=await response.json();if(!latest.version||compareVersions(latest.version,appVersion)<=0)return;const dismissed=(await chrome.storage.local.get('museflowDismissedUpdateVersion')).museflowDismissedUpdateVersion;if(dismissed===latest.version)return;$('#updateNoticeText').textContent=`Có phiên bản Workflow ${latest.version}`;$('#updateNotice').classList.remove('hidden');$('#dismissUpdateBtn').onclick=async()=>{await chrome.storage.local.set({museflowDismissedUpdateVersion:latest.version});$('#updateNotice').classList.add('hidden');};}catch{/* Update checks are best-effort and must not interrupt workflow use. */}}
+  async function checkForAppUpdate(){if(window.workflowDesktop)return;try{const response=await fetch(`https://raw.githubusercontent.com/mktminhqpbga-glitch/app-mooz/main/manifest.json?check=${Date.now()}`,{cache:'no-store'});if(!response.ok)return;const latest=await response.json();if(!latest.version||compareVersions(latest.version,appVersion)<=0)return;const dismissed=(await chrome.storage.local.get('museflowDismissedUpdateVersion')).museflowDismissedUpdateVersion;if(dismissed===latest.version)return;$('#updateNoticeText').textContent=`Có phiên bản Workflow ${latest.version}`;$('#updateNotice').classList.remove('hidden');$('#dismissUpdateBtn').onclick=async()=>{await chrome.storage.local.set({museflowDismissedUpdateVersion:latest.version});$('#updateNotice').classList.add('hidden');};}catch{/* Update checks are best-effort and must not interrupt workflow use. */}}
 
   const state = {
     nodes: [],
@@ -92,6 +92,7 @@
   WorkflowStudio.effects.add('videoAssembly');
   Object.assign(nodeDefs,WorkflowTools.definitions);
   for(const [type,entry] of Object.entries(WorkflowNodeCatalog.entries))if(nodeDefs[type])nodeDefs[type].title=entry.title;
+  document.addEventListener('workflow:providers',()=>{render();renderHealth();});
   const aiKeys={};
   let scriptAIController=null;
   const aiTabs=new Map();
@@ -101,12 +102,12 @@
   function progressNode(node,text){if(!node)return;node.data.progress=text;const root=document.querySelector(`.node[data-id="${CSS.escape(node.id)}"]`),status=root?.querySelector(".status"),detail=root?.querySelector(".node-status-detail");if(status){status.textContent=text;status.title=text;}if(detail)detail.textContent=text;}
 
   const providerJobs=new Map(),providerHealth=new Map(),healthChecks=new Set();
-  const providerName=id=>({muse:'Muse',gemini:'Gemini',chatgpt:'GPT',google:'Google API',openai:'OpenAI API',fal:'fal.ai'})[id]||id;
+  const providerName=id=>({muse:'Muse',gemini:'Gemini',chatgpt:'GPT',google:'Google API',openai:'OpenAI API',fal:'fal.ai'})[id]||WorkflowAI.providers[id]?.name||id;
   function setProviderHealth(provider,status,detail='',sticky=false){providerHealth.set(provider,{status,detail,sticky});renderHealth();}
   const failureHealth=message=>/chưa|đăng nhập|chọn|cuộc trò chuyện|hết thời gian|không nhận diện|timeout/i.test(message||'')?'check':'error';
   function renderHealth(){
     const host=$('#aiHealth');if(!host)return;host.replaceChildren();
-    const ids=['muse','gemini','chatgpt',...['google','openai','fal'].filter(id=>aiKeys[id]||state.nodes.some(n=>n.data.provider===id))];
+    const ids=['muse','gemini','chatgpt',...Object.keys(WorkflowAI.providers).filter(id=>!WorkflowAI.providers[id].urls&&(aiKeys[id]||state.nodes.some(n=>n.data.provider===id)))];
     for(const id of ids){const jobs=[...providerJobs.values()].filter(job=>job.provider===id),known=providerHealth.get(id)||{status:'check',detail:'Chưa kiểm tra'};
       const status=jobs.some(job=>job.phase==='busy')?'busy':jobs.length?'check':known.status;
       const text=({ready:'Đã kết nối · Rảnh',busy:'Đang làm tác vụ',error:'Lỗi',check:'Cần kiểm tra'})[status];
@@ -120,7 +121,7 @@
     healthChecks.add(provider);
     try{
       const config=WorkflowAI.providers[provider];
-      if(!config.urls){if(providerHealth.get(provider)?.status!=='ready')setProviderHealth(provider,'check',aiKeys[provider]?'Có khóa, cần xác minh bằng tác vụ':'Chưa nhập API key');return;}
+      if(!config.urls){if(providerHealth.get(provider)?.status!=='ready')setProviderHealth(provider,'check',(aiKeys[provider]||WorkflowAI.providers[provider]?.keyReady)?'Có khóa, cần xác minh bằng tác vụ':'Chưa nhập API key');return;}
       const tabs=await chrome.tabs.query({url:config.urls});if(!tabs.length){setProviderHealth(provider,'error','Chưa mở tab AI');return;}
       const preferred=aiChatTargets[provider],tab=tabs.find(tab=>tab.id===preferred?.tabId)||tabs.find(tab=>tab.active)||tabs[0];
       await chrome.scripting.executeScript({target:{tabId:tab.id},files:provider==='muse'?['ai-activity.js','composer-controls.js','muse-bridge.js']:['ai-activity.js','composer-controls.js','ai-bridge.js']});
@@ -129,7 +130,7 @@
       if(result?.busy)setProviderHealth(provider,'busy','Tab AI đang xử lý');else if(result?.ok&&result.composer&&result.signedIn!==false)setProviderHealth(provider,'ready',tab.title||'Ô chat sẵn sàng');else setProviderHealth(provider,'check','Mở chat/đăng nhập hoặc tải lại tab');
     }catch(error){setProviderHealth(provider,'error',error.message);}finally{healthChecks.delete(provider);}
   }
-  function refreshHealth(force=false){return Promise.allSettled(['muse','gemini','chatgpt',...['google','openai','fal'].filter(id=>aiKeys[id]||state.nodes.some(n=>n.data.provider===id))].map(id=>refreshProviderHealth(id,force)));}
+  function refreshHealth(force=false){return Promise.allSettled(['muse','gemini','chatgpt',...Object.keys(WorkflowAI.providers).filter(id=>!WorkflowAI.providers[id].urls&&(aiKeys[id]||state.nodes.some(n=>n.data.provider===id)))].map(id=>refreshProviderHealth(id,force)));}
 
   const aiChatTabs={},aiChatTargets={};let pendingChatSelections=0;
   const museChatTransitions=new Map();
@@ -242,7 +243,7 @@
       if(tab){n.data.chatTarget={tabId:tab.id,url:chatKey(tab.url)};if(n.data.error?.includes('cuộc trò chuyện')){n.data.error='';n.data.status='idle';}scheduleAutoSave();setRunStatus('Đã chọn cuộc trò chuyện hiện tại của tab: '+(tab.title||tab.url),'ok');}
       render();
     };wrap.append(refresh);if(kind==='text'){const hint=document.createElement('small');hint.textContent='Tự gửi sau khi tải tệp xong và tự lấy văn bản về node.';const mode=document.createElement('select');mode.setAttribute('aria-label','Chế độ gửi');mode.append(new Option('Tự gửi khi sẵn sàng','auto'),new Option('Chờ 2 phút trước khi gửi','delay'));mode.value=n.data.sendMode||'auto';mode.onchange=()=>{n.data.sendMode=mode.value;scheduleAutoSave();};wrap.append(mode);wrap.append(hint);}}
-    if(WorkflowAI.models[provider]){const model=document.createElement('input');model.placeholder=WorkflowAI.models[provider][kind]||'Model';model.value=n.data.apiModel||'';model.setAttribute('aria-label','Model API');model.onchange=()=>{n.data.apiModel=model.value.trim();scheduleAutoSave();};wrap.appendChild(model);}
+    if(WorkflowAI.models[provider]&&!WorkflowAI.providers[provider]?.custom){const model=document.createElement('input');model.placeholder=WorkflowAI.models[provider][kind]||'Model';model.value=n.data.apiModel||'';model.setAttribute('aria-label','Model API');model.onchange=()=>{n.data.apiModel=model.value.trim();scheduleAutoSave();};wrap.appendChild(model);}
     if(kind==='video'){const hint=document.createElement('small');hint.textContent=provider==='fal'?'Motion Control: nối đúng 1 ảnh nhân vật + 1 video chuyển động. Thời lượng theo video nguồn.':provider==='google'?'Veo: clip 4/6/8 giây, cần API key có quyền model.':'5/10/15/30/40 giây là thời lượng yêu cầu; kết quả phụ thuộc Muse.ai.';wrap.appendChild(hint);}
     return wrap;
   }
@@ -313,7 +314,7 @@
       const safe={...request};safe.referenceImages=await Promise.all((request.referenceImages||[]).map(url=>blobAsDataUrlFromUrl(url)));safe.referenceVideos=await Promise.all((request.referenceVideos||[]).map(url=>blobAsDataUrlFromUrl(url)));
       try{await pace();const reply=await otherTabMessage(provider,{...safe,type:'WORKFLOW_AI_GENERATE'},signal);if(!reply?.ok){setProviderHealth(provider,failureHealth(reply?.error),reply?.error||'Chưa nhận kết quả.',true);return reply;}setProviderHealth(provider,'ready','Đã nhận kết quả');if(reply.chatTarget){n.data.chatTarget=reply.chatTarget;if(aiChatTargets[provider]?.tabId===reply.chatTarget.tabId)aiChatTargets[provider]=reply.chatTarget;}return reply;}finally{aiTabs.delete(request.requestId);}
     }
-    await pace();const result=await WorkflowAI.api(provider,request,aiKeys[provider],signal);setProviderHealth(provider,'ready','API vừa trả kết quả');return result;
+    await pace();let result;if(WorkflowAI.providers[provider]?.custom&&window.workflowDesktop){const requestId=request.requestId,cancel=()=>void workflowDesktop.call('aiConnections.cancel',{requestId});signal?.addEventListener('abort',cancel,{once:true});try{result=await workflowDesktop.call('aiConnections.ask',{id:provider,requestId,request:{...request,referenceImages:await Promise.all((request.referenceImages||[]).map(blobAsDataUrlFromUrl))}});if(signal?.aborted)throw new DOMException('Đã dừng.','AbortError');}finally{signal?.removeEventListener('abort',cancel);}}else result=await WorkflowAI.api(provider,request,aiKeys[provider],signal);setProviderHealth(provider,'ready','API vừa trả kết quả');return result;
     }catch(error){if(error.name!=='AbortError')setProviderHealth(provider,failureHealth(error.message),error.message,true);throw error;}finally{finishPacing?.();release?.();providerJobs.delete(request.requestId);renderHealth();if(signal?.aborted)void refreshProviderHealth(provider,true);}
   }
   async function blobAsDataUrlFromUrl(url){if(url.startsWith('data:'))return url;const r=await fetch(url);if(!r.ok)throw new Error('Không tải được tệp nguồn để chuyển sang AI.');return blobAsDataUrl(await r.blob());}
@@ -325,7 +326,7 @@
         if(p.urls){const tabs=await chrome.tabs.query({url:p.urls});if(!tabs.length){row.style.color='#87909f';row.textContent=`● ${p.name}: chưa mở tab`;continue;}
           const result=id==='muse'?await museTabMessage({type:'MUSEFLOW_CHECK_SESSION'}):await otherTabMessage(id,{type:'WORKFLOW_AI_CHECK'});
           row.style.color=result?.signedIn?'#16a34a':'#ef4444';row.textContent=`● ${p.name}: ${result?.signedIn?'ô chat sẵn sàng':'cần đăng nhập / mở trang chat'}`;
-        }else{row.style.color=aiKeys[id]?'#d97706':'#87909f';row.textContent=`● ${p.name}: ${aiKeys[id]?'đã có khóa, chưa xác thực yêu cầu tạo':'chưa nhập khóa'}`;}
+        }else{row.style.color=(aiKeys[id]||p.keyReady)?'#d97706':'#87909f';row.textContent=`● ${p.name}: ${(aiKeys[id]||p.keyReady)?'đã có khóa, chưa xác thực yêu cầu tạo':'chưa nhập khóa'}`;}
       }catch{row.style.color='#ef4444';row.textContent=`● ${p.name}: không kết nối được`;}
     }
   }
@@ -539,7 +540,7 @@
         const provider=n.data.provider||(n.type==='generateText'?'gemini':'muse'),definition=WorkflowAI.providers[provider],kind=n.type==='generateImage'?'image':n.type==='generateVideo'?'video':'text';
         if(!definition?.types.includes(kind)){add(n,'AI đã chọn không hỗ trợ '+kind+'.');continue;}
         if(definition.urls){if(!tabs.has(provider))tabs.set(provider,await chrome.tabs.query({url:definition.urls}));if(!tabs.get(provider).length)throw Error('Chưa mở tab '+definition.name+'.');chooseChat(provider,tabs.get(provider),n.data.chatTarget||aiChatTargets[provider]);}
-        else if(!aiKeys[provider])add(n,'Chưa nhập API key cho '+definition.name+'.');
+        else if(!aiKeys[provider]&&!definition.custom)add(n,'Chưa nhập API key cho '+definition.name+'.');
         for(const e of getIncoming(n.id,'reference')){const source=sourceFor(e);if(!source)add(n,'Ảnh tham chiếu đã bị xóa.');else if(source.type==='imageInput'&&!source.data.localDataUrl&&!source.data.asset?.url)add(source,'Chưa chọn tệp ảnh tham chiếu.');else if(source.type==='characterLock'&&!source.data.lockedAsset?.url)add(source,'Chưa khóa ảnh nhân vật chuẩn.');}
         if(n.type==='generateVideo'){
           if(!getIncoming(n.id,'reference').length)add(n,'Thiếu ảnh khung đầu của cảnh.');
@@ -2522,7 +2523,7 @@
   const workflowReady=loadState(); detectMuse();applyCanvasTransform();
   if(window.workflowDesktop)window.WorkflowAffiliate=Object.freeze({create:async(input)=>{
     await workflowReady;if(state.isRunning)throw Error('Chờ workflow hiện tại hoàn tất trước khi thêm affiliate.');
-    if(!input||!Array.isArray(input.scenes)||input.scenes.length<3||input.scenes.length>5||!Array.isArray(input.images)||!input.images.length||input.images.length>5||!['muse','google'].includes(input.videoProvider))throw Error('Dữ liệu affiliate không hợp lệ.');
+    if(!input||!Array.isArray(input.scenes)||input.scenes.length<(input.scriptOrigin==='user'?1:3)||input.scenes.length>(input.scriptOrigin==='user'?12:5)||!Array.isArray(input.images)||!input.images.length||input.images.length>5||!['muse','google'].includes(input.videoProvider))throw Error('Dữ liệu affiliate không hợp lệ.');
     const existing=state.nodes.find(n=>n.data.affiliateJobId===input.jobId);if(existing)return {existing:true};
     const nodes=[],edges=[],videos=[],voices=[],baseY=Math.max(100,...state.nodes.map(n=>n.y+500)),make=(type,x,y,data)=>{const n=makeNode(type,x,y);n.data={...n.data,...data,affiliateJobId:input.jobId};nodes.push(n);return n;},edge=(source,sourcePort,target,targetPort)=>edges.push({id:uid('edge'),source:source.id,sourcePort,target:target.id,targetPort});
     for(const [i,scene]of input.scenes.entries()){

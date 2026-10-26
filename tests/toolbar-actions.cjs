@@ -1,4 +1,2 @@
-/* Exercise the same disclosed navigation used by a person before an action. */
-// All secondary commands now share the single More menu.
-
-exports.toolbarAction=async(page,selector)=>{const button=page.locator(selector);if(!await button.isVisible()){await page.click('#toolbar-create');}await button.click();};
+/* Commands are real buttons in a scrollable rail, settings open from one entry. */
+exports.toolbarAction=async(page,selector)=>{const button=page.locator(selector);if(selector==='#settingsBtn'&&await page.locator('#connectionsOpen').count()){await page.click('#connectionsOpen');await page.click('#connectionsProject');return;}if(!await button.isVisible()&&await page.locator('#connectionsOpen').count()){await page.click('#connectionsOpen');}await button.scrollIntoViewIfNeeded();await button.click();};

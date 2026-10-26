@@ -2,7 +2,7 @@
 const {ProjectStore}=require('./project-store.cjs');
 const fs=require('node:fs/promises'),path=require('node:path');
 const {checkedURL,download,parseProduct}=require('./affiliate-source.cjs');
-const {buildStory}=require('./affiliate-story.cjs');
+const {buildStory,ownStory}=require('./affiliate-story.cjs');
 const ACTIVE=new Set(['reading','profile','director','writer','review']);
 class AffiliateService{
  constructor({root,ai,decodeImage,fetchImpl=fetch,notify=()=>{}}){this.store=new ProjectStore(root);Object.assign(this,{ai,decodeImage,fetchImpl,notify});this.controllers=new Map();this.mutations=new Map();this.aliases=new Map();this.working=null;this.closed=false;this.paused=false;this.creating=Promise.resolve();}
@@ -14,15 +14,22 @@ class AffiliateService{
  async snapshot(){return {paused:this.paused,busy:!!this.working,error:this.lastError||'',jobs:(await this.all()).filter(j=>!j.archived).map(j=>({id:j.id,title:j.product?.title||j.title||'Sản phẩm mới',status:j.status,error:j.error,recoveryRequired:!!j.recoveryRequired,createdAt:j.createdAt,updatedAt:j.updatedAt,projectId:j.projectId,sceneCount:j.story?.scenes?.length||0}))};}
  async save(id,patch,expectedStatus){const previous=this.mutations.get(id)||Promise.resolve();const next=previous.catch(()=>{}).then(async()=>{const job=await this.get(id);if(expectedStatus&&job.status!==expectedStatus)return null;const {id:_,...data}={...job,...patch,updatedAt:new Date(Math.max(Date.now(),(Date.parse(job.updatedAt)||0)+1)).toISOString()};await this.store.writeStorage(id,{affiliateJob:data});this.notify();return {id,...data};});this.mutations.set(id,next);try{return await next;}finally{if(this.mutations.get(id)===next)this.mutations.delete(id);}}
 
- async create({url,target}){
+ async create({url,target,prepareOnly=false}){
   const action=async()=>{
    if(this.closed)throw Error('Ứng dụng đang đóng.');if(typeof url!=='string'||url.length>4096)throw Error('Link cần tối đa 4096 ký tự.');const affiliate=url.trim();checkedURL(affiliate);
    const jobs=await this.all();if(jobs.filter(j=>j.status==='queued'||ACTIVE.has(j.status)).length>=50)throw Error('Hàng chờ affiliate tối đa 50 tác vụ.');if(jobs.length>=200)throw Error('Đã đạt 200 tác vụ lưu cục bộ. Xuất dữ liệu trước khi tạo thêm.');
-   const tab=(await this.ai.tabs()).find(t=>t.id===target?.id&&t.transport===target?.transport);if(!tab)throw Error('Chọn cuộc trò chuyện AI đang mở.');
+   const tab=prepareOnly?null:(await this.ai.tabs()).find(t=>t.id===target?.id&&t.transport===target?.transport);if(!prepareOnly&&!tab)throw Error('Chọn cuộc trò chuyện AI đang mở.');
    const p=await this.store.create('Affiliate · '+new URL(affiliate).hostname),now=new Date().toISOString();
-   await this.store.writeStorage(p.id,{affiliateJob:{affiliate,target:{id:tab.id,transport:tab.transport,url:tab.url},status:'queued',title:'Đang chờ đọc sản phẩm',createdAt:now,updatedAt:now,error:''}});this.paused=false;this.notify();void this.tick();return {id:p.id};
+   await this.store.writeStorage(p.id,{affiliateJob:{affiliate,prepareOnly:prepareOnly===true,target:tab?{id:tab.id,transport:tab.transport,url:tab.url}:null,status:'queued',title:'Đang chờ đọc sản phẩm',createdAt:now,updatedAt:now,error:''}});this.paused=false;this.notify();void this.tick();return {id:p.id};
   };
   const result=this.creating.catch(()=>{}).then(action);this.creating=result;return result;
+ }
+ async generate({id,mode='auto',script='',reference='',confirmed=false,target}){
+  const action=async()=>{const j=await this.get(id);if(j.archived||!['sourced','error','cancelled'].includes(j.status)||!j.product?.images?.length||j.projectId)throw Error('Lấy sản phẩm xong trước khi tạo kịch bản; tác vụ đã có workflow cần tạo bản mới.');
+   if(!['auto','own'].includes(mode))throw Error('Chọn AI viết hoặc dùng kịch bản của bạn.');if(typeof reference!=='string'||reference.length>12000)throw Error('Mẫu tham khảo tối đa 12.000 ký tự.');
+   let selected=null;if(mode==='auto'){const tab=(await this.ai.tabs()).find(t=>t.id===target?.id&&t.transport===target?.transport);if(!tab)throw Error('Chọn AI đã kết nối để viết kịch bản.');selected={id:tab.id,transport:tab.transport,url:tab.url};}else ownStory(j.product,script,confirmed);
+   await this.save(id,{status:'queued',stage:'story',prepareOnly:false,mode,script,reference,confirmed,target:selected,error:'',story:null});this.paused=false;this.notify();void this.tick();return {id};
+  };const task=this.creating.catch(()=>{}).then(action);this.creating=task;return task;
  }
  async history(){return (await this.all()).filter(j=>j.story?.review?.approved&&!j.story.review.issues?.length&&j.story?.plan&&j.story?.scenes?.length).slice(0,100).map(j=>({title:j.product.title,angle:j.story.plan.angle,hook:j.story.plan.hook,situation:j.story.plan.situation,narration:j.story.scenes.map(s=>s.narration).join(' ')}));}
  async tick(){
@@ -33,10 +40,12 @@ class AffiliateService{
    const controller=new AbortController();this.controllers.set(next.id,controller);const signal=controller.signal;
    try{
     if(!await this.save(next.id,{status:'reading',error:''},'queued'))return;if(signal.aborted)throw signal.reason;
-    const source=await download(next.affiliate,{fetchImpl:this.fetchImpl,signal}),product=await parseProduct(source);product.images=[];let bytes=0;
+    let product=next.product;if(next.stage!=='story'){const source=await download(next.affiliate,{fetchImpl:this.fetchImpl,signal}),parsed=await parseProduct(source);product=parsed;product.images=[];let bytes=0;
     for(const url of product.imageURLs){if(signal.aborted)throw signal.reason;try{const image=await download(url,{kind:'image',fetchImpl:this.fetchImpl,signal});bytes+=image.bytes.length;if(bytes>20*1024*1024)break;const data=await this.decodeImage(image.bytes),match=/^data:image\/(?:jpeg|png);base64,([A-Za-z0-9+/=]+)$/.exec(data);if(!match)throw Error('Không giải mã được ảnh sản phẩm.');const decoded=Buffer.from(match[1],'base64');if(!decoded.length||decoded.length>4*1024*1024)throw Error('Ảnh sau xử lý vượt giới hạn.');const index=product.images.length;await fs.writeFile(path.join(await this.store.existingDirectory(next.id),'image-'+index+'.jpg'),decoded,{flag:'wx',mode:0o600});product.images.push('workflow://app/affiliate-media/'+next.id+'/'+index);}catch(error){if(signal.aborted)throw error;}}
     if(!product.images.length)throw Error('Không tải/giải mã được ảnh sản phẩm. Chưa gọi AI. Kiểm tra quyền đọc CDN Shopee.');
-    await this.save(next.id,{product});
+    await this.save(next.id,{product});}
+    if(next.prepareOnly){await this.save(next.id,{status:'sourced',error:''});return;}
+    if(next.mode==='own'){const story=ownStory(product,next.script,next.confirmed),caption=story.scenes.map(s=>s.narration).join('\n\n')+'\n\nCó liên kết tiếp thị\n'+next.affiliate;await this.save(next.id,{status:'ready',story,caption,error:''});return;}
     const target={...next.target};const alias=this.aliases.get(target.transport+':'+target.id+':'+target.url);if(alias)target.url=alias;
     const ask=async prompt=>{
      if(signal.aborted)throw signal.reason;
@@ -45,7 +54,7 @@ class AffiliateService{
      const latest=(await this.ai.tabs()).find(t=>t.id===target.id&&t.transport===target.transport);if(latest&&latest.url!==target.url){this.aliases.set(target.transport+':'+target.id+':'+target.url,latest.url);target.url=latest.url;}
      return answer;
     };
-    const story=await buildStory(product,await this.history(),ask,(status,story)=>this.save(next.id,{status,story}),signal);
+    const story=await buildStory(product,await this.history(),ask,(status,story)=>this.save(next.id,{status,story}),signal,{reference:next.reference});
     if(signal.aborted)throw signal.reason;
     const caption=story.scenes.map(s=>s.narration).join('\n\n')+'\n\n'+next.affiliate;
     await this.save(next.id,{status:'ready',story,caption,target,error:''});

@@ -1,4 +1,6 @@
-# Workflow · MuseFlow 0.41.1
+# Workflow · MuseFlow 0.42.0
+
+**0.42.0 · Công cụ trái & kết nối AI:** đưa công cụ thật sang sidebar; gom trạng thái AI lên đầu; bản đồ dưới cụm zoom góc trái; gộp Đăng bài/Điều hành và bỏ thẻ Chat AI độc lập. Affiliate lấy nguồn trước, sau đó AI viết theo mẫu hoặc dùng nguyên kịch bản của bạn. Cài đặt chung tải Workflow Connect ngay trong app và thêm nhiều dịch vụ API tương thích OpenAI cho văn bản/chat/content/kịch bản. [Kết nối AI](docs/AI-CONNECTIONS.md) · [Luồng Affiliate](docs/AFFILIATE-SHOPEE.md).
 
 **0.41.1 · Tổng hợp video:** gom các clip kết quả hoàn tất, đổi thứ tự rồi ghép thành một MP4 dài để tải hoặc đưa sang Đăng bài. Bỏ tự giảm xuống 1280px/24fps: clip cùng định dạng được ghép trực tiếp, clip khác định dạng dùng khung và fps của clip đầu. Nhạc/lời đọc là tùy chọn. [Cách dùng](docs/INTERFACE.md). [Đề xuất giao diện mới — chưa áp dụng](designs/README.md).
 
