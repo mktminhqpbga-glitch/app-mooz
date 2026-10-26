@@ -2,13 +2,13 @@
 (()=>{
  const video={id:'video',label:'Video',type:'video'},audio={id:'audio',label:'Âm thanh',type:'audio'},text={id:'text',label:'Văn bản',type:'text'};
  const definitions={
-  finalOutput:{title:'Output · Xuất video cuối',inputs:[{...video,label:'Các video'},{...audio,label:'Nhạc / lời đọc'}],outputs:[video]},
+  finalOutput:{title:'Xuất video cuối',inputs:[{...video,label:'Các video'},{...audio,label:'Nhạc / lời đọc'}],outputs:[video]},
   frameFit:{title:'Khung hình · đổi tỷ lệ',inputs:[video],outputs:[video]},
-  watermark:{title:'Logo / Watermark',inputs:[video,{id:'reference',label:'Logo',type:'image'}],outputs:[video]},
+  watermark:{title:'Logo / dấu bản quyền',inputs:[video,{id:'reference',label:'Logo',type:'image'}],outputs:[video]},
   audioInput:{title:'Âm thanh đầu vào',outputs:[audio]},
   audioMix:{title:'Âm thanh / nhạc nền',inputs:[video,audio],outputs:[video]},
   subtitles:{title:'Phụ đề',inputs:[video,text],outputs:[video,text]},
-  voiceover:{title:'Lồng tiếng',inputs:[text],outputs:[audio]},
+  voiceover:{title:'Lồng tiếng · OpenAI',inputs:[text],outputs:[audio]},
   voiceSync:{title:'Đồng bộ lời đọc – cảnh',inputs:[{...video,label:'Các cảnh'},{...audio,label:'Các bản đọc'},text],outputs:[video]},
   transition:{title:'Chuyển cảnh',inputs:[{...video,id:'first',label:'Cảnh trước'},{...video,id:'second',label:'Cảnh sau'}],outputs:[video]},
   speed:{title:'Điều chỉnh tốc độ',inputs:[video],outputs:[video]},

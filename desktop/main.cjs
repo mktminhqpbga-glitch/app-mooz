@@ -2,6 +2,7 @@ const {app,BrowserWindow,ipcMain,protocol,net,dialog,Menu,shell,session,clipboar
 const path=require('node:path');
 const {pathToFileURL}=require('node:url');
 const {ProjectStore}=require('./project-store.cjs');
+const {UIPreferences}=require('./ui-preferences.cjs');
 const {providerForURL,allowedNetworkURL,resolveAppPath}=require('./policy.cjs');
 const {AIWindows}=require('./ai-windows.cjs');
 const {ChromeRelay}=require('./chrome-relay.cjs');
@@ -25,11 +26,11 @@ const testMode=process.env.WORKFLOW_DESKTOP_TEST==='1'&&!app.isPackaged;
 if(testMode){if(!process.env.WORKFLOW_TEST_DATA)throw Error('Missing test data directory');app.setPath('userData',path.resolve(process.env.WORKFLOW_TEST_DATA));}
 if(!app.requestSingleInstanceLock())app.exit(0);
 app.on('second-instance',()=>{if(home&&!home.isDestroyed()){home.show();home.focus();}});
-let store,home,ai,relay,updater,downloads,posting,postingAI,postingOAuth,brands,chats,facebookPages,facebookLogin,postingWindow,affiliate,affiliateWindow,chromeEverConnected=false;
+let uiPreferences,store,home,ai,relay,updater,downloads,posting,postingAI,postingOAuth,brands,chats,facebookPages,facebookLogin,postingWindow,affiliate,affiliateWindow,chromeEverConnected=false;
 const managedProjects=new Set();
 const canvases=new Map(),sessionData=new Map(),requests=new Map(),installedSessions=new WeakSet();
 const projectTransitions=new Set(),affiliateTransitions=new Set();
-function notify(value){if(affiliateWindow&&!affiliateWindow.isDestroyed())affiliateWindow.webContents.send('workflow:event',value);if(postingWindow&&!postingWindow.isDestroyed())postingWindow.webContents.send('workflow:event',value);if(['update','brands'].includes(value.type)&&home&&!home.isDestroyed())home.webContents.send('workflow:event',value);if(value.type==='relay'&&value.connected){chromeEverConnected=true;managedProjects.clear();}for(const win of canvases.values())if(!win.isDestroyed())win.webContents.send('workflow:event',value);}
+function notify(value){if(affiliateWindow&&!affiliateWindow.isDestroyed())affiliateWindow.webContents.send('workflow:event',value);if(postingWindow&&!postingWindow.isDestroyed())postingWindow.webContents.send('workflow:event',value);if(['update','brands','projects','appearance'].includes(value.type)&&home&&!home.isDestroyed())home.webContents.send('workflow:event',value);if(value.type==='relay'&&value.connected){chromeEverConnected=true;managedProjects.clear();}for(const win of canvases.values())if(!win.isDestroyed())win.webContents.send('workflow:event',value);}
 async function setupSession(ses){
   if(installedSessions.has(ses))return;installedSessions.add(ses);
   downloads.install(ses);
@@ -139,7 +140,7 @@ ipcMain.handle('workflow:call',async(event,method,data={})=>{
      const job=await affiliate.get(data.id);if(!job.story?.review?.approved||job.status!=='ready')throw Error('Hoàn tất kịch bản và kiểm tra trước khi tạo workflow.');
      if(!['muse','google'].includes(data.videoProvider||'muse'))throw Error('AI video không hợp lệ.');
      let project=job.projectId&&(await store.list()).find(p=>p.id===job.projectId);
-     if(!project){project=await store.create(('Affiliate · '+job.product.title).slice(0,100));await store.writeStorage(project.id,{museflow:{nodes:[],edges:[],groups:[],notes:[],settings:{}}});await affiliate.save(job.id,{projectId:project.id});}
+     if(!project){project=await store.create(('Affiliate · '+job.product.title).slice(0,100));await store.writeStorage(project.id,{museflow:{nodes:[],edges:[],groups:[],notes:[],settings:{}}});await affiliate.save(job.id,{projectId:project.id});notify({type:'projects'});}
      try{await openProject(project.id);await canvases.get(project.id).webContents.executeJavaScript('window.WorkflowAffiliate.create('+JSON.stringify({jobId:job.id,title:job.product.title,affiliate:job.affiliate,caption:job.caption,scenes:job.story.scenes,images:await affiliate.readImages(job.id),videoProvider:data.videoProvider||'muse',voice:!!data.voice})+')');await affiliate.save(job.id,{workflowError:''});return {id:project.id};}
      catch(error){await affiliate.save(job.id,{workflowError:'Tạo workflow bị gián đoạn. Bấm Mở / khôi phục workflow để kiểm tra và tiếp tục trong cùng dự án.'});throw error;}
     }finally{affiliateTransitions.delete(data.id);}
@@ -210,18 +211,22 @@ ipcMain.handle('workflow:call',async(event,method,data={})=>{
   if(method==='relay.copy'){await clipboard.writeText(relay.pairingURI());return {copied:true};}
   if(method==='relay.status')return relay.status();
   if(method==='projects.list')return store.list();
-  if(method==='projects.create'){if(!ctx.home)throw Error('Open project library first.');return store.create(data.name);}
-  if(method==='projects.open'){if(!ctx.home)throw Error('Open project library first.');const info=await openProject(data.id);if(data.view==='chat')await canvases.get(data.id).webContents.executeJavaScript('window.WorkflowChat?.open()');return info;}
-  if(method==='projects.rename'){if(!ctx.home)throw Error('Open project library first.');return store.rename(data.id,data.name);}
-  if(method==='projects.restore'){if(!ctx.home)throw Error('Open project library first.');if(canvases.has(data.id))throw Error('Đóng cửa sổ dự án trước khi khôi phục.');return store.restore(data.id);}
+  if(method==='projects.create'){if(!ctx.home)throw Error('Open project library first.');const project=await store.create(data.name);notify({type:'projects'});return project;}
+  if(method==='projects.open'){if(!ctx.home)throw Error('Open project library first.');const info=await openProject(data.id);if(data.view==='chat')await canvases.get(data.id).webContents.executeJavaScript('window.WorkflowChat?.open()');if(data.view==='voiceover')await canvases.get(data.id).webContents.executeJavaScript('window.WorkflowVoice?.open()');return info;}
+  if(method==='projects.rename'){if(!ctx.home)throw Error('Open project library first.');const project=await store.rename(data.id,data.name);notify({type:'projects'});return project;}
+  if(method==='projects.restore'){if(!ctx.home)throw Error('Open project library first.');if(canvases.has(data.id))throw Error('Đóng cửa sổ dự án trước khi khôi phục.');const project=await store.restore(data.id);notify({type:'projects'});return project;}
   if(method==='projects.trash'||method==='projects.undoTrash'){
     if(!ctx.home)throw Error('Open project library first.');
     if(canvases.has(data.id))throw Error('Đóng cửa sổ dự án trước khi xóa hoặc hoàn tác.');
     if(projectTransitions.has(data.id))throw Error('Dự án đang được xử lý. Vui lòng thử lại.');
     projectTransitions.add(data.id);
-    try{return await (method==='projects.trash'?store.trash(data.id):store.undoTrash(data.id));}
+    try{const result=await (method==='projects.trash'?store.trash(data.id):store.undoTrash(data.id));notify({type:'projects'});return result;}
     finally{projectTransitions.delete(data.id);}
   }
+  if(method==='appearance.get')return uiPreferences.get();
+  if(method==='appearance.save'){const value=await uiPreferences.save(data);notify({type:'appearance',value});return value;}
+  if(method==='windows.list')return [...(home&&!home.isDestroyed()?[{key:'home',name:'Thư viện dự án',win:home}]:[]),...(postingWindow&&!postingWindow.isDestroyed()?[{key:'posting',name:'Đăng bài / Điều hành',win:postingWindow}]:[]),...(affiliateWindow&&!affiliateWindow.isDestroyed()?[{key:'affiliate',name:'Affiliate Shopee',win:affiliateWindow}]:[]),...[...canvases].filter(([,w])=>!w.isDestroyed()).map(([key,w])=>({key,name:w.getTitle(),win:w}))].map(w=>({key:w.key,name:w.name,active:w.win===win}));
+  if(method==='windows.focus'){const target=data.key==='home'?home:data.key==='posting'?postingWindow:data.key==='affiliate'?affiliateWindow:canvases.get(data.key);if(!target||target.isDestroyed())throw Error('Cửa sổ đã đóng.');target.show();if(target.isMinimized())target.restore();target.focus();return;}
   if(method==='home.open'){await openHome();return;}
   if(!id)throw Error('Project context required.');
   if(method==='project.info')return (await store.list()).find(item=>item.id===id);
@@ -231,7 +236,7 @@ ipcMain.handle('workflow:call',async(event,method,data={})=>{
     if(data.area==='session'){sessionData.set(id,{...sessionData.get(id),...data.patch});return;}
     if(Object.hasOwn(data.patch,'workflowApiKeys'))throw Error('API keys may only be stored in session memory.');
     send(win,{type:'storage',state:'saving'});
-    try{await store.writeStorage(id,data.patch);send(win,{type:'storage',state:'saved'});}catch(error){send(win,{type:'storage',state:'error',error:error.message});throw error;}return;
+    try{await store.writeStorage(id,data.patch);send(win,{type:'storage',state:'saved'});notify({type:'projects'});}catch(error){send(win,{type:'storage',state:'error',error:error.message});throw error;}return;
   }
   if(method==='provider.open'){managedProjects.add(id);return ai.open(data.provider);}
   if(method.startsWith('tabs.')&&!managedProjects.has(id)&&chromeEverConnected){
@@ -257,6 +262,7 @@ ipcMain.handle('workflow:call',async(event,method,data={})=>{
 app.whenReady().then(async()=>{
   downloads=new Downloads({directory:()=>app.getPath('downloads'),windowFor:contents=>contents?BrowserWindow.fromWebContents(contents):null,dialog,notify:send,reveal:file=>shell.showItemInFolder(file)});
   store=new ProjectStore(path.join(app.getPath('userData'),'projects'));
+  uiPreferences=new UIPreferences(app.getPath('userData'));await uiPreferences.load();
   relay=new ChromeRelay({notify,version});await relay.start();
   ai=new AIWindows(root,version,notify,async projectId=>projectId?(await store.readStorage(projectId)).workflowMuseSendTarget:null);
   const postingRoot=path.join(app.getPath('userData'),'posting');

@@ -1,0 +1,19 @@
+# Giao diện Workflow 0.40.0
+
+Thanh trên giữ Kết nối Chrome, Thêm node, Kịch bản tổng, Lưu, Chạy workflow và Thêm. Không cần mở menu để tạo node hoặc kịch bản. Công cụ phụ, mở cửa sổ AI, kết nối và cập nhật nằm trong Thêm. Sidebar giữ các lối về dự án, ảnh chung, trợ lý, đăng bài, Chat AI và Cửa sổ; khi timeline mở, Chat AI dùng lối vào sidebar thay nút nổi.
+
+Dự án mới bắt đầu bằng hai node Yêu cầu → Tạo ảnh; ảnh hiện ngay trong node tạo, bỏ thẻ xem trước mẫu dư thừa. Nội dung mẫu bằng tiếng Việt về sản phẩm. Dự án đã lưu không bị thay mẫu.
+
+Menu Thêm node lấy tên từ cùng một danh mục với tiêu đề node: tên tiếng Việt, Hay dùng, Dùng gần đây, tìm không dấu và mô tả ngắn. Tên tự đặt của người dùng không bị đổi. Bảng ảnh chung có thể dùng toàn workflow; Ảnh tham chiếu riêng chỉ đi theo dây đã nối; Gán vai trò ảnh phân biệt nhân vật/bối cảnh/trang phục/tư thế; Tổng ảnh gom thành phẩm để tải/đăng. Thêm một node ảnh tham chiếu riêng không còn tự nối đến tất cả node tạo. Các dây đã lưu được giữ nguyên.
+
+Nối thêm văn bản thêm nội dung bạn gõ sau một nguồn; Gộp nhiều văn bản nhận nhiều dây vào một cổng và dùng dấu phân cách. Ghép dòng thời gian (node) nhận các clip đã nối, khác thanh Dòng thời gian ở dưới dùng để sắp/xuất. Lồng tiếng · OpenAI là đường đang hoạt động: thêm node hoặc chọn Lồng tiếng AI ở trang chủ → chọn dự án → nhập/nối lời đọc → Thêm → Kết nối AI → OpenAI API → Thực hiện. Ứng dụng lồng tiếng riêng vẫn chờ tích hợp, chưa thêm nhà cung cấp mới.
+
+Node mới dùng kích thước thực để tìm chỗ trống gần node đang chọn, không dời node cũ và đưa node mới vào vùng nhìn. Sắp xếp tất cả tách từng cụm có dây, xếp trái → phải, rồi đặt node rời theo nhóm/thứ tự tạo trên lưới 2–5 cột tùy vùng nhìn và kích thước. Chỉ xếp node chưa nối dây giữ nguyên tọa độ các node có dây. Ctrl/⌘Z hoàn tác sắp xếp. Nếu toàn luồng quá lớn, sắp xếp giữ mức nhìn đọc được thay vì ép xuống 25%; dùng bản đồ nhỏ để kéo xem hoặc bấm Vừa màn hình khi cần xem tổng quan. Nút zoom bị khóa tại 25% và 250%.
+
+Nút Gọn / Đầy đủ trong công cụ khung vẽ lưu riêng theo dự án, không thay đổi đầu vào/kết quả AI. Chế độ gọn thu ô nhập, thông tin phụ và nhãn cổng; nhãn hiện lại khi rê chuột, chọn node hoặc kéo dây. Ảnh tham chiếu riêng và node dòng thời gian có nút thu gọn cổng chưa dùng, luôn giữ mọi cổng đã nối và một cổng trống. Màu/biểu tượng phân nhóm văn bản, ảnh, video, âm thanh và kiểm soát; node kiểm soát có viền đứt và nhãn riêng. Mã node ở Về node này hoặc tooltip tiêu đề, vẫn sao chép được.
+
+Giao diện → Sáng / Tối / Theo hệ thống và Giao diện lớn (+17%) được lưu trên máy, dùng chung các cửa sổ. Chế độ sáng áp dụng thư viện, Đăng bài và Affiliate; khung vẽ giữ nền tối. Chữ nhãn/trạng thái chính tối thiểu 12px ở mức giao diện tiêu chuẩn, 14px ở mức lớn; zoom khung vẽ vẫn có thể làm nội dung node nhỏ khi xem toàn luồng. Giao diện lớn không đổi zoom canvas. Cửa sổ liệt kê dự án/công cụ đang mở để quay lại; không chuyển toàn app thành một cửa sổ và không đóng công việc đang chạy.
+
+Tạo, đổi tên, xóa/hoàn tác, khôi phục và lưu dự án qua API gửi thông báo để thư viện tự làm mới. Kết quả đọc danh sách cũ không được ghi đè kết quả mới hơn. Cài đặt giao diện nằm riêng, không ghi token/khóa AI và không làm thay dữ liệu dự án.
+
+Đã kiểm tra bằng Electron thật: danh sách từ API không tải lại, mở Lồng tiếng hiện có, nhiều lần thêm node không đè nhau, tên menu/card, tìm không dấu, 37 node rời thành lưới, chỉ xếp node rời giữ bố cục, bản đồ, zoom tới giới hạn, đổi giao diện giữa các cửa sổ và khôi phục sau mở lại app. Không gửi yêu cầu AI hoặc bài đăng thật trong kiểm thử UX.

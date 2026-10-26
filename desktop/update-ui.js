@@ -2,7 +2,7 @@
 (() => {
   const host=window.workflowDesktop;if(!host)return;
   window.addEventListener('DOMContentLoaded',()=>{
-    const parent=document.querySelector('.desktop-bar')||document.querySelector('.topbar');if(!parent)return;
+    const parent=document.getElementById('toolbar-panel-create')||document.querySelector('.topbar');if(!parent)return;
     const launch=document.createElement('button');launch.id='desktopUpdateButton';launch.type='button';launch.className='workflow-update-launch';launch.textContent='Cập nhật';
     const dialog=document.createElement('dialog');dialog.className='workflow-update-dialog';dialog.id='desktopUpdateDialog';
     const heading=document.createElement('h2');heading.textContent='Cập nhật Workflow';

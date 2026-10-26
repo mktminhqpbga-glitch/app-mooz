@@ -84,7 +84,7 @@
     const bar = document.createElement('nav'); bar.className = 'desktop-bar'; bar.setAttribute('aria-label', 'Ứng dụng desktop');
     const title = document.createElement('strong'); title.textContent = 'Workflow Desktop';
     const status = document.createElement('span'); status.className = 'desktop-save'; status.textContent = 'Dữ liệu cục bộ';
-    const projects = document.createElement('button'); projects.textContent = 'Dự án'; projects.onclick = () => void call('home.open');
+    const projects = document.createElement('button'); projects.textContent = '← Thư viện'; projects.onclick = () => void call('home.open');
     const connect=document.createElement('button');connect.id='desktopConnectChrome';connect.className='studio-connect';connect.textContent='Kết nối Chrome';
     const pairingDialog=document.createElement('dialog');pairingDialog.className='connection-dialog';pairingDialog.id='canvasChromeDialog';
     pairingDialog.innerHTML='<span class="studio-eyebrow">KẾT NỐI TRÌNH DUYỆT</span><h2>Dùng các tab AI trong Chrome</h2><ol><li>Cài tiện ích Workflow trong Chrome.</li><li>Mở tiện ích, bấm <strong>Kết nối app desktop</strong>.</li><li>Dán mã bên dưới, kết nối rồi chọn tab AI trong node.</li></ol><label>Mã kết nối phiên này<input id="canvasChromePairing" type="password" readonly autocomplete="off" spellcheck="false" aria-label="Mã kết nối Chrome"></label><p>Giữ app và Chrome cùng mở. Chỉ dán mã vào tiện ích Workflow trên máy của bạn.</p><p id="canvasChromeStatus" role="status" aria-live="polite"></p><div class="dialog-actions"><button id="canvasChromeReveal" type="button" aria-pressed="false">Hiện mã</button><button id="canvasChromeClose" type="button">Đóng</button><button id="canvasChromeCopy" class="primary" type="button">Sao chép mã</button></div>';
@@ -104,7 +104,7 @@
     for (const [id, label] of [['chatgpt', 'Mở ChatGPT'], ['gemini', 'Mở Gemini'], ['muse', 'Mở Muse']]) {
       const button = document.createElement('button'); button.textContent = label;
       button.onclick = async () => {try {await call('provider.open', {provider: id});} catch(error) {status.textContent = error.message; status.dataset.state = 'error';}};
-      bar.append(button);
+      button.id='desktopOpen-'+id;const more=document.getElementById('toolbar-panel-create');(more||bar).append(button);
     }
     document.body.prepend(bar);
     try {const info = await call('project.info'); title.textContent = info.name;} catch(error) {status.textContent = error.message;}

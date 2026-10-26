@@ -67,30 +67,31 @@
     referenceBoard:{title:'Ảnh tham chiếu chung',outputs:WorkflowReferences.outputs},
     videoInput: {title:'Video đầu vào',outputs:[{id:'video',label:'video gốc',type:'video'}]},
     generateText: {title:'Tạo văn bản',inputs:[{id:'prompt',label:'Yêu cầu',type:'text'},{id:'rules',label:'Quy tắc',type:'text'},{id:'reference',label:'Ảnh',type:'image'},{id:'video',label:'Video gốc',type:'video'}],outputs:[{id:'text',label:'Văn bản',type:'text'}]},
-    prompt: { title: 'Prompt', outputs: [{ id: 'text', label: 'text', type: 'text' }] },
-    negativePrompt: { title: 'Negative Prompt', outputs: [{ id: 'text', label: 'negative', type: 'negative' }] },
-    textAppend: { title: 'Text Append', inputs: [{ id: 'text', label: 'text', type: 'text' }], outputs: [{ id: 'text', label: 'text', type: 'text' }] },
-    textConcat: { title: 'Text Merge', inputs: [{ id: 'text', label: 'text', type: 'text' }], outputs: [{ id: 'text', label: 'text', type: 'text' }] },
-    imageInput: { title: 'Image Input', outputs: [{ id: 'image', label: 'image', type: 'image' }] },
-    references: { title: 'References', inputs: Array.from({length:8},(_,i)=>({id:`reference${i+1}`,label:`image ${i+1}`,type:'image'})), outputs: [{id:'image',label:'images',type:'image'}] },
+    prompt: { title: 'Yêu cầu', outputs: [{ id: 'text', label: 'Văn bản', type: 'text' }] },
+    negativePrompt: { title: 'Loại trừ', outputs: [{ id: 'text', label: 'Loại trừ', type: 'negative' }] },
+    textAppend: { title: 'Nối văn bản', inputs: [{ id: 'text', label: 'Văn bản', type: 'text' }], outputs: [{ id: 'text', label: 'Văn bản', type: 'text' }] },
+    textConcat: { title: 'Gộp văn bản', inputs: [{ id: 'text', label: 'Văn bản', type: 'text' }], outputs: [{ id: 'text', label: 'Văn bản', type: 'text' }] },
+    imageInput: { title: 'Ảnh đầu vào', outputs: [{ id: 'image', label: 'Ảnh', type: 'image' }] },
+    references: { title: 'Ảnh tham chiếu', inputs: Array.from({length:8},(_,i)=>({id:`reference${i+1}`,label:`Ảnh ${i+1}`,type:'image'})), outputs: [{id:'image',label:'images',type:'image'}] },
     generateImage: {
-      title: 'Generate Image',
-      inputs: [{ id: 'prompt', label: 'prompt', type: 'text' }, { id: 'negative', label: 'negative', type: 'negative' }, { id: 'reference', label: 'reference', type: 'image' }],
-      outputs: [{ id: 'image', label: 'image', type: 'image' }]
+      title: 'Tạo ảnh',
+      inputs: [{ id: 'prompt', label: 'Yêu cầu', type: 'text' }, { id: 'negative', label: 'Loại trừ', type: 'negative' }, { id: 'reference', label: 'Ảnh tham chiếu', type: 'image' }],
+      outputs: [{ id: 'image', label: 'Ảnh', type: 'image' }]
     },
     generateVideo: {
       title: 'Tạo video',
-      inputs: [{id:'video',label:'Video tham chiếu',type:'video'}, { id: 'prompt', label: 'prompt', type: 'text' }, { id: 'negative', label: 'negative', type: 'negative' }, { id: 'reference', label: 'reference', type: 'image' }],
-      outputs: [{ id: 'video', label: 'video', type: 'video' }, { id: 'endFrame', label: 'end frame', type: 'image' }]
+      inputs: [{id:'video',label:'Video tham chiếu',type:'video'}, { id: 'prompt', label: 'Yêu cầu', type: 'text' }, { id: 'negative', label: 'Loại trừ', type: 'negative' }, { id: 'reference', label: 'Ảnh tham chiếu', type: 'image' }],
+      outputs: [{ id: 'video', label: 'video', type: 'video' }, { id: 'endFrame', label: 'Khung cuối', type: 'image' }]
     },
-    timeline: { title: 'Timeline', inputs: Array.from({length:6},(_,i)=>({id:`clip${i+1}`,label:`clip ${i+1}`,type:'video'})), outputs: [] },
-    imageResize: { title: 'Image Resize', inputs: [{ id: 'image', label: 'image', type: 'image' }], outputs: [{ id: 'image', label: 'image', type: 'image' }] },
-    preview: { title: 'Preview', inputs: [{ id: 'media', label: 'media', type: 'media' }] }
+    timeline: { title: 'Dòng thời gian', inputs: Array.from({length:6},(_,i)=>({id:`clip${i+1}`,label:`Đoạn ${i+1}`,type:'video'})), outputs: [] },
+    imageResize: { title: 'Đổi kích thước ảnh', inputs: [{ id: 'image', label: 'Ảnh', type: 'image' }], outputs: [{ id: 'image', label: 'Ảnh', type: 'image' }] },
+    preview: { title: 'Xem trước', inputs: [{ id: 'media', label: 'Ảnh/video', type: 'media' }] }
   };
 
   Object.assign(WorkflowTools.definitions,WorkflowStudio.definitions,WorkflowStory.definitions);
   WorkflowStudio.effects.add('videoAssembly');
   Object.assign(nodeDefs,WorkflowTools.definitions);
+  for(const [type,entry] of Object.entries(WorkflowNodeCatalog.entries))if(nodeDefs[type])nodeDefs[type].title=entry.title;
   const aiKeys={};
   let scriptAIController=null;
   const aiTabs=new Map();
@@ -448,6 +449,7 @@
     if(node.type==='transition'){studioSelect(body,node,'transition','Kiểu chuyển cảnh',[['fade','Hòa hình'],['dissolve','Tan hình'],['wipeleft','Quét sang trái'],['slideright','Trượt sang phải']],'fade');field('duration','Thời gian chồng cảnh (giây)',{type:'number',value:.4,min:.1,max:5});help('Nối hai cảnh theo thứ tự trước → sau. Tổng thời lượng giảm bằng phần chồng cảnh; âm thanh cũng hòa chuyển.');}
     if(node.type==='voiceSync'){field('sceneLines','Mỗi dòng một cảnh (tùy chọn)',{type:'textarea'});studioSelect(body,node,'fit','Cách khớp cảnh',[['pad','Cắt hoặc giữ khung cuối'],['stretch','Đổi tốc độ video cho khớp']],'pad');help('Nối các cảnh và lời đọc theo thứ tự. Một bản đọc chung: chia thời lượng theo số từ mỗi dòng, hoặc chia đều. Mỗi cảnh một bản đọc: dùng đúng thời lượng tệp. Âm thanh gốc được thay bằng lời đọc.');}
     if(node.type==='workflowTemplate'){
+      help(studioTemplates.length?'Chọn một mẫu ở danh sách bên dưới rồi bấm Thêm mẫu vào canvas.':'Chưa có mẫu đã lưu. Chọn các node muốn dùng lại, đặt tên rồi bấm Lưu thành mẫu; sau đó chọn mẫu để chèn.');
       field('templateName','Tên mẫu',{value:'Mẫu của tôi'});field('selectedOnly','Chỉ lưu các node đang chọn',{type:'checkbox',value:false});field('includeMedia','Kèm ảnh/video/âm thanh đầu vào (tối đa 20 MB)',{type:'checkbox',value:false});
       studioButton(body,'Lưu thành mẫu',()=>saveStudioTemplate(node),{disabled:state.isRunning});const select=document.createElement('select');select.setAttribute('aria-label','Mẫu đã lưu');select.append(new Option('Chọn mẫu…',''));studioTemplates.forEach(t=>select.append(new Option(t.name,t.id)));select.value=node.data.selectedTemplate||'';select.onchange=()=>{node.data.selectedTemplate=select.value;};body.append(select);
       studioButton(body,'Thêm mẫu vào canvas',()=>insertStudioTemplate(node),{disabled:state.isRunning});studioButton(body,'Xóa mẫu đã chọn',async()=>{studioTemplates=studioTemplates.filter(t=>t.id!==node.data.selectedTemplate);await chrome.storage.local.set({workflowTemplates:studioTemplates});render();},{disabled:state.isRunning});help('Mẫu giữ bố cục, kết nối và thiết lập; bỏ kết quả AI cũ, lựa chọn chat và thông tin xác thực. Chỉ sao chép các kết nối bên trong nhóm đã lưu.');
@@ -816,24 +818,22 @@
   function starter() {
     return {
       nodes: [
-        { id: 'prompt-1', type: 'prompt', x: 90, y: 110, data: { text: 'A cinematic portrait of a futuristic Vietnamese woman, neon rain, detailed face' } },
-        { id: 'gen-1', type: 'generateImage', x: 450, y: 105, data: { model: 'muse-image', size: '1:1', status: 'idle' } },
-        { id: 'preview-1', type: 'preview', x: 820, y: 110, data: {} }
+        { id: 'prompt-1', type: 'prompt', x: 60, y: 90, data: { text: 'Tạo ảnh quảng cáo sản phẩm: một đôi giày thể thao trắng trên bục trưng bày tối giản, nền sáng, ánh sáng tự nhiên, ảnh rõ nét. Không thêm chữ hoặc logo. Thay mô tả này bằng sản phẩm của bạn; nối ảnh thật vào cổng Ảnh tham chiếu để giữ thiết kế.' } },
+        { id: 'gen-1', type: 'generateImage', x: 430, y: 90, data: { model: 'muse-image', size: '1:1', status: 'idle' } }
       ],
       edges: [
-        { id: 'e1', source: 'prompt-1', sourcePort: 'text', target: 'gen-1', targetPort: 'prompt' },
-        { id: 'e2', source: 'gen-1', sourcePort: 'image', target: 'preview-1', targetPort: 'media' }
+        { id: 'e1', source: 'prompt-1', sourcePort: 'text', target: 'gen-1', targetPort: 'prompt' }
       ]
     };
   }
 
-  function addNode(type, x=250 + Math.random()*220, y=160 + Math.random()*180) {
+  function addNode(type, x, y) {
     const toolKind=WorkflowTools.aliases[type]?type:null;if(toolKind)type='generateText';
     const dockTimeline=type==='timeline'&&state.nodes.find(node=>node.type==='timeline'&&node.data?.dockOnly);
-    if(dockTimeline){createUndoSnapshot('Add Timeline node');dockTimeline.data.dockOnly=false;dockTimeline.x=x;dockTimeline.y=y;render();if($('#timelineDock').classList.contains('collapsed'))toggleTimeline();return;}
-    const data = type === 'prompt' ? { text: 'Describe what you want Muse to generate...' } :
-      type === 'negativePrompt' ? { text: 'blurry, low quality, distorted anatomy, extra fingers, text, watermark' } :
-      type === 'textAppend' ? { text: 'cinematic lighting, detailed composition' } :
+    if(dockTimeline){createUndoSnapshot('Thêm node dòng thời gian');dockTimeline.data.dockOnly=false;render();placeNewNode(dockTimeline,x,y);if($('#timelineDock').classList.contains('collapsed'))toggleTimeline();return;}
+    const data = type === 'prompt' ? { text: 'Mô tả sản phẩm, bối cảnh và kết quả bạn muốn AI tạo…' } :
+      type === 'negativePrompt' ? { text: 'Ảnh mờ, chất lượng thấp, sai hình dáng, thừa ngón tay, chữ, dấu bản quyền' } :
+      type === 'textAppend' ? { text: 'Ánh sáng tự nhiên, sản phẩm rõ nét, bố cục gọn gàng' } :
       type === 'textConcat' ? { separator: ', ' } :
       type === 'imageResize' ? { width: 1024, height: 1024, fit: 'cover' } :
       type === 'generateText' ? {provider:'gemini',text:'',status:'idle'} :
@@ -841,12 +841,24 @@
       type === 'generateVideo' ? { model: 'muse-video', size: '16:9', duration: 5, continuity: false, status: 'idle' } :
       type === 'timeline' ? { clipOrder: [], durations: {} } : {};
     if(toolKind){data.toolKind=toolKind;data.customName=WorkflowTools.aliases[toolKind];data.variantCount=3;}
-    createUndoSnapshot(`Add ${nodeDefs[type]?.title||'node'}`);const node={ id: uid(type), type, x, y, data };state.nodes.push(node);
-    if(type==='referenceBoard')node.data={referenceImages:[],shared:false};if(type==='references')syncReferenceFanOut(node);else if(['generateImage','generateVideo','generateText'].includes(type)){const references=state.nodes.find(item=>item.type==='references');if(references)connectReferenceNode(references,node);}
-    render();if(type==='timeline'){syncTimelineDock();if($('#timelineDock').classList.contains('collapsed'))toggleTimeline();}
+    createUndoSnapshot(`Add ${nodeDefs[type]?.title||'node'}`);const node={ id: uid(type), type, x:x??30, y:y??30, data };state.nodes.push(node);
+    if(type==='referenceBoard')node.data={referenceImages:[],shared:false};
+    render();placeNewNode(node,x,y);if(type==='workflowTemplate')document.querySelector(`.node[data-id="${CSS.escape(node.id)}"] select[aria-label="Mẫu đã lưu"]`)?.focus();if(type==='timeline'){syncTimelineDock();if($('#timelineDock').classList.contains('collapsed'))toggleTimeline();}
   }
 
-  function addTextNote(x=250+Math.random()*220,y=160+Math.random()*180){createUndoSnapshot('Add text note');const note={id:uid('note'),x,y,text:'Write a note…',width:260,height:160};state.notes.push(note);render();saveState();setRunStatus('Text note added to canvas.','ok');}
+  function placeNewNode(node,x,y){
+    const selector=n=>document.querySelector(`.node[data-id="${CSS.escape(n.id)}"]`),element=selector(node);if(!element)return;
+    const bounds=$('#viewport').getBoundingClientRect(),size={width:element.offsetWidth,height:element.offsetHeight};
+    const selected=nodeById(state.selectedNodeId),near=selected&&selected!==node?selected:state.nodes.filter(n=>n!==node&&!n.data?.dockOnly).at(-1),nearElement=near&&selector(near);
+    const anchor={x:Number.isFinite(x)?x:near?near.x+(nearElement?.offsetWidth||350)+90:(bounds.width*.45-state.panX)/state.zoom-size.width/2,y:Number.isFinite(y)?y:near?near.y:(bounds.height*.3-state.panY)/state.zoom};
+    const obstacles=state.nodes.filter(n=>n!==node&&!n.data?.dockOnly).map(n=>{const el=selector(n);return {x:n.x,y:n.y,width:el?.offsetWidth||350,height:el?.offsetHeight||300};}).concat(state.notes.map(n=>({x:n.x,y:n.y,width:n.width||260,height:n.height||160})));
+    Object.assign(node,WorkflowLayout.findSpace(anchor,size,obstacles));element.style.left=node.x+'px';element.style.top=node.y+'px';element.classList.add('new-node');setTimeout(()=>element.classList.remove('new-node'),2200);
+    state.selectedNodeId=node.id;state.selectedNodeIds=[node.id];
+    const left=node.x*state.zoom+state.panX,top=node.y*state.zoom+state.panY;
+    if(left<30||top<30||left+size.width*state.zoom>bounds.width-30||top+Math.min(size.height*state.zoom,160)>bounds.height-30){state.panX=Math.max(24,(bounds.width-size.width*state.zoom)/2)-node.x*state.zoom;state.panY=40-node.y*state.zoom;applyCanvasTransform();}
+    scheduleDrawEdges();scheduleAutoSave();setRunStatus('Đã thêm '+nodeDefs[node.type].title+' vào chỗ trống. Có thể dùng Thêm → Sắp xếp node để bố trí cả luồng.','ok');
+  }
+  function addTextNote(x,y){createUndoSnapshot('Thêm ghi chú');const bounds=$('#viewport').getBoundingClientRect(),anchor={x:x??(bounds.width*.45-state.panX)/state.zoom,y:y??(bounds.height*.3-state.panY)/state.zoom},size={width:260,height:160},obstacles=state.nodes.filter(n=>!n.data?.dockOnly).map(n=>{const el=document.querySelector(`.node[data-id="${CSS.escape(n.id)}"]`);return {x:n.x,y:n.y,width:el?.offsetWidth||350,height:el?.offsetHeight||300};}).concat(state.notes.map(n=>({x:n.x,y:n.y,width:n.width||260,height:n.height||160})));const note={id:uid('note'),...WorkflowLayout.findSpace(anchor,size,obstacles),text:'Viết ghi chú…',...size};state.notes.push(note);render();saveState();setRunStatus('Đã thêm ghi chú vào chỗ trống.','ok');}
 
   function nodeById(id) { return state.nodes.find(n => n.id === id); }
 
@@ -872,7 +884,7 @@
     render();syncTimelineDock();scheduleAutoSave();
   }
 
-  function selectNode(id,{toggle=false,add=false}={}){let ids=[...state.selectedNodeIds];if(toggle){ids=ids.includes(id)?ids.filter(item=>item!==id):[...ids,id];}else if(add){if(!ids.includes(id))ids.push(id);}else ids=[id];state.selectedNodeIds=ids;state.selectedNodeId=ids.at(-1)||null;document.querySelectorAll('.node').forEach(el=>el.classList.toggle('selected',ids.includes(el.dataset.id)));}
+  function selectNode(id,{toggle=false,add=false}={}){let ids=[...state.selectedNodeIds];if(toggle){ids=ids.includes(id)?ids.filter(item=>item!==id):[...ids,id];}else if(add){if(!ids.includes(id))ids.push(id);}else ids=[id];state.selectedNodeIds=ids;state.selectedNodeId=ids.at(-1)||null;document.querySelectorAll('.node').forEach(el=>el.classList.toggle('selected',ids.includes(el.dataset.id)));scheduleDrawEdges();}
   function removeSelectedNodes(){const ids=new Set(state.selectedNodeIds);if(!ids.size&&state.selectedNodeId)ids.add(state.selectedNodeId);if(!ids.size)return;createUndoSnapshot(`Delete ${ids.size} node${ids.size===1?'':'s'}`);state.nodes=state.nodes.filter(node=>!ids.has(node.id));state.edges=state.edges.filter(edge=>!ids.has(edge.source)&&!ids.has(edge.target));state.selectedNodeIds=[];state.selectedNodeId=null;render();saveState();}
 
   function portCompatible(from, targetNodeId, targetPortId) {
@@ -886,9 +898,9 @@
 
   function connectionChoices(from){
     const source=nodeById(from.nodeId),output=nodeDefs[source?.type]?.outputs?.find(port=>port.id===from.portId);if(!source||!output)return{existing:[],create:[]};
-    const existing=[];for(const target of state.nodes){if(target.id===source.id)continue;for(const input of nodeDefs[target.type]?.inputs||[]){if(!portCompatible(from,target.id,input.id))continue;if(target.type==='timeline'&&getIncoming(target.id,input.id).length)continue;if(wouldCreateCycle(source.id,target.id,isMultiInput(target.type,input.id)?null:input.id))continue;existing.push({kind:'existing',targetId:target.id,targetPort:input.id,label:`${nodeDefs[target.type].title} · ${input.label}${target.data?.dockOnly?' (Timeline dock)':''}`});}}
+    const existing=[];for(const target of state.nodes){if(target.id===source.id)continue;for(const input of nodeDefs[target.type]?.inputs||[]){if(!portCompatible(from,target.id,input.id))continue;if(target.type==='timeline'&&getIncoming(target.id,input.id).length)continue;if(wouldCreateCycle(source.id,target.id,isMultiInput(target.type,input.id)?null:input.id))continue;existing.push({kind:'existing',targetId:target.id,targetPort:input.id,label:`${nodeDefs[target.type].title} · ${input.label}${target.data?.dockOnly?' (thanh dòng thời gian)':''}`});}}
     const candidates=output.type==='image'?[['imageCollection','image','Tổng ảnh · Các ảnh kết quả'],['references','reference1','References · image 1'],['preview','media','Preview · image'],['imageResize','image','Image Resize'],['generateImage','reference','Generate Image · reference'],['generateVideo','reference','Generate Video · reference']]:output.type==='video'?[['generateVideo','video','Tạo video · Video tham chiếu'],['generateText','video','Tạo văn bản · Video gốc'],['finalOutput','video','Output · Xuất video cuối'],['audioMix','video','Âm thanh / nhạc nền'],['preview','media','Preview · video'],['timeline','clip1','Timeline · add clip']]:output.type==='text'?[['generateImage','prompt','Generate Image · prompt'],['generateVideo','prompt','Generate Video · prompt'],['textAppend','text','Text Append'],['textConcat','text','Text Merge · text']]:output.type==='audio'?[['finalOutput','audio','Output · Xuất video cuối'],['audioMix','audio','Âm thanh / nhạc nền'],['voiceSync','audio','Đồng bộ lời đọc – cảnh']]:output.type==='negative'?[['generateImage','negative','Generate Image · negative'],['generateVideo','negative','Generate Video · negative']]:[];
-    const create=candidates.filter(([type])=>source.type!=='imageCollection'||!['preview','imageResize'].includes(type)).map(([type,port,label])=>({kind:'create',type,targetPort:port,label}));return{existing,create};
+    const create=candidates.filter(([type])=>source.type!=='imageCollection'||!['preview','imageResize'].includes(type)).map(([type,port])=>({kind:'create',type,targetPort:port,label:nodeDefs[type].title+' · '+(nodeDefs[type].inputs?.find(p=>p.id===port)?.label||'Đầu vào')}));return{existing,create};
   }
 
   function openConnectionPicker(from,x,y){
@@ -897,8 +909,8 @@
     const title=document.createElement('div');title.className='menu-caption';title.textContent=`Send ${output.label} · ${output.type}`;menu.appendChild(title);
     const addSection=label=>{const section=document.createElement('div');section.className='menu-caption';section.textContent=label;menu.appendChild(section);};
     const addChoice=(choice,index)=>{const button=document.createElement('button');button.type='button';button.textContent=choice.label;button.dataset.contextAction='connect-choice';button.dataset.choice=String(index);menu.appendChild(button);};
-    if(choices.existing.length){addSection('Connect existing node');choices.existing.forEach((choice,index)=>addChoice(choice,index));}
-    if(choices.create.length){addSection('Create a compatible node');choices.create.forEach((choice,index)=>addChoice(choice,choices.existing.length+index));}
+    if(choices.existing.length){addSection('Nối node hiện có');choices.existing.forEach((choice,index)=>addChoice(choice,index));}
+    if(choices.create.length){addSection('Tạo node phù hợp');choices.create.forEach((choice,index)=>addChoice(choice,choices.existing.length+index));}
     if(!state.pendingConnection.choices.length){const empty=document.createElement('div');empty.className='menu-caption';empty.textContent='No compatible node actions for this output.';menu.appendChild(empty);}
     menu.classList.remove('hidden');menu.style.left=`${Math.max(8,Math.min(x,innerWidth-260))}px`;menu.style.top=`${Math.max(8,Math.min(y,innerHeight-420))}px`;
   }
@@ -965,7 +977,7 @@
   function syncReferenceFanOut(references){for(const generator of state.nodes.filter(node=>['generateImage','generateVideo','generateText'].includes(node.type)))connectReferenceNode(references,generator);}
 
   function makeNode(type,x,y){
-    const data=type==='prompt'?{text:'Describe what you want Muse to generate...'}:type==='negativePrompt'?{text:'blurry, low quality, distorted anatomy, extra fingers, text, watermark'}:type==='imageInput'?{}:type==='generateVideo'?{model:'muse-video',size:'16:9',duration:5,continuity:false,status:'idle'}:{};
+    const data=type==='prompt'?{text:'Mô tả sản phẩm và kết quả bạn muốn AI tạo…'}:type==='negativePrompt'?{text:'Ảnh mờ, chất lượng thấp, sai hình dáng, thừa ngón tay, chữ, dấu bản quyền'}:type==='imageInput'?{}:type==='generateVideo'?{model:'muse-video',size:'16:9',duration:5,continuity:false,status:'idle'}:{};
     return{id:uid(type),type,x,y,data};
   }
 
@@ -1063,7 +1075,7 @@
     if(moved&&from.direction==='in'){
       const output=nearestCompatibleOutput(e.clientX,e.clientY,from);
       if(output){state.connectingFrom={nodeId:output.dataset.node,portId:output.dataset.port};connect(from.nodeId,from.portId);}
-      else{const rect=$('#viewport').getBoundingClientRect(),emptyCanvas=!document.elementFromPoint(e.clientX,e.clientY)?.closest('.node'),inside=e.clientX>=rect.left&&e.clientX<=rect.right&&e.clientY>=rect.top&&e.clientY<=rect.bottom,type=from.portType==='negative'?'negativePrompt':'prompt';if(inside&&emptyCanvas){addNode(type,(e.clientX-rect.left-state.panX)/state.zoom-135,(e.clientY-rect.top-state.panY)/state.zoom-80);const created=state.nodes.at(-1);state.connectingFrom={nodeId:created.id,portId:'text'};connect(from.nodeId,from.portId);setRunStatus(`${nodeDefs[type].title} created and connected.`,'ok');}else setRunStatus('Drop on an output port or on empty canvas to create a prompt node.','warn');}
+      else{const rect=$('#viewport').getBoundingClientRect(),emptyCanvas=!document.elementFromPoint(e.clientX,e.clientY)?.closest('.node'),inside=e.clientX>=rect.left&&e.clientX<=rect.right&&e.clientY>=rect.top&&e.clientY<=rect.bottom,type=from.portType==='negative'?'negativePrompt':'prompt';if(inside&&emptyCanvas){addNode(type,(e.clientX-rect.left-state.panX)/state.zoom-135,(e.clientY-rect.top-state.panY)/state.zoom-80);const created=state.nodes.at(-1);state.connectingFrom={nodeId:created.id,portId:'text'};connect(from.nodeId,from.portId);setRunStatus(`Đã tạo và nối ${nodeDefs[type].title}.`,'ok');}else setRunStatus('Drop on an output port or on empty canvas to create a prompt node.','warn');}
       state.suppressPortClick=true;setTimeout(()=>state.suppressPortClick=false,80);scheduleDrawEdges();return;
     }
     if(moved){
@@ -1135,6 +1147,7 @@
     el.className = `node ${['generateImage','generateVideo','generateText'].includes(n.type) ? 'generate' : ''} ${n.type==='timeline'?'timeline-node':''} ${state.selectedNodeIds.includes(n.id)||state.selectedNodeId===n.id ? 'selected' : ''}`;
     el.dataset.id = n.id;
     el.dataset.type = n.type;
+    const meta=WorkflowNodeCatalog.entries[n.data.toolKind||n.type];el.dataset.category=meta?.group||'text';el.style.setProperty('--node-color',meta?.color||'#bca5ff');
     el.style.left = `${n.x}px`;
     el.style.top = `${n.y}px`;
     const head = document.createElement('div');
@@ -1142,28 +1155,30 @@
     const title=document.createElement('span');title.className='node-title';title.textContent=['generateImage','generateVideo','generateText'].includes(n.type)?generationNodeTitle(n):(n.data.customName||`${nodeDefs[n.type].title}${n.data.sceneLabel?` · ${n.data.sceneLabel}`:''}`);title.title=title.textContent;
     const rename=document.createElement('button');rename.type='button';rename.className='node-rename';rename.title='Rename node';rename.setAttribute('aria-label',`Rename ${title.textContent}`);rename.textContent='✎';
     rename.onclick=event=>{event.stopPropagation();openNodeRenameModal(n.id);};
-    const close=document.createElement('span');close.className='node-close';close.title='Delete';close.textContent='×';head.append(title,rename,close);
+    const close=document.createElement('span');close.className='node-close';close.title='Delete';close.textContent='×';const icon=document.createElement('span');icon.className='node-category-icon';icon.textContent=meta?.icon||'◇';icon.title=meta?.name||'Node';head.append(icon,title,rename,close);
     head.querySelector('.node-close').onclick = (e) => { e.stopPropagation(); removeNode(n.id); };
     setupDrag(head, n, el);
     el.appendChild(head);
 
     const body = document.createElement('div');
     body.className = 'node-body';
-    const identity=document.createElement('button');identity.type='button';identity.className='node-component-id';identity.textContent=`ID: ${n.data.componentId}`;identity.title='Bấm để sao chép ID vào prompt';identity.onclick=()=>void navigator.clipboard.writeText(n.data.componentId).then(()=>setRunStatus('Đã sao chép '+n.data.componentId,'ok')).catch(()=>setRunStatus('ID: '+n.data.componentId,'warn'));head.insertBefore(identity,rename);
+    const info=document.createElement('details');info.className='node-info';const infoTitle=document.createElement('summary');infoTitle.textContent='Về node này';const description=document.createElement('p');description.textContent=meta?.description||'';info.append(infoTitle,description);
+    if(meta?.group==='control'){const badge=document.createElement('span');badge.className='node-control-badge';badge.textContent='◇ Kiểm soát · không tạo ảnh/video';body.append(badge);}
+    const identity=document.createElement('button');identity.type='button';identity.className='node-component-id';identity.textContent=`ID: ${n.data.componentId}`;identity.title='Bấm để sao chép ID vào prompt';identity.onclick=()=>void navigator.clipboard.writeText(n.data.componentId).then(()=>setRunStatus('Đã sao chép '+n.data.componentId,'ok')).catch(()=>setRunStatus('ID: '+n.data.componentId,'warn'));info.append(identity);head.title=title.textContent+' · '+n.data.componentId;
     if(['generateImage','generateVideo','generateText'].includes(n.type)){const refs=resolveReferences(n.id);if(refs.length){const list=document.createElement('div');list.className='reference-id-list';list.textContent=refs.map((ref,index)=>`Ảnh ${index+1}: ${ref.componentId}`).join(' · ');body.append(list);}}
 
 
     if (['prompt','negativePrompt','textAppend'].includes(n.type)) {
       const ta = document.createElement('textarea');
       ta.value = n.data.text || '';
-      ta.oninput = () => {n.data.text = ta.value;storyDirtyAfter(n.id,true);};
+      ta.oninput = () => {n.data.text = ta.value;if(state.settings.compactNodes){ta.style.height='72px';ta.style.height=Math.min(240,Math.max(72,ta.scrollHeight))+'px';}storyDirtyAfter(n.id,true);};
       body.appendChild(ta);
       if(n.type==='negativePrompt'){const hint=document.createElement('div');hint.className='hint';hint.textContent='Connect to the negative input on an image or video node.';body.appendChild(hint);}
-      if(n.type==='textAppend'){const hint=document.createElement('div');hint.className='hint';hint.textContent='Appends this text to an incoming prompt.';body.appendChild(hint);}
+      if(n.type==='textAppend'){const hint=document.createElement('div');hint.className='hint';hint.textContent='Nhận một nguồn văn bản và thêm đoạn bạn nhập ở trên vào cuối nguồn đó.';body.appendChild(hint);}
     }
 
     if(n.type==='textConcat'){
-      const separator=document.createElement('input');separator.value=n.data.separator??', ';separator.placeholder='Separator';separator.oninput=()=>n.data.separator=separator.value;body.append('Join connected text inputs with:',separator);
+      const separator=document.createElement('input');separator.value=n.data.separator??', ';separator.placeholder='Separator';separator.oninput=()=>n.data.separator=separator.value;body.append('Gộp nhiều nguồn văn bản theo dấu phân cách:',separator);const hint=document.createElement('p');hint.className='hint';hint.textContent='Nối nhiều dây vào cùng cổng Văn bản. Khác Nối thêm văn bản: node này không có đoạn nội dung nhập thêm.';body.append(hint);
     }
 
     if (n.type === 'imageInput' || n.type === 'videoInput') {
@@ -1185,8 +1200,8 @@
     if(WorkflowTools.definitions[n.type])renderTool(n,body);
     if(n.type==='referenceBoard')renderReferenceBoard(n,body,el);
     if(n.type==='references'){
-      const incoming=(nodeDefs.references.inputs||[]).reduce((count,input)=>count+getIncoming(n.id,input.id).length,0),badge=document.createElement('span');badge.className='ref-badge';badge.textContent=`${incoming} image source${incoming===1?'':'s'} connected`;body.appendChild(badge);
-      const list=document.createElement('div');list.className='references-input-list';(nodeDefs.references.inputs||[]).forEach(input=>{const row=document.createElement('div');row.textContent=`${input.label} · connect image source`;list.appendChild(row);});body.appendChild(list);
+      const incoming=(nodeDefs.references.inputs||[]).reduce((count,input)=>count+getIncoming(n.id,input.id).length,0),badge=document.createElement('span');badge.className='ref-badge';badge.textContent=`${incoming} nguồn ảnh đã nối`;body.appendChild(badge);
+      const list=document.createElement('div');list.className='references-input-list';visibleInputPorts(n).forEach(input=>{const row=document.createElement('div');row.textContent=`${input.label} · nối nguồn ảnh`;list.appendChild(row);});body.appendChild(list);
       const hint=document.createElement('div');hint.className='hint';hint.textContent='All connected images are sent to every connected Generate Image and Generate Video node.';body.appendChild(hint);
     }
 
@@ -1243,7 +1258,7 @@
       const out=document.createElement('canvas');out.className='resize-preview';
       if(imageUrl){const image=new Image();image.onload=()=>drawResized(image,out,n.data);image.src=imageUrl;}
       body.appendChild(out);
-      const download=document.createElement('button');download.type='button';download.className='small-btn';download.textContent='Download resized image';download.disabled=!imageUrl;download.onclick=()=>{out.toBlob(blob=>{if(!blob)return;const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`museflow-${n.data.width}x${n.data.height}.png`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);});};body.appendChild(download);
+      const download=document.createElement('button');download.type='button';download.className='small-btn';download.textContent='Tải ảnh đã đổi kích thước';download.disabled=!imageUrl;download.onclick=()=>{out.toBlob(blob=>{if(!blob)return;const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`museflow-${n.data.width}x${n.data.height}.png`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);});};body.appendChild(download);
     }
 
     if (n.type === 'preview') {
@@ -1253,7 +1268,8 @@
 
     if(n.type==='imageCollection')renderImageCollection(n,body);
     if(n.type!=='imageCollection'&&(nodeDefs[n.type]?.outputs||[]).some(p=>['image','video','media'].includes(p.type))){const assets=postingAssets(n);if(assets.length&&['generateImage','generateVideo','imageInput','videoInput','preview','imageResize'].includes(n.type))studioButton(body,'Tải kết quả',()=>chrome.downloads.download({url:assets[0].url,filename:assets[0].name||n.data.componentId+(assets[0].kind==='video'?'.mp4':'.png'),saveAs:false}),{cls:'tool-action posting-action'});postingButton(n,body,()=>postingAssets(n));}
-    el.appendChild(body);
+    if(['references','timeline'].includes(n.type)){const toggle=document.createElement('button');toggle.type='button';toggle.className='node-port-toggle';toggle.textContent=(n.data.compactInputs??state.settings.compactNodes)?'Mở đủ cổng vào ('+(nodeDefs[n.type].inputs||[]).length+')':'Thu gọn cổng chưa dùng';toggle.setAttribute('aria-expanded',String(!(n.data.compactInputs??state.settings.compactNodes)));toggle.onclick=()=>{createUndoSnapshot('Thu gọn cổng vào');n.data.compactInputs=!(n.data.compactInputs??state.settings.compactNodes);render();};body.append(toggle);}
+    body.append(info);el.appendChild(body);
     addPorts(el, n);
     if(['generateImage','generateVideo','generateText'].includes(n.type))studioButton(body,'Xóa kết quả cũ',()=>clearNodeOutput(n),{disabled:!!runForNode(n.id)});
     compactGenerator(n,body);
@@ -1310,9 +1326,10 @@
     return actions;
   }
 
+  function visibleInputPorts(n){const ports=nodeDefs[n.type].inputs||[];if(!(n.data.compactInputs??state.settings.compactNodes)||!['references','timeline'].includes(n.type))return ports;const free=ports.find(p=>!getIncoming(n.id,p.id).length);return ports.filter(p=>getIncoming(n.id,p.id).length||p===free);}
   function addPorts(el, n) {
     const def = nodeDefs[n.type];
-    (def.inputs || []).forEach((p, i) => {
+    visibleInputPorts(n).forEach((p, i) => {
       const y = ['generateImage','generateVideo','generateText'].includes(n.type) ? 52+i*26 : n.type==='timeline'?58+i*42:68+i*42;
       const port = document.createElement('div'); port.className='port in'; port.dataset.node=n.id; port.dataset.port=p.id;port.dataset.type=p.type; port.style.top=`${y}px`; port.title=`Input: ${p.label} (${p.type})`;
       port.onpointerdown=e=>{if(e.shiftKey){e.stopPropagation();return;}if(p.type==='text'||p.type==='negative')startWireFromInput(e,n.id,p.id,p.type);};
@@ -1614,11 +1631,12 @@
   }
 
   function drawEdges() {
+    document.body.classList.toggle('connecting-wire',!!state.connectingFrom||!!state.draggingWire);scheduleMinimap();
     edgesSvg.innerHTML='';
     state.edges.forEach(e => {
       const a=getPortCenter(e.source,e.sourcePort,'out'), b=getPortCenter(e.target,e.targetPort,'in'); if(!a||!b)return;
       const incoming=getIncoming(e.target,e.targetPort),index=incoming.findIndex(edge=>edge.id===e.id),fan=isMultiInput(nodeById(e.target)?.type,e.targetPort)&&incoming.length>1?(index-(incoming.length-1)/2)*12:0;
-      const dx=b.x-a.x,direction=dx<0?-1:1,bend=Math.max(62,Math.abs(dx)*.42),output=nodeDefs[nodeById(e.source)?.type]?.outputs?.find(port=>port.id===e.sourcePort),d=`M ${a.x} ${a.y} C ${a.x+direction*bend} ${a.y}, ${b.x-direction*bend} ${b.y+fan}, ${b.x} ${b.y}`,selected=state.selectedEdgeIds.includes(e.id);const path=document.createElementNS('http://www.w3.org/2000/svg','path');path.setAttribute('class',`edge edge-${output?.type||'media'}${selected?' edge-selected':''}`);path.setAttribute('d',d);path.setAttribute('data-edge-id',e.id);edgesSvg.appendChild(path);const hit=document.createElementNS('http://www.w3.org/2000/svg','path');hit.setAttribute('class','edge-hit');hit.setAttribute('data-edge-id',e.id);hit.setAttribute('d',d);edgesSvg.appendChild(hit);
+      const dx=b.x-a.x,direction=dx<0?-1:1,bend=Math.max(62,Math.abs(dx)*.42),output=nodeDefs[nodeById(e.source)?.type]?.outputs?.find(port=>port.id===e.sourcePort),d=`M ${a.x} ${a.y} C ${a.x+direction*bend} ${a.y}, ${b.x-direction*bend} ${b.y+fan}, ${b.x} ${b.y}`,selected=state.selectedEdgeIds.includes(e.id);const path=document.createElementNS('http://www.w3.org/2000/svg','path');path.setAttribute('class',`edge edge-${output?.type||'media'}${selected?' edge-selected':''}${state.selectedNodeIds.includes(e.source)||state.selectedNodeIds.includes(e.target)?' node-focused':''}`);path.setAttribute('d',d);path.setAttribute('data-edge-id',e.id);edgesSvg.appendChild(path);const hit=document.createElementNS('http://www.w3.org/2000/svg','path');hit.setAttribute('class','edge-hit');hit.setAttribute('data-edge-id',e.id);hit.setAttribute('d',d);edgesSvg.appendChild(hit);
     });
     if(state.draggingWire&&state.wirePointer){
       const reverse=state.draggingWire.direction==='in',a=getPortCenter(state.draggingWire.nodeId,state.draggingWire.portId,reverse?'in':'out');
@@ -1637,13 +1655,14 @@
     for(const node of state.nodes){const data=node.data||(node.data={});if(!data.componentId||used.has(data.componentId)){const prefix=['imageInput','generateImage','imageResize'].includes(node.type)?'IMG':node.type==='videoInput'||node.type==='generateVideo'?'VID':'NODE';do{data.componentId=prefix+'-'+crypto.randomUUID().slice(0,8).toUpperCase();}while(used.has(data.componentId));}used.add(data.componentId);}
   }
   function render() {
+    document.body.classList.toggle('compact-nodes',!!state.settings.compactNodes);$('#nodeDensity').setAttribute('aria-pressed',String(!!state.settings.compactNodes));$('#nodeDensity').textContent=state.settings.compactNodes?'Đầy đủ':'Gọn';
     ensureComponentIds();syncSharedReferenceBoards();
     syncPreviewOutputs();canvas.innerHTML='';state.groups.forEach(group=>canvas.appendChild(renderCanvasGroup(group)));state.notes.forEach(note=>canvas.appendChild(renderCanvasNote(note)));state.nodes.filter(n=>!n.data?.dockOnly).forEach(n => canvas.appendChild(renderNode(n)));applyCanvasTransform();requestAnimationFrame(drawEdges);syncTimelineDock();updateChatUsageLabels();scheduleAutoSave();
   }
 
   function renderCanvasNote(note){
     const el=document.createElement('article');el.className='canvas-note';el.dataset.noteId=note.id;el.style.left=`${note.x}px`;el.style.top=`${note.y}px`;el.style.width=`${note.width||260}px`;el.style.height=`${note.height||160}px`;
-    const header=document.createElement('header');header.className='canvas-note-header';const title=document.createElement('span');title.textContent='Text note';const remove=document.createElement('button');remove.type='button';remove.textContent='×';remove.title='Delete note';remove.onclick=event=>{event.stopPropagation();createUndoSnapshot('Delete text note');state.notes=state.notes.filter(item=>item.id!==note.id);render();saveState();};header.append(title,remove);
+    const header=document.createElement('header');header.className='canvas-note-header';const title=document.createElement('span');title.textContent='Ghi chú';const remove=document.createElement('button');remove.type='button';remove.textContent='×';remove.title='Xóa ghi chú';remove.onclick=event=>{event.stopPropagation();createUndoSnapshot('Delete text note');state.notes=state.notes.filter(item=>item.id!==note.id);render();saveState();};header.append(title,remove);
     header.onpointerdown=event=>{if(event.button!==0||event.target.closest('button'))return;event.preventDefault();event.stopPropagation();state.noteDrag={id:note.id,startX:event.clientX,startY:event.clientY,x:note.x,y:note.y,moved:false};try{header.setPointerCapture(event.pointerId);}catch{}};
     const textarea=document.createElement('textarea');textarea.value=note.text||'';textarea.placeholder='Write a note…';textarea.onbeforeinput=event=>trackUndoEdit(event);textarea.oninput=()=>{note.text=textarea.value;scheduleAutoSave();};
     el.append(header,textarea);return el;
@@ -1661,7 +1680,12 @@
 
   function syncPreviewOutputs(){for(const preview of state.nodes.filter(node=>node.type==='preview')){const edge=getIncoming(preview.id,'media')[0],source=edge&&nodeById(edge.source);let asset=null;if(source){asset=edge.sourcePort==='endFrame'?(frameMatchesVideo(source)?source.data.endFrame:null):source.data?.asset;if(!asset&&source.type==='referenceBoard'){const image=WorkflowReferences.select(source.data,edge.sourcePort)[0];if(image)asset={id:image.id,kind:'image',url:image.url,name:image.name};}if(!asset&&source.type==='imageInput'&&source.data?.localDataUrl)asset={id:source.id,kind:'image',url:source.data.localDataUrl,name:'Input image'};}preview.data.asset=asset||null;}}
 
-  function applyCanvasTransform(){const transform=`translate(${state.panX}px, ${state.panY}px) scale(${state.zoom})`;canvas.style.transform=transform;edgesSvg.style.transform=transform;$('#zoomLevel').textContent=`${Math.round(state.zoom*100)}%`;$('#viewport').classList.toggle('hand-mode',state.handMode||state.spaceDown);}
+  function applyCanvasTransform(){document.body.classList.toggle('connecting-wire',!!state.connectingFrom||!!state.draggingWire);const transform=`translate(${state.panX}px, ${state.panY}px) scale(${state.zoom})`;canvas.style.transform=transform;edgesSvg.style.transform=transform;$('#zoomLevel').textContent=`${Math.round(state.zoom*100)}%`;$('#zoomOut').disabled=state.zoom<=.25001;$('#zoomIn').disabled=state.zoom>=2.49999;$('#zoomOut').title=$('#zoomOut').disabled?'Đã ở mức nhỏ nhất (25%)':'Thu nhỏ khung vẽ';$('#zoomIn').title=$('#zoomIn').disabled?'Đã ở mức lớn nhất (250%)':'Phóng to khung vẽ';$('#viewport').classList.toggle('hand-mode',state.handMode||state.spaceDown);scheduleMinimap();}
+  let minimapFrame=null,minimapBounds=null;
+  function scheduleMinimap(){if(minimapFrame)return;minimapFrame=requestAnimationFrame(()=>{minimapFrame=null;const map=$('#canvasMinimap'),svg=$('#canvasMinimapSvg'),nodes=state.nodes.filter(n=>!n.data?.dockOnly);if(!map||!svg)return;map.hidden=nodes.length<6;if(map.hidden)return;const rects=nodes.map(n=>{const el=document.querySelector(`.node[data-id="${CSS.escape(n.id)}"]`);return {x:n.x,y:n.y,width:el?.offsetWidth||270,height:el?.offsetHeight||220,selected:state.selectedNodeIds.includes(n.id),color:WorkflowNodeCatalog.entries[n.data.toolKind||n.type]?.color||'#bca5ff'};});const minX=Math.min(...rects.map(r=>r.x))-70,minY=Math.min(...rects.map(r=>r.y))-70,width=Math.max(...rects.map(r=>r.x+r.width))-minX+70,height=Math.max(...rects.map(r=>r.y+r.height))-minY+70,scale=Math.min(180/width,110/height);minimapBounds={x:minX,y:minY,scale};const viewport=$('#viewport').getBoundingClientRect();svg.replaceChildren();for(const r of rects){const e=document.createElementNS('http://www.w3.org/2000/svg','rect');for(const [key,v]of Object.entries({x:(r.x-minX)*scale,y:(r.y-minY)*scale,width:Math.max(2,r.width*scale),height:Math.max(2,r.height*scale),fill:r.selected?'#fff':r.color}))e.setAttribute(key,v);svg.append(e);}const view=document.createElementNS('http://www.w3.org/2000/svg','rect');for(const [key,v]of Object.entries({x:(-state.panX/state.zoom-minX)*scale,y:(-state.panY/state.zoom-minY)*scale,width:viewport.width/state.zoom*scale,height:viewport.height/state.zoom*scale,fill:'none',stroke:'#fff','stroke-width':1.5}))view.setAttribute(key,v);svg.append(view);});}
+  const minimap=$('#canvasMinimapSvg');let minimapDragging=false;function panFromMinimap(event){if(!minimapBounds)return;const r=minimap.getBoundingClientRect(),viewport=$('#viewport').getBoundingClientRect(),x=(event.clientX-r.left)*180/r.width,y=(event.clientY-r.top)*110/r.height;state.panX=viewport.width/2-(minimapBounds.x+x/minimapBounds.scale)*state.zoom;state.panY=viewport.height/2-(minimapBounds.y+y/minimapBounds.scale)*state.zoom;applyCanvasTransform();scheduleDrawEdges();}
+  minimap.addEventListener('pointerdown',event=>{if(event.button!==0)return;event.preventDefault();event.stopPropagation();minimapDragging=true;minimap.setPointerCapture(event.pointerId);panFromMinimap(event);});minimap.addEventListener('pointermove',event=>{if(minimapDragging)panFromMinimap(event);});minimap.addEventListener('pointerup',()=>{minimapDragging=false;});minimap.addEventListener('pointercancel',()=>{minimapDragging=false;});
+  document.addEventListener('workflow:appearance',()=>scheduleDrawEdges());
   function zoomAt(clientX,clientY,factor){const rect=$('#viewport').getBoundingClientRect(),x=clientX-rect.left,y=clientY-rect.top,old=state.zoom,next=Math.max(.25,Math.min(2.5,old*factor));if(next===old)return;const contentX=(x-state.panX)/old,contentY=(y-state.panY)/old;state.zoom=next;state.panX=x-contentX*next;state.panY=y-contentY*next;applyCanvasTransform();scheduleDrawEdges();}
   function setZoom(value){const rect=$('#viewport').getBoundingClientRect();zoomAt(rect.left+rect.width/2,rect.top+rect.height/2,value/state.zoom);}
   function fitCanvas(){const nodes=state.nodes.filter(node=>!node.data?.dockOnly);if(!nodes.length){state.zoom=1;state.panX=0;state.panY=0;applyCanvasTransform();return;}const rect=$('#viewport').getBoundingClientRect(),xs=nodes.map(n=>n.x),ys=nodes.map(n=>n.y),maxX=Math.max(...nodes.map(n=>n.x+(document.querySelector(`.node[data-id="${CSS.escape(n.id)}"]`)?.offsetWidth||270))),maxY=Math.max(...nodes.map(n=>n.y+(document.querySelector(`.node[data-id="${CSS.escape(n.id)}"]`)?.offsetHeight||220)));const minX=Math.min(...xs),minY=Math.min(...ys),scale=Math.max(.25,Math.min(1.5,(rect.width-100)/(maxX-minX+80),(rect.height-80)/(maxY-minY+80)));state.zoom=scale;state.panX=(rect.width-(maxX-minX)*scale)/2-minX*scale;state.panY=(rect.height-(maxY-minY)*scale)/2-minY*scale;applyCanvasTransform();scheduleDrawEdges();}
@@ -1693,29 +1717,29 @@
 
   function openCanvasMenu(e){
     const nodeEl=e.target.closest('.node');e.preventDefault();e.stopPropagation();
-    if(!nodeEl){const rect=$('#viewport').getBoundingClientRect(),menu=$('#canvasMenu');state.contextPoint={x:(e.clientX-rect.left-state.panX)/state.zoom,y:(e.clientY-rect.top-state.panY)/state.zoom};menu.innerHTML='';delete menu.dataset.nodeId;const title=document.createElement('div');title.className='menu-caption';title.textContent='Canvas';menu.appendChild(title);[...Object.entries({...WorkflowStudio.definitions,...WorkflowStory.definitions}).map(([type,def])=>['＋ '+def.title,'add:'+type]),['＋ Prompt','add:prompt'],['＋ Text note','add:text'],['＋ Negative Prompt','add:negativePrompt'],['＋ Video đầu vào','add:videoInput'],['＋ Tạo văn bản','add:generateText'],['＋ Image Input','add:imageInput'],['＋ References','add:references'],['＋ Generate Image','add:generateImage'],['＋ Generate Video','add:generateVideo'],['＋ Timeline','add:timeline'],['＋ Preview','add:preview'],['Save workflow','save'],['▶ Run workflow','run'],['Arrange nodes','arrange'],['Delete selected node','delete-selected'],['Remove all connections','disconnect-all']].forEach(([label,action])=>{const button=document.createElement('button');button.type='button';button.textContent=label;button.dataset.contextAction=action;menu.appendChild(button);});menu.classList.remove('hidden');menu.style.left=`${Math.min(e.clientX,innerWidth-230)}px`;menu.style.top=Math.max(8,Math.min(e.clientY,innerHeight-menu.getBoundingClientRect().height-8))+'px';return;}
+    if(!nodeEl){const rect=$('#viewport').getBoundingClientRect(),menu=$('#canvasMenu');state.contextPoint={x:(e.clientX-rect.left-state.panX)/state.zoom,y:(e.clientY-rect.top-state.panY)/state.zoom};menu.innerHTML='';delete menu.dataset.nodeId;const title=document.createElement('div');title.className='menu-caption';title.textContent='Canvas';menu.appendChild(title);[...Object.entries({...WorkflowStudio.definitions,...WorkflowStory.definitions}).map(([type,def])=>['＋ '+def.title,'add:'+type]),['＋ Yêu cầu','add:prompt'],['＋ Ghi chú','add:text'],['＋ Loại trừ','add:negativePrompt'],['＋ Video đầu vào','add:videoInput'],['＋ Tạo văn bản','add:generateText'],['＋ Ảnh đầu vào','add:imageInput'],['＋ Ảnh tham chiếu','add:references'],['＋ Tạo ảnh','add:generateImage'],['＋ Tạo video','add:generateVideo'],['＋ Dòng thời gian','add:timeline'],['＋ Xem trước','add:preview'],['Xuất workflow','save'],['▶ Run workflow','run'],['Sắp xếp node','arrange'],['Xóa node đã chọn','delete-selected'],['Gỡ mọi kết nối','disconnect-all']].forEach(([label,action])=>{const button=document.createElement('button');button.type='button';button.textContent=label;button.dataset.contextAction=action;menu.appendChild(button);});menu.classList.remove('hidden');menu.style.left=`${Math.min(e.clientX,innerWidth-230)}px`;menu.style.top=Math.max(8,Math.min(e.clientY,innerHeight-menu.getBoundingClientRect().height-8))+'px';return;}
     e.stopPropagation();const node=nodeById(nodeEl.dataset.id);if(!node)return;state.selectedNodeId=node.id;
     const menu=$('#canvasMenu');menu.innerHTML='';menu.dataset.nodeId=node.id;
     const title=document.createElement('div');title.className='menu-caption';title.textContent=['generateImage','generateVideo','generateText'].includes(node.type)?generationNodeTitle(node):(node.data.customName||nodeDefs[node.type].title);menu.appendChild(title);
     const addAction=(label,action)=>{const button=document.createElement('button');button.type='button';button.textContent=label;button.dataset.contextAction=action;menu.appendChild(button);};
-    addAction('Rename node…','node-rename');
+    addAction('Đổi tên node…','node-rename');
     if(['generateImage','generateVideo','generateText'].includes(node.type))addAction(node.data.status==='running'?`■ Stop ${node.type==='generateVideo'?'Video':node.type==='generateText'?'Văn bản':'Ảnh'}`:`▶ Run ${node.type==='generateVideo'?'Video':node.type==='generateText'?'Văn bản':'Ảnh'}`,'node-run');
     if(node.type==='generateVideo')addAction('↻ Again · follow prompt more closely','node-again');
     if(node.type==='timeline')addAction('▶ Preview sequence','node-preview');
-    if((nodeDefs[node.type]?.outputs||[]).some(port=>port.type==='text'))addAction('Create Text Merge node','node-create-text-merge');
-    if((nodeDefs[node.type]?.outputs||[]).some(port=>['image','video'].includes(port.type)))addAction('Create Preview node','node-create-preview');
-    if(node.type==='imageInput')addAction('Choose / replace image','node-choose-image');
-    if(node.type==='imageResize')addAction('Download resized image','node-download-image');
-    if(node.type==='preview')addAction('Download preview','node-download-preview');
-    if(node.type==='prompt'||node.type==='negativePrompt'||node.type==='textAppend')addAction('Focus text field','node-focus-text');
-    addAction('Nhân bản các node đã chọn · D','node-duplicate');if(['generateImage','generateVideo','generateText','preview'].includes(node.type))addAction('Xóa kết quả cũ','node-clear-output');addAction('Disconnect node','node-disconnect');addAction('Delete node','node-delete');
+    if((nodeDefs[node.type]?.outputs||[]).some(port=>port.type==='text'))addAction('Tạo node gộp văn bản','node-create-text-merge');
+    if((nodeDefs[node.type]?.outputs||[]).some(port=>['image','video'].includes(port.type)))addAction('Tạo node xem trước','node-create-preview');
+    if(node.type==='imageInput')addAction('Chọn / thay ảnh','node-choose-image');
+    if(node.type==='imageResize')addAction('Tải ảnh đã đổi kích thước','node-download-image');
+    if(node.type==='preview')addAction('Tải bản xem trước','node-download-preview');
+    if(node.type==='prompt'||node.type==='negativePrompt'||node.type==='textAppend')addAction('Sửa nội dung văn bản','node-focus-text');
+    addAction('Nhân bản các node đã chọn · D','node-duplicate');if(['generateImage','generateVideo','generateText','preview'].includes(node.type))addAction('Xóa kết quả cũ','node-clear-output');addAction('Gỡ kết nối node','node-disconnect');addAction('Xóa node','node-delete');
     menu.classList.remove('hidden');menu.style.left=`${Math.min(e.clientX,innerWidth-230)}px`;menu.style.top=`${Math.min(e.clientY,innerHeight-380)}px`;
   }
   function openEdgeMenu(e){
     const hit=e.target.closest('.edge-hit[data-edge-id]');if(!hit)return;
     e.preventDefault();e.stopPropagation();const menu=$('#canvasMenu');menu.innerHTML='';menu.dataset.edgeId=hit.dataset.edgeId;delete menu.dataset.nodeId;
-    const title=document.createElement('div');title.className='menu-caption';title.textContent='Connection';menu.appendChild(title);
-    const button=document.createElement('button');button.type='button';button.textContent='Delete connection';button.dataset.contextAction='edge-delete';menu.appendChild(button);
+    const title=document.createElement('div');title.className='menu-caption';title.textContent='Kết nối';menu.appendChild(title);
+    const button=document.createElement('button');button.type='button';button.textContent='Xóa kết nối';button.dataset.contextAction='edge-delete';menu.appendChild(button);
     menu.classList.remove('hidden');menu.style.left=`${Math.min(e.clientX,innerWidth-230)}px`;menu.style.top=`${Math.min(e.clientY,innerHeight-120)}px`;
   }
   function selectEdgePointer(e){if(e.button!==0)return;const hit=e.target.closest('.edge-hit[data-edge-id]');if(!hit)return;e.preventDefault();e.stopPropagation();const id=hit.dataset.edgeId;state.selectedEdgeIds=e.shiftKey?[...new Set([...state.selectedEdgeIds,id])]:[id];scheduleDrawEdges();}
@@ -1723,9 +1747,9 @@
   function runNodeContextAction(action){const menu=$('#canvasMenu'),node=nodeById(menu.dataset.nodeId);if(!node)return;closeCanvasMenu();
     if(action==='node-rename'){const current=['generateImage','generateVideo','generateText'].includes(node.type)?generationNodeTitle(node):(node.data.customName||`${nodeDefs[node.type].title}${node.data.sceneLabel?` · ${node.data.sceneLabel}`:''}`),name=window.prompt('Enter a name for this node:',current);if(name===null)return;const trimmed=name.trim();if(!trimmed){setRunStatus('Node name cannot be empty.','warn');return;}createUndoSnapshot('Rename node');node.data.customName=trimmed;render();saveState();setRunStatus('Node renamed.','ok');return;}
     if(action==='node-run'){runSingleNode(node.id);return;}if(action==='node-again'){executeGenerationNode(node.id,{again:true});return;}if(action==='node-preview'){playTimeline(node);return;}if(action==='node-delete'){removeNode(node.id);return;}
-    if(action==='node-create-text-merge'){const output=(nodeDefs[node.type]?.outputs||[]).find(port=>port.type==='text');if(!output)return;createUndoSnapshot('Create Text Merge node');const target=makeNode('textConcat',node.x+350,node.y);target.data={separator:', '};state.nodes.push(target);state.edges.push({id:uid('edge'),source:node.id,sourcePort:output.id,target:target.id,targetPort:'text'});render();saveState();setRunStatus('Text Merge created and connected to this text output.','ok');return;}
-    if(action==='node-create-preview'){const output=(nodeDefs[node.type].outputs||[]).find(port=>['image','video'].includes(port.type));if(output){createUndoSnapshot('Create Preview node');const target=makeNode('preview',node.x+350,node.y);state.nodes.push(target);state.connectingFrom={nodeId:node.id,portId:output.id};connect(target.id,'media');}return;}
-    if(action==='node-disconnect'){storyTouch(node.id);if(state.edges.some(edge=>edge.source===node.id||edge.target===node.id)){createUndoSnapshot('Disconnect node');state.edges=state.edges.filter(edge=>edge.source!==node.id&&edge.target!==node.id);render();saveState();setRunStatus('Node connections removed.','ok');}return;}
+    if(action==='node-create-text-merge'){const output=(nodeDefs[node.type]?.outputs||[]).find(port=>port.type==='text');if(!output)return;createUndoSnapshot('Tạo node gộp văn bản');const target=makeNode('textConcat',node.x+350,node.y);target.data={separator:', '};state.nodes.push(target);state.edges.push({id:uid('edge'),source:node.id,sourcePort:output.id,target:target.id,targetPort:'text'});render();placeNewNode(target,target.x,target.y);saveState();setRunStatus('Text Merge created and connected to this text output.','ok');return;}
+    if(action==='node-create-preview'){const output=(nodeDefs[node.type].outputs||[]).find(port=>['image','video'].includes(port.type));if(output){createUndoSnapshot('Tạo node xem trước');const target=makeNode('preview',node.x+350,node.y);state.nodes.push(target);state.connectingFrom={nodeId:node.id,portId:output.id};connect(target.id,'media');placeNewNode(target,target.x,target.y);}return;}
+    if(action==='node-disconnect'){storyTouch(node.id);if(state.edges.some(edge=>edge.source===node.id||edge.target===node.id)){createUndoSnapshot('Gỡ kết nối node');state.edges=state.edges.filter(edge=>edge.source!==node.id&&edge.target!==node.id);render();saveState();setRunStatus('Node connections removed.','ok');}return;}
     const el=document.querySelector(`.node[data-id="${CSS.escape(node.id)}"]`);
     if(action==='node-focus-text'){el?.querySelector('textarea')?.focus();return;}
     if(action==='node-choose-image'){el?.querySelector('input[type="file"]')?.click();return;}
@@ -1734,31 +1758,38 @@
     if(action==='node-duplicate'){const ids=state.selectedNodeIds.includes(node.id)?state.selectedNodeIds:[node.id];const selected=new Set(ids);pasteNodeBundle({format:'workflow-node-bundle',version:1,nodes:state.nodes.filter(n=>selected.has(n.id)),edges:state.edges.filter(e=>selected.has(e.source)&&selected.has(e.target))});}
 
   }
-  function arrangeNodes(){
+  function arrangeNodes({looseOnly=false}={}){
     try{
       const order=topoOrder().filter(id=>!nodeById(id)?.data?.dockOnly);if(!order.length){setRunStatus('Chưa có node để sắp xếp.','warn');return;}
-      const level=new Map(order.map(id=>[id,0])),parents=new Map(order.map(id=>[id,[]])),sizes=new Map();
-      for(const id of order){const n=nodeById(id),el=document.querySelector(`.node[data-id="${CSS.escape(id)}"]`);sizes.set(id,{width:el?.offsetWidth||270,height:el?.offsetHeight||220});const incoming=getIncoming(id).map(e=>e.source).filter(source=>level.has(source));if(n.type==='generateVideo'&&n.data.continuity){const previous=timelinePredecessor(id);if(previous&&level.has(previous.id))incoming.push(previous.id);}parents.set(id,[...new Set(incoming)]);for(const source of incoming)level.set(id,Math.max(level.get(id),level.get(source)+1));}
-      const columns=new Map();for(const id of order){const l=level.get(id);if(!columns.has(l))columns.set(l,[]);columns.get(l).push(id);}
-      createUndoSnapshot('Arrange nodes');let x=70;
-      for(const ids of columns.values()){
-        const center=id=>{const sources=parents.get(id);return sources.length?sources.reduce((sum,source)=>sum+nodeById(source).y+sizes.get(source).height/2,0)/sources.length:0;};ids.sort((a,b)=>center(a)-center(b));let y=60;
-        for(const id of ids){const n=nodeById(id),size=sizes.get(id);n.x=x;n.y=Math.max(y,parents.get(id).length?center(id)-size.height/2:60);y=n.y+size.height+60;}
-        x+=Math.max(...ids.map(id=>sizes.get(id).width))+110;
+      const linked=new Set(state.edges.flatMap(e=>[e.source,e.target])),sizes=new Map(),parents=new Map(),levels=new Map();
+      for(const id of order){const n=nodeById(id),el=document.querySelector(`.node[data-id="${CSS.escape(id)}"]`);sizes.set(id,{width:el?.offsetWidth||270,height:el?.offsetHeight||220});const sources=getIncoming(id).map(e=>e.source).filter(source=>order.includes(source));if(n.type==='generateVideo'&&n.data.continuity){const previous=timelinePredecessor(id);if(previous&&order.includes(previous.id)){sources.push(previous.id);linked.add(id);linked.add(previous.id);}}parents.set(id,[...new Set(sources)]);levels.set(id,Math.max(0,...sources.map(source=>(levels.get(source)||0)+1)));}
+      const isolated=order.filter(id=>!linked.has(id));if(looseOnly&&!isolated.length){setRunStatus('Không có node chưa nối dây. Các luồng hiện có được giữ nguyên.','ok');return;}
+      createUndoSnapshot(looseOnly?'Sắp xếp node chưa nối dây':'Sắp xếp tất cả node');
+      const visited=new Set();let componentBottom=40;
+      if(!looseOnly)for(const root of order.filter(id=>linked.has(id))){if(visited.has(root))continue;const members=new Set(),pending=[root];while(pending.length){const id=pending.pop();if(members.has(id))continue;members.add(id);visited.add(id);for(const e of state.edges){if(e.source===id&&order.includes(e.target))pending.push(e.target);if(e.target===id&&order.includes(e.source))pending.push(e.source);}for(const source of parents.get(id)||[])pending.push(source);for(const target of order)if((parents.get(target)||[]).includes(id))pending.push(target);}
+        const columns=new Map();for(const id of order.filter(id=>members.has(id))){const level=levels.get(id);if(!columns.has(level))columns.set(level,[]);columns.get(level).push(id);}let x=70;
+        for(const ids of columns.values()){let y=componentBottom+30;const center=id=>{const sources=parents.get(id);return sources.length?sources.reduce((sum,source)=>sum+nodeById(source).y+sizes.get(source).height/2,0)/sources.length:y;};ids.sort((a,b)=>center(a)-center(b));for(const id of ids){const n=nodeById(id),size=sizes.get(id);n.x=x;n.y=Math.max(y,Math.min(y+100,center(id)-size.height/2));y=n.y+size.height+24;}x+=Math.max(...ids.map(id=>sizes.get(id).width))+100;}
+        componentBottom=Math.max(...[...members].map(id=>nodeById(id).y+sizes.get(id).height))+70;
       }
+      const fixed=state.nodes.filter(n=>linked.has(n.id)&&!n.data?.dockOnly);
+      const gridY=Math.max(componentBottom,...fixed.map(n=>n.y+sizes.get(n.id).height),...state.notes.map(n=>n.y+(n.height||160)))+50;
+      const groupOrder=Object.keys(WorkflowNodeCatalog.groups),orderedLoose=[...isolated].sort((a,b)=>groupOrder.indexOf(WorkflowNodeCatalog.entries[nodeById(a).data.toolKind||nodeById(a).type]?.group)-groupOrder.indexOf(WorkflowNodeCatalog.entries[nodeById(b).data.toolKind||nodeById(b).type]?.group));
+      const viewport=$('#viewport').getBoundingClientRect(),average=orderedLoose.reduce((sum,id)=>sum+sizes.get(id).width,0)/Math.max(1,orderedLoose.length),columns=Math.min(5,Math.max(2,Math.floor((viewport.width/.65)/(average+40))));
+      for(const position of WorkflowLayout.grid(orderedLoose.map(id=>({id,...sizes.get(id)})),{x:70,y:gridY,columns,gap:40}))Object.assign(nodeById(position.id),{x:position.x,y:position.y});
       for(const group of state.groups){const members=(group.nodeIds||[]).map(nodeById).filter(n=>n&&sizes.has(n.id));if(!members.length)continue;group.x=Math.min(...members.map(n=>n.x))-25;group.y=Math.min(...members.map(n=>n.y))-35;group.width=Math.max(...members.map(n=>n.x+sizes.get(n.id).width))-group.x+25;group.height=Math.max(...members.map(n=>n.y+sizes.get(n.id).height))-group.y+25;}
-      render();fitCanvas();scheduleAutoSave();setRunStatus('Đã sắp xếp '+order.length+' node theo luồng kết nối. Ctrl+Z để hoàn tác.','ok');
+      render();fitCanvas();if(state.zoom<.55){state.zoom=.65;const focus=looseOnly?isolated:order;state.panX=50-Math.min(...focus.map(id=>nodeById(id).x))*state.zoom;state.panY=40-Math.min(...focus.map(id=>nodeById(id).y))*state.zoom;applyCanvasTransform();scheduleDrawEdges();}scheduleAutoSave();setRunStatus('Đã xếp '+isolated.length+' node rời thành lưới '+columns+' cột'+(looseOnly?'; giữ nguyên các luồng đã nối.':'; mỗi cụm có dây được xếp trái → phải.')+' Ctrl+Z để hoàn tác. Dùng bản đồ nhỏ để di chuyển.','ok');
     }catch(error){setRunStatus(error.message,'error');}
   }
+
   function runCanvasAction(action){
-    if(action==='edge-delete'){const selectedEdge=state.edges.find(e=>e.id===$('#canvasMenu').dataset.edgeId);if(selectedEdge)storyTouch(selectedEdge.target);const menu=$('#canvasMenu'),edgeId=menu.dataset.edgeId;closeCanvasMenu();if(!edgeId)return;const before=state.edges.length;if(state.edges.some(edge=>edge.id===edgeId))createUndoSnapshot('Delete connection');state.edges=state.edges.filter(edge=>edge.id!==edgeId);delete menu.dataset.edgeId;if(state.edges.length!==before){render();saveState();setRunStatus('Connection deleted.','ok');}return;}
+    if(action==='edge-delete'){const selectedEdge=state.edges.find(e=>e.id===$('#canvasMenu').dataset.edgeId);if(selectedEdge)storyTouch(selectedEdge.target);const menu=$('#canvasMenu'),edgeId=menu.dataset.edgeId;closeCanvasMenu();if(!edgeId)return;const before=state.edges.length;if(state.edges.some(edge=>edge.id===edgeId))createUndoSnapshot('Xóa kết nối');state.edges=state.edges.filter(edge=>edge.id!==edgeId);delete menu.dataset.edgeId;if(state.edges.length!==before){render();saveState();setRunStatus('Connection deleted.','ok');}return;}
     if(action.startsWith('node-')){runNodeContextAction(action);return;}
     closeCanvasMenu();const pos=state.contextPoint;
     if(action==='add:text'){addTextNote(pos.x,pos.y);return;}
     if(action.startsWith('add:')){addNode(action.slice(4),pos.x,pos.y);return;}
     if(action==='save'){saveState();return;}if(action==='run'){executeWorkflow();return;}if(action==='arrange'){arrangeNodes();return;}
     if(action==='delete-selected'){if(state.selectedNodeIds.length)removeSelectedNodes();else if(state.selectedNodeId)removeNode(state.selectedNodeId);else setRunStatus('Select one or more nodes first.','warn');return;}
-    if(action==='disconnect-all'){if(state.edges.length){createUndoSnapshot('Remove all connections');state.edges=[];state.connectingFrom=null;render();saveState();setRunStatus('All connections removed.','ok');}}
+    if(action==='disconnect-all'){if(state.edges.length){createUndoSnapshot('Gỡ mọi kết nối');state.edges=[];state.connectingFrom=null;render();saveState();setRunStatus('All connections removed.','ok');}}
   }
 
   function getIncoming(nodeId, targetPort) { return state.edges.filter(e => e.target===nodeId && (!targetPort || e.targetPort===targetPort)); }
@@ -2196,23 +2227,23 @@
     let parsed,workflow;
     try{parsed=JSON.parse(await file.text());workflow=parsed?.format==='26flow-workflow'?parsed.workflow:parsed;if(!workflow||!Array.isArray(workflow.nodes)||!Array.isArray(workflow.edges))throw new Error('This file does not contain a valid MuseFlow workflow.');}
     catch(error){setRunStatus(`Could not import workflow: ${error?.message||String(error)}`,'error');return;}
-    if(!window.confirm('Importing this workflow will replace the current canvas. Continue?'))return;
+    if(!window.confirm('Nhập workflow này sẽ thay khung vẽ hiện tại. Bạn muốn tiếp tục?'))return;
     createUndoSnapshot('Import workflow',{preserveRuntime:false});
     const previous={nodes:state.nodes,edges:state.edges,groups:state.groups,notes:state.notes,settings:state.settings};
     try{
       state.nodes=workflow.nodes;state.edges=workflow.edges;state.groups=Array.isArray(workflow.groups)?workflow.groups:[];state.notes=Array.isArray(workflow.notes)?workflow.notes:[];state.settings=workflow.settings&&typeof workflow.settings==='object'?workflow.settings:{};
-      await hydrateWorkflowMedia();normalizeSavedGraph();state.selectedNodeIds=[];state.selectedNodeId=null;state.selectedEdgeIds=[];syncSettingsUI();render();await queueWorkflowSave({allowRecoveryWrite:true});
+      await hydrateWorkflowMedia();normalizeSavedGraph();state.selectedNodeIds=[];state.selectedNodeId=null;state.selectedEdgeIds=[];syncSettingsUI();render();await queueWorkflowSave({allowRecoveryWrite:true});fitCanvas();
       setRunStatus(`Workflow imported: ${file.name}`,'ok');
     }catch(error){state.nodes=previous.nodes;state.edges=previous.edges;state.groups=previous.groups||[];state.notes=previous.notes||[];state.settings=previous.settings;render();setRunStatus(`Could not import workflow: ${error?.message||String(error)}`,'error');}
   }
   async function loadState(){
-    await studioTemplatesReady;let loaded=false;
+    await studioTemplatesReady;let loaded=false,fresh=false;
     try{
       const got=await chrome.storage.local.get('museflow');
       if(got.museflow){
         if(!Array.isArray(got.museflow.nodes)||!Array.isArray(got.museflow.edges))throw new Error('Bản lưu không có cấu trúc workflow hợp lệ.');
         state.nodes=got.museflow.nodes;state.edges=got.museflow.edges;state.groups=Array.isArray(got.museflow.groups)?got.museflow.groups:[];state.notes=Array.isArray(got.museflow.notes)?got.museflow.notes:[];state.settings=got.museflow.settings||{};
-      }else{const s=starter();state.nodes=s.nodes;state.edges=s.edges;}
+      }else{const s=starter();state.nodes=s.nodes;state.edges=s.edges;fresh=true;}
       await hydrateWorkflowMedia();normalizeSavedGraph();loaded=true;workflowSaveBlocked=false;
     }catch(error){
       workflowSaveBlocked=true;setRunStatus(`Không tải được đầy đủ workflow: ${error.message}. Bản lưu trước chưa bị thay thế. Tải lại để thử khôi phục hoặc nhập bản sao lưu JSON.`, 'error');
@@ -2220,7 +2251,7 @@
       // When storage itself is unreadable, use an empty, unsaved canvas.
       try{normalizeSavedGraph();}catch{state.nodes=[];state.edges=[];state.groups=[];state.notes=[];}
     }
-    syncSettingsUI();render();syncTimelineDock();
+    syncSettingsUI();render();syncTimelineDock();if(fresh)fitCanvas();
     if(loaded)try{clearTimeout(autoSaveTimer);await queueWorkflowSave();}catch(error){setRunStatus(`Workflow is open, but media migration failed: ${error?.message||String(error)}`,'warn');}
   }
   async function resetState(){if(state.isRunning)return;createUndoSnapshot('Reset workflow',{preserveRuntime:false});const s=starter();state.nodes=s.nodes;state.edges=s.edges;state.groups=[];state.notes=[];state.selectedNodeIds=[];state.selectedNodeId=null;render();await saveState();}
@@ -2235,9 +2266,16 @@
   }
 
   const addNodeMenu=$('#addNodeMenu'),addNodeMenuBtn=$('#addNodeMenuBtn');
+  let nodeRecents=[];
+  const pickerSearch=document.createElement('input');pickerSearch.id='nodeSearch';pickerSearch.type='search';pickerSearch.placeholder='Tìm node: ảnh, video, lời đọc…';pickerSearch.setAttribute('aria-label','Tìm node');
+  const pickerList=document.createElement('div');pickerList.id='nodePickerList';const pickerEmpty=document.createElement('p');pickerEmpty.className='node-picker-empty';pickerEmpty.textContent='Không tìm thấy node phù hợp. Thử ảnh, văn bản hoặc video.';pickerEmpty.hidden=true;addNodeMenu.replaceChildren(pickerSearch,pickerList,pickerEmpty);
+  function renderNodePicker(){const entries=WorkflowNodeCatalog.entries,query=pickerSearch.value,placed=new Set();pickerList.replaceChildren();const sections=[['Hay dùng',WorkflowNodeCatalog.common],['Dùng gần đây',nodeRecents],...Object.entries(WorkflowNodeCatalog.groups).map(([id,g])=>[g.name,Object.keys(entries).filter(type=>entries[type].group===id)])];let count=0;
+    for(const [heading,ids]of sections){const choices=ids.filter(type=>entries[type]&&!placed.has(type)&&(nodeDefs[type]||WorkflowTools.aliases[type]||type==='text')&&WorkflowNodeCatalog.match(entries[type],query));if(!choices.length)continue;const group=document.createElement('section');group.className='add-node-group';const label=document.createElement('h3');label.textContent=heading;group.append(label);for(const type of choices){placed.add(type);count++;const entry=entries[type],button=document.createElement('button');button.type='button';button.dataset.add=type;button.setAttribute('aria-label',entry.title);const title=document.createElement('strong'),description=document.createElement('small');title.textContent=entry.title;description.textContent=entry.description;button.append(title,description);group.append(button);}pickerList.append(group);}pickerEmpty.hidden=count>0;}
+  pickerSearch.oninput=renderNodePicker;renderNodePicker();void chrome.storage.local.get('workflowNodeRecents').then(value=>{nodeRecents=Array.isArray(value.workflowNodeRecents)?value.workflowNodeRecents.filter(type=>WorkflowNodeCatalog.entries[type]).slice(0,8):[];if(addNodeMenu.classList.contains('hidden'))renderNodePicker();}).catch(()=>{});
   function closeAddNodeMenu(){addNodeMenu.classList.add('hidden');addNodeMenuBtn.setAttribute('aria-expanded','false');}
-  addNodeMenuBtn.onclick=()=>{if(!addNodeMenu.classList.contains('hidden')){closeAddNodeMenu();return;}const rect=addNodeMenuBtn.getBoundingClientRect();addNodeMenu.style.left=`${Math.max(8,Math.min(rect.left,innerWidth-240))}px`;addNodeMenu.classList.remove('hidden');const height=addNodeMenu.getBoundingClientRect().height;addNodeMenu.style.top=`${rect.bottom+height+16<=innerHeight?rect.bottom+6:Math.max(8,rect.top-height-6)}px`;addNodeMenuBtn.setAttribute('aria-expanded','true');};
-  addNodeMenu.addEventListener('click',event=>{const button=event.target.closest('[data-add]');if(!button)return;closeAddNodeMenu();addNodeMenuBtn.focus();if(button.dataset.add==='text')addTextNote();else addNode(button.dataset.add);});
+  addNodeMenuBtn.onclick=()=>{if(!addNodeMenu.classList.contains('hidden')){closeAddNodeMenu();return;}pickerSearch.value='';renderNodePicker();const rect=addNodeMenuBtn.getBoundingClientRect();addNodeMenu.style.left=`${Math.max(8,Math.min(rect.left,innerWidth-Math.min(420,innerWidth-16)-8))}px`;addNodeMenu.style.top=Math.min(rect.bottom+8,Math.max(8,innerHeight-180))+'px';addNodeMenu.style.maxHeight=Math.max(150,innerHeight-parseFloat(addNodeMenu.style.top)-12)+'px';addNodeMenu.classList.remove('hidden');addNodeMenuBtn.setAttribute('aria-expanded','true');pickerSearch.focus();};
+  addNodeMenu.addEventListener('click',event=>{const button=event.target.closest('[data-add]');if(!button)return;closeAddNodeMenu();addNodeMenuBtn.focus();const type=button.dataset.add;nodeRecents=[type,...nodeRecents.filter(id=>id!==type)].slice(0,8);void chrome.storage.local.set({workflowNodeRecents:nodeRecents}).catch(()=>{});if(type==='text')addTextNote();else addNode(type);});
+  addNodeMenu.addEventListener('keydown',event=>{if(event.key==='Escape'){event.preventDefault();closeAddNodeMenu();addNodeMenuBtn.focus();return;}const buttons=[...pickerList.querySelectorAll('button')];if(event.key==='ArrowDown'||event.key==='ArrowUp'){event.preventDefault();const index=buttons.indexOf(document.activeElement);buttons[(index+(event.key==='ArrowDown'?1:-1)+buttons.length)%buttons.length]?.focus();}if(event.key==='Enter'&&event.target===pickerSearch){event.preventDefault();buttons[0]?.click();}});
   $('#scriptImportBtn').onclick=()=>{$('#scriptModal').classList.remove('hidden');$('#scriptImportStatus').textContent='';$('#scriptInput').focus();};
   $('#checkAllAIBtn').onclick=()=>void refreshHealth(true);void refreshHealth();setInterval(()=>void refreshHealth(),15000);
   void checkForAppUpdate();
@@ -2267,7 +2305,7 @@
   WorkflowLibrary.init({getSelectedPrompt:()=>{const n=nodeById(state.selectedNodeId);return n?{name:n.data.customName||nodeDefs[n.type].title,content:resolveText(n.id)}:null;},onUse:(text,name)=>{if(state.isRunning)throw Error('Dừng workflow trước khi thêm node.');addNode('prompt');const n=state.nodes.at(-1);n.data.text=text;n.data.customName=name;render();scheduleAutoSave();}});
   $('#clearPromptsBtn').onclick=()=>{try{clearCanvasPrompts();}catch(error){setRunStatus(error.message,'error');}};
   $('#masterScriptBtn').onclick=()=>addNode('masterScript');
-  $('#arrangeNodesBtn').onclick=arrangeNodes;
+  $('#arrangeNodesBtn').onclick=()=>arrangeNodes();$('#arrangeLooseBtn').onclick=()=>arrangeNodes({looseOnly:true});
   $('#duplicateSelectionBtn').onclick=()=>{try{pasteNodeBundle(selectedNodeBundle());}catch(error){setRunStatus(error.message,'warn');}};
   $('#runBtn').onclick=onWorkflowRunButtonClick;$('#runOptionsBtn').onclick=openRunOrderModal; $('#saveBtn').onclick=saveState; $('#resetBtn').onclick=resetState;
   $('#workflowExportBtn').onclick=exportWorkflowFile;
@@ -2295,7 +2333,7 @@
   $('#handTool').onclick=()=>{state.handMode=!state.handMode;applyCanvasTransform();$('#handTool').classList.toggle('active',state.handMode);};
   $('#groupTool').onclick=()=>setGroupDrawMode(!state.groupDrawMode);
   $('#referenceBoardBtn').onclick=()=>{const bounds=$('#viewport').getBoundingClientRect();addNode('referenceBoard',Math.max(30,(40-state.panX)/state.zoom),Math.max(40,(bounds.height*.15-state.panY)/state.zoom));};
-  $('#zoomIn').onclick=()=>setZoom(Math.min(2.5,state.zoom*1.15));$('#zoomOut').onclick=()=>setZoom(Math.max(.25,state.zoom/1.15));$('#fitCanvas').onclick=fitCanvas;
+  $('#zoomIn').onclick=()=>setZoom(Math.min(2.5,state.zoom*1.15));$('#zoomOut').onclick=()=>setZoom(Math.max(.25,state.zoom/1.15));$('#fitCanvas').onclick=fitCanvas;$('#nodeDensity').onclick=()=>{state.settings.compactNodes=!state.settings.compactNodes;render();scheduleAutoSave();setRunStatus(state.settings.compactNodes?'Đã bật node gọn. Rê chuột hoặc chọn node để xem nhãn cổng.':'Đã bật node đầy đủ. Dùng Thêm → Sắp xếp node nếu cần.','ok');};
   $('#viewport').addEventListener('contextmenu',openCanvasMenu);
   const trackUndoEdit=event=>{const target=event.target;if(!target.closest('.node,.canvas-note,.timeline-dock,#settingsModal'))return;const owner=target.closest('.node'),title=owner?.querySelector('.node-title')?.textContent||'text note';if(pendingNativeUndoTarget===target){if(lastUndoInput===target&&undoStack.at(-1)?.label===`Edit ${title}`)undoStack.pop();lastUndoInput=null;pendingNativeUndoTarget=null;return;}if(lastUndoInput!==target){createUndoSnapshot(`Edit ${title}`);lastUndoInput=target;}};
   document.addEventListener('input',event=>{trackUndoEdit(event);if(event.target.closest('.node,.canvas-note,.timeline-dock,#settingsModal'))scheduleAutoSave();},true);
@@ -2470,6 +2508,7 @@
     create:async(rows,providers,options)=>{await workflowReady;if(state.isRunning)throw Error('Có workflow đang chạy. Dừng hoặc chờ hoàn tất trước khi áp dụng kế hoạch mới.');return WorkflowCreative.createScenes(rows,providers,options);},
     run:async(ids,signal)=>{if(signal.aborted)throw new DOMException('Đã dừng.','AbortError');if(state.isRunning||autoPlan)throw Error('Có lượt chạy khác. Các node mới đã được giữ để chạy sau.');const targets=ids.filter(id=>['generateImage','generateVideo'].includes(nodeById(id)?.type));if(!targets.length||ids.some(id=>!nodeById(id)))throw Error('Node của kế hoạch không còn đầy đủ. Kiểm tra canvas.');const cancel=()=>{if(autoPlan&&[...autoPlan.ids].every(id=>targets.includes(id)))autoPlan.controller.abort();for(const id of targets)stopGeneration(id);};signal.addEventListener('abort',cancel,{once:true});try{await runAutomatic(targets);if(signal.aborted)throw new DOMException('Đã dừng.','AbortError');const done=targets.filter(id=>nodeById(id)?.data.status==='success').length;const outputs=targets.map(id=>nodeById(id)).filter(n=>n?.data.status==='success'&&n.data.asset?.url).map(n=>({nodeId:n.id,id:n.data.asset.id,kind:n.data.asset.kind,name:n.data.customName||n.data.asset.name||n.data.componentId,url:n.data.asset.url}));return {total:targets.length,done,failed:targets.length-done,outputs};}finally{signal.removeEventListener('abort',cancel);}}
   });
+  window.WorkflowVoice=Object.freeze({open:async()=>{await workflowReady;const existing=state.nodes.find(n=>n.type==='voiceover');if(existing){const el=document.querySelector(`.node[data-id="${CSS.escape(existing.id)}"]`);const r=$('#viewport').getBoundingClientRect();state.panX=r.width/2-(existing.x+(el?.offsetWidth||350)/2)*state.zoom;state.panY=40-existing.y*state.zoom;applyCanvasTransform();scheduleDrawEdges();}else addNode('voiceover');setRunStatus('Lồng tiếng: nhập lời đọc hoặc nối Văn bản → cấu hình OpenAI API trong Thêm → Kết nối AI → bấm Thực hiện.','ok');}});
   const workflowReady=loadState(); detectMuse();applyCanvasTransform();
   if(window.workflowDesktop)window.WorkflowAffiliate=Object.freeze({create:async(input)=>{
     await workflowReady;if(state.isRunning)throw Error('Chờ workflow hiện tại hoàn tất trước khi thêm affiliate.');

@@ -1,3 +1,4 @@
 /* Exercise the same disclosed navigation used by a person before an action. */
-const groups={referenceBoardBtn:'create',creativeToolsBtn:'create',batchManagerBtn:'create',flowStudioBtn:'create',addNodeMenuBtn:'create',batchImagesBtn:'create',scriptImportBtn:'create',masterScriptBtn:'create',storyDashboardBtn:'create',promptLibraryBtn:'library',mediaLibraryBtn:'library',saveBtn:'workflow',workflowExportBtn:'workflow',workflowImportBtn:'workflow',arrangeNodesBtn:'workflow',duplicateSelectionBtn:'workflow',runOptionsBtn:'workflow',settingsBtn:'settings',packageUpdateBtn:'update',dataUpdateBtn:'update',clearPromptsBtn:'cleanup',resetBtn:'cleanup'};
-exports.toolbarAction=async(page,selector)=>{const button=page.locator(selector);if(!await button.isVisible()){const group=groups[selector.slice(1)];if(!group)throw Error('Unknown toolbar action '+selector);await page.click('#toolbar-'+group);}await button.click();};
+// All secondary commands now share the single More menu.
+
+exports.toolbarAction=async(page,selector)=>{const button=page.locator(selector);if(!await button.isVisible()){await page.click('#toolbar-create');}await button.click();};

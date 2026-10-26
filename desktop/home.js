@@ -11,6 +11,7 @@
   const deletedProjects = [];
   let deleting = false;
   let opening = false;
+  let refreshRevision = 0;
 
   function status(message = '', error = false) {
     $('libraryStatus').textContent = message;
@@ -28,8 +29,11 @@
   }
 
   async function refresh() {
+    const revision = ++refreshRevision;
     try {
-      projects = await api.listProjects();
+      const latest = await api.listProjects();
+      if(revision !== refreshRevision)return;
+      projects = latest;
       if (!Array.isArray(projects)) throw new Error('Không đọc được danh sách dự án.');
       status();
       render();
@@ -172,7 +176,11 @@
     $('allProjects').click();
     document.querySelector('.project-library').scrollIntoView({block:'start', behavior:'smooth'});
   };
-  $('aiAppsChat').onclick = async () => {
+  let appTool = 'chat';
+  function pickProject(tool) {appTool=tool;$('appProjectTitle').textContent=tool==='voiceover'?'Lồng tiếng trong canvas':'Mở Chat AI';$('appProjectDescription').textContent=tool==='voiceover'?'Lồng tiếng hiện có trong canvas bằng OpenAI API: Thêm node → Lồng tiếng, nhập lời đọc hoặc nối Văn bản, cấu hình khóa OpenAI trong Kết nối AI, rồi bấm Thực hiện. Dịch vụ có thể tính phí. Ứng dụng lồng tiếng riêng vẫn chờ tích hợp.':'Chọn dự án để trò chuyện và giao việc cho AI. Ảnh, video và node được giữ trong đúng dự án đó.';$('appProjectOpen').textContent=tool==='voiceover'?'Mở canvas lồng tiếng':'Mở Chat AI';$('appProjectNew').textContent=tool==='voiceover'?'＋ Dự án lồng tiếng':'＋ Dự án Chat mới';void selectProject();}
+  $('aiAppsVoice').onclick = ()=>pickProject('voiceover');
+  $('aiAppsChat').onclick = ()=>pickProject('chat');
+  async function selectProject() {
     $('appProjectError').textContent = '';
     await refresh();
     const select = $('appProjectSelect');
@@ -187,7 +195,7 @@
     else select.append(new Option('Chưa có dự án sẵn sàng', ''));
     $('appProjectOpen').disabled = !first;
     $('appProjectDialog').showModal();
-  };
+  }
   $('appProjectCancel').onclick = () => { if (!launchingApp) $('appProjectDialog').close(); };
   async function launchChat(createNew = false) {
     if (launchingApp) return;
@@ -195,9 +203,9 @@
     $('appProjectError').textContent = '';
     for (const id of ['appProjectCancel', 'appProjectNew', 'appProjectOpen']) $(id).disabled = true;
     try {
-      const id = createNew ? (await api.createProject('Chat AI')).id : $('appProjectSelect').value;
+      const id = createNew ? (await api.createProject(appTool==='voiceover'?'Lồng tiếng':'Chat AI')).id : $('appProjectSelect').value;
       if (!id) throw Error('Chọn dự án hoặc tạo một dự án Chat mới.');
-      await api.openProject(id, 'chat');
+      await api.openProject(id, appTool);
       $('appProjectDialog').close();
     } catch (error) {
       $('appProjectError').textContent = displayError(error);
@@ -317,6 +325,8 @@
     status('Không kết nối được ứng dụng desktop. Hãy đóng cửa sổ và mở lại Workflow.', true);
   } else {
     void refresh();
+    let projectRefreshTimer;
+    window.workflowDesktop.onEvent(event=>{if(event.type==='projects'){clearTimeout(projectRefreshTimer);projectRefreshTimer=setTimeout(()=>void refresh(),60);}});
     window.addEventListener('focus', () => { if (!document.querySelector('dialog[open]') && !opening && !deleting) void refresh(); });
   }
 })();
