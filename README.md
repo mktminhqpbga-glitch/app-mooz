@@ -1,4 +1,7 @@
-# Workflow · MuseFlow 0.40.0
+# Workflow · MuseFlow 0.41.0
+
+**0.41.0 · Đăng qua Muse:** thành phẩm đã duyệt → Muse tự viết content có icon theo bảng **Muse · Content & lịch** → đăng đúng Page/kênh đã chọn. Gửi ngay, dùng giờ mặc định Việt Nam hoặc hẹn giờ riêng; chốt cấu hình theo bài, giữ tệp gốc và phản hồi, chặn gửi trùng. Cần kết nối tài khoản bên Muse. [Cách dùng và giới hạn](docs/MUSE-PUBLISHING.md).
+
 
 Bản **0.40.0** cải thiện thao tác hằng ngày: Thêm node/Kịch bản tổng luôn thấy; menu tìm kiếm tiếng Việt và mô tả; đặt node tránh chồng; xếp cụm/lưới, bản đồ nhỏ và chế độ gọn; cỡ chữ lớn và giao diện sáng ở thư viện/Đăng bài. Xem [hướng dẫn giao diện](docs/INTERFACE.md). Tiện ích Workflow Connect vẫn **1.0.0**, không cần cài lại chỉ vì nâng app này.
 

@@ -11,6 +11,7 @@ const {PostingStore}=require('./posting-store.cjs');
 const {FacebookPublisher}=require('./facebook-publisher.cjs');
 const {PostingService}=require('./posting-service.cjs');
 const {PostingAI}=require('./posting-ai.cjs');
+const {MusePublishing}=require('./muse-publishing.cjs');
 const {PostingOAuth}=require('./posting-oauth.cjs');
 const {BrandStore}=require('./brand-store.cjs');
 const {ChatStore}=require('./chat-store.cjs');
@@ -169,6 +170,9 @@ ipcMain.handle('workflow:call',async(event,method,data={})=>{
    if(!ctx.posting)throw Error('Mở ứng dụng Đăng bài trước.');
    if(method==='posting.snapshot')return posting.snapshot();
    if(method==='posting.tabs')return postingAI.tabs();
+   if(method==='posting.muse.tabs')return posting.publisher.muse.tabs();
+   if(method==='posting.muse.connect')return posting.publisher.connectMuse(data);
+   if(method==='posting.muse.confirm')return posting.confirmMuse(data.id,data.confirmed);
    if(method==='posting.openAI')return ai.open(data.provider||'chatgpt');
    if(method==='posting.facebook.check')return facebookLogin.check(data.url);
    if(method==='posting.facebook.login')return facebookLogin.login(data.url);
@@ -270,7 +274,7 @@ app.whenReady().then(async()=>{
   brands=new BrandStore(path.join(app.getPath('userData'),'brands'));await brands.init();chats=new ChatStore(path.join(app.getPath('userData'),'chats'));
   facebookPages=new FacebookPages(publisher);facebookLogin=new FacebookLogin({fetch:net.fetch.bind(net),openExternal:url=>shell.openExternal(url),pages:facebookPages});
   postingOAuth=new PostingOAuth({fetch:net.fetch.bind(net),openExternal:url=>shell.openExternal(url)});
-  postingAI=new PostingAI({ai,relay,store:postingStore});posting=new PostingService({store:postingStore,publisher,brands,ask:(...args)=>postingAI.ask(...args),notify:()=>notify({type:'posting'})});await posting.init();posting.start();
+  postingAI=new PostingAI({ai,relay,store:postingStore});publisher.muse=new MusePublishing({client:postingAI});posting=new PostingService({store:postingStore,publisher,brands,ask:(...args)=>postingAI.ask(...args),notify:()=>notify({type:'posting'})});await posting.init();posting.start();
   affiliate=new AffiliateService({root:path.join(app.getPath('userData'),'affiliate'),ai:postingAI,fetchImpl:net.fetch.bind(net),notify:()=>notify({type:'affiliate'}),decodeImage:bytes=>{let image=nativeImage.createFromBuffer(bytes);if(image.isEmpty())throw Error('Không giải mã được ảnh sản phẩm.');const {width,height}=image.getSize();if(width*height>25000000)throw Error('Ảnh sản phẩm quá lớn.');const scale=Math.min(1,1600/Math.max(width,height));if(scale<1)image=image.resize({width:Math.round(width*scale),height:Math.round(height*scale),quality:'best'});const jpeg=image.toJPEG(90);if(jpeg.length>4*1024*1024)throw Error('Ảnh sản phẩm sau thu nhỏ vẫn quá lớn.');return 'data:image/jpeg;base64,'+jpeg.toString('base64');}});await affiliate.init();
   const signed=app.isPackaged&&process.platform==='darwin'&&await isDeveloperIDSigned(path.dirname(path.dirname(path.dirname(process.execPath))));
   updater=new UpdateService({version,packaged:app.isPackaged,platform:process.platform,signed,engine:signed?require('electron-updater').autoUpdater:null,fetchRelease:()=>latestPublicRelease(net.fetch.bind(net)),

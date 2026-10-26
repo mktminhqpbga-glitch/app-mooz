@@ -25,6 +25,7 @@ function event(job,status,message='',code=''){
 function revisionSource(job){const value=String(job.sourceKey||job.id),prefix=String(job.projectId)+':';return value.startsWith(prefix)?prefix+value.slice(prefix.length).split(':')[0]:value;}
 function summary(job){
  const {sourceKey,sourcePrompt,mediaHash,internal,dispatch,...safe}=job;
+ safe.museDispatch=!!job.internal?.museRequest;
  safe.revisionGroup=job.sourceKey?require('node:crypto').createHash('sha256').update(revisionSource(job)).digest('hex').slice(0,24):job.id;
  safe.media=(job.media||[]).map(({file,...media})=>media);
  return safe;

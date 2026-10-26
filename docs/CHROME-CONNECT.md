@@ -1,4 +1,4 @@
-# Workflow Connect 1.0.0 · App 0.40.0
+# Workflow Connect 1.0.0 · App 0.41.0
 
 ## Tiện ích chỉ kết nối Chrome
 
@@ -10,7 +10,7 @@ Trong app, bấm Kết nối Chrome, sao chép mã và dán vào tiện ích. Gi
 
 ## App và tiện ích có phiên bản riêng
 
-App 0.40.0 dùng Workflow Connect 1.0.0. Hai số phiên bản không cần trùng. Giao thức kết nối là 1; kiểm tra phiên bản giao thức và khả năng của từng bộ nối AI thay vì so số phiên bản app/tiện ích. App 0.39.x, 0.40.x và các bản sau giữ giao thức phù hợp có thể dùng chung tiện ích.
+App 0.41.0 dùng Workflow Connect 1.0.0. Hai số phiên bản không cần trùng. Giao thức kết nối là 1; kiểm tra phiên bản giao thức và khả năng của từng bộ nối AI thay vì so số phiên bản app/tiện ích. App 0.39.x, 0.40.x, 0.41.x và các bản sau giữ giao thức phù hợp có thể dùng chung tiện ích.
 
 Không thể cam kết mọi bản app cũ hoặc giao thức tương lai đều tương thích. Bản quá cũ thiếu giao thức nhận kết quả cần nâng app; bộ nối còn lưu trên tab có thể cần tải lại tab. App không tự gửi lại prompt để khắc phục mất kết nối.
 
