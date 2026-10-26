@@ -1,4 +1,6 @@
-# Workflow · MuseFlow 0.41.0
+# Workflow · MuseFlow 0.41.1
+
+**0.41.1 · Tổng hợp video:** gom các clip kết quả hoàn tất, đổi thứ tự rồi ghép thành một MP4 dài để tải hoặc đưa sang Đăng bài. Bỏ tự giảm xuống 1280px/24fps: clip cùng định dạng được ghép trực tiếp, clip khác định dạng dùng khung và fps của clip đầu. Nhạc/lời đọc là tùy chọn. [Cách dùng](docs/INTERFACE.md). [Đề xuất giao diện mới — chưa áp dụng](designs/README.md).
 
 **0.41.0 · Đăng qua Muse:** thành phẩm đã duyệt → Muse tự viết content có icon theo bảng **Muse · Content & lịch** → đăng đúng Page/kênh đã chọn. Gửi ngay, dùng giờ mặc định Việt Nam hoặc hẹn giờ riêng; chốt cấu hình theo bài, giữ tệp gốc và phản hồi, chặn gửi trùng. Cần kết nối tài khoản bên Muse. [Cách dùng và giới hạn](docs/MUSE-PUBLISHING.md).
 

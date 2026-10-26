@@ -25,3 +25,9 @@ Nếu mất tab/phản hồi sau khi bắt đầu gửi, trạng thái là Cần
 - Thiết lập content/lịch lưu trên máy. Định tuyến tài khoản dùng kho mã hóa hệ điều hành như các kết nối đăng khác; nếu hệ điều hành không hỗ trợ, giao diện ghi chỉ giữ trong phiên. Tiện ích Workflow Connect vẫn 1.0.0, không cần cài lại cho tính năng này.
 
 Đã kiểm thử quy tắc thời gian Việt Nam, chốt hướng dẫn, bản gốc/preview, trạng thái không chắc chắn, nhiều nơi đăng cùng chat và xác nhận thủ công. Electron thật chạy đường UI với MP4 thật và giao diện Muse mô phỏng. Chưa đăng lên tài khoản xã hội thật hoặc xác minh công cụ đăng trên tài khoản Muse của người dùng.
+
+## Phần “AI viết content” chọn gì?
+
+Đây là công cụ **soạn content trước**, tách khỏi gửi Muse tự viết và đăng. Ô tên ChatGPT/Gemini/Muse chọn nhà cung cấp cần mở; **Mở AI** mở trang đó. Ô **Chọn tab AI…** chọn cuộc chat cụ thể đã đăng nhập, nút ↻ tải lại danh sách. Phần này không chọn Page và chưa đăng bài.
+
+Nếu dùng **Muse tự viết từ ảnh/video rồi đăng**, không cần chọn ChatGPT hoặc cuộc chat viết trước ở đây. Chọn nơi đăng bằng **Đăng qua Muse**, rồi cấu hình **Muse · Content & lịch**. Với nhiều clip, ghép ở **Tổng hợp video** trước rồi thêm video hoàn chỉnh vào hàng chờ.

@@ -17,3 +17,15 @@ Giao diện → Sáng / Tối / Theo hệ thống và Giao diện lớn (+17%) �
 Tạo, đổi tên, xóa/hoàn tác, khôi phục và lưu dự án qua API gửi thông báo để thư viện tự làm mới. Kết quả đọc danh sách cũ không được ghi đè kết quả mới hơn. Cài đặt giao diện nằm riêng, không ghi token/khóa AI và không làm thay dữ liệu dự án.
 
 Đã kiểm tra bằng Electron thật: danh sách từ API không tải lại, mở Lồng tiếng hiện có, nhiều lần thêm node không đè nhau, tên menu/card, tìm không dấu, 37 node rời thành lưới, chỉ xếp node rời giữ bố cục, bản đồ, zoom tới giới hạn, đổi giao diện giữa các cửa sổ và khôi phục sau mở lại app. Không gửi yêu cầu AI hoặc bài đăng thật trong kiểm thử UX.
+
+## Tổng hợp video · 0.41.1
+
+Thêm node **Tổng hợp video** → **Gom video kết quả** → kiểm tra **Thứ tự ghép** → **Ghép video**. Kết quả là một MP4 dài; các dòng trong danh sách chỉ là thứ tự clip nguồn. Có thể đưa lên/xuống hoặc bỏ từng clip. Nút gom mặc định chỉ chọn video kết quả hoàn tất, lấy đầu ra hậu kỳ cuối cùng và không tự gom video đầu vào tham chiếu. Nếu đã chọn clip trong node dòng thời gian, thứ tự đó được ưu tiên; vẫn nối tay các cổng Video được.
+
+Video H.264 cùng định dạng (có AAC hoặc không có âm thanh) được ghép trực tiếp không mã hóa lại. Nếu cần mã hóa do khác định dạng, giữ kích thước và fps của clip đầu; clip khác tỷ lệ được đặt vừa bằng viền đệm, không kéo méo/cắt hình. Không tự áp mức 1280px/24fps cho ghép video. Cần đổi thứ tự clip đầu nếu muốn lấy khung của clip khác. Tệp thực tế vẫn phụ thuộc chất lượng video nguồn; không khôi phục chi tiết đã mất trong nguồn.
+
+**Nhạc / lời đọc bổ sung** nằm trong mục tùy chọn; không cần tải nhạc để ghép video. Xem kích thước/thời lượng thật dưới video hoàn chỉnh. Preview hiển thị vừa thẻ không thay kích thước tệp. **Thêm vào hàng chờ** đưa một video hoàn chỉnh sang Đăng bài; Muse nhận tệp này, không nhận từng preview. Thay nguồn/thứ tự sẽ khóa tải/đăng kết quả cũ đến khi ghép lại.
+
+Kiểm thử bằng FFmpeg thật trong Electron: 9 clip 900×1600, 30fps, không tiếng → một MP4 1,8 giây giữ kích thước, đúng thứ tự màu và không mã hóa lại; thử thêm clip khác kích thước/fps/có tiếng để kiểm tra nhánh mã hóa. Một thành phẩm tạo đúng một bản nháp Đăng bài với một tệp output gốc. Không gửi AI hoặc đăng bài thật.
+
+Đề xuất thiết kế hiện đại ở [designs](../designs/README.md) là bản xem thử riêng. Chưa đưa giao diện tổng thể mới vào runtime hay gói cài đặt.

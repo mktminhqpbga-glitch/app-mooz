@@ -7,7 +7,7 @@
  ['generateText','Tạo văn bản','text','Viết hoặc phân tích bằng AI đã chọn; có thể gửi ảnh và video.'],
  ['generateImage','Tạo ảnh','image','Tạo ảnh từ yêu cầu và các ảnh tham chiếu đã nối.'],
  ['generateVideo','Tạo video','video','Tạo chuyển động từ yêu cầu, ảnh hoặc video tham chiếu.'],
- ['finalOutput','Xuất video cuối','video','Ghép các video và nhạc/lời đọc để xuất MP4 hoàn chỉnh.'],
+ ['finalOutput','Tổng hợp video','video','Nối các video kết quả theo thứ tự thành một video dài để tải hoặc đưa sang Đăng bài.'],
  ['negativePrompt','Loại trừ','text','Liệt kê chi tiết không muốn xuất hiện trong kết quả AI.'],
  ['textAppend','Nối thêm văn bản','text','Thêm đoạn bạn nhập vào sau một văn bản đầu vào.'],
  ['textConcat','Gộp nhiều văn bản','text','Nối nhiều nguồn văn bản theo dấu phân cách; không gọi AI.'],
@@ -45,6 +45,7 @@
  ['workflowTemplate','Mẫu workflow','control','Chọn mẫu đã lưu hoặc lưu nhóm node thành mẫu để dùng lại.']
  ];
  const entries=Object.fromEntries(rows.map(([id,title,group,description])=>[id,{id,title,group,description,...groups[group]}]));
+ entries.videoAssembly.internal=true;
  const common=['masterScript','prompt','generateText','generateImage','generateVideo','finalOutput'];
  const fold=value=>String(value).normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').replace(/Đ/g,'D').toLowerCase();
  const api={entries,groups,common,match:(entry,query)=>fold(entry.title+' '+entry.description+' '+entry.id).includes(fold(query).trim())};
