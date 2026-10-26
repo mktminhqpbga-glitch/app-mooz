@@ -14,13 +14,25 @@ class AffiliateService{
  async snapshot(){return {paused:this.paused,busy:!!this.working,error:this.lastError||'',jobs:(await this.all()).filter(j=>!j.archived).map(j=>({id:j.id,title:j.product?.title||j.title||'Sản phẩm mới',status:j.status,error:j.error,recoveryRequired:!!j.recoveryRequired,createdAt:j.createdAt,updatedAt:j.updatedAt,projectId:j.projectId,sceneCount:j.story?.scenes?.length||0}))};}
  async save(id,patch,expectedStatus){const previous=this.mutations.get(id)||Promise.resolve();const next=previous.catch(()=>{}).then(async()=>{const job=await this.get(id);if(expectedStatus&&job.status!==expectedStatus)return null;const {id:_,...data}={...job,...patch,updatedAt:new Date(Math.max(Date.now(),(Date.parse(job.updatedAt)||0)+1)).toISOString()};await this.store.writeStorage(id,{affiliateJob:data});this.notify();return {id,...data};});this.mutations.set(id,next);try{return await next;}finally{if(this.mutations.get(id)===next)this.mutations.delete(id);}}
 
- async create({url,target}){
+ // Kịch bản của người dùng: tách thành cảnh, không gọi AI. Workflow canvas
+ // chỉ nhận 3–5 cảnh, nên dưới 3 cảnh thì báo lỗi, trên 5 cảnh lấy 5 đầu.
+ static parseMyScript(text,imageCount){
+  const raw=String(text||'').replace(/\r\n?/g,'\n').trim();if(!raw)throw Error('Dán kịch bản của bạn trước khi tạo.');
+  let blocks=raw.split(/\n\s*(?=CẢNH\s+\d+|Canh\s+\d+|Scene\s+\d+)/i).map(s=>s.trim()).filter(Boolean);
+  if(blocks.length<2)blocks=raw.split(/\n\s*\n+/).map(s=>s.trim()).filter(Boolean);
+  if(blocks.length<3)throw Error('Kịch bản cần ít nhất 3 cảnh để tạo workflow (mỗi cảnh cách nhau bằng dòng trống hoặc bắt đầu bằng CẢNH 1, CẢNH 2…).');
+  const capped=blocks.slice(0,5);
+  return capped.map((block,i)=>{const first=block.split('\n')[0].trim().replace(/^(CẢNH|Canh|Scene)\s+\d+\s*[:\-–]?\s*/i,'');const title=(first||('Cảnh '+(i+1))).slice(0,80);return {id:i+1,title,narration:block.slice(0,2000),visual_prompt:block.slice(0,2000),seconds:10,image_index:Math.min(i,Math.max(0,imageCount-1)),fact_ids:[]};});
+ }
+ async create({url,target,scriptMode,scriptText}){
   const action=async()=>{
    if(this.closed)throw Error('Ứng dụng đang đóng.');if(typeof url!=='string'||url.length>4096)throw Error('Link cần tối đa 4096 ký tự.');const affiliate=url.trim();checkedURL(affiliate);
    const jobs=await this.all();if(jobs.filter(j=>j.status==='queued'||ACTIVE.has(j.status)).length>=50)throw Error('Hàng chờ affiliate tối đa 50 tác vụ.');if(jobs.length>=200)throw Error('Đã đạt 200 tác vụ lưu cục bộ. Xuất dữ liệu trước khi tạo thêm.');
-   const tab=(await this.ai.tabs()).find(t=>t.id===target?.id&&t.transport===target?.transport);if(!tab)throw Error('Chọn cuộc trò chuyện AI đang mở.');
+   const mine=scriptMode==='mine';let tab=null,script=null;
+   if(mine){if(typeof scriptText!=='string'||!scriptText.trim()||scriptText.length>50000)throw Error('Kịch bản của bạn cần từ 1 đến 50.000 ký tự.');script=scriptText.trim();}
+   else{tab=(await this.ai.tabs()).find(t=>t.id===target?.id&&t.transport===target?.transport);if(!tab)throw Error('Chọn cuộc trò chuyện AI đang mở.');}
    const p=await this.store.create('Affiliate · '+new URL(affiliate).hostname),now=new Date().toISOString();
-   await this.store.writeStorage(p.id,{affiliateJob:{affiliate,target:{id:tab.id,transport:tab.transport,url:tab.url},status:'queued',title:'Đang chờ đọc sản phẩm',createdAt:now,updatedAt:now,error:''}});this.paused=false;this.notify();void this.tick();return {id:p.id};
+   await this.store.writeStorage(p.id,{affiliateJob:{affiliate,scriptMode:mine?'mine':'ai',scriptText:script,target:tab?{id:tab.id,transport:tab.transport,url:tab.url}:null,status:'queued',title:'Đang chờ đọc sản phẩm',createdAt:now,updatedAt:now,error:''}});this.paused=false;this.notify();void this.tick();return {id:p.id};
   };
   const result=this.creating.catch(()=>{}).then(action);this.creating=result;return result;
  }
@@ -37,6 +49,12 @@ class AffiliateService{
     for(const url of product.imageURLs){if(signal.aborted)throw signal.reason;try{const image=await download(url,{kind:'image',fetchImpl:this.fetchImpl,signal});bytes+=image.bytes.length;if(bytes>20*1024*1024)break;const data=await this.decodeImage(image.bytes),match=/^data:image\/(?:jpeg|png);base64,([A-Za-z0-9+/=]+)$/.exec(data);if(!match)throw Error('Không giải mã được ảnh sản phẩm.');const decoded=Buffer.from(match[1],'base64');if(!decoded.length||decoded.length>4*1024*1024)throw Error('Ảnh sau xử lý vượt giới hạn.');const index=product.images.length;await fs.writeFile(path.join(await this.store.existingDirectory(next.id),'image-'+index+'.jpg'),decoded,{flag:'wx',mode:0o600});product.images.push('workflow://app/affiliate-media/'+next.id+'/'+index);}catch(error){if(signal.aborted)throw error;}}
     if(!product.images.length)throw Error('Không tải/giải mã được ảnh sản phẩm. Chưa gọi AI. Kiểm tra quyền đọc CDN Shopee.');
     await this.save(next.id,{product});
+    if(next.scriptMode==='mine'){
+     const scenes=AffiliateService.parseMyScript(next.scriptText,product.images.length);
+     const story={profile:{category:'',audience:'',facts:[],unknowns:[]},plan:{angle:'Kịch bản của bạn',situation:'',hook:''},scenes,review:{approved:true,summary:'Kịch bản do bạn cung cấp, đã tách thành '+scenes.length+' cảnh.'}};
+     const caption=scenes.map(s=>s.narration).join('\n\n')+'\n\n'+next.affiliate;
+     await this.save(next.id,{status:'ready',story,caption,error:''});return;
+    }
     const target={...next.target};const alias=this.aliases.get(target.transport+':'+target.id+':'+target.url);if(alias)target.url=alias;
     const ask=async prompt=>{
      if(signal.aborted)throw signal.reason;
