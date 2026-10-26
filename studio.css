@@ -44,3 +44,16 @@
 
 .workflow-chat-settings .workflow-chat-brand{display:grid;gap:5px;margin-top:10px;padding-top:9px;border-top:1px solid #3b4b64}.workflow-chat-brand select{width:100%;min-width:0}
 .compact-generation .node-delivery-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:5px 0}.compact-generation .node-delivery-actions>button{min-width:0;margin:0;padding:7px 5px;font-size:10.5px;line-height:1.4;min-height:31px}.compact-generation .node-delivery-actions.single>button,.node-delivery-actions>small{grid-column:1/-1}.posting-result-hint,.video-duration-summary{display:block;font-size:10px;line-height:1.4;color:#b4bed1;white-space:normal}.compact-generation>video,.compact-generation>.image-link img{max-height:160px}
+
+/* Sidebar trái là menu chính, thay cho quick actions cũ. */
+.studio-sidebar-groups{display:grid;gap:16px;min-height:0;overflow-y:auto;padding-bottom:10px}
+.studio-sidebar-group h2{font-size:9px;letter-spacing:1.2px;color:#8d9cb6;font-weight:600;margin:0 10px 6px}
+.studio-sidebar-group button{min-height:36px;padding:8px 11px;font-size:12px;white-space:normal}
+.studio-sidebar-home button{background:#b6a4ff14;color:#cfc2ff;border-color:#b6a4ff28}
+.studio-sidebar .studio-quick-actions{border-top:1px solid #2b2f3b;padding-top:12px;margin-bottom:0}
+/* Thanh trên gọn: trạng thái AI / phiên bản ở cùng hàng, không còn tiêu đề riêng. */
+.studio-status-cluster{display:flex;gap:8px;align-items:center;flex:none;min-width:0;overflow:hidden}
+.studio-status-cluster .ai-health-chip{white-space:nowrap}
+.studio-status-cluster .update-notice{white-space:nowrap;font-size:10px}
+.studio-spacer{flex:1;min-width:12px}
+.studio-layout .statusbar:has(#runStatus:empty){height:0;min-height:0;padding-top:0;padding-bottom:0;overflow:hidden;border-bottom:0}

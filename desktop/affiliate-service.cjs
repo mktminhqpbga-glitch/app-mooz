@@ -14,13 +14,14 @@ class AffiliateService{
  async snapshot(){return {paused:this.paused,busy:!!this.working,error:this.lastError||'',jobs:(await this.all()).filter(j=>!j.archived).map(j=>({id:j.id,title:j.product?.title||j.title||'Sản phẩm mới',status:j.status,error:j.error,recoveryRequired:!!j.recoveryRequired,createdAt:j.createdAt,updatedAt:j.updatedAt,projectId:j.projectId,sceneCount:j.story?.scenes?.length||0}))};}
  async save(id,patch,expectedStatus){const previous=this.mutations.get(id)||Promise.resolve();const next=previous.catch(()=>{}).then(async()=>{const job=await this.get(id);if(expectedStatus&&job.status!==expectedStatus)return null;const {id:_,...data}={...job,...patch,updatedAt:new Date(Math.max(Date.now(),(Date.parse(job.updatedAt)||0)+1)).toISOString()};await this.store.writeStorage(id,{affiliateJob:data});this.notify();return {id,...data};});this.mutations.set(id,next);try{return await next;}finally{if(this.mutations.get(id)===next)this.mutations.delete(id);}}
 
- async create({url,target,prepareOnly=false}){
+ static parseMyScript(text,imageCount){return ownStory({title:'Sản phẩm',images:Array.from({length:Math.max(1,imageCount)},()=>null)},text,true).scenes;}
+ async create({url,target,prepareOnly=false,scriptMode,scriptText}){
   const action=async()=>{
    if(this.closed)throw Error('Ứng dụng đang đóng.');if(typeof url!=='string'||url.length>4096)throw Error('Link cần tối đa 4096 ký tự.');const affiliate=url.trim();checkedURL(affiliate);
    const jobs=await this.all();if(jobs.filter(j=>j.status==='queued'||ACTIVE.has(j.status)).length>=50)throw Error('Hàng chờ affiliate tối đa 50 tác vụ.');if(jobs.length>=200)throw Error('Đã đạt 200 tác vụ lưu cục bộ. Xuất dữ liệu trước khi tạo thêm.');
-   const tab=prepareOnly?null:(await this.ai.tabs()).find(t=>t.id===target?.id&&t.transport===target?.transport);if(!prepareOnly&&!tab)throw Error('Chọn cuộc trò chuyện AI đang mở.');
+   const mine=scriptMode==='mine';if(mine)ownStory({title:'Sản phẩm',images:[null]},scriptText,true);const tab=prepareOnly||mine?null:(await this.ai.tabs()).find(t=>t.id===target?.id&&t.transport===target?.transport);if(!prepareOnly&&!mine&&!tab)throw Error('Chọn cuộc trò chuyện AI đang mở.');
    const p=await this.store.create('Affiliate · '+new URL(affiliate).hostname),now=new Date().toISOString();
-   await this.store.writeStorage(p.id,{affiliateJob:{affiliate,prepareOnly:prepareOnly===true,target:tab?{id:tab.id,transport:tab.transport,url:tab.url}:null,status:'queued',title:'Đang chờ đọc sản phẩm',createdAt:now,updatedAt:now,error:''}});this.paused=false;this.notify();void this.tick();return {id:p.id};
+   await this.store.writeStorage(p.id,{affiliateJob:{affiliate,prepareOnly:prepareOnly===true,...(mine?{mode:'own',script:scriptText,confirmed:true}:{}),target:tab?{id:tab.id,transport:tab.transport,url:tab.url}:null,status:'queued',title:'Đang chờ đọc sản phẩm',createdAt:now,updatedAt:now,error:''}});this.paused=false;this.notify();void this.tick();return {id:p.id};
   };
   const result=this.creating.catch(()=>{}).then(action);this.creating=result;return result;
  }
@@ -45,7 +46,7 @@ class AffiliateService{
     if(!product.images.length)throw Error('Không tải/giải mã được ảnh sản phẩm. Chưa gọi AI. Kiểm tra quyền đọc CDN Shopee.');
     await this.save(next.id,{product});}
     if(next.prepareOnly){await this.save(next.id,{status:'sourced',error:''});return;}
-    if(next.mode==='own'){const story=ownStory(product,next.script,next.confirmed),caption=story.scenes.map(s=>s.narration).join('\n\n')+'\n\nCó liên kết tiếp thị\n'+next.affiliate;await this.save(next.id,{status:'ready',story,caption,error:''});return;}
+    if(next.mode==='own'||next.scriptMode==='mine'){const story=ownStory(product,next.script||next.scriptText,next.confirmed||next.scriptMode==='mine'),caption=story.scenes.map(s=>s.narration).join('\n\n')+'\n\nCó liên kết tiếp thị\n'+next.affiliate;await this.save(next.id,{status:'ready',story,caption,error:''});return;}
     const target={...next.target};const alias=this.aliases.get(target.transport+':'+target.id+':'+target.url);if(alias)target.url=alias;
     const ask=async prompt=>{
      if(signal.aborted)throw signal.reason;

@@ -85,3 +85,6 @@ test('staged AI generation receives reference script as context and keeps all fo
  for(let i=0;i<300&&(await service.get(id)).status!=='sourced';i++)await new Promise(r=>setTimeout(r,5));
  await service.generate({id,mode:'auto',reference:'Mở bằng câu hỏi, rồi soi chi tiết.',target:{id:1,transport:'native'}});assert.equal((await done(service,id)).status,'ready');assert.equal(seen.length,4);assert.ok(seen[1].includes('Mở bằng câu hỏi, rồi soi chi tiết.'));
 });
+test('legacy own-script API keeps scenes beyond five and supports numbered headings',async t=>{
+ const {service,calls}=await fixture(t),script=Array.from({length:6},(_,i)=>'CẢNH '+(i+1)+': Lời đọc nguyên văn '+(i+1)).join('\n'),{id}=await service.create({url:affiliate,scriptMode:'mine',scriptText:script}),job=await done(service,id);assert.equal(job.status,'ready',job.error);assert.equal(job.story.scenes.length,6);assert.equal(job.story.scenes.at(-1).narration,'CẢNH 6: Lời đọc nguyên văn 6');assert.equal(calls(),0);
+});

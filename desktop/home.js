@@ -170,7 +170,7 @@
   };
   let launchingApp = false;
   $('aiAppsAffiliate').onclick=()=>void window.workflowDesktop.call('affiliate.open').catch(error=>status(displayError(error),true));
-  $('aiAppsPosting').onclick=()=>void window.workflowDesktop.call('posting.open').catch(error=>status(displayError(error),true));
+  $('aiAppsHubPosting').onclick=()=>void window.workflowDesktop.call('posting.open',{view:'overview'}).catch(error=>status(displayError(error),true));
   $('aiAppsWorkflow').onclick = () => {
     $('allProjects').click();
     document.querySelector('.project-library').scrollIntoView({block:'start', behavior:'smooth'});
