@@ -47,3 +47,8 @@ Theo phản hồi màu mới, **Đen tím** là hướng thiết kế ưu tiên;
 | P1.8 | Danh mục menu/node qua unit/UX; bấm đổi tên hiện tiếng Việt; Enter thêm Ghi chú có placeholder tiếng Việt |
 
 Các dòng trên dùng chung bộ kiểm thử đã nêu, không phải 8 bộ kiểm thử độc lập. Giao diện đã được xem bằng ảnh chụp Electron thật, gồm theme Đen tím; preview thiết kế được cập nhật cùng hướng màu. Phiên bản ứng dụng được nâng thành 0.45.0 để phân biệt bộ cài mới; tiện ích Workflow Connect vẫn 1.0.0. Kiểm tra trạng thái đóng gói tại GitHub Actions của repo trước khi tải artifact.
+
+
+## Kiểm thử đóng gói Mac 0.45.0
+
+Lần chạy đầu trên Mac phát hiện điều kiện chạy đua khi nhập workflow: node đã render nhưng app chờ lưu tệp xong mới Fit, nên nút Tổng hợp video có thể nằm sau thanh desktop. Đã tái hiện bằng cách giữ thao tác ghi tệp chưa hoàn tất, sửa để Fit ngay khi render, và giữ nguyên góc nhìn cũ khi nhập/lưu bị lỗi. Kiểm thử tổng hợp video kiểm tra vị trí và hit-test của nút trước khi thả bước lưu chậm; không dùng force-click để bỏ qua lớp che.

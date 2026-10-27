@@ -2241,12 +2241,12 @@
     catch(error){setRunStatus(`Could not import workflow: ${error?.message||String(error)}`,'error');return;}
     if(!window.confirm('Nhập workflow này sẽ thay khung vẽ hiện tại. Bạn muốn tiếp tục?'))return;
     createUndoSnapshot('Import workflow',{preserveRuntime:false});
-    const previous={nodes:state.nodes,edges:state.edges,groups:state.groups,notes:state.notes,settings:state.settings};
+    const previous={nodes:state.nodes,edges:state.edges,groups:state.groups,notes:state.notes,settings:state.settings,view:{zoom:state.zoom,panX:state.panX,panY:state.panY}};
     try{
       state.nodes=workflow.nodes;state.edges=workflow.edges;state.groups=Array.isArray(workflow.groups)?workflow.groups:[];state.notes=Array.isArray(workflow.notes)?workflow.notes:[];state.settings=workflow.settings&&typeof workflow.settings==='object'?workflow.settings:{};
-      await hydrateWorkflowMedia();normalizeSavedGraph();state.selectedNodeIds=[];state.selectedNodeId=null;state.selectedEdgeIds=[];syncSettingsUI();render();await queueWorkflowSave({allowRecoveryWrite:true});fitCanvas();
+      await hydrateWorkflowMedia();normalizeSavedGraph();state.selectedNodeIds=[];state.selectedNodeId=null;state.selectedEdgeIds=[];syncSettingsUI();render();fitCanvas();await queueWorkflowSave({allowRecoveryWrite:true});
       setRunStatus(`Workflow imported: ${file.name}`,'ok');
-    }catch(error){state.nodes=previous.nodes;state.edges=previous.edges;state.groups=previous.groups||[];state.notes=previous.notes||[];state.settings=previous.settings;render();setRunStatus(`Could not import workflow: ${error?.message||String(error)}`,'error');}
+    }catch(error){state.nodes=previous.nodes;state.edges=previous.edges;state.groups=previous.groups||[];state.notes=previous.notes||[];state.settings=previous.settings;Object.assign(state,previous.view);render();setRunStatus(`Could not import workflow: ${error?.message||String(error)}`,'error');}
   }
   async function loadState(){
     await studioTemplatesReady;let loaded=false,fresh=false;
