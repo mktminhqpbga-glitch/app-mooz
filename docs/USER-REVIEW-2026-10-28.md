@@ -1,6 +1,6 @@
 # Xử lý đánh giá người dùng ngày 28/10/2026
 
-Cơ sở: 0.44.0 `cbf440f`. Thay đổi trên nhánh `feat/review-usability-045`; chưa đẩy main/phát hành. Các bằng chứng kiểm thử được cập nhật sau khi chạy bản sửa thật.
+Cơ sở: 0.44.0 `cbf440f`. Bản sửa 0.45.0 trên nhánh `feat/review-usability-045`, được đưa vào `main` theo yêu cầu ngày 28/10/2026. GitHub Actions chạy lại kiểm thử và đóng gói Mac cho đúng commit; bộ cài nằm trong artifact, chưa Publish Release.
 
 | Mục đánh giá | Cách xử lý |
 |---|---|
@@ -46,4 +46,4 @@ Theo phản hồi màu mới, **Đen tím** là hướng thiết kế ưu tiên;
 | P1.7 | Parser preview = builder, đủ 12 cảnh; phát hiện lời đọc vượt 15 giây; mục tiêu lưu/reload; 12 node thật |
 | P1.8 | Danh mục menu/node qua unit/UX; bấm đổi tên hiện tiếng Việt; Enter thêm Ghi chú có placeholder tiếng Việt |
 
-Các dòng trên dùng chung bộ kiểm thử đã nêu, không phải 8 bộ kiểm thử độc lập. Giao diện đã được xem bằng ảnh chụp Electron thật, gồm theme Đen tím; preview thiết kế được cập nhật cùng hướng màu. App vẫn mang số phiên bản 0.44.0 trên nhánh làm việc; chưa tạo bộ cài mới hoặc cập nhật main.
+Các dòng trên dùng chung bộ kiểm thử đã nêu, không phải 8 bộ kiểm thử độc lập. Giao diện đã được xem bằng ảnh chụp Electron thật, gồm theme Đen tím; preview thiết kế được cập nhật cùng hướng màu. Phiên bản ứng dụng được nâng thành 0.45.0 để phân biệt bộ cài mới; tiện ích Workflow Connect vẫn 1.0.0. Kiểm tra trạng thái đóng gói tại GitHub Actions của repo trước khi tải artifact.

@@ -1,8 +1,10 @@
-# Workflow · MuseFlow 0.44.0
+# Workflow · MuseFlow 0.45.0
 
-[Bắt đầu trong 5 phút](docs/QUICKSTART.md) · [Xử lý góp ý người dùng 28/10 — nhánh đang kiểm tra](docs/USER-REVIEW-2026-10-28.md) · [Thiết kế MooZ Agent](designs/MOOZ-AGENT-PLAN.md)
+[Bắt đầu trong 5 phút](docs/QUICKSTART.md) · [Xử lý góp ý người dùng 28/10](docs/USER-REVIEW-2026-10-28.md) · [Thiết kế MooZ Agent](designs/MOOZ-AGENT-PLAN.md)
 
-**Tiện ích đi kèm:** `extension/Workflow-Connect.zip` chứa **Workflow Connect 1.0.0**, dùng với app **0.44.0** và nhánh tối ưu hiện tại. ZIP đã được đóng gói kèm từ 0.42.0; `extension/manifest.json` là bộ cập nhật dữ liệu cũ, không phải manifest của ZIP đồng hành này. App và tiện ích có phiên bản riêng, kiểm tra tương thích theo giao thức. Chỉ nâng app không đồng nghĩa phải cài lại tiện ích; khi app báo không tương thích, tải ZIP trong **Cài đặt & kết nối AI**, thay thư mục tiện ích, bấm **Tải lại** trong `chrome://extensions`, tải lại các tab AI và kết nối lại bằng mã phiên.
+**Tiện ích đi kèm:** `extension/Workflow-Connect.zip` chứa **Workflow Connect 1.0.0**, dùng với app **0.44.0–0.45.0**. ZIP đã được đóng gói kèm từ 0.42.0; `extension/manifest.json` là bộ cập nhật dữ liệu cũ, không phải manifest của ZIP đồng hành này. App và tiện ích có phiên bản riêng, kiểm tra tương thích theo giao thức. Chỉ nâng app không đồng nghĩa phải cài lại tiện ích; khi app báo không tương thích, tải ZIP trong **Cài đặt & kết nối AI**, thay thư mục tiện ích, bấm **Tải lại** trong `chrome://extensions`, tải lại các tab AI và kết nối lại bằng mã phiên.
+
+**0.45.0 · Tối ưu theo đánh giá người dùng:** sidebar hẹp 62px có ngăn mở rộng; thông báo đầy đủ và sao chép; bản đồ góc trên thu gọn; tách nhóm cửa sổ; bảng lệnh ⌘K/Ctrl+K; preview thời lượng Affiliate giữ đủ 12 cảnh; theme Đen tím đồng bộ. [Báo cáo và kiểm thử](docs/USER-REVIEW-2026-10-28.md) · [Bắt đầu nhanh](docs/QUICKSTART.md).
 
 **0.44.0 · Rà luồng & làm gọn:** sửa kịch bản Affiliate lẫn giữa sản phẩm, lưu nháp riêng và xóa sạch màn hình khi bỏ tác vụ cuối; sửa app không mở khi tệp cấu hình AI ngoài bị hỏng, có sao lưu khi tạo lại danh sách. Sidebar tìm công cụ không dấu; hướng dẫn trang chủ và phần soạn content trước được thu gọn. [Báo cáo kiểm tra](docs/APP-AUDIT-2026-10-27.md).
 

@@ -53,7 +53,7 @@ Tiêu đề node chỉ có một biểu tượng nhóm, bỏ vạch trang trí l
 Đăng bài thu **Soạn content trước** thành tùy chọn, để thẻ bài và hàng chờ ở gần đầu màn hình. Luồng Muse tự viết/đăng dùng nút Muse phía trên. Nếu bấm Viết content khi chưa chọn AI, app tự mở phần soạn trước và đưa focus tới bộ chọn cuộc chat/API, không để người dùng tìm một ô đang ẩn.
 
 
-## Bản tối ưu theo đánh giá 28/10 — nhánh làm việc
+## 0.45.0 · Tối ưu theo đánh giá 28/10
 
 Ở cửa sổ ≤760px, sidebar thu thành rail 62px; mở ☰ hoặc Tìm công cụ để xem nhãn trong drawer. Nút Cửa sổ có nhóm riêng. ⌘K/Ctrl+K tìm theo tên/công dụng, dùng mũi tên và Enter để chọn, Escape để đóng; việc tìm không gọi AI.
 
