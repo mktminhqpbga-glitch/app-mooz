@@ -1,0 +1,22 @@
+/* One selectable dark-violet theme, shared by every application surface. */
+:root[data-ui-theme=violet],:root[data-ui-theme=violet] body[data-app-surface]{color-scheme:dark;--finish-bg:#0d0b14;--finish-panel:#15111f;--finish-raised:#20192f;--finish-line:#40334f;--finish-ink:#f5f0fc;--finish-muted:#b6aac8;--finish-accent:#c4b5fd;--finish-soft:#8b5cf619;--bg:#0d0b14;--surface:#15111f;--border:#40334f;--ink:#f5f0fc;--muted:#b6aac8;--accent:#8b5cf6;--studio-bg:#0d0b14;--studio-panel:#15111f;--studio-raised:#20192f;--studio-border:#40334f;--studio-ink:#f5f0fc;--studio-muted:#b6aac8;--studio-accent:#c4b5fd}
+:root[data-ui-theme=violet] body[data-app-surface]{background:var(--finish-bg);color:var(--finish-ink)}
+:root[data-ui-theme=violet] body[data-app-surface] :is(.sidebar,.studio-sidebar,.posting-sidebar,.top,.topbar,.toolbar,.desktop-bar,.intake,.workspace,.post-form,.timeline-dock,dialog,.modal,.project-card,.project-info,.project-actions,.post-card,.post-body,.job-card,.job-body,.hub-brand-card,.hub-account-card,.hub-asset-card,.hub-stat,.hub-empty,.empty-state,.calendar-day,.calendar-weekday,.setup,.panel,.platform-options){background:var(--finish-panel);color:var(--finish-ink);border-color:var(--finish-line)}
+:root[data-ui-theme=violet] body[data-app-surface] :is(.node,.scene,.appearance-dialog,.connections-dialog,.command-palette){background:var(--finish-panel);color:var(--finish-ink);border-color:var(--finish-line)}
+:root[data-ui-theme=violet] body[data-app-surface] :is(.node-header,.node-option,.timeline-tracks,.hub-queue-bar,.calendar-event,.post-media){background:var(--finish-raised);border-color:var(--finish-line)}
+:root[data-ui-theme=violet] body[data-app-surface] :is(input,select,textarea,.search){background:var(--finish-bg);color:var(--finish-ink);border-color:var(--finish-line)}
+:root[data-ui-theme=violet] body[data-app-surface] :is(button,.secondary,.app-button,.nav-button){background:transparent;color:var(--finish-ink);border-color:var(--finish-line)}
+:root[data-ui-theme=violet] body[data-app-surface] :is(.primary,button.primary,#runBtn,.node .node-run-button.primary){background:#7c3aed;border-color:#8b5cf6;color:#fff}
+:root[data-ui-theme=violet] body[data-app-surface] :is(.primary,button.primary,#runBtn):hover:not(:disabled){background:#6d28d9;color:#fff;border-color:#a78bfa}
+:root[data-ui-theme=violet] body[data-app-surface] :is(.muted,small,.note,.project-date,.sidebar-note,.app-label small,.eyebrow,.count,.connection-note,.studio-nav-caption,.studio-tool-list h2){color:var(--finish-muted)}
+:root[data-ui-theme=violet] body[data-app-surface] :is(.getting-started,.hub-hero){background:linear-gradient(115deg,#241735,#171020);border-color:var(--finish-line)}
+:root[data-ui-theme=violet] body[data-app-surface] :is(.selected,.command-selected,.nav-button.selected,.queue-item.selected){border-color:#8b5cf6}
+:root[data-ui-theme=violet] body[data-app-surface] :is(#postingFilters [aria-pressed=true],#hubNav .selected,.app-button:hover,.nav-button.selected,.queue-item.selected){background:#8b5cf622;color:#ddd0ff;border-color:#8b5cf6}
+:root[data-ui-theme=violet] .studio-tools-left #viewport{background-color:var(--finish-bg);background-image:radial-gradient(#78628e38 .7px,transparent .7px)}
+:root[data-ui-theme=violet] .studio-tools-left :is(#canvasTools,.canvas-minimap,.canvas-minimap svg,#addNodeMenu,#nodeSearch,.studio-run-notice){background:var(--finish-panel);color:var(--finish-ink);border-color:var(--finish-line)}
+:root[data-ui-theme=violet] .studio-tools-left .node.selected{border-color:#8b5cf6;box-shadow:0 0 0 1px #8b5cf655,0 9px 30px #0003}
+:root[data-ui-theme=violet] .studio-tools-left .studio-quick-actions button{background:var(--finish-raised)!important;border-color:var(--finish-line)!important;color:var(--finish-ink)!important}
+:root[data-ui-theme=violet] .studio-tools-left .studio-sidebar-footer>#connectionsOpen{background:#8b5cf619;border-color:#6d4193;color:#ddd0ff}
+:root[data-ui-theme=violet] .studio-tools-left :is(.studio-tool-list button:hover,#nodePickerList button:hover,#canvasTools button.active){background:#8b5cf622;color:#eee5ff}
+:root[data-ui-theme=violet] body[data-app-surface] a{color:#c4b5fd}
+:root[data-ui-theme=violet] body[data-app-surface] :is(.error,[role=alert],.form-error){color:#ffb6cb}

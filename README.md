@@ -1,5 +1,9 @@
 # Workflow · MuseFlow 0.44.0
 
+[Bắt đầu trong 5 phút](docs/QUICKSTART.md) · [Xử lý góp ý người dùng 28/10 — nhánh đang kiểm tra](docs/USER-REVIEW-2026-10-28.md) · [Thiết kế MooZ Agent](designs/MOOZ-AGENT-PLAN.md)
+
+**Tiện ích đi kèm:** `extension/Workflow-Connect.zip` chứa **Workflow Connect 1.0.0**, dùng với app **0.44.0** và nhánh tối ưu hiện tại. ZIP đã được đóng gói kèm từ 0.42.0; `extension/manifest.json` là bộ cập nhật dữ liệu cũ, không phải manifest của ZIP đồng hành này. App và tiện ích có phiên bản riêng, kiểm tra tương thích theo giao thức. Chỉ nâng app không đồng nghĩa phải cài lại tiện ích; khi app báo không tương thích, tải ZIP trong **Cài đặt & kết nối AI**, thay thư mục tiện ích, bấm **Tải lại** trong `chrome://extensions`, tải lại các tab AI và kết nối lại bằng mã phiên.
+
 **0.44.0 · Rà luồng & làm gọn:** sửa kịch bản Affiliate lẫn giữa sản phẩm, lưu nháp riêng và xóa sạch màn hình khi bỏ tác vụ cuối; sửa app không mở khi tệp cấu hình AI ngoài bị hỏng, có sao lưu khi tạo lại danh sách. Sidebar tìm công cụ không dấu; hướng dẫn trang chủ và phần soạn content trước được thu gọn. [Báo cáo kiểm tra](docs/APP-AUDIT-2026-10-27.md).
 
 **0.43.0 · Hoàn thiện giao diện Studio:** thống nhất sidebar có biểu tượng nét, màu nút chính/phụ, tiêu đề node, thẻ dự án, Đăng bài, Affiliate và Cài đặt. Tăng khoảng thở, giảm trang trí lặp; giữ vị trí công cụ trái, bản đồ dưới zoom và cỡ chữ theo cài đặt. [Giao diện](docs/INTERFACE.md).

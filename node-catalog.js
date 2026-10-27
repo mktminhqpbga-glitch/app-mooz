@@ -48,6 +48,8 @@
  entries.videoAssembly.internal=true;
  const common=['masterScript','prompt','generateText','generateImage','generateVideo','finalOutput'];
  const fold=value=>String(value).normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').replace(/Đ/g,'D').toLowerCase();
- const api={entries,groups,common,match:(entry,query)=>fold(entry.title+' '+entry.description+' '+entry.id).includes(fold(query).trim())};
+ const keywords={finalOutput:'ghép video nối clip xuất mp4',sceneSplit:'tách cảnh chia cảnh',textConcat:'gộp chữ nối văn bản',voiceover:'đọc lời thoại giọng nói text to speech tts',referenceBoard:'ảnh chung tham chiếu sản phẩm nhân vật'};
+ for(const [id,words]of Object.entries(keywords))entries[id].keywords=words;
+ const api={entries,groups,common,match:(entry,query)=>fold(entry.title+' '+entry.description+' '+entry.id+' '+(entry.keywords||'')).includes(fold(query).trim())};
  if(typeof module!=='undefined')module.exports=api;else root.WorkflowNodeCatalog=api;
 })(globalThis);

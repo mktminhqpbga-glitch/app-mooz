@@ -27,13 +27,15 @@ class AffiliateService{
  }
  async saveDraft({id,draft}){
   if(!draft||!['auto','own'].includes(draft.mode)||typeof draft.script!=='string'||draft.script.length>12000||typeof draft.reference!=='string'||draft.reference.length>12000||typeof draft.chat!=='string'||draft.chat.length>250)throw Error('Nháp kịch bản không hợp lệ; tối đa 12.000 ký tự mỗi ô.');
-  const task=this.creating.catch(()=>{}).then(async()=>{const job=await this.get(id);if(job.archived||job.projectId||!['sourced','error','cancelled'].includes(job.status))throw Error('Chỉ lưu nháp khi sản phẩm đang chờ viết kịch bản.');await this.save(id,{scriptDraft:{mode:draft.mode,script:draft.script,reference:draft.reference,chat:draft.chat}},job.status);return {id};});this.creating=task;return task;
+  if(draft.durationLimit!==undefined&&(!Number.isInteger(draft.durationLimit)||draft.durationLimit<5||draft.durationLimit>3600))throw Error('Mục tiêu thời lượng cần từ 5 đến 3.600 giây.');
+  const task=this.creating.catch(()=>{}).then(async()=>{const job=await this.get(id);if(job.archived||job.projectId||!['sourced','error','cancelled'].includes(job.status))throw Error('Chỉ lưu nháp khi sản phẩm đang chờ viết kịch bản.');await this.save(id,{scriptDraft:{mode:draft.mode,script:draft.script,reference:draft.reference,chat:draft.chat,...(draft.durationLimit!==undefined?{durationLimit:draft.durationLimit}:{})}},job.status);return {id};});this.creating=task;return task;
  }
- async generate({id,mode='auto',script='',reference='',confirmed=false,target}){
+ async generate({id,mode='auto',script='',reference='',confirmed=false,target,durationLimit=60}){
   const action=async()=>{const j=await this.get(id);if(j.archived||!['sourced','error','cancelled'].includes(j.status)||!j.product?.images?.length||j.projectId)throw Error('Lấy sản phẩm xong trước khi tạo kịch bản; tác vụ đã có workflow cần tạo bản mới.');
+   if(!Number.isInteger(durationLimit)||durationLimit<5||durationLimit>3600)throw Error('Mục tiêu thời lượng cần từ 5 đến 3.600 giây.');
    if(!['auto','own'].includes(mode))throw Error('Chọn AI viết hoặc dùng kịch bản của bạn.');if(typeof reference!=='string'||reference.length>12000)throw Error('Mẫu tham khảo tối đa 12.000 ký tự.');
    let selected=null;if(mode==='auto'){const tab=(await this.ai.tabs()).find(t=>t.id===target?.id&&t.transport===target?.transport);if(!tab)throw Error('Chọn AI đã kết nối để viết kịch bản.');selected={id:tab.id,transport:tab.transport,url:tab.url};}else ownStory(j.product,script,confirmed);
-   await this.save(id,{status:'queued',stage:'story',prepareOnly:false,mode,script,reference,confirmed,target:selected,error:'',story:null});this.paused=false;this.notify();void this.tick();return {id};
+   await this.save(id,{status:'queued',stage:'story',prepareOnly:false,mode,script,reference,confirmed,durationLimit,target:selected,error:'',story:null});this.paused=false;this.notify();void this.tick();return {id};
   };const task=this.creating.catch(()=>{}).then(action);this.creating=task;return task;
  }
  async history(){return (await this.all()).filter(j=>j.story?.review?.approved&&!j.story.review.issues?.length&&j.story?.plan&&j.story?.scenes?.length).slice(0,100).map(j=>({title:j.product.title,angle:j.story.plan.angle,hook:j.story.plan.hook,situation:j.story.plan.situation,narration:j.story.scenes.map(s=>s.narration).join(' ')}));}

@@ -1,4 +1,5 @@
 'use strict';
+const {parse:parseScript,measure:measureScript}=require('../affiliate-script.js');
 const normalize=value=>String(value||'').normalize('NFKC').toLocaleLowerCase('vi').replace(/[^\p{L}\p{N}\s]/gu,' ').replace(/\s+/g,' ').trim();
 function text(value,max=1000){if(typeof value!=='string'||!value.trim()||value.length>max)throw Error('AI trả trường văn bản thiếu hoặc quá dài.');return value.trim();}
 function json(value){try{const parsed=JSON.parse(String(value).trim().replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,''));if(parsed&&typeof parsed==='object'&&!Array.isArray(parsed))return parsed;}catch{}throw Error('AI chưa trả JSON đầy đủ. Không tự gửi lại; xem kết quả trong tab AI.');}
@@ -36,8 +37,8 @@ async function buildStory(product,history,ask,phase,signal,options={}){
 function ownStory(product,script,confirmed){
  if(confirmed!==true)throw Error('Xác nhận bạn đã kiểm tra kịch bản và thông tin sản phẩm trước.');
  if(typeof script!=='string'||!script.trim()||script.length>12000)throw Error('Kịch bản cần 1–12.000 ký tự.');
- const paragraphs=script.trim().replace(/\r\n?/g,'\n').split(/\n\s*\n|\n(?=(?:CẢNH|Canh|Scene)\s+\d+)/i).map(s=>s.trim()).filter(Boolean);if(paragraphs.length>12||paragraphs.some(s=>s.length>1800))throw Error('Tối đa 12 cảnh, mỗi cảnh 1.800 ký tự; tách các cảnh bằng một dòng trống.');
- const scenes=paragraphs.map((narration,i)=>({id:i+1,title:'Cảnh '+(i+1),narration,visual_prompt:'Thể hiện nội dung cảnh: '+narration+'\nGiữ đúng lời kể và  giữ nguyên hình dáng và nhận diện sản phẩm trong ảnh nguồn. Không tự thêm thông tin sản phẩm.',fact_ids:['F0'],image_index:i%product.images.length,seconds:Math.max(4,Math.min(15,Math.ceil(narration.split(/\s+/).length/2.5)))}));
+ const paragraphs=parseScript(script);
+ const scenes=paragraphs.map((narration,i)=>({id:i+1,title:'Cảnh '+(i+1),narration,visual_prompt:'Thể hiện nội dung cảnh: '+narration+'\nGiữ đúng lời kể và  giữ nguyên hình dáng và nhận diện sản phẩm trong ảnh nguồn. Không tự thêm thông tin sản phẩm.',fact_ids:['F0'],image_index:i%product.images.length,seconds:measureScript(narration).seconds}));
  return {version:1,origin:'user',originalScript:script,profile:{category:'Sản phẩm từ nguồn',audience:'Do bạn lựa chọn',facts:[{id:'F0',source:'title',quote:product.title}],unknowns:['Kịch bản do bạn cung cấp; chưa có kiểm chứng AI.']},plan:{angle:'Kịch bản của bạn',hook:scenes[0].narration,situation:'Giữ nguyên văn bản đã nhập'},scenes,review:{approved:true,mode:'user',issues:[],summary:'Bạn đã xác nhận nội dung. Giữ nguyên lời đọc từng đoạn; chưa kiểm chứng bằng AI.'}};
 }
 module.exports={buildStory,ownStory,json,similar,duplicate};

@@ -51,3 +51,12 @@ Tiêu đề node chỉ có một biểu tượng nhóm, bỏ vạch trang trí l
 Ô **Tìm công cụ** trên sidebar tìm cả không dấu; Escape xóa bộ lọc. Các nút vẫn là lệnh thật, luôn ở bên trái. Trang chủ tự thu phần hướng dẫn khi mở thư viện đã có dự án, vẫn thấy nút Kết nối Chrome; mở hướng dẫn bất cứ lúc nào bằng tiêu đề.
 
 Đăng bài thu **Soạn content trước** thành tùy chọn, để thẻ bài và hàng chờ ở gần đầu màn hình. Luồng Muse tự viết/đăng dùng nút Muse phía trên. Nếu bấm Viết content khi chưa chọn AI, app tự mở phần soạn trước và đưa focus tới bộ chọn cuộc chat/API, không để người dùng tìm một ô đang ẩn.
+
+
+## Bản tối ưu theo đánh giá 28/10 — nhánh làm việc
+
+Ở cửa sổ ≤760px, sidebar thu thành rail 62px; mở ☰ hoặc Tìm công cụ để xem nhãn trong drawer. Nút Cửa sổ có nhóm riêng. ⌘K/Ctrl+K tìm theo tên/công dụng, dùng mũi tên và Enter để chọn, Escape để đóng; việc tìm không gọi AI.
+
+Bản đồ giữ góc trên trái, thu mặc định thành nút Bản đồ. Thông báo chạy cho chọn văn bản, xem đủ và sao chép; bảng đầy đủ giữ nội dung tại thời điểm mở. Theme Đen tím là tùy chọn thật, đồng bộ giữa thư viện, canvas, Affiliate, Đăng bài và Cài đặt; lựa chọn cũ vẫn được giữ.
+
+Affiliate có bảng giây từng cảnh, tổng giây clip, giây đọc và ký tự trước khi tạo workflow. Mục tiêu riêng theo sản phẩm được lưu trong nháp; lời đọc dài hơn clip hoặc mục tiêu có cảnh báo. Không coi số giây ước lượng là thời lượng âm thanh thực. [Đối chiếu và kiểm thử](USER-REVIEW-2026-10-28.md).

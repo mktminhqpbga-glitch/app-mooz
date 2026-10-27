@@ -177,8 +177,8 @@
     $('allProjects').click();
     document.querySelector('.project-library').scrollIntoView({block:'start', behavior:'smooth'});
   };
-  let appTool = 'chat';
-  function pickProject(tool) {appTool=tool;$('appProjectTitle').textContent=tool==='voiceover'?'Lồng tiếng trong canvas':'Mở Chat AI';$('appProjectDescription').textContent=tool==='voiceover'?'Lồng tiếng hiện có trong canvas bằng OpenAI API: Thêm node → Lồng tiếng, nhập lời đọc hoặc nối Văn bản, cấu hình khóa OpenAI trong Kết nối AI, rồi bấm Thực hiện. Dịch vụ có thể tính phí. Ứng dụng lồng tiếng riêng vẫn chờ tích hợp.':'Chọn dự án để trò chuyện và giao việc cho AI. Ảnh, video và node được giữ trong đúng dự án đó.';$('appProjectOpen').textContent=tool==='voiceover'?'Mở canvas lồng tiếng':'Mở Chat AI';$('appProjectNew').textContent=tool==='voiceover'?'＋ Dự án lồng tiếng':'＋ Dự án Chat mới';void selectProject();}
+  let appTool = 'canvas';
+  function pickProject(tool) {appTool=tool;$('appProjectTitle').textContent=tool==='voiceover'?'Lồng tiếng trong canvas':'Mở canvas';$('appProjectDescription').textContent=tool==='voiceover'?'Lồng tiếng hiện có trong canvas bằng OpenAI API: Thêm node → Lồng tiếng, nhập lời đọc hoặc nối Văn bản, cấu hình khóa OpenAI trong Kết nối AI, rồi bấm Thực hiện. Dịch vụ có thể tính phí. Ứng dụng lồng tiếng riêng vẫn chờ tích hợp.':'Chọn dự án để mở không gian làm việc. Ảnh, video và các bước được giữ trong đúng dự án đó.';$('appProjectOpen').textContent=tool==='voiceover'?'Mở canvas lồng tiếng':'Mở canvas';$('appProjectNew').textContent=tool==='voiceover'?'＋ Dự án lồng tiếng':'＋ Dự án mới';void selectProject();}
   $('aiAppsVoice').onclick = ()=>pickProject('voiceover');
   async function selectProject() {
     $('appProjectError').textContent = '';
@@ -197,15 +197,15 @@
     $('appProjectDialog').showModal();
   }
   $('appProjectCancel').onclick = () => { if (!launchingApp) $('appProjectDialog').close(); };
-  async function launchChat(createNew = false) {
+  async function launchProject(createNew = false) {
     if (launchingApp) return;
     launchingApp = true;
     $('appProjectError').textContent = '';
     for (const id of ['appProjectCancel', 'appProjectNew', 'appProjectOpen']) $(id).disabled = true;
     try {
-      const id = createNew ? (await api.createProject(appTool==='voiceover'?'Lồng tiếng':'Chat AI')).id : $('appProjectSelect').value;
-      if (!id) throw Error('Chọn dự án hoặc tạo một dự án Chat mới.');
-      await api.openProject(id, appTool);
+      const id = createNew ? (await api.createProject(appTool==='voiceover'?'Lồng tiếng':'Dự án mới')).id : $('appProjectSelect').value;
+      if (!id) throw Error('Chọn dự án hoặc tạo một dự án mới.');
+      await api.openProject(id, appTool==='canvas'?undefined:appTool);
       $('appProjectDialog').close();
     } catch (error) {
       $('appProjectError').textContent = displayError(error);
@@ -215,8 +215,8 @@
       $('appProjectOpen').disabled = !$('appProjectSelect').value;
     }
   }
-  $('appProjectOpen').onclick = () => void launchChat(false);
-  $('appProjectNew').onclick = () => void launchChat(true);
+  $('appProjectOpen').onclick = () => void launchProject(false);
+  $('appProjectNew').onclick = () => void launchProject(true);
   $('searchProjects').oninput = render;
   $('newProject').onclick = () => nameDialog();
   $('emptyCreate').onclick = () => nameDialog();

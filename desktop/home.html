@@ -7,7 +7,7 @@
   <title>Workflow — Không gian làm việc</title>
   <link rel="stylesheet" href="home.css">
   <link rel="stylesheet" href="update-ui.css">
-<link rel="stylesheet" href="appearance.css"><link rel="stylesheet" href="studio-polish.css"></head>
+<link rel="stylesheet" href="appearance.css"><link rel="stylesheet" href="studio-polish.css"><link rel="stylesheet" href="usability.css"><link rel="stylesheet" href="violet-theme.css"></head>
 <body>
   <aside class="sidebar">
     <a class="brand" href="home.html" aria-label="Workflow, trang chủ"><img class="brand-mark" src="../icons/workflow-mark.svg" alt=""><span>Workflow<small>AI CREATIVE STUDIO</small></span></a>
@@ -18,7 +18,7 @@
     </nav>
     <section class="ai-app-catalog" aria-labelledby="aiAppsHeading">
       <h2 id="aiAppsHeading">ỨNG DỤNG</h2>
-      <button id="aiAppsWorkflow" class="app-button" type="button" title="Workflow Studio"><span class="app-icon" aria-hidden="true">▦</span><span class="app-label"><strong>Workflow Studio</strong><small>Canvas · ảnh · video</small></span></button><button id="aiAppsHubPosting" class="app-button" type="button" title="Đăng bài"><span class="app-icon" aria-hidden="true">↗</span><span class="app-label"><strong>Đăng bài & điều hành</strong><small>Content · lịch · thương hiệu · Page</small></span><span class="app-arrow" aria-hidden="true">↗</span></button>
+      <button id="aiAppsWorkflow" class="app-button" type="button" title="Workflow Studio"><span class="app-icon" aria-hidden="true">▦</span><span class="app-label"><strong>Workflow Studio</strong><small>Canvas · ảnh · video</small></span></button><button id="aiAppsHubPosting" class="app-button" type="button" title="Đăng bài"><span class="app-icon" aria-hidden="true">↗</span><span class="app-label"><strong>Trung tâm & Đăng bài</strong><small>Content · lịch · thương hiệu · Page</small></span><span class="app-arrow" aria-hidden="true">↗</span></button>
       <button id="aiAppsAffiliate" class="app-button" type="button"><span class="app-icon affiliate" aria-hidden="true">↗</span><span class="app-label"><strong>Affiliate Shopee</strong><small>Link · kịch bản · workflow video</small></span><span class="app-arrow" aria-hidden="true">↗</span></button>
       <button id="aiAppsVoice" class="app-button" type="button" title="Lồng tiếng trong canvas bằng OpenAI API; ứng dụng riêng chờ tích hợp"><span class="app-icon voice" aria-hidden="true">♫</span><span class="app-label"><strong>Lồng tiếng AI</strong><small>Trong canvas · OpenAI API</small></span></button>
       <p class="app-catalog-note">Các công cụ sáng tạo sẽ được bổ sung tại đây.</p>
@@ -53,7 +53,7 @@
   </main>
 
   <dialog id="appProjectDialog" aria-labelledby="appProjectTitle">
-    <span class="app-dialog-eyebrow">ỨNG DỤNG AI</span><h2 id="appProjectTitle">Mở Chat AI</h2><p id="appProjectDescription">Chọn dự án để trò chuyện và giao việc cho AI. Ảnh, video và node được giữ trong đúng dự án đó.</p><label class="field" for="appProjectSelect">Dự án<select id="appProjectSelect"></select></label><p id="appProjectError" class="form-error" role="alert"></p><div class="dialog-actions"><button id="appProjectCancel" class="secondary" type="button">Hủy</button><button id="appProjectNew" class="secondary" type="button">＋ Dự án Chat mới</button><button id="appProjectOpen" class="primary" type="button">Mở Chat AI</button></div>
+    <span class="app-dialog-eyebrow">ỨNG DỤNG AI</span><h2 id="appProjectTitle">Chọn dự án</h2><p id="appProjectDescription">Chọn dự án để mở không gian làm việc. Ảnh, video và các bước được giữ trong đúng dự án đó.</p><label class="field" for="appProjectSelect">Dự án<select id="appProjectSelect"></select></label><p id="appProjectError" class="form-error" role="alert"></p><div class="dialog-actions"><button id="appProjectCancel" class="secondary" type="button">Hủy</button><button id="appProjectNew" class="secondary" type="button">＋ Dự án mới</button><button id="appProjectOpen" class="primary" type="button">Mở canvas</button></div>
   </dialog>
   <dialog id="nameDialog">
     <form id="nameForm"><h2 id="nameDialogTitle">Dự án mới</h2><p id="nameDialogDescription">Một tên dễ nhớ giúp bạn tìm lại công việc của mình.</p><label class="field" for="projectName">Tên dự án<input id="projectName" maxlength="100" required autocomplete="off" placeholder="Ví dụ: Video giới thiệu sản phẩm"></label><p id="nameError" class="form-error" role="alert"></p><div class="dialog-actions"><button id="cancelName" type="button" class="secondary">Hủy</button><button id="submitName" class="primary" type="submit">Tạo dự án</button></div></form>
