@@ -25,6 +25,10 @@ class AffiliateService{
   };
   const result=this.creating.catch(()=>{}).then(action);this.creating=result;return result;
  }
+ async saveDraft({id,draft}){
+  if(!draft||!['auto','own'].includes(draft.mode)||typeof draft.script!=='string'||draft.script.length>12000||typeof draft.reference!=='string'||draft.reference.length>12000||typeof draft.chat!=='string'||draft.chat.length>250)throw Error('Nháp kịch bản không hợp lệ; tối đa 12.000 ký tự mỗi ô.');
+  const task=this.creating.catch(()=>{}).then(async()=>{const job=await this.get(id);if(job.archived||job.projectId||!['sourced','error','cancelled'].includes(job.status))throw Error('Chỉ lưu nháp khi sản phẩm đang chờ viết kịch bản.');await this.save(id,{scriptDraft:{mode:draft.mode,script:draft.script,reference:draft.reference,chat:draft.chat}},job.status);return {id};});this.creating=task;return task;
+ }
  async generate({id,mode='auto',script='',reference='',confirmed=false,target}){
   const action=async()=>{const j=await this.get(id);if(j.archived||!['sourced','error','cancelled'].includes(j.status)||!j.product?.images?.length||j.projectId)throw Error('Lấy sản phẩm xong trước khi tạo kịch bản; tác vụ đã có workflow cần tạo bản mới.');
    if(!['auto','own'].includes(mode))throw Error('Chọn AI viết hoặc dùng kịch bản của bạn.');if(typeof reference!=='string'||reference.length>12000)throw Error('Mẫu tham khảo tối đa 12.000 ký tự.');

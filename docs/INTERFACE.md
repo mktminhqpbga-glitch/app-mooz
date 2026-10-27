@@ -45,3 +45,9 @@ Một lớp giao diện chung dùng nền xanh than, tím nhạt cho hành độ
 Tiêu đề node chỉ có một biểu tượng nhóm, bỏ vạch trang trí lặp; tăng khoảng cách trong thẻ và phân biệt nút chạy với tùy chọn. Thư viện bớt tiêu đề quá lớn, thẻ dự án gọn hơn, các cửa sổ Đăng bài/Affiliate/Cài đặt dùng chung bảng màu và kiểu panel. Giao diện sáng giữ nền sáng; canvas vẫn dùng nền tối. Chữ phụ/điều khiển dùng biến cỡ chữ hiện có, tiếp tục nhận mức Giao diện lớn. Không tải font, ảnh hoặc thư viện từ mạng cho lớp giao diện này; tôn trọng tùy chọn giảm chuyển động.
 
 Đã xem trực tiếp giao diện thư viện, canvas, Cài đặt và Đăng bài trong Electron, cả chế độ sáng và tối. Các kiểm thử bố cục hiện có tiếp tục kiểm tra kích thước cửa sổ nhỏ/lớn, timeline mở/thu, thêm node và cỡ chữ lớn.
+
+## Ít bước và ít vùng thiết lập hơn · 0.44.0
+
+Ô **Tìm công cụ** trên sidebar tìm cả không dấu; Escape xóa bộ lọc. Các nút vẫn là lệnh thật, luôn ở bên trái. Trang chủ tự thu phần hướng dẫn khi mở thư viện đã có dự án, vẫn thấy nút Kết nối Chrome; mở hướng dẫn bất cứ lúc nào bằng tiêu đề.
+
+Đăng bài thu **Soạn content trước** thành tùy chọn, để thẻ bài và hàng chờ ở gần đầu màn hình. Luồng Muse tự viết/đăng dùng nút Muse phía trên. Nếu bấm Viết content khi chưa chọn AI, app tự mở phần soạn trước và đưa focus tới bộ chọn cuộc chat/API, không để người dùng tìm một ô đang ẩn.

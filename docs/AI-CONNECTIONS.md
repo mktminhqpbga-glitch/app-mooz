@@ -21,3 +21,7 @@ Tên/model/URL được lưu trên máy; **API key chỉ giữ trong bộ nhớ 
 **Thiết lập AI trong dự án** mở bảng hiện có để chọn tab và nhập khóa Google/OpenAI/fal của dự án. Nút chỉ có tác dụng khi đang mở canvas; thư viện hướng dẫn mở một dự án trước. Lồng tiếng OpenAI vẫn dùng khóa OpenAI của bảng này.
 
 Kiểm thử: kết nối API mô phỏng qua native transport → Tạo văn bản và viết content; model/URL đúng, chặn redirect, lỗi không có văn bản/không hỗ trợ ảnh, tệp cấu hình không chứa khóa và mở lại không giữ khóa. Không gọi API trả phí hoặc thử tài khoản thật.
+
+## Khi tệp cấu hình AI ngoài không đọc được · 0.44.0
+
+App tiếp tục mở và dùng các AI có sẵn. Trong **Cài đặt & kết nối AI** sẽ có phần khôi phục; tạm chặn ghi danh sách AI ngoài để giữ tệp gốc. Chọn **Tạo lại danh sách AI ngoài** và xác nhận để sao lưu tệp lỗi sang tệp riêng `.invalid-…` trước khi tạo danh sách trống. Dự án, Chrome và các tài khoản đăng bài không bị xóa. Nếu không sao lưu được, thao tác dừng và giữ tệp gốc. Sau đó thêm lại cấu hình AI ngoài và nhập khóa phiên mới như trước.

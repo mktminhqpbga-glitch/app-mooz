@@ -33,15 +33,15 @@
       <button id="newProject" class="primary"><span aria-hidden="true">＋</span> Dự án mới</button>
     </section>
 
-    <section class="getting-started" aria-labelledby="startHeading">
-      <div class="start-title"><span class="spark" aria-hidden="true">✧</span><div><h2 id="startHeading">Bắt đầu một quy trình sáng tạo</h2><p>Ba bước để đưa ý tưởng vào hoạt động.</p></div></div>
+    <details id="homeGuide" class="getting-started" aria-labelledby="startHeading" open>
+      <summary class="home-guide-summary"><div class="start-title"><span class="spark" aria-hidden="true">✧</span><div><h2 id="startHeading">Hướng dẫn bắt đầu</h2><p>Tạo dự án, kết nối AI và chạy workflow.</p></div></div><button id="connectChrome" type="button" class="secondary">Kết nối Chrome</button><span class="guide-chevron" aria-hidden="true">⌄</span></summary><div class="home-guide-body">
       <ol>
         <li><span class="step">01</span><div><strong>Tạo dự án</strong><p>Đặt tên, thêm node và nối các bước trên canvas.</p></div></li>
         <li><span class="step">02</span><div><strong>Kết nối AI</strong><p>Kết nối Chrome để dùng các tab AI đang mở, hoặc mở cửa sổ AI riêng trong app.</p></div></li>
         <li><span class="step">03</span><div><strong>Chạy và kiểm tra</strong><p>Thử một node trước, kiểm tra kết quả rồi chạy cả workflow.</p></div></li>
       </ol>
-      <div class="connection-footer"><p class="connection-note">Kết nối Chrome cần tiện ích đồng hành. Cửa sổ AI trong app có phiên riêng và cần đăng nhập lại; app không sao chép cookie Chrome. API key chỉ giữ trong phiên, không lưu vào tệp dự án.</p><button id="connectChrome" class="secondary">Kết nối Chrome</button></div>
-    </section>
+      <div class="connection-footer"><p class="connection-note">Kết nối Chrome cần tiện ích đồng hành. Cửa sổ AI trong app có phiên riêng và cần đăng nhập lại; app không sao chép cookie Chrome. API key chỉ giữ trong phiên, không lưu vào tệp dự án.</p></div></div>
+    </details>
 
     <section class="project-library" aria-labelledby="libraryHeading">
       <div class="library-toolbar"><div><h2 id="libraryHeading">Tất cả dự án</h2><span id="projectCount" class="count"></span></div><label class="search"><span aria-hidden="true">⌕</span><input id="searchProjects" type="search" placeholder="Tìm dự án…" aria-label="Tìm dự án theo tên"></label></div>

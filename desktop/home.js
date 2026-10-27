@@ -138,7 +138,9 @@
     return article;
   }
 
+  let guideInitialized=false;
   function render() {
+    if(!guideInitialized){$('homeGuide').open=projects.length===0;guideInitialized=true;}
     const query = $('searchProjects').value.trim().toLocaleLowerCase('vi');
     const since = Date.now() - 7 * 24 * 60 * 60 * 1000;
     const visible = projects.filter(project => (!recentOnly || Date.parse(project.updatedAt) >= since) && project.name.toLocaleLowerCase('vi').includes(query));

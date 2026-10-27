@@ -133,6 +133,7 @@ ipcMain.handle('workflow:call',async(event,method,data={})=>{
    if(method==='affiliate.openAI')return ai.open(data.provider||'chatgpt');
    if(method==='affiliate.create')return affiliate.create(data);
    if(method==='affiliate.generate')return affiliate.generate(data);
+   if(method==='affiliate.draft')return affiliate.saveDraft(data);
    if(method==='affiliate.pause')return affiliate.pause(data.paused);
    if(method==='affiliate.cancel')return affiliate.cancel(data.id);
    if(method==='affiliate.archive')return affiliate.archive(data.id);
@@ -230,6 +231,8 @@ ipcMain.handle('workflow:call',async(event,method,data={})=>{
     finally{projectTransitions.delete(data.id);}
   }
   if(method==='aiConnections.list')return aiConnections.list();
+  if(method==='aiConnections.status')return aiConnections.status();
+  if(method==='aiConnections.reset'){const result=await aiConnections.reset();notify({type:'aiConnections'});return result;}
   if(method==='aiConnections.save'||method==='aiConnections.remove'){const result=await (method.endsWith('save')?aiConnections.save(data):aiConnections.remove(data.id));notify({type:'aiConnections'});return result;}
   if(method==='aiConnections.ask'){const key=event.sender.id+':custom:'+data.requestId;if(typeof data.requestId!=='string'||data.requestId.length>100||requests.has(key))throw Error('Mã yêu cầu AI không hợp lệ.');const controller=new AbortController(),cancel=()=>controller.abort();event.sender.once('destroyed',cancel);requests.set(key,controller);try{return await aiConnections.ask(data.id,data.request,controller.signal);}finally{requests.delete(key);event.sender.removeListener('destroyed',cancel);}}
   if(method==='aiConnections.cancel'){requests.get(event.sender.id+':custom:'+data.requestId)?.abort();return;}

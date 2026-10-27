@@ -1,6 +1,6 @@
 {
   "name": "workflow-museflow",
-  "version": "0.43.0",
+  "version": "0.44.0",
   "private": true,
   "description": "Ứng dụng desktop tạo workflow AI với dự án cục bộ và cửa sổ AI tích hợp.",
   "license": "GPL-2.0-or-later",
@@ -9,7 +9,7 @@
   "scripts": {
     "start": "electron .",
     "test": "node --test tests/*.test.mjs tests/desktop-*.test.cjs",
-    "test:desktop": "node tests/desktop-smoke.cjs && node tests/desktop-layout-smoke.cjs && node tests/desktop-posting-smoke.cjs && node tests/desktop-workspace-smoke.cjs && node tests/desktop-ai-results-smoke.cjs && node tests/desktop-affiliate-smoke.cjs && node tests/desktop-ai-tools-smoke.cjs && node tests/desktop-ux-smoke.cjs && node tests/desktop-muse-publishing-smoke.cjs && node tests/desktop-video-aggregate-smoke.cjs && node tests/desktop-studio-refresh-smoke.cjs",
+    "test:desktop": "node tests/desktop-smoke.cjs && node tests/desktop-layout-smoke.cjs && node tests/desktop-posting-smoke.cjs && node tests/desktop-workspace-smoke.cjs && node tests/desktop-ai-results-smoke.cjs && node tests/desktop-affiliate-smoke.cjs && node tests/desktop-ai-tools-smoke.cjs && node tests/desktop-ux-smoke.cjs && node tests/desktop-muse-publishing-smoke.cjs && node tests/desktop-video-aggregate-smoke.cjs && node tests/desktop-studio-refresh-smoke.cjs && node tests/desktop-workflow-audit-smoke.cjs",
     "test:browser": "node tests/browser-smoke.cjs",
     "test:reliability": "node tests/core-reliability-smoke.cjs",
     "package:extension": "python3 tools/package.py",

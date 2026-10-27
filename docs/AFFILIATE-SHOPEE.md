@@ -41,3 +41,7 @@ Thiết kế tham khảo luồng được người dùng cung cấp trong [reup-
 4. Xem từng cảnh → **Tạo workflow trên canvas**. Có thể thêm lời đọc. Bấm tạo workflow chưa gọi sinh video/giọng hoặc đăng bài. Kết quả cuối đưa sang ứng dụng Đăng bài & điều hành như trước.
 
 Tác vụ nguồn và lựa chọn/kịch bản đã gửi được lưu trên máy; mở lại giữ nguyên nội dung. Không tự gửi lại AI sau lỗi/gián đoạn. Nếu đã có workflow, tạo tác vụ sản phẩm mới để làm một phiên bản khác, tránh ghi đè workflow đang dùng. Nguồn đã lấy xong được dùng cho bước kịch bản, không tải lại ảnh chỉ vì chuyển nhánh.
+
+## Nháp riêng từng sản phẩm · 0.44.0
+
+Đổi tác vụ giữ riêng nội dung đang nhập của từng sản phẩm trong cửa sổ hiện tại. Bấm **Lưu nháp** để giữ lại sau khi tải lại/đóng app; chưa gọi AI hay tạo workflow. Chế độ kịch bản, nội dung, mẫu tham khảo và AI đã chọn được lưu trong tác vụ. Xác nhận đã kiểm tra nội dung không lưu theo nháp: sau khi mở lại hoặc sửa kịch bản cần kiểm tra/xác nhận lại trước khi tạo. Xóa tác vụ cuối trở về màn hình trống, không giữ ảnh/nút thao tác của sản phẩm đã xóa.

@@ -1,4 +1,6 @@
-# Workflow · MuseFlow 0.43.0
+# Workflow · MuseFlow 0.44.0
+
+**0.44.0 · Rà luồng & làm gọn:** sửa kịch bản Affiliate lẫn giữa sản phẩm, lưu nháp riêng và xóa sạch màn hình khi bỏ tác vụ cuối; sửa app không mở khi tệp cấu hình AI ngoài bị hỏng, có sao lưu khi tạo lại danh sách. Sidebar tìm công cụ không dấu; hướng dẫn trang chủ và phần soạn content trước được thu gọn. [Báo cáo kiểm tra](docs/APP-AUDIT-2026-10-27.md).
 
 **0.43.0 · Hoàn thiện giao diện Studio:** thống nhất sidebar có biểu tượng nét, màu nút chính/phụ, tiêu đề node, thẻ dự án, Đăng bài, Affiliate và Cài đặt. Tăng khoảng thở, giảm trang trí lặp; giữ vị trí công cụ trái, bản đồ dưới zoom và cỡ chữ theo cài đặt. [Giao diện](docs/INTERFACE.md).
 
