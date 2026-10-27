@@ -1,4 +1,6 @@
-# Workflow · MuseFlow 0.42.0
+# Workflow · MuseFlow 0.43.0
+
+**0.43.0 · Hoàn thiện giao diện Studio:** thống nhất sidebar có biểu tượng nét, màu nút chính/phụ, tiêu đề node, thẻ dự án, Đăng bài, Affiliate và Cài đặt. Tăng khoảng thở, giảm trang trí lặp; giữ vị trí công cụ trái, bản đồ dưới zoom và cỡ chữ theo cài đặt. [Giao diện](docs/INTERFACE.md).
 
 **0.42.0 · Công cụ trái & kết nối AI:** đưa công cụ thật sang sidebar; gom trạng thái AI lên đầu; bản đồ dưới cụm zoom góc trái; gộp Đăng bài/Điều hành và bỏ thẻ Chat AI độc lập. Affiliate lấy nguồn trước, sau đó AI viết theo mẫu hoặc dùng nguyên kịch bản của bạn. Cài đặt chung tải Workflow Connect ngay trong app và thêm nhiều dịch vụ API tương thích OpenAI cho văn bản/chat/content/kịch bản. [Kết nối AI](docs/AI-CONNECTIONS.md) · [Luồng Affiliate](docs/AFFILIATE-SHOPEE.md).
 

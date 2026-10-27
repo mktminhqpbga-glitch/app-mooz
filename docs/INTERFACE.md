@@ -37,3 +37,11 @@ Thanh trái chứa **chính các nút thao tác**: Ảnh tham chiếu chung, Tr�
 Trạng thái Muse/Gemini/GPT và nút chạy/lưu/thêm node dùng chung thanh trên, bỏ tiêu đề “Quy trình sáng tạo” và hàng trạng thái riêng. Bản đồ nằm ở góc trên trái canvas, ngay dưới cụm zoom. Giữ chức năng kéo bản đồ để di chuyển và giới hạn zoom. Thư viện bỏ thẻ Chat AI độc lập; Chat trong dự án vẫn hoạt động. **Đăng bài & điều hành** là một mục ứng dụng duy nhất, bao gồm soạn bài, lịch, thương hiệu, kho thành phẩm, tài khoản và hiệu quả.
 
 Cài đặt chung ở **Cài đặt & kết nối AI**: tải tiện ích, kết nối Chrome, giao diện, kết nối API tùy chỉnh và lối tới thiết lập AI của dự án. [Hướng dẫn kết nối AI khác](AI-CONNECTIONS.md).
+
+## Hoàn thiện giao diện · 0.43.0
+
+Một lớp giao diện chung dùng nền xanh than, tím nhạt cho hành động chính và viền mảnh; biểu tượng nét thống nhất cho các lệnh ở sidebar. Nút gốc, tên, handler và dữ liệu dự án vẫn do các module hiện có quản lý. Giữ công cụ trái và bản đồ dưới zoom; không di chuyển tọa độ node đã lưu.
+
+Tiêu đề node chỉ có một biểu tượng nhóm, bỏ vạch trang trí lặp; tăng khoảng cách trong thẻ và phân biệt nút chạy với tùy chọn. Thư viện bớt tiêu đề quá lớn, thẻ dự án gọn hơn, các cửa sổ Đăng bài/Affiliate/Cài đặt dùng chung bảng màu và kiểu panel. Giao diện sáng giữ nền sáng; canvas vẫn dùng nền tối. Chữ phụ/điều khiển dùng biến cỡ chữ hiện có, tiếp tục nhận mức Giao diện lớn. Không tải font, ảnh hoặc thư viện từ mạng cho lớp giao diện này; tôn trọng tùy chọn giảm chuyển động.
+
+Đã xem trực tiếp giao diện thư viện, canvas, Cài đặt và Đăng bài trong Electron, cả chế độ sáng và tối. Các kiểm thử bố cục hiện có tiếp tục kiểm tra kích thước cửa sổ nhỏ/lớn, timeline mở/thu, thêm node và cỡ chữ lớn.
