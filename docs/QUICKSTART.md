@@ -1,5 +1,9 @@
 # Bắt đầu trong 5 phút
 
+## 0. Cài bản Mac chưa ký
+
+Tải artifact DMG đúng Mac Intel hoặc Apple Silicon → giải nén → mở DMG → kéo **Workflow.app** vào **Applications**. Nếu macOS báo không xác minh được nhà phát triển, thử mở app một lần rồi vào **Cài đặt hệ thống → Quyền riêng tư & Bảo mật → Vẫn mở / Open Anyway**, xác nhận **Mở**. Trên macOS cũ, tên mục có thể là Bảo mật & Quyền riêng tư. Chỉ làm với bộ cài từ repo bạn tin cậy; không tắt Gatekeeper toàn máy. Nếu hệ điều hành báo tệp hỏng hoặc phát hiện mã độc, hãy tải lại/kiểm tra nguồn và gửi báo lỗi, không bỏ qua cảnh báo bằng lệnh Terminal.
+
 ## 1. Mở app và kết nối AI
 
 Mở app → **Cài đặt & kết nối AI** → **Tải tiện ích Chrome**. Giải nén ZIP vào một thư mục cố định. Trong `chrome://extensions`, bật **Chế độ dành cho nhà phát triển** → **Tải tiện ích đã giải nén** → chọn thư mục có `manifest.json`.
@@ -33,3 +37,6 @@ Thêm **Tổng hợp video**, gom các video kết quả, kiểm tra thứ tự 
 Ở kết quả đã đạt → **Thêm vào hàng chờ**. Mở **Trung tâm & Đăng bài** → mục **Bản nháp** để kiểm tra tệp, caption, kênh và lịch. Chỉ bật đăng khi đã thiết lập đường Muse/API, kết nối tài khoản và duyệt nội dung. Mục chưa có cấu hình sẽ không tự đăng thay bạn.
 
 **Giao diện:** Cài đặt & kết nối AI → Giao diện → Sáng/Tối/Đen tím/Theo hệ thống và cỡ chữ lớn. Ở cửa sổ hẹp, thanh công cụ thu về icon; bấm **☰** hoặc kính tìm kiếm để mở nhãn.
+
+
+**Báo lỗi:** mở **Báo lỗi** hoặc **Cài đặt → Trung tâm báo lỗi**. Xem mục Chưa xử lý, thêm cách tái hiện, đánh dấu lỗi đã xử lý; chọn **Xem / xuất báo cáo → Tải báo lỗi JSON** và gửi tệp đó cho hỗ trợ. Báo cáo được giữ trên máy, không tự gửi ra ngoài.

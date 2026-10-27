@@ -3,7 +3,7 @@
  const host=window.workflowDesktop,root=document.documentElement;
  const canvas=!!document.getElementById('canvas');
  document.body.dataset.appSurface=canvas?'canvas':document.getElementById('projectGrid')?'library':document.getElementById('hubNav')?'posting':'affiliate';
- let value={theme:'dark',size:'standard'},revision=0;
+ let value={theme:'violet',size:'standard'},revision=0;
  const system=matchMedia('(prefers-color-scheme: light)');
  function apply(next){value={theme:next.theme,size:next.size};root.dataset.uiTheme=value.theme==='system'?(system.matches?'light':'dark'):value.theme;root.dataset.uiSize=value.size;document.dispatchEvent(new CustomEvent('workflow:appearance'));}
  const dialog=document.createElement('dialog');dialog.id='appearanceDialog';dialog.className='appearance-dialog';dialog.setAttribute('aria-labelledby','appearanceTitle');

@@ -1,7 +1,7 @@
 'use strict';
 const fs = require('node:fs/promises');
 const path = require('node:path');
-const defaults = Object.freeze({theme:'dark',size:'standard'});
+const defaults = Object.freeze({theme:'violet',size:'standard'});
 class UIPreferences {
   constructor(directory) { this.file=path.join(directory,'ui-preferences.json'); this.value={...defaults}; this.pending=Promise.resolve(); }
   async load() { try { const value=JSON.parse(await fs.readFile(this.file,'utf8')); try{this.value=this.validate(value);}catch{this.value={...defaults};} } catch(error) { if(error.code!=='ENOENT' && !(error instanceof SyntaxError)) throw error; } return this.get(); }

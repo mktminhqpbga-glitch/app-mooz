@@ -3,6 +3,7 @@ const path=require('node:path');
 const {pathToFileURL}=require('node:url');
 const {ProjectStore}=require('./project-store.cjs');
 const {UIPreferences}=require('./ui-preferences.cjs');
+const {Diagnostics}=require('./diagnostics.cjs');
 const {AIConnections}=require('./ai-connections.cjs');
 const {providerForURL,allowedNetworkURL,resolveAppPath}=require('./policy.cjs');
 const {AIWindows}=require('./ai-windows.cjs');
@@ -28,11 +29,11 @@ const testMode=process.env.WORKFLOW_DESKTOP_TEST==='1'&&!app.isPackaged;
 if(testMode){if(!process.env.WORKFLOW_TEST_DATA)throw Error('Missing test data directory');app.setPath('userData',path.resolve(process.env.WORKFLOW_TEST_DATA));}
 if(!app.requestSingleInstanceLock())app.exit(0);
 app.on('second-instance',()=>{if(home&&!home.isDestroyed()){home.show();home.focus();}});
-let aiConnections,uiPreferences,store,home,ai,relay,updater,downloads,posting,postingAI,postingOAuth,brands,chats,facebookPages,facebookLogin,postingWindow,affiliate,affiliateWindow,chromeEverConnected=false;
+let diagnostics,aiConnections,uiPreferences,store,home,ai,relay,updater,downloads,posting,postingAI,postingOAuth,brands,chats,facebookPages,facebookLogin,postingWindow,affiliate,affiliateWindow,chromeEverConnected=false;
 const managedProjects=new Set();
 const canvases=new Map(),sessionData=new Map(),requests=new Map(),installedSessions=new WeakSet();
 const projectTransitions=new Set(),affiliateTransitions=new Set();
-function notify(value){if(affiliateWindow&&!affiliateWindow.isDestroyed())affiliateWindow.webContents.send('workflow:event',value);if(postingWindow&&!postingWindow.isDestroyed())postingWindow.webContents.send('workflow:event',value);if(['update','brands','projects','appearance','aiConnections'].includes(value.type)&&home&&!home.isDestroyed())home.webContents.send('workflow:event',value);if(value.type==='relay'&&value.connected){chromeEverConnected=true;managedProjects.clear();}for(const win of canvases.values())if(!win.isDestroyed())win.webContents.send('workflow:event',value);}
+function notify(value){if(affiliateWindow&&!affiliateWindow.isDestroyed())affiliateWindow.webContents.send('workflow:event',value);if(postingWindow&&!postingWindow.isDestroyed())postingWindow.webContents.send('workflow:event',value);if(['update','brands','projects','appearance','aiConnections','diagnostics'].includes(value.type)&&home&&!home.isDestroyed())home.webContents.send('workflow:event',value);if(value.type==='relay'&&value.connected){chromeEverConnected=true;managedProjects.clear();}for(const win of canvases.values())if(!win.isDestroyed())win.webContents.send('workflow:event',value);}
 async function setupSession(ses){
   if(installedSessions.has(ses))return;installedSessions.add(ses);
   downloads.install(ses);
@@ -122,8 +123,20 @@ async function fetchBounded(id,data){
     return {status:response.status,headers:Object.fromEntries(response.headers),bytes:new Uint8Array(Buffer.concat(chunks))};
   }finally{clearTimeout(timer);requests.delete(requestId);}
 }
-ipcMain.handle('workflow:call',async(event,method,data={})=>{
+async function handleWorkflowCall(event,method,data={}){
   const ctx=context(event),{win,id}=ctx;
+  if(typeof method!=='string')throw Error('Thao tác không hợp lệ.');
+  if(method.startsWith('diagnostics.')){
+   const surface=ctx.home?'library':ctx.posting?'posting':ctx.affiliate?'affiliate':'canvas';
+   if(method==='diagnostics.list')return diagnostics.snapshot();
+   if(method==='diagnostics.record'){const result=await diagnostics.record({...data,surface});notify({type:'diagnostics'});return result;}
+   if(method==='diagnostics.update'){const result=await diagnostics.update(data);notify({type:'diagnostics'});return result;}
+   if(method==='diagnostics.clearResolved'){const result=await diagnostics.clearResolved();notify({type:'diagnostics'});return result;}
+   if(method==='diagnostics.report'){win.diagnosticsReport=await diagnostics.report();return win.diagnosticsReport;}
+   if(method==='diagnostics.copy'){clipboard.writeText(win.diagnosticsReport||await diagnostics.report());return;}
+   if(method==='diagnostics.download'){const report=win.diagnosticsReport||await diagnostics.report();return downloads.download(win,{url:'data:application/json;base64,'+Buffer.from(report).toString('base64'),filename:'MooZ-bao-loi-'+new Date(Date.now()+7*3600000).toISOString().slice(0,10)+'.json'});}
+   throw Error('Thao tác báo lỗi không hợp lệ.');
+  }
   if(method==='affiliate.open'){await openAffiliate();return;}
   if(method.startsWith('affiliate.')){
    if(!ctx.affiliate)throw Error('Mở ứng dụng Affiliate Shopee trước.');
@@ -272,11 +285,17 @@ ipcMain.handle('workflow:call',async(event,method,data={})=>{
   if(method==='download.url')return downloads.download(win,data);
   if(method==='download.reveal')return downloads.show(win,data.id);
   throw Error('Unknown desktop operation.');
+}
+ipcMain.handle('workflow:call',async(event,method,data={})=>{
+ const ctx=context(event);
+ try{return await handleWorkflowCall(event,method,data);}
+ catch(error){if(diagnostics&&typeof method==='string'&&!method.startsWith('diagnostics.'))void diagnostics.record({source:'IPC '+method,surface:ctx.home?'library':ctx.posting?'posting':ctx.affiliate?'affiliate':'canvas',message:String(error.message||error)}).then(()=>notify({type:'diagnostics'})).catch(()=>{});throw error;}
 });
 app.whenReady().then(async()=>{
   downloads=new Downloads({directory:()=>app.getPath('downloads'),windowFor:contents=>contents?BrowserWindow.fromWebContents(contents):null,dialog,notify:send,reveal:file=>shell.showItemInFolder(file)});
   store=new ProjectStore(path.join(app.getPath('userData'),'projects'));
   uiPreferences=new UIPreferences(app.getPath('userData'));await uiPreferences.load();
+  diagnostics=new Diagnostics(app.getPath('userData'),{version,secretValues:()=>[...(aiConnections?.keys?.values()||[]),...[...sessionData.values()].flatMap(v=>Object.values(v?.workflowApiKeys||{}))]});await diagnostics.init();
   relay=new ChromeRelay({notify,version});await relay.start();
   ai=new AIWindows(root,version,notify,async projectId=>projectId?(await store.readStorage(projectId)).workflowMuseSendTarget:null);
   const postingRoot=path.join(app.getPath('userData'),'posting');
@@ -300,7 +319,7 @@ app.whenReady().then(async()=>{
       }finally{if(!quitApproved)posting.hold=false;}
     },onInstallStart:()=>{posting.hold=true;quitApproved=true;},onInstallFailed:()=>{posting.hold=false;quitApproved=false;}});
   updater.on('status',status=>notify({type:'update',status}));updater.start();
-  if(testMode)globalThis.workflowTest={aiConnections,store,ai,relay,updater,posting,postingAI,postingOAuth,brands,chats,facebookPages,facebookLogin,affiliate,openProject,openHome,openPosting,openAffiliate};
+  if(testMode)globalThis.workflowTest={diagnostics,aiConnections,store,ai,relay,updater,posting,postingAI,postingOAuth,brands,chats,facebookPages,facebookLogin,affiliate,openProject,openHome,openPosting,openAffiliate};
   Menu.setApplicationMenu(Menu.buildFromTemplate([
     ...(process.platform==='darwin'?[{role:'appMenu'}]:[]),
     {label:'Dự án',submenu:[{label:'Thư viện dự án',accelerator:'CmdOrCtrl+Shift+P',click:()=>void openHome()},{role:'close'},{role:'quit'}]},
@@ -314,6 +333,6 @@ app.on('window-all-closed',()=>{if(process.platform!=='darwin')app.quit();});
 let quitApproved=false,quitInProgress=false;
 app.on('before-quit',event=>{
   if(quitApproved)return;event.preventDefault();if(quitInProgress)return;quitInProgress=true;if(posting)posting.hold=true;
-  void(async()=>{try{await brands?.writes.catch(()=>{});if(chats)await Promise.allSettled([...chats.writes.values()]);if(posting?.busy()){const answer=await dialog.showMessageBox({type:'warning',buttons:['Ở lại','Thoát ứng dụng'],defaultId:0,cancelId:0,message:'Đăng bài đang xử lý. Thoát có thể làm gián đoạn gửi bài; kiểm tra nền tảng trước khi thử lại.'});if(answer.response!==1)return;}for(const win of [...canvases.values()])if(!await win.prepareToClose())return;await affiliate?.close();quitApproved=true;app.quit();}finally{quitInProgress=false;if(posting&&!quitApproved)posting.hold=false;}})();
+  void(async()=>{try{await diagnostics?.writes.catch(()=>{});await brands?.writes.catch(()=>{});if(chats)await Promise.allSettled([...chats.writes.values()]);if(posting?.busy()){const answer=await dialog.showMessageBox({type:'warning',buttons:['Ở lại','Thoát ứng dụng'],defaultId:0,cancelId:0,message:'Đăng bài đang xử lý. Thoát có thể làm gián đoạn gửi bài; kiểm tra nền tảng trước khi thử lại.'});if(answer.response!==1)return;}for(const win of [...canvases.values()])if(!await win.prepareToClose())return;await affiliate?.close();quitApproved=true;app.quit();}finally{quitInProgress=false;if(posting&&!quitApproved)posting.hold=false;}})();
 });
 app.on('will-quit',()=>{postingOAuth?.cancel();facebookLogin?.cancel();facebookPages?.clear();posting?.close();updater?.stop();void relay?.close();for(const controller of requests.values())controller.abort();});
