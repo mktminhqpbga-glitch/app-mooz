@@ -15,8 +15,12 @@
 :root[data-ui-theme=violet] .studio-tools-left #viewport{background-color:var(--finish-bg);background-image:radial-gradient(#78628e38 .7px,transparent .7px)}
 :root[data-ui-theme=violet] .studio-tools-left :is(#canvasTools,.canvas-minimap,.canvas-minimap svg,#addNodeMenu,#nodeSearch,.studio-run-notice){background:var(--finish-panel);color:var(--finish-ink);border-color:var(--finish-line)}
 :root[data-ui-theme=violet] .studio-tools-left .node.selected{border-color:#8b5cf6;box-shadow:0 0 0 1px #8b5cf655,0 9px 30px #0003}
-:root[data-ui-theme=violet] .studio-tools-left .studio-quick-actions button{background:var(--finish-raised)!important;border-color:var(--finish-line)!important;color:var(--finish-ink)!important}
+:root[data-ui-theme=violet] .studio-tools-left .studio-quick-actions button{background:transparent!important;border-color:transparent!important;color:var(--finish-ink)!important}
 :root[data-ui-theme=violet] .studio-tools-left .studio-sidebar-footer>#connectionsOpen{background:#8b5cf619;border-color:#6d4193;color:#ddd0ff}
 :root[data-ui-theme=violet] .studio-tools-left :is(.studio-tool-list button:hover,#nodePickerList button:hover,#canvasTools button.active){background:#8b5cf622;color:#eee5ff}
 :root[data-ui-theme=violet] body[data-app-surface] a{color:#c4b5fd}
 :root[data-ui-theme=violet] body[data-app-surface] :is(.error,[role=alert],.form-error){color:#ffb6cb}
+
+:root[data-ui-theme=violet] body[data-app-surface] :is(.app-button,.studio-tool-list button){border-color:transparent}
+:root[data-ui-theme=violet] body[data-app-surface] :is(.app-button,.studio-tool-list button):hover{background:var(--finish-soft);border-color:var(--finish-line)}
+:root[data-ui-theme=violet] .studio-tools-left .studio-quick-actions button:hover{background:var(--finish-raised)!important;border-color:var(--finish-line)!important}

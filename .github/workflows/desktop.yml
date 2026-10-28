@@ -49,7 +49,17 @@ jobs:
       - name: Run unit tests
         run: npm test
       - name: Verify desktop integration and canvas layout in Electron
+        env:
+          MOOZ_UI_AUDIT_DIR: ${{ runner.temp }}/mooz-ui-review
         run: npm run test:desktop
+      - name: Lưu ảnh và số đo kiểm tra giao diện
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: MooZ-UI-review
+          path: ${{ runner.temp }}/mooz-ui-review
+          if-no-files-found: ignore
+          retention-days: 14
       - name: Build unsigned DMG and ZIP for both architectures
         run: npm exec electron-builder -- --mac --arm64 --x64 --publish never
       - name: Verify packages and record SHA256 checksums

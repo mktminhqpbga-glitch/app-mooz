@@ -1,9 +1,18 @@
 /* Review fixes: explicit window group, on-demand map and full status text. */
 .studio-tools-left .studio-nav-caption{display:block;font-size:var(--ui-small);color:var(--finish-muted);margin:8px 6px 5px;letter-spacing:.8px;text-transform:uppercase}
-.studio-window-actions{margin-top:8px}.studio-tools-left .studio-window-actions button{border:1px solid var(--finish-line);min-height:34px;font-size:var(--ui-small)}
+.studio-window-actions{margin-top:6px;display:grid;grid-template-columns:1fr 1fr;gap:5px}.studio-window-actions .studio-nav-caption{display:none!important}.studio-tools-left .studio-window-actions button{border:1px solid var(--finish-line);min-height:34px;font-size:var(--ui-small);padding:6px;gap:5px;min-width:0}
+.studio-tools-left .studio-quick-actions{display:grid;grid-template-columns:1fr;flex:none}
+.studio-tools-left .studio-quick-actions button{min-height:32px;padding:6px 9px;white-space:nowrap;background:transparent!important;border-color:transparent!important}
+.studio-tools-left .studio-sidebar{gap:10px;padding-top:16px}
+.studio-tools-left .studio-sidebar .studio-tool-search{display:grid;grid-template-columns:minmax(0,1fr) 34px;gap:5px;margin:0}
+.studio-tool-search small{grid-column:1/-1}
+.studio-tools-left .studio-tool-list button{border-color:transparent;background:transparent;min-height:34px;padding-block:7px}
+.studio-tools-left .studio-tool-list button:hover{background:var(--finish-soft);border-color:var(--finish-line)}
+.studio-tools-left .studio-sidebar-footer{padding-top:8px}
 #studioSidebarToggle,#studioSidebarClose,#studioSearchOpen,#studioRailBackdrop{display:none}
 body[data-app-surface] button{font-variant-emoji:text}
-.studio-tools-left #commandPaletteOpen{font-size:var(--ui-small);border:1px solid var(--finish-line);margin-bottom:7px}
+.studio-tools-left #commandPaletteOpen{font-size:var(--ui-small);border:1px solid var(--finish-line);padding:5px;min-height:36px;justify-content:center}
+.studio-tools-left #commandPaletteOpen .finish-label{display:none}
 .studio-tools-left #canvasMapDetails{pointer-events:auto;background:var(--finish-panel);border:1px solid var(--finish-line);border-radius:9px;max-width:100%}
 #canvasMapDetails>summary{cursor:pointer;font-size:var(--ui-small);padding:6px 10px;user-select:none}#canvasMapDetails .canvas-minimap{border:0;background:transparent}#canvasMapDetails[hidden]{display:none}
 .studio-run-notice{position:absolute;top:12px;right:14px;z-index:16;max-width:min(470px,45%);padding:9px 12px;background:var(--finish-panel);border:1px solid var(--finish-line);border-radius:9px;box-shadow:var(--finish-shadow);pointer-events:auto}
@@ -16,7 +25,7 @@ body[data-app-surface] button{font-variant-emoji:text}
 #commandResults{max-height:50vh;overflow:auto;margin-top:12px}#commandResults>button{display:grid;gap:4px;text-align:left;width:100%;border:1px solid transparent;background:transparent;margin:3px 0;color:var(--finish-ink)}#commandResults>button small{color:var(--finish-muted);font-size:var(--ui-small)}#commandResults>button.command-selected{background:var(--finish-soft);border-color:var(--finish-accent)}
 .duration-preview h3{margin:0 0 8px}.duration-preview table{width:100%;border-collapse:collapse;font-size:var(--ui-small);margin-top:12px}.duration-preview caption{text-align:left;margin-bottom:6px;color:var(--finish-muted)}.duration-preview :is(th,td){padding:7px;text-align:left;border-bottom:1px solid var(--finish-line)}
 .duration-warning{border-left:3px solid #e7b66c;padding-left:12px;color:#efc78f}.script-estimate>label{max-width:230px}:root[data-ui-theme=light] .duration-warning{color:#80510f}
-@media(max-width:760px){
+@media(max-width:1100px){
  .studio-tools-left{--studio-side:62px}
  .studio-tools-left .studio-sidebar{padding:12px 7px;gap:7px}
  .studio-tools-left .studio-sidebar .brand{padding:0 0 8px;justify-content:center}
@@ -25,12 +34,17 @@ body[data-app-surface] button{font-variant-emoji:text}
  .studio-tools-left .studio-sidebar .studio-tool-list h2{display:none}
  .studio-tools-left .studio-sidebar :is(.studio-tool-list,.studio-quick-actions,.studio-window-actions) button{justify-content:center;padding:8px;min-height:38px}
  .studio-tools-left .studio-quick-actions{grid-template-columns:1fr}
+ .studio-tools-left .studio-window-actions{grid-template-columns:1fr}
  .studio-tools-left .studio-sidebar-footer{padding-top:7px}
  .studio-tools-left .studio-sidebar .finish-icon{flex-basis:18px;width:18px;height:18px}
  .studio-tools-left #windowSwitcherOpen{font-size:var(--ui-small)}
  .studio-tools-left #studioSearchOpen{display:flex;justify-content:center;font-size:22px;padding:4px}
  .studio-tools-left #studioSidebarToggle{display:block;min-width:36px}
- .studio-tools-left .studio-health{min-width:0}
+ .studio-tools-left .studio-health{min-width:0;flex:1 0 calc(100% - 48px);order:0}
+ .studio-tools-left .compact-toolbar>.studio-connections,.studio-tools-left .compact-toolbar>button{order:1}
+ .studio-tools-left .compact-toolbar>#studioSidebarToggle{order:0}
+ .studio-tools-left .compact-toolbar>.studio-run-notice{order:2}
+ .studio-tools-left .toolbar.compact-toolbar{padding:8px;gap:6px}
  .studio-tools-left .canvas-navigation{top:8px;left:8px;max-width:calc(100% - 16px)}
  .studio-tools-left #viewport{min-width:0}
  .studio-run-notice{top:auto;bottom:12px;right:8px;max-width:calc(100% - 16px);box-sizing:border-box}
@@ -43,8 +57,62 @@ body[data-app-surface] button{font-variant-emoji:text}
  .studio-tools-left.studio-rail-expanded .studio-sidebar .studio-tool-search{display:grid}
  .studio-tools-left.studio-rail-expanded .studio-sidebar .brand{justify-content:flex-start}.studio-tools-left.studio-rail-expanded #studioSidebarClose{display:block;width:30px;min-height:30px;margin-left:auto;padding:2px;text-align:center;justify-content:center;font-size:20px}
  .studio-tools-left.studio-rail-expanded .studio-sidebar button{justify-content:flex-start}
- .studio-tools-left.studio-rail-expanded .studio-quick-actions{grid-template-columns:1fr 1fr}
+ .studio-tools-left.studio-rail-expanded .studio-quick-actions{grid-template-columns:1fr}
+ .studio-tools-left.studio-rail-expanded .studio-window-actions{grid-template-columns:1fr 1fr}
  .studio-tools-left.studio-rail-expanded #studioRailBackdrop:not([hidden]){display:block;position:fixed;inset:0;z-index:94;border:0;border-radius:0;background:#0008}
+}
+
+/* Size the dock from its own available width, including the sidebar and large fonts. */
+.studio-tools-left #timelineDock{container-type:inline-size;height:auto;min-height:0;padding:8px 14px;border-radius:0}
+.studio-tools-left #timelineDock .timeline-dock-header{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;height:auto;min-height:36px}
+.studio-tools-left #timelineDock .timeline-heading{min-width:0}
+.studio-tools-left #timelineDock .timeline-heading small{display:none}
+.studio-tools-left #timelineDock .timeline-dock-actions{min-width:0;flex-wrap:wrap;justify-content:flex-end;overflow:visible}
+.studio-tools-left #timelineDock .timeline-dock-content{height:132px;max-height:23vh}
+.studio-tools-left #timelineExportStopBtn.hidden{display:none!important}
+.studio-tools-left #timelineToggleBtn{grid-column:3;grid-row:1;width:34px;min-height:34px}
+@container(max-width:950px){
+ .timeline-dock-header .timeline-heading{grid-column:1;grid-row:1}
+ .timeline-dock-header .timeline-dock-actions{grid-column:1/-1;grid-row:2;justify-content:flex-start!important}
+}
+
+body[data-app-surface=library] .sidebar .brand small{font-size:10px;letter-spacing:1px}
+body[data-app-surface=library] .app-label small{line-height:1.4}
+body[data-app-surface=library] .app-button{padding-block:7px;gap:8px;border-color:transparent}
+body[data-app-surface=library] .app-label{gap:3px}
+body[data-app-surface=library] .ai-app-catalog{margin-top:16px;padding-top:14px}
+body[data-app-surface=library] .nav-label{margin-top:23px}
+body[data-app-surface=library] .getting-started{margin-bottom:20px}
+body[data-app-surface=library] .project-actions button{min-height:32px}
+body[data-app-surface=library] .workspace-heading .eyebrow{margin-bottom:5px;font-size:var(--ui-small)}
+body[data-app-surface=library] .sidebar-bottom{padding-top:12px;font-size:var(--ui-small)}
+
+/* Auxiliary windows keep their actions inside the header when labels wrap. */
+body[data-app-surface=affiliate] .top{height:auto;min-height:72px;padding-block:12px;gap:12px;flex-wrap:wrap}
+body[data-app-surface=affiliate] .top>div{min-width:0;flex:none}
+body[data-app-surface=affiliate] .top nav{flex-wrap:wrap;justify-content:flex-end;min-width:0;flex:1 1 420px;align-items:center}
+body[data-app-surface=affiliate] .top small{font-size:10px;letter-spacing:1px}
+body[data-app-surface=affiliate] .workspace-title{flex-wrap:wrap}
+body[data-app-surface=affiliate] .workspace{min-width:0}
+body[data-app-surface=affiliate] .row.ai-connect-row{grid-template-columns:repeat(auto-fit,minmax(125px,1fr))}
+body[data-app-surface=affiliate] .row.ai-connect-row button:last-child{grid-column:auto}
+body[data-app-surface=posting] .posting-sidebar{gap:6px;padding-top:18px}
+body[data-app-surface=posting] .posting-sidebar nav button{min-height:34px;padding-block:6px}
+body[data-app-surface=posting] .sidebar-note{padding-top:10px;margin-top:8px}
+body[data-app-surface=posting] .hub-stat{padding:15px}
+body[data-app-surface=posting] .hub-hero{padding:22px;margin-bottom:22px}
+@media(max-width:760px){
+ body[data-app-surface=library] main{padding-inline:16px}
+ body[data-app-surface=library] .workspace-heading{padding-block:20px;gap:12px}
+ body[data-app-surface=library] .topbar>span:first-child{display:none}
+ body[data-app-surface=library] .topbar{justify-content:flex-start;padding-block:10px;gap:6px}
+ body[data-app-surface=library] .getting-started{padding:12px}
+ body[data-app-surface=affiliate] .top{padding-inline:16px}
+ body[data-app-surface=affiliate] .layout{grid-template-columns:1fr;overflow:auto;display:block}
+ body[data-app-surface=affiliate] .intake{overflow:visible;border-right:0;border-bottom:1px solid var(--finish-line)}
+ body[data-app-surface=affiliate] .intake h1 br{display:none}
+ body[data-app-surface=affiliate] .workspace{overflow:visible;padding:20px 16px}
+ body[data-app-surface=affiliate] .empty{min-height:180px}
 }
 
 /* Status uses its own header row so its copy controls never cover a node. */

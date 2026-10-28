@@ -60,3 +60,11 @@ Tiêu đề node chỉ có một biểu tượng nhóm, bỏ vạch trang trí l
 Bản đồ giữ góc trên trái, thu mặc định thành nút Bản đồ. Thông báo chạy cho chọn văn bản, xem đủ và sao chép; bảng đầy đủ giữ nội dung tại thời điểm mở. Theme Đen tím là tùy chọn thật, đồng bộ giữa thư viện, canvas, Affiliate, Đăng bài và Cài đặt; lựa chọn cũ vẫn được giữ.
 
 Affiliate có bảng giây từng cảnh, tổng giây clip, giây đọc và ký tự trước khi tạo workflow. Mục tiêu riêng theo sản phẩm được lưu trong nháp; lời đọc dài hơn clip hoặc mục tiêu có cảnh báo. Không coi số giây ước lượng là thời lượng âm thanh thực. [Đối chiếu và kiểm thử](USER-REVIEW-2026-10-28.md).
+
+## 0.45.2 · Bố cục tập trung làm việc
+
+Dự án/Đăng bài/Chat nằm trên đầu sidebar; Cài đặt và cụm Cửa sổ/Báo lỗi ở cuối, để lại phần lớn chiều cao cho công cụ. Ở cửa sổ ≤1100px, dùng thanh icon 62px; bấm ☰ hoặc Tìm công cụ để mở drawer có nhãn. Tìm lệnh ở cạnh ô tìm công cụ, hoặc dùng ⌘K/Ctrl+K. Chat dùng một lối vào sidebar, không còn nút nổi che canvas.
+
+Các nút timeline tự xuống hàng theo chiều rộng thật của dock; Dừng chỉ hiện trong khi xuất. Trang thư viện thu phần tiêu đề và trang trí, đưa thẻ dự án lên cao. Affiliate giữ nút trong header khi xuống hàng; cửa sổ dưới 760px xếp phần nhập và nội dung dọc.
+
+Giao diện có mẫu xem trước và dòng Màu đang dùng. Chỉ Lưu mới đổi cài đặt; cập nhật app giữ màu đã chọn. Vừa màn hình tiếp tục khớp khi resize; sau khi tự zoom/kéo, góc nhìn do bạn điều khiển. [Số đo, kiểm thử và các điểm còn cần cải thiện](UI-REVIEW-2026-10-28.md).

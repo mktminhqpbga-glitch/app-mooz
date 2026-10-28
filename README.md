@@ -1,8 +1,10 @@
-# Workflow · MuseFlow 0.45.1
+# Workflow · MuseFlow 0.45.2
 
 [Bắt đầu trong 5 phút](docs/QUICKSTART.md) · [Xử lý góp ý người dùng 28/10](docs/USER-REVIEW-2026-10-28.md) · [Thiết kế MooZ Agent](designs/MOOZ-AGENT-PLAN.md)
 
-**Tiện ích đi kèm:** `extension/Workflow-Connect.zip` chứa **Workflow Connect 1.0.0**, dùng với app **0.44.0–0.45.1**. ZIP đã được đóng gói kèm từ 0.42.0; `extension/manifest.json` là bộ cập nhật dữ liệu cũ, không phải manifest của ZIP đồng hành này. App và tiện ích có phiên bản riêng, kiểm tra tương thích theo giao thức. Chỉ nâng app không đồng nghĩa phải cài lại tiện ích; khi app báo không tương thích, tải ZIP trong **Cài đặt & kết nối AI**, thay thư mục tiện ích, bấm **Tải lại** trong `chrome://extensions`, tải lại các tab AI và kết nối lại bằng mã phiên.
+**Tiện ích đi kèm:** `extension/Workflow-Connect.zip` chứa **Workflow Connect 1.0.0**, dùng với app **0.44.0–0.45.2**. ZIP đã được đóng gói kèm từ 0.42.0; `extension/manifest.json` là bộ cập nhật dữ liệu cũ, không phải manifest của ZIP đồng hành này. App và tiện ích có phiên bản riêng, kiểm tra tương thích theo giao thức. Chỉ nâng app không đồng nghĩa phải cài lại tiện ích; khi app báo không tương thích, tải ZIP trong **Cài đặt & kết nối AI**, thay thư mục tiện ích, bấm **Tải lại** trong `chrome://extensions`, tải lại các tab AI và kết nối lại bằng mã phiên.
+
+**0.45.2 · Bố cục tập trung làm việc:** thư viện gọn hơn, công cụ trái có thêm chỗ cuộn, rail/drawer dưới 1100px, các nút timeline không tràn, bỏ Chat nổi lặp và chỉ hiện Dừng khi xuất; xem trước màu và giữ tổng quan khi đổi kích thước cửa sổ. [Đo trước/sau và đánh giá nghiêm ngặt](docs/UI-REVIEW-2026-10-28.md).
 
 **0.45.1 · Báo lỗi & hoàn thiện:** thêm Trung tâm báo lỗi có ghi chú, trạng thái xử lý và xuất JSON đã lọc thông tin; sửa thông báo che nút và Fit khi nhập workflow/lưu chậm; thống nhất nhãn trò chuyện; mặc định Đen tím cho cài đặt mới và hướng dẫn Gatekeeper. [Cách báo lỗi](docs/DIAGNOSTICS.md) · [Đối chiếu đánh giá mới](docs/REVIEW-FOLLOWUP-2026-10-28.md).
 

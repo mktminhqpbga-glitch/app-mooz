@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Workflow · MuseFlow 0.45.1</title>
+  <title>Workflow · MuseFlow 0.45.2</title>
   <link rel="icon" type="image/png" sizes="128x128" href="icons/icon128.png" />
   <link rel="stylesheet" href="styles.css" />
   <link rel="stylesheet" href="studio.css" />
@@ -11,7 +11,7 @@
 <link rel="stylesheet" href="desktop/appearance.css"><link rel="stylesheet" href="desktop/studio-polish.css"><link rel="stylesheet" href="desktop/usability.css"><link rel="stylesheet" href="desktop/violet-theme.css"></head>
 <body>
   <header class="toolbar">
-    <div class="brand"><img class="brand-logo" src="icons/workflow-mark.svg" alt="" /><strong class="brand-name">Workflow</strong><span class="brand-version">0.45.1</span></div>
+    <div class="brand"><img class="brand-logo" src="icons/workflow-mark.svg" alt="" /><strong class="brand-name">Workflow</strong><span class="brand-version">0.45.2</span></div>
     <div class="toolbar-tools" aria-label="Tạo node cho workflow">
       <button id="creativeToolsBtn" type="button">Trợ lý sáng tạo</button><button id="referenceBoardBtn" type="button">Ảnh tham chiếu chung</button><button id="mediaLibraryBtn" type="button">⇩ Tải media</button><button id="promptLibraryBtn" type="button">Kho prompt</button>
       <button id="batchManagerBtn" type="button">Hàng đợi · Kho ảnh</button><button id="flowStudioBtn" type="button">Tạo hàng loạt</button><button id="batchImagesBtn" type="button">＋ Tạo ảnh hàng loạt</button><button id="scriptImportBtn" type="button">＋ Script → Nodes</button>
@@ -57,7 +57,7 @@
     <aside id="canvasMinimap" class="canvas-minimap" hidden aria-label="Bản đồ khung vẽ"><span>Bản đồ · kéo để di chuyển</span><svg id="canvasMinimapSvg" viewBox="0 0 180 110" role="img" aria-label="Vị trí các node và vùng đang xem"></svg></aside>
   </main>
   <section id="timelineDock" class="timeline-dock collapsed" aria-label="Dòng thời gian video">
-    <div class="timeline-dock-header"><div class="timeline-heading"><strong>Dòng thời gian</strong><span id="timelineClipCount">0 clips</span><small>Kéo clip để sắp xếp cảnh</small></div><div class="timeline-dock-actions"><button id="timelineImportAllBtn" type="button" title="Add every Generate Video node to the timeline">＋ Thêm tất cả video</button><div class="timeline-output-picker"><button id="timelineAddVideoBtn" type="button" title="Add a video output">＋ Thêm ảnh/video</button><div id="timelineOutputMenu" class="timeline-output-menu hidden"></div></div><button id="timelinePlayBtn" type="button" title="Preview sequence">▶ Xem trước</button><select id="timelineExportFormat" title="Choose export format"><option value="webm">WebM</option><option value="mp4">MP4 (H.264)</option></select><button id="timelineExportBtn" type="button" title="Export the full stitched timeline video">⇩ Xuất tất cả</button><button id="timelineExportSingleBtn" type="button" title="Xuất mỗi cảnh thành một video riêng theo định dạng đã chọn">⇩ Xuất từng clip</button><button id="timelineExportStopBtn" class="timeline-export-stop hidden" type="button" title="Stop timeline export">■ Dừng</button></div><button id="timelineToggleBtn" type="button" aria-expanded="false" title="Show timeline">▲</button></div>
+    <div class="timeline-dock-header"><div class="timeline-heading"><strong>Dòng thời gian</strong><span id="timelineClipCount">0 clips</span><small>Kéo clip để sắp xếp cảnh</small></div><div class="timeline-dock-actions"><button id="timelineImportAllBtn" type="button" title="Add every Generate Video node to the timeline">＋ Thêm tất cả</button><div class="timeline-output-picker"><button id="timelineAddVideoBtn" type="button" title="Add a video output">＋ Ảnh/video</button><div id="timelineOutputMenu" class="timeline-output-menu hidden"></div></div><button id="timelinePlayBtn" type="button" title="Preview sequence">▶ Xem trước</button><select id="timelineExportFormat" title="Choose export format"><option value="webm">WebM</option><option value="mp4">MP4 (H.264)</option></select><button id="timelineExportBtn" type="button" title="Export the full stitched timeline video">⇩ Xuất tất cả</button><button id="timelineExportSingleBtn" type="button" title="Xuất mỗi cảnh thành một video riêng theo định dạng đã chọn">⇩ Xuất từng clip</button><button id="timelineExportStopBtn" class="timeline-export-stop hidden" type="button" title="Stop timeline export">■ Dừng</button></div><button id="timelineToggleBtn" type="button" aria-expanded="false" title="Show timeline">▲</button></div>
     <div id="timelineDropZone" class="timeline-drop-zone">Thêm ảnh/video · kéo để sắp xếp · đặt thời lượng mỗi cảnh</div>
     <div class="timeline-dock-content"><div id="timelineTrack" class="timeline-dock-track"></div></div>
   </section>

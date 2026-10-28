@@ -19,6 +19,15 @@ body[data-app-surface] :is(#appearanceOpen,#windowSwitcherOpen){border:1px solid
 .appearance-dialog button.primary{background:#b6a4ff;color:#201933;border-color:#b6a4ff}
 .appearance-dialog [role=alert]{color:#ffb4bc}
 .appearance-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:22px;flex-wrap:wrap}
+.appearance-preview{--sample-bg:#0d0b14;--sample-panel:#20192f;--sample-ink:#f5f0fc;--sample-line:#40334f;--sample-accent:#7c3aed;margin:18px 0;padding:15px;border:1px solid var(--sample-line);border-radius:12px;background:var(--sample-bg);color:var(--sample-ink)}
+.appearance-preview[data-preview-theme=dark]{--sample-bg:#0f131c;--sample-panel:#1d2533;--sample-ink:#eaf0fa;--sample-line:#303b4d;--sample-accent:#7156bf}
+.appearance-preview[data-preview-theme=light]{--sample-bg:#f4f6fb;--sample-panel:#fff;--sample-ink:#25314a;--sample-line:#ccd4e3;--sample-accent:#7156bf}
+.appearance-preview header,.appearance-preview-footer{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px;flex-wrap:wrap}
+.appearance-preview header>span{opacity:.75;font-size:12px}
+.appearance-preview-workspace{display:flex;align-items:center;justify-content:center;gap:7px;padding:22px 0;font-size:12px}
+.appearance-preview-workspace>span:nth-child(odd){padding:10px 9px;border:1px solid var(--sample-line);background:var(--sample-panel);border-radius:7px}
+.appearance-preview-primary{padding:7px 10px;border-radius:7px;background:var(--sample-accent);color:#fff}
+#appearanceCurrent{font-size:12px}
 #windowList{display:grid;gap:8px}#windowList button{text-align:left;overflow-wrap:anywhere}#windowList button:disabled{opacity:.65;cursor:default}
 /* A readable shell; canvas zoom and graph coordinates stay independent. */
 .studio-layout :is(.studio-nav-caption,.studio-breadcrumb,.studio-sidebar-footer,.studio-sidebar .brand-version,.studio-overview-kicker,.studio-overview>span,.desktop-save,.statusbar,.statusbar span,.statusbar a,.timeline-heading small,.timeline-heading span,.studio-heading span){font-size:var(--ui-small)}
