@@ -34,7 +34,7 @@ class AIDispatch {
   if(r.expiresAt>this.now())return {ok:true,expiresAt:r.expiresAt};
   const due=Math.max((this.lastSent.get(r.provider)??-Infinity)+this.config.intervalMs,(this.lastFinished.get(r.provider)??-Infinity)+this.config.cooldownMs),remaining=due-this.now();
   if(remaining>0)return {ok:true,waiting:true,waitMs:Math.min(1000,remaining)};
-  r.expiresAt=this.now()+2000;this.lastSent.set(r.provider,this.now());this.event('permit',r);return {ok:true,expiresAt:r.expiresAt};
+  r.expiresAt=this.now()+2000;this.lastSent.set(r.provider,r.expiresAt);this.event('permit',r);return {ok:true,expiresAt:r.expiresAt};
  }
  async disconnect(key){for(const r of this.records.values())if(r.key===key&&r.stage!=='done'){if(r.stage==='sent'&&!this.holdError(r.provider))await this.block(r.provider,{code:'AI_DISCONNECTED',message:'Tab/kết nối AI bị ngắt sau khi đã gửi. Kiểm tra kết quả cũ trước khi tiếp tục; app không tự gửi lại.'});this.finish(key,r.id);}}
  async invoke(key,provider,message,send){
