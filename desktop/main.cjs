@@ -14,6 +14,7 @@ const {PostingStore}=require('./posting-store.cjs');
 const {FacebookPublisher}=require('./facebook-publisher.cjs');
 const {PostingService}=require('./posting-service.cjs');
 const {PostingAI}=require('./posting-ai.cjs');
+const {BatchAI}=require('./batch-ai.cjs');
 const {MusePublishing}=require('./muse-publishing.cjs');
 const {PostingOAuth}=require('./posting-oauth.cjs');
 const {BrandStore}=require('./brand-store.cjs');
@@ -30,11 +31,11 @@ const testMode=process.env.WORKFLOW_DESKTOP_TEST==='1'&&!app.isPackaged;
 if(testMode){if(!process.env.WORKFLOW_TEST_DATA)throw Error('Missing test data directory');app.setPath('userData',path.resolve(process.env.WORKFLOW_TEST_DATA));}
 if(!app.requestSingleInstanceLock())app.exit(0);
 app.on('second-instance',()=>{if(home&&!home.isDestroyed()){home.show();home.focus();}});
-let diagnostics,aiConnections,uiPreferences,store,home,ai,relay,updater,downloads,posting,postingAI,postingOAuth,brands,chats,facebookPages,facebookLogin,postingWindow,affiliate,affiliateWindow,chromeEverConnected=false;
+let diagnostics,aiConnections,uiPreferences,store,home,ai,relay,updater,downloads,posting,postingAI,postingOAuth,brands,chats,facebookPages,facebookLogin,postingWindow,affiliate,affiliateWindow,batchWindow,batchAI,chromeEverConnected=false;
 const managedProjects=new Set();
 const canvases=new Map(),sessionData=new Map(),requests=new Map(),installedSessions=new WeakSet();
 const projectTransitions=new Set(),affiliateTransitions=new Set();
-function notify(value){if(affiliateWindow&&!affiliateWindow.isDestroyed())affiliateWindow.webContents.send('workflow:event',value);if(postingWindow&&!postingWindow.isDestroyed())postingWindow.webContents.send('workflow:event',value);if(['update','brands','projects','appearance','aiConnections','diagnostics'].includes(value.type)&&home&&!home.isDestroyed())home.webContents.send('workflow:event',value);if(value.type==='relay'&&value.connected){chromeEverConnected=true;managedProjects.clear();}for(const win of canvases.values())if(!win.isDestroyed())win.webContents.send('workflow:event',value);}
+function notify(value){if(value.type==='message'&&value.message?.type==='WORKFLOW_AI_PROGRESS')batchAI?.report(value.message.requestId,value.message.text);if(batchWindow&&!batchWindow.isDestroyed())batchWindow.webContents.send('workflow:event',value);if(affiliateWindow&&!affiliateWindow.isDestroyed())affiliateWindow.webContents.send('workflow:event',value);if(postingWindow&&!postingWindow.isDestroyed())postingWindow.webContents.send('workflow:event',value);if(['update','brands','projects','appearance','aiConnections','diagnostics'].includes(value.type)&&home&&!home.isDestroyed())home.webContents.send('workflow:event',value);if(value.type==='relay'&&value.connected){chromeEverConnected=true;managedProjects.clear();}for(const win of canvases.values())if(!win.isDestroyed())win.webContents.send('workflow:event',value);}
 async function setupSession(ses){
   if(installedSessions.has(ses))return;installedSessions.add(ses);
   downloads.install(ses);
@@ -68,6 +69,16 @@ async function openHome(){
   await setupSession(session.defaultSession);
   home=new BrowserWindow({width:1200,height:830,minWidth:860,minHeight:650,backgroundColor:appearanceBackground(),title:'MooZ Agent',webPreferences:{preload:path.join(__dirname,'preload.cjs'),additionalArguments:['--workflow-version='+version],backgroundThrottling:false,contextIsolation:true,sandbox:true,nodeIntegration:false,webSecurity:true}});
   protect(home);home.on('closed',()=>{home=null;});await home.loadURL(appearanceURL('workflow://app/desktop/home.html'));
+}
+async function openBatch(){
+ if(batchWindow&&!batchWindow.isDestroyed()){batchWindow.show();batchWindow.focus();return;}
+ await setupSession(session.defaultSession);
+ batchWindow=new BrowserWindow({width:1500,height:960,minWidth:900,minHeight:650,title:'Video hàng loạt · MooZ Agent',backgroundColor:appearanceBackground(),webPreferences:{preload:path.join(__dirname,'preload.cjs'),additionalArguments:['--workflow-version='+version],backgroundThrottling:false,contextIsolation:true,sandbox:true,nodeIntegration:false,webSecurity:true}});
+ const win=batchWindow;protect(win);
+ win.on('close',event=>{if(quitApproved||win.batchCloseAllowed)return;event.preventDefault();if(win.batchClosing)return;win.batchClosing=true;void win.webContents.executeJavaScript('!!(window.MooZBatch?.busy()||window.MooZBatch?.state.running)').then(busy=>{if(win.isDestroyed())return;if(busy)win.hide();else{win.batchCloseAllowed=true;win.close();}}).catch(()=>win.hide()).finally(()=>{win.batchClosing=false;});});
+ win.on('closed',()=>{batchAI.close();batchWindow=null;});
+ win.webContents.on('render-process-gone',()=>batchAI.close());
+ await win.loadURL(appearanceURL('workflow://app/desktop/batch/index.html'));
 }
 async function openAffiliate(){
  if(affiliateWindow&&!affiliateWindow.isDestroyed()){affiliateWindow.show();affiliateWindow.focus();return;}
@@ -105,7 +116,7 @@ async function openProject(id){
 function context(event){
   const frame=event.senderFrame;if(!frame||frame!==event.sender.mainFrame)throw Error('Only the application window can request desktop actions.');
   const url=new URL(frame.url);if(url.protocol!=='workflow:'||url.host!=='app')throw Error('Untrusted caller.');
-  const win=BrowserWindow.fromWebContents(event.sender);if(!win)throw Error('Unknown window.');return {win,id:win.projectId,home:url.pathname==='/desktop/home.html',posting:win===postingWindow&&url.pathname==='/desktop/posting.html',affiliate:win===affiliateWindow&&url.pathname==='/desktop/affiliate.html'};
+  const win=BrowserWindow.fromWebContents(event.sender);if(!win)throw Error('Unknown window.');return {win,id:win.projectId,home:url.pathname==='/desktop/home.html',posting:win===postingWindow&&url.pathname==='/desktop/posting.html',batch:win===batchWindow&&url.pathname==='/desktop/batch/index.html',affiliate:win===affiliateWindow&&url.pathname==='/desktop/affiliate.html'};
 }
 function send(win,value){if(!win.isDestroyed())win.webContents.send('workflow:event',value);}
 async function fetchBounded(id,data){
@@ -139,6 +150,16 @@ async function handleWorkflowCall(event,method,data={}){
    if(method==='diagnostics.copy'){clipboard.writeText(win.diagnosticsReport||await diagnostics.report());return;}
    if(method==='diagnostics.download'){const report=win.diagnosticsReport||await diagnostics.report();return downloads.download(win,{url:'data:application/json;base64,'+Buffer.from(report).toString('base64'),filename:'MooZ-bao-loi-'+new Date(Date.now()+7*3600000).toISOString().slice(0,10)+'.json'});}
    throw Error('Thao tác báo lỗi không hợp lệ.');
+  }
+  if(method==='batch.open'){await openBatch();return;}
+  if(method.startsWith('batch.')){
+   if(!ctx.batch)throw Error('Mở Video hàng loạt trước.');
+   if(method==='batch.tabs')return batchAI.tabs();
+   if(method==='batch.generate')return batchAI.generate(data);
+   if(method==='batch.stop'){batchAI.stop(data.workerId);return;}
+   if(method==='batch.openAI'){if(!['muse','gemini','chatgpt'].includes(data.provider))throw Error('AI không hợp lệ.');return ai.open(data.provider);}
+   if(method==='batch.download')return downloads.download(win,{url:data.url,filename:data.filename,saveAs:false});
+   throw Error('Thao tác Video hàng loạt không hợp lệ.');
   }
   if(method==='affiliate.open'){await openAffiliate();return;}
   if(method.startsWith('affiliate.')){
@@ -255,8 +276,8 @@ async function handleWorkflowCall(event,method,data={}){
   if(method==='extension.download')return downloads.download(win,{url:'data:application/octet-stream;base64,'+(await require('node:fs/promises').readFile(path.join(root,'extension/Workflow-Connect.zip'))).toString('base64'),filename:'Workflow-Connect.zip',saveAs:false});
   if(method==='appearance.get')return uiPreferences.get();
   if(method==='appearance.save'){const value=await uiPreferences.save(data);notify({type:'appearance',value});return value;}
-  if(method==='windows.list')return [...(home&&!home.isDestroyed()?[{key:'home',name:'Thư viện dự án',win:home}]:[]),...(postingWindow&&!postingWindow.isDestroyed()?[{key:'posting',name:'Đăng bài / Điều hành',win:postingWindow}]:[]),...(affiliateWindow&&!affiliateWindow.isDestroyed()?[{key:'affiliate',name:'Affiliate Shopee',win:affiliateWindow}]:[]),...[...canvases].filter(([,w])=>!w.isDestroyed()).map(([key,w])=>({key,name:w.getTitle(),win:w}))].map(w=>({key:w.key,name:w.name,active:w.win===win}));
-  if(method==='windows.focus'){const target=data.key==='home'?home:data.key==='posting'?postingWindow:data.key==='affiliate'?affiliateWindow:canvases.get(data.key);if(!target||target.isDestroyed())throw Error('Cửa sổ đã đóng.');target.show();if(target.isMinimized())target.restore();target.focus();return;}
+  if(method==='windows.list')return [...(home&&!home.isDestroyed()?[{key:'home',name:'Thư viện dự án',win:home}]:[]),...(postingWindow&&!postingWindow.isDestroyed()?[{key:'posting',name:'Đăng bài / Điều hành',win:postingWindow}]:[]),...(batchWindow&&!batchWindow.isDestroyed()?[{key:'batch',name:'Video hàng loạt',win:batchWindow}]:[]),...(affiliateWindow&&!affiliateWindow.isDestroyed()?[{key:'affiliate',name:'Affiliate Shopee',win:affiliateWindow}]:[]),...[...canvases].filter(([,w])=>!w.isDestroyed()).map(([key,w])=>({key,name:w.getTitle(),win:w}))].map(w=>({key:w.key,name:w.name,active:w.win===win}));
+  if(method==='windows.focus'){const target=data.key==='home'?home:data.key==='posting'?postingWindow:data.key==='affiliate'?affiliateWindow:data.key==='batch'?batchWindow:canvases.get(data.key);if(!target||target.isDestroyed())throw Error('Cửa sổ đã đóng.');target.show();if(target.isMinimized())target.restore();target.focus();return;}
   if(method==='home.open'){await openHome();return;}
   if(!id)throw Error('Project context required.');
   if(method==='project.info')return (await store.list()).find(item=>item.id===id);
@@ -307,12 +328,13 @@ app.whenReady().then(async()=>{
   facebookPages=new FacebookPages(publisher);facebookLogin=new FacebookLogin({fetch:net.fetch.bind(net),openExternal:url=>shell.openExternal(url),pages:facebookPages});
   postingOAuth=new PostingOAuth({fetch:net.fetch.bind(net),openExternal:url=>shell.openExternal(url)});
   aiConnections=new AIConnections(app.getPath('userData'),net.fetch.bind(net));await aiConnections.init();
-  postingAI=new PostingAI({ai,relay,store:postingStore,connections:aiConnections});publisher.muse=new MusePublishing({client:postingAI});posting=new PostingService({store:postingStore,publisher,brands,ask:(...args)=>postingAI.ask(...args),notify:()=>notify({type:'posting'})});await posting.init();posting.start();
+  postingAI=new PostingAI({ai,relay,store:postingStore,connections:aiConnections});batchAI=new BatchAI({client:postingAI,ai,relay,onProgress:notify});publisher.muse=new MusePublishing({client:postingAI});posting=new PostingService({store:postingStore,publisher,brands,ask:(...args)=>postingAI.ask(...args),notify:()=>notify({type:'posting'})});await posting.init();posting.start();
   affiliate=new AffiliateService({root:path.join(app.getPath('userData'),'affiliate'),ai:postingAI,fetchImpl:net.fetch.bind(net),notify:()=>notify({type:'affiliate'}),decodeImage:bytes=>{let image=nativeImage.createFromBuffer(bytes);if(image.isEmpty())throw Error('Không giải mã được ảnh sản phẩm.');const {width,height}=image.getSize();if(width*height>25000000)throw Error('Ảnh sản phẩm quá lớn.');const scale=Math.min(1,1600/Math.max(width,height));if(scale<1)image=image.resize({width:Math.round(width*scale),height:Math.round(height*scale),quality:'best'});const jpeg=image.toJPEG(90);if(jpeg.length>4*1024*1024)throw Error('Ảnh sản phẩm sau thu nhỏ vẫn quá lớn.');return 'data:image/jpeg;base64,'+jpeg.toString('base64');}});await affiliate.init();
   const signed=app.isPackaged&&process.platform==='darwin'&&await isDeveloperIDSigned(path.dirname(path.dirname(path.dirname(process.execPath))));
   updater=new UpdateService({version,packaged:app.isPackaged,platform:process.platform,signed,engine:signed?require('electron-updater').autoUpdater:null,fetchRelease:()=>latestPublicRelease(net.fetch.bind(net)),
     prepareInstall:async()=>{
       posting.hold=true;try{
+      if(batchAI?.running.size){await dialog.showMessageBox({type:'info',buttons:['Đóng'],message:'Chờ hoặc dừng Video hàng loạt trước khi cài cập nhật.'});return false;}
       if(affiliate?.working){await dialog.showMessageBox({type:'info',buttons:['Đóng'],message:'Dừng hoặc đợi tác vụ Affiliate Shopee hoàn tất trước khi cài cập nhật.'});return false;}
       if(posting?.busy()){await dialog.showMessageBox({type:'info',buttons:['Đóng'],message:'Chờ tác vụ đăng bài hoàn tất trước khi cài cập nhật.'});return false;}
       const answer=await dialog.showMessageBox({type:'question',buttons:['Để sau','Lưu và cài'],defaultId:0,cancelId:0,message:'Lưu công việc, dừng các workflow rồi cài và khởi động lại?',detail:'Dự án và thiết lập vẫn được giữ trên máy.'});
@@ -322,7 +344,7 @@ app.whenReady().then(async()=>{
       }finally{if(!quitApproved)posting.hold=false;}
     },onInstallStart:()=>{posting.hold=true;quitApproved=true;},onInstallFailed:()=>{posting.hold=false;quitApproved=false;}});
   updater.on('status',status=>notify({type:'update',status}));updater.start();
-  if(testMode)globalThis.workflowTest={diagnostics,aiConnections,store,ai,relay,updater,posting,postingAI,postingOAuth,brands,chats,facebookPages,facebookLogin,affiliate,openProject,openHome,openPosting,openAffiliate};
+  if(testMode)globalThis.workflowTest={diagnostics,aiConnections,store,ai,relay,updater,posting,postingAI,postingOAuth,brands,chats,facebookPages,facebookLogin,affiliate,batchAI,openBatch,openProject,openHome,openPosting,openAffiliate};
   Menu.setApplicationMenu(Menu.buildFromTemplate([
     ...(process.platform==='darwin'?[{role:'appMenu'}]:[]),
     {label:'Dự án',submenu:[{label:'Thư viện dự án',accelerator:'CmdOrCtrl+Shift+P',click:()=>void openHome()},{role:'close'},{role:'quit'}]},
@@ -338,6 +360,6 @@ app.on('window-all-closed',()=>{if(process.platform!=='darwin')app.quit();});
 let quitApproved=false,quitInProgress=false;
 app.on('before-quit',event=>{
   if(quitApproved)return;event.preventDefault();if(quitInProgress)return;quitInProgress=true;if(posting)posting.hold=true;
-  void(async()=>{try{await diagnostics?.writes.catch(()=>{});await brands?.writes.catch(()=>{});if(chats)await Promise.allSettled([...chats.writes.values()]);if(posting?.busy()){const answer=await dialog.showMessageBox({type:'warning',buttons:['Ở lại','Thoát ứng dụng'],defaultId:0,cancelId:0,message:'Đăng bài đang xử lý. Thoát có thể làm gián đoạn gửi bài; kiểm tra nền tảng trước khi thử lại.'});if(answer.response!==1)return;}for(const win of [...canvases.values()])if(!await win.prepareToClose())return;await affiliate?.close();quitApproved=true;app.quit();}finally{quitInProgress=false;if(posting&&!quitApproved)posting.hold=false;}})();
+  void(async()=>{try{await diagnostics?.writes.catch(()=>{});await brands?.writes.catch(()=>{});if(chats)await Promise.allSettled([...chats.writes.values()]);if(posting?.busy()){const answer=await dialog.showMessageBox({type:'warning',buttons:['Ở lại','Thoát ứng dụng'],defaultId:0,cancelId:0,message:'Đăng bài đang xử lý. Thoát có thể làm gián đoạn gửi bài; kiểm tra nền tảng trước khi thử lại.'});if(answer.response!==1)return;}for(const win of [...canvases.values()])if(!await win.prepareToClose())return;if(batchWindow&&!batchWindow.isDestroyed()){const busy=await batchWindow.webContents.executeJavaScript('!!window.MooZBatch?.busy()');if(busy){const answer=await dialog.showMessageBox(batchWindow,{type:'warning',buttons:['Ở lại','Lưu, dừng và thoát'],defaultId:0,cancelId:0,message:'Video hàng loạt đang chạy. Dừng và thoát? Kiểm tra tab AI trước khi chạy tiếp tác vụ bị gián đoạn.'});if(answer.response!==1)return;}await batchWindow.webContents.executeJavaScript('window.MooZBatch?.flushAndStop()');}batchAI?.close();await affiliate?.close();quitApproved=true;app.quit();}finally{quitInProgress=false;if(posting&&!quitApproved)posting.hold=false;}})();
 });
 app.on('will-quit',()=>{postingOAuth?.cancel();facebookLogin?.cancel();facebookPages?.clear();posting?.close();updater?.stop();void relay?.close();for(const controller of requests.values())controller.abort();});

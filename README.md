@@ -1,4 +1,6 @@
-# Workflow · MuseFlow 0.46.1
+# Workflow · MuseFlow 0.47.0
+
+Bản 0.47.0 thêm **Video hàng loạt** tại thư viện dự án: cập nhật các tab AI tự mở, chọn tab nhận việc, chạy luồng riêng theo từng sản phẩm, kho media và hậu kỳ xuất MP4 cục bộ. Hướng dẫn và giới hạn: [Tạo video hàng loạt](docs/BATCH-VIDEO-STUDIO-PLAN.md#bản-tích-hợp-0470).
 
 [Bắt đầu trong 5 phút](docs/QUICKSTART.md) · [Xử lý góp ý người dùng 28/10](docs/USER-REVIEW-2026-10-28.md) · [Thiết kế MooZ Agent](designs/MOOZ-AGENT-PLAN.md)
 

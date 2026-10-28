@@ -1,6 +1,6 @@
 # MooZ Agent · Tạo video hàng loạt
 
-Bản thiết kế ngày 28/10/2026. Phạm vi đợt này: **logic và HTML tương tác để xem trước**. Chưa thêm ứng dụng này vào bản cài MooZ, chưa gọi AI thật, chưa điều khiển tab Chrome.
+Thiết kế ngày 28/10/2026 đã được tích hợp vào **MooZ Agent 0.47.0** tại `desktop/batch/`. Phần đầu tài liệu giữ logic của HTML xem trước; mục **Bản tích hợp 0.47.0** ở cuối ghi rõ hành vi ứng dụng thật. HTML trong `designs/` vẫn là bản mô phỏng để đối chiếu thiết kế.
 
 Mở [HTML tự chứa](../designs/mooz-batch-video-preview.html) bằng Chrome. Không cần cài thư viện, không cần API key, không cần chạy server. Mọi tài nguyên minh họa được nhúng hoặc tạo trên máy. Nguồn có thể chỉnh sửa nằm trong `designs/batch-video/`.
 
@@ -156,3 +156,17 @@ Nhật ký chạy thật phải bền vững, ghi ý định trước khi gửi 
 Kiểm tra tương tác đã đạt: 13 sản phẩm / 4 lease AI không trùng; nhập thêm từng ảnh hoặc gom ảnh; tạm dừng/cấp việc lại; mô phỏng lỗi và retry giữ bước đạt; snapshot không đổi khi lưu luồng mới; tải/đổi tên/bỏ media và mở lại; đổi video sau khi khởi tạo trộn âm thanh; không tràn chiều ngang ở 1536/1024/390px.
 
 Xuất WebM thật từ đoạn video 1–2,2 giây với bão hòa 0 và nhạc nguồn từ giây 5. Dùng FFprobe xác nhận kích thước, luồng hình/âm thanh và duration hữu hạn; giải mã frame kiểm tra RGB trắng đen, giải mã PCM kiểm tra có âm và tần số tương ứng đoạn nhạc đã chọn. Không gọi Muse/Gemini/ChatGPT hay đăng bài thật. MP4 chưa có kiểm tra giải mã tương tự; tùy bộ mã hóa browser.
+
+## Bản tích hợp 0.47.0
+
+Bản HTML ở `designs/` được giữ làm hồ sơ thiết kế. Ứng dụng thật nằm tại `desktop/batch/`, mở từ **Thư viện dự án → Video hàng loạt**. Không có sản phẩm mẫu, tab giả hay clip mẫu trong ứng dụng thật.
+
+- **Cập nhật tab AI** xuất hiện trên thanh trên và trong Nhóm tab AI. Đọc lại tab Chrome đã kết nối và cửa sổ AI trong app; có thể mở thêm tùy nhu cầu. Tab mới mặc định chưa được chọn. Giữ lựa chọn/biệt danh, đánh dấu tab biến mất là ngoại tuyến. Bộ chạy chỉ dùng tab đã chọn và đúng AI của bước.
+- Luồng hiện là chuỗi bước tùy chỉnh, không phải trình nhập mọi đồ thị canvas. Hỗ trợ đọc ảnh, viết kịch bản, tạo ảnh theo cảnh, tạo video theo cảnh và ghép cuối. Muse tạo video; Muse/Gemini/ChatGPT hỗ trợ các bước văn bản/ảnh tương ứng. Dùng lại bridge nhận kết quả hiện có của app và tiện ích; không gửi lại prompt khi mất mã tác vụ Muse.
+- Hàng chờ tối đa 100 sản phẩm; giới hạn đồng thời 1–6 tab. Một tab chỉ giữ một bước, các cảnh trong bước chạy lần lượt. Khi xếp hàng, chốt ảnh/tên/ghi chú/phiên bản luồng riêng; kết quả mỗi cảnh phải được giải mã và lưu kho trước khi chốt checkpoint. Mỗi sản phẩm ghép những video của chính nó theo thứ tự cảnh.
+- Tạm dừng ngừng giao việc mới. Dừng sản phẩm gửi yêu cầu dừng tới tab; retry giữ cảnh đã lưu và chỉ chạy phần chưa xong. Khi app bị đóng hoặc gián đoạn, tác vụ đang chạy chuyển thành lỗi cần kiểm tra; không tự gửi lại. Tab đang bận bởi công việc khác báo rõ lý do.
+- Kho lưu Blob và metadata bằng IndexedDB trong dữ liệu ứng dụng Electron; hàng chờ/luồng/công thức hậu kỳ lưu cục bộ. Đổi tên và bỏ khỏi kho không phá tệp đã được sản phẩm tham chiếu. Giới hạn tệp 100 MB; ảnh đầu vào sản phẩm 20 MB. Trước gửi AI, ảnh được thu nhỏ tối đa 1600px và chuyển JPEG; nguồn được giữ nguyên.
+- Ghép cảnh dùng FFmpeg của app. Hậu kỳ xuất MP4 H.264/AAC trên máy, có màu, đoạn cắt video, âm lượng gốc/nhạc, cắt đúng đoạn nhạc và lặp tùy chọn. Tải bằng trình tải desktop, tự tránh trùng tên; không lặp hộp thoại thay thế tệp. Giữ app mở khi chạy và xuất; không có dịch vụ nền sau khi thoát app.
+- Không tự đăng bài hay gọi tài khoản AI khi chỉ mở ứng dụng. Bấm chạy hàng chờ mới gửi ảnh/yêu cầu sang các tab đã chọn.
+
+Kiểm thử bổ sung: scheduler async với 13 sản phẩm / 4 tab, refresh thêm/mất tab, snapshot, lease khi dừng, restart không gửi lại, từ chối blob của tab khác; Electron thật kiểm tra UI, IPC/bridge, kho bền vững, ghép FFmpeg và MP4 hậu kỳ có đoạn nhạc được kiểm tra từ âm thanh đã mã hóa. Nhà cung cấp AI trong kiểm thử là fixture; không khẳng định đã thử tài khoản AI thật.
