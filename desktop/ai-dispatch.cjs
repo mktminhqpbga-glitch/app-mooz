@@ -29,7 +29,7 @@ class AIDispatch {
    if((this.lastFinished.get(r.provider)??-Infinity)+this.config.cooldownMs>this.now()||peers.filter(x=>['preparing','sent'].includes(x.stage)).length>=this.config.maxActive||first&&first!==r)return {ok:true,waiting:true,waitMs:1000};
    r.stage='preparing';this.event('preparing',r);return {ok:true};
   }
-  if(m.operation==='sent'){if(r.stage==='sent')return {ok:true};if(r.stage!=='preparing'||!r.expiresAt)return {ok:false,error:'Chưa cấp quyền gửi.'};r.stage='sent';this.lastSent.set(r.provider,this.now());this.event('sent',r);return {ok:true};}
+  if(m.operation==='sent'){if(r.stage==='sent')return {ok:true};if(r.stage!=='preparing'||!r.expiresAt)return {ok:false,error:'Chưa cấp quyền gửi.'};r.stage='sent';this.lastSent.set(r.provider,Math.max(this.now(),...[...this.records.values()].filter(x=>x.provider===r.provider&&x.stage==='preparing').map(x=>x.expiresAt)));this.event('sent',r);return {ok:true};}
   if(m.operation!=='permit'||r.stage!=='preparing')return {ok:false,error:'Thứ tự gửi AI không hợp lệ.'};
   if(r.expiresAt>this.now())return {ok:true,expiresAt:r.expiresAt};
   const due=Math.max((this.lastSent.get(r.provider)??-Infinity)+this.config.intervalMs,(this.lastFinished.get(r.provider)??-Infinity)+this.config.cooldownMs),remaining=due-this.now();
