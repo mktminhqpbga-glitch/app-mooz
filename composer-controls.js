@@ -135,9 +135,10 @@
   }
   function assertService(request){const block=serviceState();if(!block)return;const error=Object.assign(Error(block.message),{code:block.code,block});if(request?.dispatchProtocol===1)void chrome.runtime.sendMessage({type:'WORKFLOW_AI_GATE',requestId:request.requestId,token:request.dispatchToken,operation:'block',block}).catch(()=>{});throw error;}
   async function waitTurn(request,operation,signal,onWait=()=>{}){
-    assertService(request);if(request?.dispatchProtocol!==1)return {ok:true,expiresAt:Infinity};
+    if(signal?.aborted)throw new DOMException('Đã dừng.','AbortError');assertService(request);if(request?.dispatchProtocol!==1)return {ok:true,expiresAt:Infinity};
     while(true){if(signal?.aborted)throw new DOMException('Đã dừng.','AbortError');assertService(request);
       const result=await chrome.runtime.sendMessage({type:'WORKFLOW_AI_GATE',requestId:request.requestId,token:request.dispatchToken,operation});
+      if(signal?.aborted)throw new DOMException('Đã dừng.','AbortError');
       if(!result?.ok)throw Object.assign(Error(result?.error||'Chưa được app cấp quyền gửi AI.'),{code:result?.code||'AI_GATE_FAILED'});
       if(!result.waiting)return result;onWait(operation==='prepare'?'Đang đợi lượt thao tác AI chung của ứng dụng…':'Tệp đã sẵn sàng. Đang chờ nhịp gửi AI chung…');
       await new Promise((resolve,reject)=>{const stop=()=>{clearTimeout(timer);reject(new DOMException('Đã dừng.','AbortError'));},timer=setTimeout(()=>{signal?.removeEventListener('abort',stop);resolve();},Math.max(100,Math.min(1000,result.waitMs||1000)));signal?.addEventListener('abort',stop,{once:true});if(signal?.aborted)stop();});
