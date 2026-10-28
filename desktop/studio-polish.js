@@ -1,6 +1,12 @@
 /* Decorative line icons only. Existing labels, handlers and node data stay intact. */
 (()=>{
  const paths={
+  search:'M10 3a7 7 0 1 0 0 14 7 7 0 0 0 0-14 M15 15l6 6',
+  focus:'M8 3H3v5 M16 3h5v5 M3 16v5h5 M21 16v5h-5',
+  scissors:'M6 8a3 3 0 1 0 0 6 3 3 0 0 0 0-6 M6 16a3 3 0 1 0 0 6 3 3 0 0 0 0-6 M8 10L21 3 M8 19L21 9',
+  rotate:'M3 10a9 9 0 1 1 1 8 M3 4v6h6',
+  adjust:'M3 6h18 M8 3v6 M3 12h18 M16 9v6 M3 18h18 M10 15v6',
+  alert:'M12 3L2 21h20z M12 9v5 M12 18h.01',
   arrow:'M6 18L18 6 M6 6h12v12',
   image:'M3 3h18v18H3z M3 16l5-5 5 5 3-3 5 5 M8 7h.01',
   sparkle:'M12 3l2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5z',
@@ -20,9 +26,10 @@
   send:'M3 3l18 9-18 9 4-9z M7 12h14',
   chat:'M3 4h18v13H9l-6 4z M7 8h10 M7 12h6',
   windows:'M3 3h15v15H3z M7 21h14V7',
+  video:'M3 5h18v14H3z M9 9l6 3-6 3z',
   voice:'M9 4a3 3 0 0 1 6 0v8a3 3 0 0 1-6 0z M5 10v2a7 7 0 0 0 14 0v-2 M12 19v3 M8 22h8'
  };
- const icons={referenceBoardBtn:'image',creativeToolsBtn:'sparkle',batchManagerBtn:'queue',flowStudioBtn:'grid',batchImagesBtn:'image',scriptImportBtn:'script',storyDashboardBtn:'script',promptLibraryBtn:'folder',mediaLibraryBtn:'download',workflowExportBtn:'download',workflowImportBtn:'upload',arrangeNodesBtn:'arrange',arrangeLooseBtn:'arrange',duplicateSelectionBtn:'copy',runOptionsBtn:'select',clearPromptsBtn:'erase',resetBtn:'trash',connectionsOpen:'settings',diagnosticsOpen:'script',commandPaletteOpen:'select',appearanceOpen:'settings',studioHome:'home',studioPosting:'send',studioChat:'chat',windowSwitcherOpen:'windows',desktopUpdateButton:'download',settingsBtn:'settings',packageUpdateBtn:'download',dataUpdateBtn:'download','desktopOpen-chatgpt':'chat','desktopOpen-gemini':'sparkle','desktopOpen-muse':'sparkle'};
+ const icons={findNodesBtn:'search',selectErrorsBtn:'alert',focusSelectionBtn:'focus',videoTrimBtn:'scissors',videoRotateBtn:'rotate',videoColorBtn:'adjust',audioExtractBtn:'voice',referenceBoardBtn:'image',creativeToolsBtn:'sparkle',batchManagerBtn:'queue',flowStudioBtn:'grid',batchImagesBtn:'image',scriptImportBtn:'script',storyDashboardBtn:'script',promptLibraryBtn:'folder',mediaLibraryBtn:'download',workflowExportBtn:'download',workflowImportBtn:'upload',arrangeNodesBtn:'arrange',arrangeLooseBtn:'arrange',duplicateSelectionBtn:'copy',runOptionsBtn:'select',clearPromptsBtn:'erase',resetBtn:'trash',connectionsOpen:'settings',diagnosticsOpen:'script',commandPaletteOpen:'select',appearanceOpen:'settings',studioHome:'home',studioPosting:'send',studioChat:'chat',windowSwitcherOpen:'windows',desktopUpdateButton:'download',settingsBtn:'settings',packageUpdateBtn:'download',dataUpdateBtn:'download','desktopOpen-chatgpt':'chat','desktopOpen-gemini':'sparkle','desktopOpen-muse':'sparkle'};
  function svg(kind){const s=document.createElementNS('http://www.w3.org/2000/svg','svg');s.classList.add('finish-icon');s.setAttribute('viewBox','0 0 24 24');s.setAttribute('aria-hidden','true');const p=document.createElementNS(s.namespaceURI,'path');p.setAttribute('d',paths[kind]);s.append(p);return s;}
  function decorate(){for(const [id,kind]of Object.entries(icons)){const b=document.getElementById(id);if(!b||!b.closest('.studio-sidebar')||b.querySelector('.finish-icon'))continue;if(!b.getAttribute('aria-label'))b.setAttribute('aria-label',b.textContent.trim());if(!b.title)b.title=b.textContent.trim();const label=document.createElement('span');label.className='finish-label';label.textContent=b.textContent.replace(/^(?:[＋+⇩⇄↔←⚙↗]|↻)\s*/u,'');b.replaceChildren(svg(kind),label);}
  for(const [id,kind]of [['aiAppsWorkflow','grid'],['aiAppsHubPosting','send'],['aiAppsAffiliate','sparkle'],['aiAppsVoice','voice']]){const holder=document.querySelector('#'+id+' .app-icon');if(holder&&!holder.querySelector('.finish-icon'))holder.replaceChildren(svg(kind));}}

@@ -12,10 +12,28 @@
   voiceSync:{title:'Đồng bộ lời đọc – cảnh',inputs:[{...video,label:'Các cảnh'},{...audio,label:'Các bản đọc'},text],outputs:[video]},
   transition:{title:'Chuyển cảnh',inputs:[{...video,id:'first',label:'Cảnh trước'},{...video,id:'second',label:'Cảnh sau'}],outputs:[video]},
   speed:{title:'Điều chỉnh tốc độ',inputs:[video],outputs:[video]},
+  videoTrim:{title:'Cắt video',inputs:[video],outputs:[video]},
+  videoRotate:{title:'Xoay / lật video',inputs:[video],outputs:[video]},
+  videoColor:{title:'Chỉnh màu video',inputs:[video],outputs:[video]},
+  audioExtract:{title:'Tách âm thanh',inputs:[video],outputs:[audio]},
   workflowTemplate:{title:'Mẫu workflow',inputs:[],outputs:[]}
  };
- const effects=new Set(['finalOutput','audioMix','subtitles','voiceover','voiceSync','transition','speed','frameFit','watermark']);
+ const localEdits=new Set(['videoTrim','videoRotate','videoColor','audioExtract']);
+ const effects=new Set(['finalOutput','audioMix','subtitles','voiceover','voiceSync','transition','speed','frameFit','watermark',...localEdits]);
  const finite=(value,min,max,label)=>{const n=Number(value);if(!Number.isFinite(n)||n<min||n>max)throw Error(`${label}: cần số từ ${min} đến ${max}.`);return n;};
+ function editPlan(type,settings={},duration){
+  if(type==='videoTrim'){
+   finite(duration,.05,86400,'Thời lượng nguồn');const start=finite(settings.trimStart??0,0,duration,'Bắt đầu'),end=finite(settings.trimEnd==null||settings.trimEnd===''||Number(settings.trimEnd)===0?duration:settings.trimEnd,0,duration,'Kết thúc');
+   if(end-start<.05)throw Error('Kết thúc phải sau bắt đầu ít nhất 0,05 giây.');return {start,end,duration:end-start};
+  }
+  if(type==='videoRotate'){
+   const angle=Number(settings.rotation??0);if(![0,90,180,270].includes(angle))throw Error('Góc xoay phải là 0, 90, 180 hoặc 270 độ.');
+   const filters=angle===90?['transpose=clock']:angle===180?['hflip','vflip']:angle===270?['transpose=cclock']:[];if(settings.flipHorizontal===true)filters.push('hflip');return {filters,swap:angle===90||angle===270};
+  }
+  if(type==='videoColor')return {brightness:finite(settings.brightness??0,-.5,.5,'Độ sáng'),contrast:finite(settings.contrast??1,.1,3,'Tương phản'),saturation:finite(settings.saturation??1,0,3,'Độ bão hòa')};
+  if(type==='audioExtract')return {};
+  throw Error('Công cụ hậu kỳ không được hỗ trợ.');
+ }
  function parseSrt(value){
   const raw=String(value||'').replace(/^\uFEFF/,'').replace(/\r/g,'').trim();if(!raw)throw Error('Chưa có phụ đề SRT.');
   const seconds=value=>{const m=/^(\d{2,}):(\d{2}):(\d{2})[,.](\d{3})$/.exec(value);if(!m||+m[2]>59||+m[3]>59)throw Error('Mốc thời gian SRT không hợp lệ.');return +m[1]*3600 + +m[2]*60 + +m[3] + +m[4]/1000;};
@@ -37,7 +55,7 @@
   return {width:Math.ceil(width/2)*2,height:Math.ceil(height/2)*2,fps:String(rate)};
  }
  function finalVideoSources(nodes,edges,outputId,timeline=[]){
-  const kinds=new Set(['generateVideo','audioMix','subtitles','voiceSync','transition','speed','videoAssembly','frameFit','watermark']),processors=new Set([...kinds].filter(k=>k!=='generateVideo')),byId=new Map(nodes.map(n=>[n.id,n]));
+  const kinds=new Set(['generateVideo','audioMix','subtitles','voiceSync','transition','speed','videoAssembly','frameFit','watermark','videoTrim','videoRotate','videoColor']),processors=new Set([...kinds].filter(k=>k!=='generateVideo')),byId=new Map(nodes.map(n=>[n.id,n]));
   const ready=n=>!!n?.data?.asset?.url&&n.data.asset.kind==='video'&&!n.data.storyDirty&&!['running','queued','error','stopped'].includes(n.data.status);
   if(timeline.length)return [...new Set(timeline)].map(id=>byId.get(id)).filter(n=>n&&n.id!==outputId&&(ready(n)||n.type==='videoInput'&&n.data.localDataUrl));
   return nodes.filter(n=>n.id!==outputId&&kinds.has(n.type)&&!edges.some(e=>e.source===n.id&&e.target!==outputId&&['video','first','second'].includes(e.targetPort)&&processors.has(byId.get(e.target)?.type))&&ready(n));
@@ -57,6 +75,7 @@
  }
  let queue;
  async function process(type,{videos=[],audios=[],images=[],settings={},captions='',lines=[]}={},signal,progress=()=>{}){
+  if(localEdits.has(type)&&(videos.length!==1||audios.length||images.length))throw Error('Công cụ này cần đúng một video đầu vào.');
   queue ||= WorkflowRuntime.queue();const release=await queue.acquire('ffmpeg-studio',signal,()=>progress('Đợi bộ xử lý video cục bộ…'));
   let ffmpeg,abort;try{
    if(signal?.aborted)throw new DOMException('Đã dừng.','AbortError');
@@ -72,7 +91,18 @@
    if(!videos.length)throw Error('Nối video đầu vào trước.');
    const args=[],filters=[],base=info[0],source=sourceFormat(base),initialW=source.width,initialH=source.height;let w=initialW,h=initialH;if(type==='frameFit'){const ratios={'9:16':9/16,'16:9':16/9,'1:1':1,'4:3':4/3,'3:4':3/4},ratio=Object.hasOwn(ratios,settings.size)?ratios[settings.size]:null;if(!ratio)throw Error('Tỷ lệ video không hợp lệ.');const height=Math.max(base.height,base.width/ratio),scale=Math.min(1,1280/Math.max(height,height*ratio));h=Math.max(2,Math.round(height*scale/2)*2);w=Math.max(2,Math.round(height*ratio*scale/2)*2);}const normalize=`scale=${w}:${h}:force_original_aspect_ratio=decrease,pad=${w}:${h}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=${source.fps},format=yuv420p`,videoOut=['-c:v','libx264','-preset','ultrafast','-crf','20','-pix_fmt','yuv420p'],audioOut=['-c:a','aac','-b:a','160k','-ar','48000'];let report='',outputDuration=base.duration;
    paths.forEach((path,i)=>{if(type==='audioMix'&&i===videos.length&&settings.loop!==false)args.push('-stream_loop','-1');args.push('-i',path);});
-   if(type==='watermark'){
+   if(type==='audioExtract'){
+    if(!base.audio)throw Error('Video nguồn không có luồng âm thanh để tách.');
+    args.push('-map','0:a:0','-vn','-c:a','libmp3lame','-b:a','192k','-ar','48000','-y','/audio.mp3');progress('Đang tách âm thanh MP3…');
+    const code=await ffmpeg.exec(args,-1,{signal});if(code!==0)throw Error(tail.join(' ').slice(-900)||'Không tách được âm thanh.');const bytes=await ffmpeg.readFile('/audio.mp3','binary',{signal});if(!bytes.length)throw Error('Âm thanh kết quả trống.');return {blob:new Blob([bytes],{type:'audio/mpeg'}),kind:'audio',duration:base.duration,report:'Đã tách âm thanh thành MP3; '+base.duration.toFixed(2)+' giây. Video nguồn được giữ nguyên.'};
+   }else if(type==='videoTrim'){
+    const plan=editPlan(type,settings,base.duration);args.push('-vf',`${normalize},trim=start=${plan.start}:end=${plan.end},setpts=PTS-STARTPTS`,'-map','0:v:0');
+    if(base.audio)args.push('-af',`atrim=start=${plan.start}:end=${plan.end},asetpts=PTS-STARTPTS`,'-map','0:a:0');args.push('-t',String(plan.duration));outputDuration=plan.duration;report=`Đã cắt từ ${plan.start} đến ${plan.end} giây; kết quả ${plan.duration.toFixed(2)} giây.`;
+   }else if(type==='videoRotate'){
+    const plan=editPlan(type,settings);args.push('-vf',[normalize,...plan.filters].join(','),'-map','0:v:0','-map','0:a?');if(plan.swap)[w,h]=[h,w];report='Đã xoay '+Number(settings.rotation||0)+'°'+(settings.flipHorizontal?' và lật ngang':'')+'; giữ thời lượng và âm thanh nguồn.';
+   }else if(type==='videoColor'){
+    const plan=editPlan(type,settings);args.push('-vf',`${normalize},eq=brightness=${plan.brightness}:contrast=${plan.contrast}:saturation=${plan.saturation}`,'-map','0:v:0','-map','0:a?');report='Đã chỉnh độ sáng, tương phản và bão hòa; giữ khung hình, thời lượng và âm thanh nguồn.';
+   }else if(type==='watermark'){
     if(videos.length!==1||images.length!==1||audios.length)throw Error('Watermark cần đúng 1 video và 1 logo ảnh.');const percent=finite(settings.logoWidth??16,5,40,'Độ rộng logo (%)'),opacity=finite(settings.opacity??.8,.05,1,'Độ rõ logo'),margin=finite(settings.margin??20,0,100,'Lề logo'),width=Math.max(2,Math.round(w*percent/100)),positions={topRight:['main_w-overlay_w-'+margin,String(margin)],topLeft:[String(margin),String(margin)],bottomRight:['main_w-overlay_w-'+margin,'main_h-overlay_h-'+margin],bottomLeft:[String(margin),'main_h-overlay_h-'+margin]};const position=Object.hasOwn(positions,settings.position||'bottomRight')?positions[settings.position||'bottomRight']:null;if(!position)throw Error('Vị trí logo không hợp lệ.');filters.push(`[0:v]${normalize}[base]`,`[1:v]scale=${width}:-1,format=rgba,colorchannelmixer=aa=${opacity}[logo]`,`[base][logo]overlay=x=${position[0]}:y=${position[1]}:eof_action=repeat[v]`);args.push('-filter_complex_threads','1','-filter_complex',filters.join(';'),'-map','[v]','-map','0:a?','-t',String(base.duration));report='Đã gắn logo '+percent+'% khung hình, giữ thời lượng '+base.duration.toFixed(2)+' giây.';
    }else if(type==='frameFit'){args.push('-vf',normalize,'-map','0:v:0','-map','0:a?');report='Đã đặt video vào khung '+settings.size+' bằng viền đệm, giữ toàn bộ hình gốc.';}else if(type==='videoAssembly'){
     const signature=x=>JSON.stringify(x.streams),compatible=!settings.targetDuration&&videos.every((_,i)=>signature(info[i])===signature(base))&&base.streams?.some(s=>s.codec_type==='video'&&s.codec_name==='h264')&&base.streams?.filter(s=>s.codec_type==='audio').every(s=>s.codec_name==='aac');
@@ -106,5 +136,5 @@
   }catch(error){if(signal?.aborted)throw new DOMException('Đã dừng.','AbortError');throw error;}finally{signal?.removeEventListener('abort',abort);ffmpeg?.terminate();release();}
  }
  function outputOrder(ids,nodes,timeline=[],manual=[]){const known=new Map(nodes.map((n,i)=>[n.id,{node:n,index:i}])),collator=new Intl.Collator('vi',{numeric:true,sensitivity:'base'}),priority=manual.length?manual:timeline;return [...new Set(ids)].sort((a,b)=>{const ai=priority.indexOf(a),bi=priority.indexOf(b);if(ai>=0||bi>=0)return (ai<0?Infinity:ai)-(bi<0?Infinity:bi);const an=known.get(a),bn=known.get(b),label=n=>n?.node.data?.sceneLabel||n?.node.data?.customName||n?.node.data?.fileName||'';if(label(an)&&label(bn))return collator.compare(label(an),label(bn))||an.index-bn.index;return (an?.index??Infinity)-(bn?.index??Infinity);});}
- globalThis.WorkflowStudio={finalVideoSources,sourceFormat,outputOrder,definitions,effects,finite,parseSrt,srt,tempo,sceneDurations,extensionPlan,speak,transcribe,process};
+ globalThis.WorkflowStudio={finalVideoSources,sourceFormat,outputOrder,definitions,effects,localEdits,editPlan,finite,parseSrt,srt,tempo,sceneDurations,extensionPlan,speak,transcribe,process};
 })();

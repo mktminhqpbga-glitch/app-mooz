@@ -141,4 +141,14 @@ body[data-app-surface=posting] .hub-hero{padding:22px;margin-bottom:22px}
 .diagnostic-entry small{display:block;overflow-wrap:anywhere;margin-bottom:12px}
 #diagnosticsList{max-height:44vh;overflow:auto}#diagnosticsState:empty{display:none}
 #diagnosticsReport{min-height:280px}#diagnosticsOpen{position:relative}
+.node-finder-dialog{width:min(680px,calc(100vw - 24px))}
+.node-finder-dialog>header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.node-finder-dialog>header p{margin-bottom:12px}
+.node-finder-filters{display:grid;grid-template-columns:minmax(0,1fr) 160px;gap:10px}
+.node-finder-filters input{box-sizing:border-box;min-width:0;padding:10px;color:var(--finish-ink);background:var(--finish-bg);border:1px solid var(--finish-line);border-radius:8px}
+.node-finder-filters select{margin:0}
+#nodeFinderList{max-height:46vh;overflow:auto}
+.node-finder-dialog .node-finder-result{display:grid;gap:4px;width:100%;text-align:left;padding:12px;margin:5px 0;background:var(--finish-panel);border:1px solid var(--finish-line)}
+.node-finder-result strong{overflow-wrap:anywhere}.node-finder-result small{color:var(--finish-muted);font-size:var(--ui-small)}
+@media(max-width:500px){.node-finder-filters{grid-template-columns:1fr}}
 #diagnosticsOpen:not([data-count="0"])::after{content:attr(data-count);background:#9c3158;color:white;border-radius:12px;min-width:18px;text-align:center;padding:0 4px;font-size:12px;margin-left:auto}
