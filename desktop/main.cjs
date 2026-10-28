@@ -330,7 +330,9 @@ app.whenReady().then(async()=>{
     {label:'AI',submenu:Object.entries({chatgpt:'ChatGPT',gemini:'Gemini',muse:'Muse'}).map(([id,label])=>({label:'Mở '+label,click:()=>ai.open(id)}))}
   ]));
   await openHome();
-}).catch(error=>{dialog.showErrorBox('Không mở được Workflow',error.message);app.quit();});
+// A user can quit as soon as the library is visible, before loadURL settles.
+// Navigation cancellation during shutdown must not open a blocking error box.
+}).catch(error=>{if(quitInProgress||quitApproved)return;dialog.showErrorBox('Không mở được MooZ Agent',error.message);app.quit();});
 app.on('activate',()=>{if(!home||home.isDestroyed())void openHome();});
 app.on('window-all-closed',()=>{if(process.platform!=='darwin')app.quit();});
 let quitApproved=false,quitInProgress=false;

@@ -109,3 +109,4 @@ body[data-app-surface] .appearance-actions {margin-top:14px}
 :root[data-ui-theme] body[data-app-surface] .posting-brand strong span {white-space:normal}
 :root[data-ui-theme] body[data-app-surface] #timelineDropZone {border-color:transparent}
 :root[data-ui-theme] body[data-app-surface] #timelineDock.drag-over #timelineDropZone {border-color:var(--mooz-link);background:var(--mooz-soft)}
+:root[data-ui-theme] body[data-app-surface] .appearance-accents button:hover:not(:disabled) {background:var(--swatch);border-color:var(--mooz-panel);color:var(--mooz-ink)}
