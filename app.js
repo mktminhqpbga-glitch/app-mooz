@@ -2482,7 +2482,7 @@
       const node=nodeById(card.nodeId),prompt=nodeById(card.promptId);if(!node||!prompt)throw Error('Thẻ không còn tồn tại.');
       const refs=resolveReferences(node.id).map(ref=>({...ref,tag:nodeById(getIncoming(node.id,'reference').find(e=>nodeById(e.source)?.data.componentId===ref.componentId)?.source)?.data.libraryTag||''}));
       for(const tag of WorkflowBatchManager.mentions(prompt.data.text)){if(!refs.some(old=>old.tag===tag))refs.push(...WorkflowBatchManager.resolveTags('@'+tag));}
-      const options={provider:node.data.provider||'muse',mediaType:node.type==='generateVideo'?'video':'image',size:node.data.size||'1:1',duration:WorkflowAI.videoDuration(node.data.duration,node.data.provider),chatTarget:node.data.chatTarget||aiChatTargets[node.data.provider||'muse']};
+      const options={provider:node.data.provider||'muse',mediaType:node.type==='generateVideo'?'video':'image',size:node.data.size||'1:1',duration:WorkflowAI.videoDuration(node.data.duration,node.type==='generateVideo'?node.data.provider:undefined),chatTarget:node.data.chatTarget||aiChatTargets[node.data.provider||'muse']};
       WorkflowAI.validate(options.provider,{...options,prompt:prompt.data.text});if(WorkflowAI.providers[options.provider]?.urls){const tabs=await chrome.tabs.query({url:WorkflowAI.providers[options.provider].urls}),tab=chooseChat(options.provider,tabs,options.chatTarget);options.chatTarget={tabId:tab.id,url:chatKey(tab.url)};}
       for(const ref of refs)ref.url=await blobAsDataUrlFromUrl(ref.url);return {prompt:prompt.data.text,refs,options};
     },
