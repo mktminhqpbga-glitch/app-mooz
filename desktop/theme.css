@@ -1,0 +1,111 @@
+/* Authoritative application palette. Legacy layouts consume these tokens too.
+   Media pixels and category/port colors keep their own meaning. */
+:root {
+  --finish-bg:var(--mooz-bg);--finish-panel:var(--mooz-panel);--finish-raised:var(--mooz-raised);
+  --finish-line:var(--mooz-line);--finish-ink:var(--mooz-ink);--finish-muted:var(--mooz-muted);
+  --finish-accent:var(--mooz-link);--finish-soft:var(--mooz-soft);--finish-shadow:0 8px 28px #0000000a;
+  --bg:var(--mooz-bg);--surface:var(--mooz-panel);--panel:var(--mooz-panel);--border:var(--mooz-line);
+  --ink:var(--mooz-ink);--text:var(--mooz-ink);--muted:var(--mooz-muted);--accent:var(--mooz-link);--accent-bg:var(--mooz-accent);
+  --studio-bg:var(--mooz-bg);--studio-panel:var(--mooz-panel);--studio-raised:var(--mooz-raised);
+  --studio-border:var(--mooz-line);--studio-ink:var(--mooz-ink);--studio-muted:var(--mooz-muted);--studio-accent:var(--mooz-link);--studio-mint:var(--mooz-success);
+}
+:root[data-ui-theme] body[data-app-surface] {background:var(--mooz-bg);color:var(--mooz-ink);font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;accent-color:var(--mooz-accent)}
+:root[data-ui-theme] body[data-app-surface] :is(button,input,textarea,select) {font-family:inherit;box-shadow:none}
+:root[data-ui-theme] body[data-app-surface] :is(button,.secondary) {background:var(--mooz-raised);color:var(--mooz-ink);border-color:var(--mooz-line)}
+:root[data-ui-theme] body[data-app-surface] button:hover:not(:disabled) {background:var(--mooz-hover);border-color:var(--mooz-muted);color:var(--mooz-ink);filter:none}
+:root[data-ui-theme] body[data-app-surface] :is(input,textarea,select) {background:var(--mooz-bg);color:var(--mooz-ink);border-color:var(--mooz-line)}
+:root[data-ui-theme] body[data-app-surface] ::placeholder {color:var(--mooz-muted);opacity:.85}
+:root[data-ui-theme] body[data-app-surface] :is(button,a,input,select,textarea,summary):focus-visible {outline:2px solid var(--mooz-focus);outline-offset:3px}
+:root[data-ui-theme] body[data-app-surface] a {color:var(--mooz-link)}
+:root[data-ui-theme] body[data-app-surface] :is(button.primary,.primary,#runBtn,.node-run-button.primary) {background:var(--mooz-accent);border-color:var(--mooz-accent);color:var(--mooz-accent-ink);font-weight:650;box-shadow:0 2px 5px #00000012}
+:root[data-ui-theme] body[data-app-surface] :is(button.primary,.primary,#runBtn):hover:not(:disabled) {background:var(--mooz-accent);color:var(--mooz-accent-ink);border-color:var(--mooz-accent);box-shadow:0 0 0 3px var(--mooz-soft)}
+:root[data-ui-theme] body[data-app-surface] :is(button:disabled,input:disabled,select:disabled) {opacity:.45;cursor:not-allowed}
+:root[data-ui-theme] body[data-app-surface] :is(.sidebar,.studio-sidebar,.posting-sidebar,.intake,.top,.topbar,.toolbar,.desktop-bar,.statusbar,#timelineDock) {background:var(--mooz-panel);color:var(--mooz-ink);border-color:var(--mooz-line)}
+:root[data-ui-theme] body[data-app-surface] :is(.studio-sidebar,.posting-sidebar,.sidebar) {box-shadow:1px 0 0 #00000008}
+:root[data-ui-theme] body[data-app-surface] :is(.studio-heading,.brand-name,.brand,.posting-brand strong,.empty h2,.intake h1,.intake h2,label,.scene .narration) {color:var(--mooz-ink)}
+:root[data-ui-theme] body[data-app-surface] :is(.studio-nav-caption,.studio-sidebar-footer,.nav-label,.brand small,.brand-version,.studio-breadcrumb,.studio-overview,.top small,.posting-brand strong span,.muted,.note,.hint,.facts,.subtitle,.local-note,.sidebar-note,.copyright,.project-date,.project-actions button,.queue-item small,.scene small,.scene details,.connections-dialog section>p,.connections-dialog p,.appearance-dialog p,.timeline-heading small,.desktop-bar strong,.app-label small,.connection-note,.getting-started li p,.getting-started .start-title p,.statusbar,.workspace-title,.post-history,.post-auto,.platform-options,.post-media figcaption,.calendar-event small,.hub-insight-row p,.node-option summary,.node-info,.reference-id-list,.tool-report,.node-picker-empty,#nodePickerList small,.canvas-minimap>span) {color:var(--mooz-muted)}
+:root[data-ui-theme] body[data-app-surface] :is(.eyebrow,.step,.spark,.empty-icon,.studio-tool-list h2,.toolbar-popover h2,#nodePickerList h3,.workflow-chat-plan strong) {color:var(--mooz-link)}
+:root[data-ui-theme] body[data-app-surface] :is(.nav-button,.app-button,.studio-tool-list button,.studio-quick-actions button,.posting-sidebar nav button,.toolbar-popover>button,#nodePickerList button) {background:transparent;color:var(--mooz-muted);border-color:transparent}
+:root[data-ui-theme] body[data-app-surface] :is(.nav-button.selected,.posting-sidebar nav button.selected,.studio-quick-actions button[aria-current],.toolbar-popover button[aria-pressed=true],.canvas-tools button.active,#nodeDensity[aria-pressed=true]) {background:var(--mooz-soft);color:var(--mooz-link);border-color:var(--mooz-line)}
+:root[data-ui-theme] body[data-app-surface] :is(.app-icon,.spark,.count) {background:var(--mooz-soft);color:var(--mooz-link);border-color:var(--mooz-line)}
+:root[data-ui-theme] body[data-app-surface] :is(.getting-started,.project-card,.setup,.post-card,.hub-empty,.hub-brand-card,.hub-asset-card,.hub-account-card,.hub-stat,.hub-insight-row,.panel,.scene,.queue-item,.empty-state,.posting-writing-tools,.workflow-chat-panel,.workflow-chat-plan,.flow-card,.batch-result-card,.library-item,.diagnostic-entry,.connections-dialog article) {background:var(--mooz-panel);color:var(--mooz-ink);border-color:var(--mooz-line)}
+:root[data-ui-theme] body[data-app-surface] :is(.project-card .project-art,.post-card>header,.script-choice label,.node-option,.node-info .node-component-id,.aggregate-clips,.aggregate-audio,.chat-message,.workflow-chat-message,.connections-recovery) {background:var(--mooz-raised);color:var(--mooz-ink);border-color:var(--mooz-line)}
+:root[data-ui-theme] body[data-app-surface] :is(.project-actions,.sidebar-bottom,.connection-footer,.scene details,.queue,.connections-dialog>header,.connections-dialog section,.aggregate-clips .output-order li,.queue-compose-pane,.node-info,.add-node-group,.workflow-chat-panel header,.workflow-chat-panel footer) {border-color:var(--mooz-line)}
+:root[data-ui-theme] body[data-app-surface] .project-card .project-art {background-image:radial-gradient(color-mix(in srgb,var(--mooz-muted) 18%,transparent) .7px,transparent .7px);background-size:18px 18px}
+:root[data-ui-theme] body[data-app-surface] .project-art::before {display:none}
+:root[data-ui-theme] body[data-app-surface] .project-card .flow-art i {background:var(--mooz-soft);border-color:var(--mooz-link)}
+:root[data-ui-theme] body[data-app-surface] .project-card .flow-art b {background:var(--mooz-link);opacity:.6}
+:root[data-ui-theme] body[data-app-surface] .project-open {background:transparent;color:var(--mooz-ink)}
+:root[data-ui-theme] body[data-app-surface] .project-open:hover {background:transparent}
+:root[data-ui-theme] body[data-app-surface] :is(.project-card:hover,.queue-item.selected,.script-choice label:has(input:checked)) {border-color:var(--mooz-link)}
+:root[data-ui-theme] body[data-app-surface] .search {background:var(--mooz-panel);border-color:var(--mooz-line);color:var(--mooz-muted)}
+:root[data-ui-theme] body[data-app-surface] .search input {background:transparent}
+:root[data-ui-theme] body[data-app-surface] :is(.studio-connect,#connectChrome,.connection-footer button) {background:var(--mooz-success-soft);border-color:color-mix(in srgb,var(--mooz-success) 35%,var(--mooz-line));color:var(--mooz-success)}
+:root[data-ui-theme] body[data-app-surface] #aiHealth button {background:transparent;color:var(--mooz-ink);border-color:var(--mooz-line)}
+:root[data-ui-theme] body[data-app-surface] #viewport {background-color:var(--mooz-bg);background-image:radial-gradient(color-mix(in srgb,var(--mooz-muted) 21%,transparent) .7px,transparent .7px);background-size:26px 26px}
+:root[data-ui-theme] body[data-app-surface] :is(#canvasTools,.canvas-minimap,#addNodeMenu,.toolbar-popover,.workspace-command-palette,.workspace-node-finder) {background:var(--mooz-panel);color:var(--mooz-ink);border-color:var(--mooz-line);box-shadow:0 6px 24px #00000012}
+:root[data-ui-theme] body[data-app-surface] :is(.canvas-minimap svg,.node-body input,.node-body textarea,.node-body select,#nodeSearch,.studio-tool-search input) {background:var(--mooz-bg);color:var(--mooz-ink);border-color:var(--mooz-line)}
+:root[data-ui-theme] body[data-app-surface] :is(#canvasTools button,.desktop-bar button,#timelineDock button) {background:transparent;color:var(--mooz-ink);border-color:var(--mooz-line)}
+:root[data-ui-theme] body[data-app-surface] .node {background:var(--mooz-panel);color:var(--mooz-ink);border-color:var(--mooz-line);border-top-color:var(--node-color,var(--mooz-link));box-shadow:0 4px 14px #00000012}
+:root[data-ui-theme] body[data-app-surface] .node-header {background:var(--mooz-raised);color:var(--mooz-ink);border-bottom-color:var(--mooz-line);border-left-color:var(--node-color,var(--mooz-link))}
+:root[data-ui-theme] body[data-app-surface] .node.selected {border-color:var(--mooz-link);box-shadow:0 0 0 2px var(--mooz-soft),0 6px 20px #00000015}
+:root[data-ui-theme] body[data-app-surface] .node.new-node {outline-color:var(--mooz-focus)}
+:root[data-ui-theme] body[data-app-surface] .node .node-delivery-actions>button {background:var(--mooz-soft);color:var(--mooz-link);border-color:var(--mooz-line)}
+:root[data-ui-theme] body[data-app-surface] .reference-board {background:var(--mooz-panel);border-color:var(--mooz-line)}
+:root[data-ui-theme] body[data-app-surface] .reference-board .node-header {background:var(--mooz-success-soft)}
+:root[data-ui-theme] body[data-app-surface] :is(.reference-board-tile,.reference-board-add) {background:var(--mooz-bg);border-color:var(--mooz-line);color:var(--mooz-muted)}
+:root[data-ui-theme] body[data-app-surface] .port-label {background:var(--mooz-panel);color:var(--mooz-ink);border-color:var(--mooz-line)}
+:root[data-ui-theme] body[data-app-surface] :is(dialog,.modal,.library-dialog,.story-dashboard,.story-references-dialog,.flow-studio-dialog,.batch-manager-dialog,.connection-dialog,.connections-dialog,.appearance-dialog) {background:var(--mooz-panel);color:var(--mooz-ink);border-color:var(--mooz-line);box-shadow:0 28px 90px #00000050}
+:root[data-ui-theme] body[data-app-surface] dialog::backdrop {background:#080a1277;backdrop-filter:blur(7px)}
+:root[data-ui-theme] body[data-app-surface] :is(.status.error,.error,.error-box,.post-error,.form-error,[role=alert],#runStatus.error,.duration-warning,.video-duration-warning) {color:var(--mooz-danger)!important}
+:root[data-ui-theme] body[data-app-surface] :is(.error-box,.status.error,.post-error) {background:var(--mooz-danger-soft);border-color:color-mix(in srgb,var(--mooz-danger) 40%,var(--mooz-line))}
+:root[data-ui-theme] body[data-app-surface] :is(.status.success,.success,.local,.desktop-save,.aggregate-result-size,.post-badge.done) {color:var(--mooz-success)}
+:root[data-ui-theme] body[data-app-surface] :is(.status.running,.status.queued,.recovery-label,.node-control-badge,.post-badge.failed) {color:var(--mooz-warning)}
+:root[data-ui-theme] body[data-app-surface] #runStatus:not(:empty) {background:var(--mooz-panel);color:var(--mooz-muted);border-color:var(--mooz-line);box-shadow:none}
+:root[data-ui-theme] body[data-app-surface] :is(.mark,.app-icon.affiliate) {background:var(--mooz-soft);border-color:var(--mooz-line);color:var(--mooz-link)}
+:root[data-ui-theme] body[data-app-surface] .affiliate-steps span {background:var(--mooz-panel);color:var(--mooz-muted);border-color:var(--mooz-line)}
+:root[data-ui-theme] body[data-app-surface] .progress-steps span {color:var(--mooz-muted);border-color:var(--mooz-line)}
+:root[data-ui-theme] body[data-app-surface] .progress-steps .active {color:var(--mooz-link);border-color:var(--mooz-link)}
+:root[data-ui-theme] body[data-app-surface] ::selection {background:var(--mooz-accent);color:var(--mooz-accent-ink)}
+body[data-app-surface] .appearance-dialog {width:min(560px,calc(100vw - 32px))}
+.appearance-accents {display:flex;gap:9px;flex-wrap:wrap;margin:12px 0 18px}
+:root[data-ui-theme] body[data-app-surface] .appearance-accents button {width:30px;height:30px;min-height:30px;padding:4px;background:var(--swatch);border:3px solid var(--mooz-panel);border-radius:50%;outline:1px solid var(--mooz-line)}
+:root[data-ui-theme] body[data-app-surface] .appearance-accents button[aria-pressed=true] {outline:2px solid var(--mooz-focus);outline-offset:2px}
+.appearance-color-row {display:grid;grid-template-columns:48px minmax(0,1fr);gap:10px;align-items:center}
+body[data-app-surface] .appearance-color-row input[type=color] {width:48px;height:42px;padding:3px;cursor:pointer}
+body[data-app-surface] .appearance-color-row input[type=text] {height:42px;padding:9px 12px}
+body[data-app-surface] .appearance-preview {background:var(--mooz-bg);color:var(--mooz-ink);border-color:var(--mooz-line)}
+body[data-app-surface] .appearance-preview-workspace>span:nth-child(odd) {background:var(--mooz-panel);border-color:var(--mooz-line)}
+body[data-app-surface] .appearance-preview-primary {background:var(--mooz-accent);color:var(--mooz-accent-ink)}
+body[data-app-surface] .appearance-preview #appearanceCurrent {color:var(--mooz-muted)}
+body[data-app-surface] .appearance-eyebrow {font-size:12px;color:var(--mooz-link);letter-spacing:1.2px;margin:0 0 7px}
+body[data-app-surface] .appearance-dialog h2 {margin-bottom:10px}
+body[data-app-surface] .mooz-action-icon {display:inline-block;width:14px;height:14px;flex:none;vertical-align:-2px;margin-right:5px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+body[data-app-surface] button.mooz-action>span[hidden] {display:none!important}
+body[data-app-surface] button.mooz-action>span:last-child:empty {display:none}
+/* Legacy ID selectors and nested chips must consume the same palette. */
+:root[data-ui-theme] body[data-app-surface] :is(#connectionsOpen,#windowSwitcherOpen,#appearanceOpen,#diagnosticsOpen,#timelineExportFormat,#timelineAddVideoBtn,#timelineImportAllBtn,#timelinePlayBtn,#timelineExportBtn,#timelineExportClipsBtn) {background:var(--mooz-raised);color:var(--mooz-ink);border-color:var(--mooz-line)}
+:root[data-ui-theme] body[data-app-surface] .studio-sidebar .finish-icon {color:inherit}
+:root[data-ui-theme] body[data-app-surface] :is(.status,.posting-result-hint,.video-duration-summary,.studio-tool-search small,.app-catalog-note,.reference-board-tile figcaption) {color:var(--mooz-muted)}
+:root[data-ui-theme] body[data-app-surface] :is(.status.success,.desktop-save,.aggregate-result-size,.local) {color:var(--mooz-success)}
+:root[data-ui-theme] body[data-app-surface] :is(.status.running,.status.queued,.warn) {color:var(--mooz-warning)!important}
+:root[data-ui-theme] body[data-app-surface] .ok {color:var(--mooz-success)!important}
+:root[data-ui-theme] body[data-app-surface] .timeline-dock-header span {background:transparent;color:inherit;border-radius:0;padding:0}
+:root[data-ui-theme] body[data-app-surface] :is(#timelineClipCount,.post-badge) {background:var(--mooz-soft);color:var(--mooz-link);border:1px solid var(--mooz-line);border-radius:6px;padding:3px 7px}
+:root[data-ui-theme] body[data-app-surface] .group-name-field {color:var(--mooz-muted)!important}
+:root[data-ui-theme] body[data-app-surface] .group-name-field input {background:var(--mooz-bg)!important;color:var(--mooz-ink)!important;border-color:var(--mooz-line)!important}
+:root[data-ui-theme] body[data-app-surface] .appearance-dialog {padding:24px;max-height:calc(100dvh - 32px)}
+body[data-app-surface] .appearance-dialog>p:not(.appearance-eyebrow):not([role=alert]) {margin-block:10px;font-size:12px;line-height:1.6}
+body[data-app-surface] .appearance-dialog label {margin-block:12px}
+body[data-app-surface] .appearance-preview {margin-block:14px}
+body[data-app-surface] .appearance-actions {margin-top:14px}
+:root[data-ui-theme] body[data-app-surface] :is(.hub-hero,.hub-queue-bar,.post-targets label,.platform-options,.setup-guide,.post-history,.queue-compose-pane,.queue-results-pane,.workflow-chat-settings,.workflow-chat-welcome,.workflow-chat-results article,.connection-card,.diagnostics-toolbar) {background:var(--mooz-panel);color:var(--mooz-ink);border-color:var(--mooz-line)}
+:root[data-ui-theme] body[data-app-surface] :is(.hub-stat span,.hub-insight-row small,.hub-queue-bar,.hub-hero p,.empty p,.platform-options summary,.post-history summary,.setup-guide summary,.timeline-heading small,.sidebar-bottom,.sidebar-bottom small,.post-form>p,.workflow-chat-panel footer) {color:var(--mooz-muted)}
+:root[data-ui-theme] body[data-app-surface] .hub-stat strong {color:var(--mooz-ink)}
+:root[data-ui-theme] body[data-app-surface] :is(.post-badge.published,.post-badge.submitted) {background:var(--mooz-success-soft);color:var(--mooz-success);border-color:var(--mooz-line)}
+:root[data-ui-theme] body[data-app-surface] :is(.post-badge.error,.post-badge.uncertain) {background:var(--mooz-danger-soft);color:var(--mooz-danger);border-color:var(--mooz-line)}
+:root[data-ui-theme] body[data-app-surface] #postingFilters button.selected {background:var(--mooz-soft);color:var(--mooz-link);border-color:var(--mooz-link)}
+:root[data-ui-theme] body[data-app-surface] .posting-brand strong {font-size:18px;white-space:nowrap}
+:root[data-ui-theme] body[data-app-surface] .posting-brand strong span {white-space:normal}
+:root[data-ui-theme] body[data-app-surface] #timelineDropZone {border-color:transparent}
+:root[data-ui-theme] body[data-app-surface] #timelineDock.drag-over #timelineDropZone {border-color:var(--mooz-link);background:var(--mooz-soft)}

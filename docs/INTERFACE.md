@@ -68,3 +68,15 @@ Dự án/Đăng bài/Chat nằm trên đầu sidebar; Cài đặt và cụm Cử
 Các nút timeline tự xuống hàng theo chiều rộng thật của dock; Dừng chỉ hiện trong khi xuất. Trang thư viện thu phần tiêu đề và trang trí, đưa thẻ dự án lên cao. Affiliate giữ nút trong header khi xuống hàng; cửa sổ dưới 760px xếp phần nhập và nội dung dọc.
 
 Giao diện có mẫu xem trước và dòng Màu đang dùng. Chỉ Lưu mới đổi cài đặt; cập nhật app giữ màu đã chọn. Vừa màn hình tiếp tục khớp khi resize; sau khi tự zoom/kéo, góc nhìn do bạn điều khiển. [Số đo, kiểm thử và các điểm còn cần cải thiện](UI-REVIEW-2026-10-28.md).
+
+## 0.46.0 · MooZ Agent và bảng màu thống nhất
+
+Thư viện, canvas, đăng bài, sản phẩm và các hộp thoại dùng một hợp đồng màu ở `desktop/theme-colors.js`, áp dụng bằng `desktop/theme.css`. Bỏ lớp `violet-theme.css` cũ và các token màu cục bộ xung đột. Ba nền: Graphite (#0b0e14), Iris (#100e17), Sáng (#f5f6fa); chế độ Sáng bao gồm canvas.
+
+Trong Cài đặt → Giao diện, chọn màu nền, sáu màu nhấn hoặc nhập HEX, xem trước rồi Lưu. Chỉ mẫu xem trước thay đổi trước khi lưu; Hủy giữ cài đặt cũ. Màu chữ của nút tự chọn đen/trắng, màu liên kết tự điều chỉnh độ tương phản. Màu thành công/lỗi/cảnh báo dùng màu ngữ nghĩa riêng. Cài đặt cũ giữ theme/cỡ chữ và nhận màu nhấn mặc định. Tất cả cửa sổ nhận cùng lựa chọn, cả sau tải lại; host truyền cài đặt màu trước lần vẽ đầu.
+
+UI mang tên MooZ Agent và biểu tượng M mới; tên bundle/ID/partition và định dạng tệp cập nhật vẫn giữ để không thay vị trí dữ liệu người dùng. Các nút chạy/tải/dừng dùng SVG cùng màu chữ thay emoji màu cam, giữ nhãn và handler thật. Bố cục nhỏ, tìm lệnh, timeline và các công cụ hiện có giữ luồng thao tác.
+
+Kiểm thử màu tính trên CSS thực của bốn cửa sổ, chế độ sáng/tối/đen tím, custom accent, preview/Hủy/Lưu/đồng bộ/tải lại. Unit kiểm tra 264 màu nhấn trong ba theme, chữ/nút/liên kết/trạng thái có tỷ lệ tương phản từ 4.5:1 với các nền chính. Kiểm tra độ tương phản này không thay cho đánh giá mọi nội dung media hoặc các điều khiển bị vô hiệu hóa.
+
+Hướng phát triển agent và inspector phải nằm trong [MOOZ-AGENT-BLUEPRINT.md](MOOZ-AGENT-BLUEPRINT.md). Bản đổi giao diện chưa triển khai bộ điều phối agent và inspector mới.

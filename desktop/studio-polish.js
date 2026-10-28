@@ -1,6 +1,10 @@
 /* Decorative line icons only. Existing labels, handlers and node data stay intact. */
 (()=>{
  const paths={
+  play:'M8 4l13 8-13 8z',
+  stop:'M5 5h14v14H5z',
+  plus:'M12 4v16 M4 12h16',
+  hand:'M8 12V6a2 2 0 0 1 4 0v6 M12 10V4a2 2 0 0 1 4 0v8 M16 9a2 2 0 0 1 4 0v7c0 5-12 7-14 1l-3-5a2 2 0 0 1 3-2l2 3',
   search:'M10 3a7 7 0 1 0 0 14 7 7 0 0 0 0-14 M15 15l6 6',
   focus:'M8 3H3v5 M16 3h5v5 M3 16v5h5 M21 16v5h-5',
   scissors:'M6 8a3 3 0 1 0 0 6 3 3 0 0 0 0-6 M6 16a3 3 0 1 0 0 6 3 3 0 0 0 0-6 M8 10L21 3 M8 19L21 9',
@@ -34,5 +38,8 @@
  function decorate(){for(const [id,kind]of Object.entries(icons)){const b=document.getElementById(id);if(!b||!b.closest('.studio-sidebar')||b.querySelector('.finish-icon'))continue;if(!b.getAttribute('aria-label'))b.setAttribute('aria-label',b.textContent.trim());if(!b.title)b.title=b.textContent.trim();const label=document.createElement('span');label.className='finish-label';label.textContent=b.textContent.replace(/^(?:[＋+⇩⇄↔←⚙↗]|↻)\s*/u,'');b.replaceChildren(svg(kind),label);}
  for(const [id,kind]of [['aiAppsWorkflow','grid'],['aiAppsHubPosting','send'],['aiAppsAffiliate','sparkle'],['aiAppsVoice','voice']]){const holder=document.querySelector('#'+id+' .app-icon');if(holder&&!holder.querySelector('.finish-icon'))holder.replaceChildren(svg(kind));}}
  for(const holder of document.querySelectorAll('.app-arrow,.top .mark'))holder.replaceChildren(svg('arrow'));
- if(document.readyState==='loading')window.addEventListener('DOMContentLoaded',decorate,{once:true});else decorate();
+ // Keep textContent and accessible names intact for application state and keyboard users.
+ function actions(){for(const b of document.querySelectorAll('button')){if(b.closest('.studio-sidebar')||b.querySelector('.finish-icon')&&!b.classList.contains('mooz-action'))continue;const text=b.textContent,match=/^(▶|■|⇩|↻|＋|✋|🖐|👋)\s*/u.exec(text);if(b.dataset.actionText===text)continue;if(!match){if(b.dataset.actionAria==='true')b.setAttribute('aria-label',text.trim());b.classList.remove('mooz-action');b.dataset.actionText=text;continue;}if(!b.hasAttribute('aria-label')||b.dataset.actionAria==='true'){b.setAttribute('aria-label',text.trim());b.dataset.actionAria='true';}const prefix=document.createElement('span'),label=document.createElement('span');prefix.hidden=true;prefix.textContent=match[0];label.textContent=text.slice(match[0].length);const icon=svg(({'▶':'play','■':'stop','⇩':'download','↻':'rotate','＋':'plus','✋':'hand','🖐':'hand','👋':'hand'})[match[1]]);icon.classList.add('mooz-action-icon');b.classList.add('mooz-action');b.dataset.actionText=text;b.replaceChildren(icon,prefix,label);}}
+ function start(){decorate();actions();let pending=false;new MutationObserver(()=>{if(!pending){pending=true;requestAnimationFrame(()=>{pending=false;actions();});}}).observe(document.body,{childList:true,subtree:true,characterData:true});}
+ if(document.readyState==='loading')window.addEventListener('DOMContentLoaded',start,{once:true});else start();
 })();

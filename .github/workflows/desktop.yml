@@ -51,6 +51,7 @@ jobs:
       - name: Verify desktop integration and canvas layout in Electron
         env:
           MOOZ_UI_AUDIT_DIR: ${{ runner.temp }}/mooz-ui-review
+          MOOZ_THEME_REVIEW_DIR: ${{ runner.temp }}/mooz-ui-review/colors
         run: npm run test:desktop
       - name: Lưu ảnh và số đo kiểm tra giao diện
         if: always()

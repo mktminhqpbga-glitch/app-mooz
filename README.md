@@ -1,4 +1,4 @@
-# Workflow · MuseFlow 0.45.3
+# Workflow · MuseFlow 0.46.0
 
 [Bắt đầu trong 5 phút](docs/QUICKSTART.md) · [Xử lý góp ý người dùng 28/10](docs/USER-REVIEW-2026-10-28.md) · [Thiết kế MooZ Agent](designs/MOOZ-AGENT-PLAN.md)
 
@@ -526,3 +526,7 @@ Chọn 1–6 luồng trên thanh Tạo tất cả, dùng chung giới hạn vớ
 - Thông báo ảnh/video đúng loại; chẩn đoán thêm cấu trúc ảnh và bộ đếm đối chiếu không chứa URL/prompt.
 - Đồng bộ chat sau kết quả thành công của cùng tab, giữ tác vụ đã chốt URL trước đó chạy tiếp khi Muse tự đổi URL. Đổi chat thủ công không được tự nhận là chuyển tiếp hợp lệ. Chặn bridge có phiên bản cũ trước khi gửi.
 - Sửa kiểm tra hết lượt bị bộ đếm tiến độ che mất. Chi tiết và giới hạn: docs/RESULT-FLOW-AUDIT.md.
+
+### MooZ Agent · 0.46.0
+
+Bảng màu chung cho mọi cửa sổ, canvas sáng, màu nhấn tự chọn có xem trước, logo M và tên MooZ Agent trong giao diện. Dữ liệu/ID app và tiện ích kết nối giữ tương thích. Xem [giao diện](docs/INTERFACE.md) và [phân tích kiến trúc agent theo mục tiêu](docs/MOOZ-AGENT-BLUEPRINT.md).

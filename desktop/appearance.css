@@ -53,17 +53,6 @@ body[data-app-surface] :is(#appearanceOpen,#windowSwitcherOpen){border:1px solid
 .studio-layout .node-placement-hint{font-size:var(--ui-small)}
 @media(max-width:1200px){.studio-layout .studio-heading{display:none}.studio-layout .studio-connections{margin-right:auto}}
 @media(max-width:760px){.studio-layout .studio-quick-actions button span:last-child{display:none}.studio-layout #windowSwitcherOpen{font-size:0;text-align:center}.studio-layout #windowSwitcherOpen::after{content:'▣';font-size:20px}.studio-layout .compact-toolbar{height:auto;min-height:56px}.studio-layout .studio-connections{margin-right:0}.studio-layout .studio-sidebar{padding-inline:8px}.studio-layout .studio-sidebar .brand-name,.studio-layout .studio-sidebar .brand-version{display:none}}
-/* Light surfaces are limited to library, publishing and Affiliate; canvas stays dark. */
-:root[data-ui-theme=light] body:not(.studio-layout){color-scheme:light;--bg:#f4f6fb;--surface:#fff;--border:#ccd4e3;--muted:#52637d;--ink:#1b2940;--accent:#6350a2;background:#f4f6fb;color:#1b2940}
-:root[data-ui-theme=light] body[data-app-surface]:not(.studio-layout) :is(main,.sidebar,.posting-sidebar,.topbar,.top,.queue-toolbar,.hub-calendar-controls){background:#f4f6fb;color:#1b2940;border-color:#ccd4e3}
-:root[data-ui-theme=light] body[data-app-surface]:not(.studio-layout) :is(.project-card,.project-info,.project-actions,.setup,.post-card,.post-body,.hub-brand-card,.hub-account-card,.hub-asset-card,.hub-insight-row,.calendar-day,.calendar-weekday,.hub-stat,.hub-empty,.empty-state,dialog,.job-card,.job-body,details,.platform-options,.hub-queue-bar){background:#fff;color:#1b2940;border-color:#ccd4e3}
-:root[data-ui-theme=light] body[data-app-surface]:not(.studio-layout) :is(.getting-started,.hub-hero){background:linear-gradient(120deg,#f0eafd,#e7f3f0);border-color:#c6c1d9}
-:root[data-ui-theme=light] body[data-app-surface]:not(.studio-layout) :is(p,small,label,summary,li strong,.brand,.brand small,.nav-label,.sidebar-note,.app-label strong,.app-label small,.project-date,.sidebar-bottom,.sidebar-bottom small,.project-actions button,.nav-button,.app-button,.count,.eyebrow,.step,.hub-stat span,.hub-stat strong,.post-history,.post-auto,.calendar-date,.calendar-event span,.calendar-event small){color:#485a75}
-:root[data-ui-theme=light] body[data-app-surface]:not(.studio-layout) :is(input,select,textarea,.search){background:#f8faff;color:#20314b;border-color:#a8b7ce}
-:root[data-ui-theme=light] body[data-app-surface]:not(.studio-layout) :is(button,.secondary,.hub-download){background:#edf0f8;color:#283c5b;border-color:#b5bfd4}
-:root[data-ui-theme=light] body[data-app-surface]:not(.studio-layout) :is(button.primary,.primary,.nav-button.selected,.app-button:hover,.calendar-event){background:#e6ddfa;color:#3d296d;border-color:#aa98d2}
-:root[data-ui-theme=light] body[data-app-surface]:not(.studio-layout) a{color:#4d388b}
-:root[data-ui-theme=light] body[data-app-surface]:not(.studio-layout) :is(.error,.form-error,[role=alert],.project-delete){color:#a52a46!important}
 :root[data-ui-size=large] body[data-app-surface=library] .sidebar{width:250px}
 :root[data-ui-size=large] body[data-app-surface=library] main{margin-left:250px}
 @media(max-width:760px){:root[data-ui-size=large] body[data-app-surface=library] .sidebar{width:76px}:root[data-ui-size=large] body[data-app-surface=library] main{margin-left:76px}}
@@ -91,8 +80,6 @@ body[data-app-surface] :is(#appearanceOpen,#windowSwitcherOpen){border:1px solid
 .studio-layout .node[data-type=references],.studio-layout .node[data-type=imageRoles]{width:330px}
 .studio-layout .node-port-toggle{margin-top:12px;width:100%;background:#26344a;border:1px solid #4b607f;color:#ccddf6;border-radius:7px;padding:8px;cursor:pointer}
 .studio-layout .canvas-tools button:disabled{opacity:.35;cursor:default}
-:root[data-ui-theme=light] body[data-app-surface]:not(.studio-layout) :is(#postingHealth,#postingEmpty,.empty h2,.setup-guide,.post-history,.calendar-day.muted){color:#40536e;background:#e9eef8;border-color:#b8c4da;font-size:var(--ui-small)}
-:root[data-ui-theme=light] body[data-app-surface]:not(.studio-layout) .empty h2{font-size:var(--ui-heading);background:transparent}
 .studio-layout #viewport{background-color:#12141b;background-image:radial-gradient(#78859935 .7px,transparent .7px)}
 .studio-layout .node-header{border-left:3px solid var(--node-color,#bca5ff)}
 .studio-layout .edge{opacity:.6;stroke-width:2}

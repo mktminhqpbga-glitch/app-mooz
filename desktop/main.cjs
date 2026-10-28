@@ -3,6 +3,7 @@ const path=require('node:path');
 const {pathToFileURL}=require('node:url');
 const {ProjectStore}=require('./project-store.cjs');
 const {UIPreferences}=require('./ui-preferences.cjs');
+const {palette}=require('./theme-colors.js');
 const {Diagnostics}=require('./diagnostics.cjs');
 const {AIConnections}=require('./ai-connections.cjs');
 const {providerForURL,allowedNetworkURL,resolveAppPath}=require('./policy.cjs');
@@ -56,21 +57,23 @@ function protect(win){
   win.webContents.setWindowOpenHandler(({url})=>{if(/^https:\/\//.test(url))void shell.openExternal(url);return {action:'deny'};});
   win.webContents.on('will-navigate',(event,url)=>{const target=new URL(url);if(target.protocol!=='workflow:'||target.hostname!=='app')event.preventDefault();});
 }
+function appearanceURL(base){const value=uiPreferences.get(),url=new URL(base);url.searchParams.set('uiTheme',value.theme);url.searchParams.set('uiSize',value.size);url.searchParams.set('uiAccent',value.accent);return url.href;}
+function appearanceBackground(){const value=uiPreferences.get();return palette(value.theme==='system'?(require('electron').nativeTheme.shouldUseDarkColors?'dark':'light'):value.theme,value.accent).bg;}
 async function openPosting(){
  if(postingWindow&&!postingWindow.isDestroyed()){postingWindow.show();postingWindow.focus();return;}
- postingWindow=new BrowserWindow({width:1400,height:930,minWidth:900,minHeight:680,title:'Đăng bài & điều hành · Workflow',backgroundColor:'#111723',webPreferences:{preload:path.join(__dirname,'preload.cjs'),additionalArguments:['--workflow-version='+version],backgroundThrottling:false,contextIsolation:true,sandbox:true,nodeIntegration:false,webSecurity:true}});protect(postingWindow);postingWindow.on('closed',()=>{postingOAuth?.cancel();facebookLogin?.cancel();facebookPages?.clear();postingWindow=null;});await setupSession(session.defaultSession);await postingWindow.loadURL('workflow://app/desktop/posting.html');
+ postingWindow=new BrowserWindow({width:1400,height:930,minWidth:900,minHeight:680,title:'Đăng bài & điều hành · MooZ Agent',backgroundColor:appearanceBackground(),webPreferences:{preload:path.join(__dirname,'preload.cjs'),additionalArguments:['--workflow-version='+version],backgroundThrottling:false,contextIsolation:true,sandbox:true,nodeIntegration:false,webSecurity:true}});protect(postingWindow);postingWindow.on('closed',()=>{postingOAuth?.cancel();facebookLogin?.cancel();facebookPages?.clear();postingWindow=null;});await setupSession(session.defaultSession);await postingWindow.loadURL(appearanceURL('workflow://app/desktop/posting.html'));
 }
 async function openHome(){
   if(home&&!home.isDestroyed()){home.show();home.focus();return;}
   await setupSession(session.defaultSession);
-  home=new BrowserWindow({width:1200,height:830,minWidth:860,minHeight:650,backgroundColor:'#0d111b',title:'Workflow',webPreferences:{preload:path.join(__dirname,'preload.cjs'),additionalArguments:['--workflow-version='+version],backgroundThrottling:false,contextIsolation:true,sandbox:true,nodeIntegration:false,webSecurity:true}});
-  protect(home);home.on('closed',()=>{home=null;});await home.loadURL('workflow://app/desktop/home.html');
+  home=new BrowserWindow({width:1200,height:830,minWidth:860,minHeight:650,backgroundColor:appearanceBackground(),title:'MooZ Agent',webPreferences:{preload:path.join(__dirname,'preload.cjs'),additionalArguments:['--workflow-version='+version],backgroundThrottling:false,contextIsolation:true,sandbox:true,nodeIntegration:false,webSecurity:true}});
+  protect(home);home.on('closed',()=>{home=null;});await home.loadURL(appearanceURL('workflow://app/desktop/home.html'));
 }
 async function openAffiliate(){
  if(affiliateWindow&&!affiliateWindow.isDestroyed()){affiliateWindow.show();affiliateWindow.focus();return;}
  await setupSession(session.defaultSession);
- affiliateWindow=new BrowserWindow({width:1420,height:950,minWidth:1000,minHeight:700,title:'Affiliate Shopee · Workflow',backgroundColor:'#10131d',webPreferences:{preload:path.join(__dirname,'preload.cjs'),additionalArguments:['--workflow-version='+version],backgroundThrottling:false,contextIsolation:true,sandbox:true,nodeIntegration:false,webSecurity:true}});
- protect(affiliateWindow);affiliateWindow.on('closed',()=>{affiliateWindow=null;});await affiliateWindow.loadURL('workflow://app/desktop/affiliate.html');
+ affiliateWindow=new BrowserWindow({width:1420,height:950,minWidth:1000,minHeight:700,title:'Affiliate Shopee · MooZ Agent',backgroundColor:appearanceBackground(),webPreferences:{preload:path.join(__dirname,'preload.cjs'),additionalArguments:['--workflow-version='+version],backgroundThrottling:false,contextIsolation:true,sandbox:true,nodeIntegration:false,webSecurity:true}});
+ protect(affiliateWindow);affiliateWindow.on('closed',()=>{affiliateWindow=null;});await affiliateWindow.loadURL(appearanceURL('workflow://app/desktop/affiliate.html'));
 }
 async function openProject(id){
   if(projectTransitions.has(id))throw Error('Dự án đang được xử lý. Vui lòng thử lại.');
@@ -80,7 +83,7 @@ async function openProject(id){
   await store.readStorage(id); // Refuse corrupt project rather than replacing it with a blank one.
   const existing=canvases.get(id);if(existing&&!existing.isDestroyed()){existing.show();existing.focus();return info;}
   const ses=session.fromPartition('persist:workflow-project-'+id);await setupSession(ses);
-  const win=new BrowserWindow({width:1500,height:960,minWidth:1000,minHeight:700,title:info.name,backgroundColor:'#111723',webPreferences:{session:ses,preload:path.join(__dirname,'preload.cjs'),additionalArguments:['--workflow-version='+version],backgroundThrottling:false,contextIsolation:true,sandbox:true,nodeIntegration:false,webSecurity:true}});
+  const win=new BrowserWindow({width:1500,height:960,minWidth:1000,minHeight:700,title:info.name,backgroundColor:appearanceBackground(),webPreferences:{session:ses,preload:path.join(__dirname,'preload.cjs'),additionalArguments:['--workflow-version='+version],backgroundThrottling:false,contextIsolation:true,sandbox:true,nodeIntegration:false,webSecurity:true}});
   win.projectId=id;canvases.set(id,win);sessionData.set(id,{});protect(win);
   win.prepareToClose=async({requireSaved=false}={})=>{
     if(win.isDestroyed()||win.workflowCloseAllowed)return true;
@@ -96,7 +99,7 @@ async function openProject(id){
   };
   win.on('close',event=>{if(!win.workflowCloseAllowed){event.preventDefault();void win.prepareToClose();}});
   const postingOwner=win.webContents.id;win.on('closed',()=>{canvases.delete(id);sessionData.delete(id);void posting.store.cleanup(postingOwner);for(const [key,value]of requests)if(key.startsWith(id+':'))value.abort();});
-  await win.loadURL('workflow://app/app.html');return info;
+  await win.loadURL(appearanceURL('workflow://app/app.html'));return info;
   }finally{projectTransitions.delete(id);}
 }
 function context(event){

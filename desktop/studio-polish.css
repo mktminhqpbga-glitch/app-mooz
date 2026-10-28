@@ -1,27 +1,5 @@
 /* Studio finish: shared surfaces, restrained accents and legible controls.
    Graph coordinates, ports and application state remain owned by their modules. */
-:root {
-  --finish-bg:#0f131c;
-  --finish-panel:#171d29;
-  --finish-raised:#1d2533;
-  --finish-line:#303b4d;
-  --finish-ink:#eaf0fa;
-  --finish-muted:#a2aec1;
-  --finish-accent:#b6a4ff;
-  --finish-soft:#b6a4ff12;
-  --finish-shadow:0 12px 30px #00000022;
-}
-:root[data-ui-theme=light] {
-  --finish-bg:#f4f6fb;
-  --finish-panel:#ffffff;
-  --finish-raised:#f1f4fa;
-  --finish-line:#d7deea;
-  --finish-ink:#25314a;
-  --finish-muted:#63718a;
-  --finish-accent:#7156bf;
-  --finish-soft:#7156bf0b;
-  --finish-shadow:0 8px 24px #25314a07;
-}
 body[data-app-surface] { -webkit-font-smoothing:antialiased; }
 body[data-app-surface] :is(button,input,select,textarea) { border-radius:9px; }
 body[data-app-surface] button:not(:disabled) { transition:background-color .14s,border-color .14s,box-shadow .14s; }
@@ -38,7 +16,6 @@ body[data-app-surface] :is(.studio-tool-list,.studio-sidebar,.intake,.posting-si
 .finish-label { min-width:0; }
 
 /* Command rail: keep the actual tools visible, with one visual grammar. */
-.studio-tools-left { --finish-bg:#0f131c;--finish-panel:#171d29;--finish-raised:#1d2533;--finish-line:#303b4d;--finish-ink:#eaf0fa;--finish-muted:#a2aec1;--finish-accent:#b6a4ff;--finish-soft:#b6a4ff12; }
 .studio-tools-left .studio-sidebar { background:#131923;border-color:#293242;padding:20px 12px 12px;gap:13px; }
 .studio-tools-left .studio-sidebar .brand { font-size:20px;letter-spacing:-.7px;padding:0 5px 11px;gap:10px; }
 .studio-tools-left .studio-sidebar .brand-logo { width:34px;height:34px; }
