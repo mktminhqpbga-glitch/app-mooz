@@ -71,3 +71,10 @@ test('OpenAI image generation returns persisted base64 image',async()=>{
  globalThis.fetch=async(url,options)=>{assert.equal(url,'https://api.openai.com/v1/images/generations');assert.equal(JSON.parse(options.body).size,'1536x1024');return response({data:[{b64_json:'AQID'}]});};
  const result=await api('openai',{mediaType:'image',prompt:'Scene',size:'16:9'},'key');assert.equal(result.url,'data:image/png;base64,AQID');
 });
+test('video duration opt-out stays null while legacy and supported choices remain valid',()=>{
+ const duration=WorkflowAI.videoDuration;assert.equal(duration(null),null);assert.equal(duration(null,'google'),null);assert.equal(duration(undefined),5);assert.equal(duration(40),40);assert.equal(duration(8,'google'),8);assert.ok([4,6,8].includes(duration(5,'google')));
+ for(const value of [null,undefined])assert.doesNotThrow(()=>validate('google',{mediaType:'video',duration:value}));assert.throws(()=>validate('google',{mediaType:'video',duration:0}));
+});
+test('Veo opt-out omits durationSeconds rather than sending zero or a forced default',async()=>{
+ for(const duration of [null,undefined]){let body;globalThis.fetch=async(url,options)=>{if(url.includes(':predictLongRunning')){body=JSON.parse(options.body);return response({done:true,response:{generateVideoResponse:{generatedSamples:[{video:{uri:'https://generativelanguage.googleapis.com/v1beta/files/video:download'}}]}}});}return new Response(new Blob(['video'],{type:'video/mp4'}));};const result=await api('google',{mediaType:'video',duration,size:'9:16',prompt:'Scene'},'test-key');assert.equal(Object.hasOwn(body.parameters,'durationSeconds'),false);assert.equal(body.parameters.aspectRatio,'9:16');URL.revokeObjectURL(result.url);}
+});

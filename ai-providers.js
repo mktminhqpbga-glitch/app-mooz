@@ -23,12 +23,18 @@
     const data=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(blob);});
     return {mimeType:blob.type,data:String(data).split(',')[1],dataUrl:data};
   }
+  // null is an explicit opt-out; missing values keep the existing node default.
+  function videoDuration(value,provider='muse') {
+    if(value===null)return null;
+    const choices=provider==='google'?[4,6,8]:[5,10,15,30,40],target=Number(value)||5;
+    return choices.reduce((best,seconds)=>Math.abs(seconds-target)<Math.abs(best-target)?seconds:best,choices[0]);
+  }
   function validate(provider,r) {
     if(!providers[provider]?.types.includes(r.mediaType))throw new Error('AI này không hỗ trợ loại đầu ra đã chọn.');
     if(r.referenceVideos?.length&&provider==='openai')throw new Error('OpenAI adapter chưa hỗ trợ video gốc. Chọn Gemini để phân tích video.');
     if(r.mediaType==='video'&&provider==='google'&&r.referenceVideos?.length)throw new Error('Veo adapter chưa hỗ trợ Motion Control. Chọn fal.ai.');
     if(r.mediaType==='video'&&provider==='google'&&(r.referenceImages||[]).length>1)throw new Error('Veo adapter chỉ nhận một ảnh khởi đầu.');
-    if(r.mediaType==='video'&&provider==='google'&&![4,6,8].includes(Number(r.duration)))throw new Error('Veo adapter hỗ trợ clip 4, 6 hoặc 8 giây; không thể bảo đảm một clip 15–60 giây.');
+    if(r.mediaType==='video'&&provider==='google'&&r.duration!=null&&![4,6,8].includes(Number(r.duration)))throw new Error('Veo adapter hỗ trợ clip 4, 6 hoặc 8 giây; không thể bảo đảm một clip 15–60 giây.');
     if(provider==='fal'&&(!r.referenceImages?.length||r.referenceVideos?.length!==1))throw new Error('Motion Control cần ảnh nhân vật và đúng một video chuyển động gốc.');
     if(provider==='fal'&&r.referenceImages.length!==1)throw new Error('Motion Control nhận đúng một ảnh nhân vật.');
   }
@@ -52,7 +58,7 @@
       if(r.referenceVideos?.length)throw new Error('Veo adapter chưa hỗ trợ Motion Control. Chọn fal.ai.');
       if((r.referenceImages||[]).length>1)throw new Error('Veo adapter chỉ nhận một ảnh khởi đầu.');
       const instance={prompt:r.prompt};if(r.referenceImages?.length){const image=await media(r.referenceImages[0],signal);instance.image={bytesBase64Encoded:image.data,mimeType:image.mimeType};}
-      let operation=await json(`${base}models/${encodeURIComponent(model)}:predictLongRunning`,{method:'POST',headers,body:JSON.stringify({instances:[instance],parameters:{aspectRatio:r.size||'16:9',durationSeconds:Number(r.duration)}}),signal});
+      let operation=await json(`${base}models/${encodeURIComponent(model)}:predictLongRunning`,{method:'POST',headers,body:JSON.stringify({instances:[instance],parameters:{aspectRatio:r.size||'16:9',...(r.duration!=null?{durationSeconds:Number(r.duration)}:{})}}),signal});
       const end=Date.now()+600000;
       while(!operation.done&&Date.now()<end){await sleep(4000,signal);if(!/^models\/[\w.-]+\/operations\/[\w.-]+$/.test(operation.name||''))throw new Error('Mã tác vụ Veo không hợp lệ.');operation=await json(base+operation.name,{headers,signal});}
       if(!operation.done)throw new Error('Veo chưa hoàn tất sau 10 phút.');if(operation.error)throw new Error('Tác vụ Veo thất bại.');
@@ -82,5 +88,5 @@
       try {const end=Date.now()+600000;while(Date.now()<end){abort(signal);const status=await json(task.status_url,{headers,signal});if(status.status==='COMPLETED'){const result=await json(task.response_url,{headers,signal});if(!result.video?.url)throw new Error('fal.ai không trả về video.');return {ok:true,url:result.video.url};}if(status.status==='FAILED')throw new Error('fal.ai tạo video thất bại.');await sleep(4000,signal);}throw new Error('fal.ai chưa hoàn tất sau 10 phút.');}finally{signal?.removeEventListener('abort',cancel);}
     }
   }
-  globalThis.WorkflowAI={providers,models,validate,api};
+  globalThis.WorkflowAI={providers,models,videoDuration,validate,api};
 })();

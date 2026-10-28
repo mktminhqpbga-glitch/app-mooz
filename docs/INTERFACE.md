@@ -80,3 +80,7 @@ UI mang tên MooZ Agent và biểu tượng M mới; tên bundle/ID/partition v�
 Kiểm thử màu tính trên CSS thực của bốn cửa sổ, chế độ sáng/tối/đen tím, custom accent, preview/Hủy/Lưu/đồng bộ/tải lại. Unit kiểm tra 264 màu nhấn trong ba theme, chữ/nút/liên kết/trạng thái có tỷ lệ tương phản từ 4.5:1 với các nền chính. Kiểm tra độ tương phản này không thay cho đánh giá mọi nội dung media hoặc các điều khiển bị vô hiệu hóa.
 
 Hướng phát triển agent và inspector phải nằm trong [MOOZ-AGENT-BLUEPRINT.md](MOOZ-AGENT-BLUEPRINT.md). Bản đổi giao diện chưa triển khai bộ điều phối agent và inspector mới.
+
+## 0.46.1 · Không yêu cầu thời lượng video
+
+Ô thời lượng trong node Tạo video, thẻ Tạo hàng loạt và Hàng đợi có lựa chọn **Không chọn**. Lựa chọn lưu bằng `null`, giữ sau tải lại và khi chạy qua hàng đợi. App không tự thêm số giây vào prompt, không gửi tham số duration/durationSeconds và không báo thiếu số giây hoặc gợi ý tiếp nối theo một mục tiêu rỗng. Vẫn hiển thị thời lượng thực của kết quả. Chọn lại số giây sẽ khôi phục yêu cầu như trước; thời lượng dịch vụ hỗ trợ vẫn phụ thuộc nhà cung cấp. Nội dung prompt do người dùng viết được giữ nguyên.

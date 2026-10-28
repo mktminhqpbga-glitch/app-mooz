@@ -1,4 +1,4 @@
-# Workflow · MuseFlow 0.46.0
+# Workflow · MuseFlow 0.46.1
 
 [Bắt đầu trong 5 phút](docs/QUICKSTART.md) · [Xử lý góp ý người dùng 28/10](docs/USER-REVIEW-2026-10-28.md) · [Thiết kế MooZ Agent](designs/MOOZ-AGENT-PLAN.md)
 
