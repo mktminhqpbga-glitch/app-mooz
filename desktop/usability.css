@@ -86,6 +86,10 @@ body[data-app-surface=library] .getting-started{margin-bottom:20px}
 body[data-app-surface=library] .project-actions button{min-height:32px}
 body[data-app-surface=library] .workspace-heading .eyebrow{margin-bottom:5px;font-size:var(--ui-small)}
 body[data-app-surface=library] .sidebar-bottom{padding-top:12px;font-size:var(--ui-small)}
+@media(max-height:700px){
+ body[data-app-surface=library] .workspace-heading{padding-block:16px}
+ body[data-app-surface=library] .project-art{height:72px}
+}
 
 /* Auxiliary windows keep their actions inside the header when labels wrap. */
 body[data-app-surface=affiliate] .top{height:auto;min-height:72px;padding-block:12px;gap:12px;flex-wrap:wrap}
