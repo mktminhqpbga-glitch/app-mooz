@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "protocol": 1,
-  "notes": "Tiện ích chỉ kết nối Chrome với app. Hỗ trợ Muse văn bản và video tham chiếu."
+  "notes": "Điều phối gửi AI chung từ app, chờ tệp sẵn sàng và tạm dừng khi dịch vụ yêu cầu xác minh. App cũ vẫn kết nối qua giao thức 1."
 }

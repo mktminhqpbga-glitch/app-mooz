@@ -2058,11 +2058,6 @@
             generationRequest.referenceVideos=resolveVideos(n.id);if(generationRequest.referenceVideos.length)generationRequest.prompt+='\n\nVIDEO REFERENCE: Use the attached source video for motion, camera movement and pacing. Preserve the subjects/products from the connected images. Generate a new result; do not return the uploaded source video.';generationRequest.model=n.data.apiModel;
             let reply=await generateWithProvider(n,generationRequest,abortController.signal);
             if(abortController.signal.aborted)throw new DOMException('Generation stopped by user.','AbortError');
-            if((n.data.provider||'muse')==='muse'&&!reply?.ok&&reply?.code==='SCENE_REFUSED'){
-              setRunStatus(`Muse could not create ${n.data.sceneLabel||'this scene'}; retrying once with a close, safe alternative…`,'warn');
-              const retryRequest={...generationRequest,prompt:`${musePrompt}\n\nSAFE EQUIVALENT RETRY: The previous version could not be generated. Create a close, allowed alternative for the same scene now. Stay faithful to the script's story purpose, characters, relationship, setting, action, mood, visual style, framing, continuity, and requested duration/aspect ratio. Change only the specific detail that prevents generation, replacing it with the nearest safe equivalent. Keep this scene in the story; do not skip it or change what it needs to accomplish. Do not ask a follow-up question or ask permission; generate the alternative in this attempt. Follow all content and safety rules.`};
-              retryRequest.requestId=uid('retry');run.requestId=retryRequest.requestId;reply=await generateWithProvider(n,retryRequest,abortController.signal);
-            }
             if(abortController.signal.aborted)throw new DOMException('Generation stopped by user.','AbortError');
             if(!reply?.ok)throw new Error(reply?.error||`Muse.ai did not return a generated ${isVideo?'video':'image'}.`);
             const kind=isVideo?'video':'image';
@@ -2472,7 +2467,9 @@
     },focus:id=>{if(id&&nodeById(id))flowApi.focus({nodeId:id});}
   });
 
+  let dispatchHolds={};const dispatchProvider=provider=>({google:'api:https://generativelanguage.googleapis.com',openai:'api:https://api.openai.com',fal:'api:https://queue.fal.run'})[provider]||(WorkflowAI.providers[provider]?.dispatchOrigin?'api:'+WorkflowAI.providers[provider].dispatchOrigin:provider);
   const batchQueue=WorkflowBatchManager.init({
+    canRun:job=>!dispatchHolds[dispatchProvider(job.options.provider)],
     ready:()=>workflowReady,refreshChats:()=>refreshChatTabs(),
     prepareOptions:async options=>{options={...options,sharedReferenceSnapshots:await sharedReferenceSnapshots()};WorkflowAI.validate(options.provider,{...options,prompt:'Kiểm tra thiết lập'});if(WorkflowAI.providers[options.provider]?.urls){const tabs=await chrome.tabs.query({url:WorkflowAI.providers[options.provider].urls});const tab=chooseChat(options.provider,tabs,options.chatTarget||aiChatTargets[options.provider]);return {...options,chatTarget:{tabId:tab.id,url:chatKey(tab.url)}};}return options;},
     chatPicker:(provider,changed)=>WorkflowAI.providers[provider]?.urls?chatSelector(provider,aiChatTargets[provider],changed):null,
@@ -2576,5 +2573,7 @@
       state.selectedNodeIds=nodes.map(n=>n.id);state.selectedNodeId=state.selectedNodeIds.at(-1);state.selectedEdgeIds=[];document.querySelectorAll('.node').forEach(el=>el.classList.toggle('selected',state.selectedNodeIds.includes(el.dataset.id)));applyCanvasTransform();scheduleDrawEdges();setRunStatus('Đang xem '+nodes.length+' node đã chọn.','ok');
     }
   });
+
+  if(window.workflowDesktop){const pauseHeld=async()=>{const snapshot=await workflowDesktop.call('aiDispatch.snapshot');dispatchHolds=Object.fromEntries(Object.entries(snapshot.holds).filter(([,h])=>!h.until||h.until>Date.now()));const holds=Object.values(dispatchHolds);batchQueue.wake();if(holds.length)setRunStatus(holds[0].message+' Mục chưa chạy vẫn được giữ trong hàng chờ.','warn');};workflowDesktop.onEvent(value=>{if(value.type==='aiDispatch')void pauseHeld().catch(()=>{});});void pauseHeld().catch(()=>{});}
 
 })();

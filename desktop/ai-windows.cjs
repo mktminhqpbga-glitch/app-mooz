@@ -26,10 +26,15 @@ class AIWindows {
     win.webContents.on('page-title-updated',()=>this.notify({type:'updated',tab:this.tab(win),changeInfo:{title:win.webContents.getTitle()}}));
     win.webContents.on('console-message',(_event,details,oldMessage)=>{
       const message=typeof details==='object'?details.message:oldMessage;
+      if(typeof message==='string'&&message.startsWith('__WORKFLOW_GATE__')&&message.length<2500){
+       try{const m=JSON.parse(message.slice(17));if(typeof m.callId!=='string'||!/^[a-f0-9-]{36}$/.test(m.callId))return;
+        void Promise.resolve(this.dispatch?.gate('native:'+id,m.message)||{ok:false,error:'App chưa có bộ điều phối gửi AI.'}).then(value=>{if(!win.isDestroyed())return win.webContents.executeJavaScriptInIsolatedWorld(WORLD,[{code:`globalThis.__workflowHost?.replyGate(${JSON.stringify(m.callId)},${JSON.stringify(value)})`}]);}).catch(()=>{});
+       }catch{}return;
+      }
       if(typeof message!=='string'||!message.startsWith('__WORKFLOW_PROGRESS__'))return;
       try{const value=JSON.parse(message.slice(21));if(value.type==='WORKFLOW_AI_PROGRESS'&&typeof value.requestId==='string'&&typeof value.text==='string')this.notify({type:'message',tabId:id,message:value});}catch{}
     });
-    win.on('closed',()=>this.windows.delete(id));
+    win.on('closed',()=>{this.windows.delete(id);void this.dispatch?.disconnect('native:'+id);});
     win.loadURL(URLS[provider]).catch(()=>{});
     const result={id,windowId:id,url:URLS[provider],title:provider};this.notify({type:'created',tab:result});return result;
   }
@@ -38,8 +43,8 @@ class AIWindows {
     const preferred=await this.readPreferred(projectId);
     const code=`if(!globalThis.__workflowHost){
       const listeners=[];
-      globalThis.chrome={runtime:{id:'workflow-desktop',getManifest:()=>({version:${JSON.stringify(this.version)}}),onMessage:{addListener:fn=>listeners.push(fn)},sendMessage:async value=>{console.log('__WORKFLOW_PROGRESS__'+JSON.stringify(value));}},storage:{local:{get:async()=>({workflowMuseSendTarget:globalThis.__workflowHost.preferred})}}};
-      globalThis.__workflowHost={dispatch:request=>new Promise((resolve,reject)=>{let handled=false;for(const listener of listeners){try{const result=listener(request,{id:'workflow-desktop'},resolve);if(result===true)handled=true;}catch(error){reject(error);return;}}if(!handled)resolve({ok:false,error:'Bộ kết nối chưa xử lý yêu cầu.'});})};
+      globalThis.chrome={runtime:{id:'workflow-desktop',getManifest:()=>({version:${JSON.stringify(this.version)}}),onMessage:{addListener:fn=>listeners.push(fn)},sendMessage:async value=>{if(value?.type==='WORKFLOW_AI_GATE')return new Promise(resolve=>{const id=crypto.randomUUID(),timer=setTimeout(()=>{globalThis.__workflowHost.gates.delete(id);resolve({ok:false,error:'Mất kết nối điều phối; chưa gửi AI.'});},10000);globalThis.__workflowHost.gates.set(id,{resolve,timer});console.log('__WORKFLOW_GATE__'+JSON.stringify({callId:id,message:value}));});console.log('__WORKFLOW_PROGRESS__'+JSON.stringify(value));}},storage:{local:{get:async()=>({workflowMuseSendTarget:globalThis.__workflowHost.preferred})}}};
+      globalThis.__workflowHost={gates:new Map(),replyGate:(id,value)=>{const p=globalThis.__workflowHost.gates.get(id);if(p){clearTimeout(p.timer);globalThis.__workflowHost.gates.delete(id);p.resolve(value);}},dispatch:request=>new Promise((resolve,reject)=>{let handled=false;for(const listener of listeners){try{const result=listener(request,{id:'workflow-desktop'},resolve);if(result===true)handled=true;}catch(error){reject(error);return;}}if(!handled)resolve({ok:false,error:'Bộ kết nối chưa xử lý yêu cầu.'});})};
     }
     globalThis.__workflowHost.preferred=${JSON.stringify(preferred ?? null)};
     void 0;`;
@@ -58,7 +63,9 @@ class AIWindows {
     const result=code?await win.webContents.executeJavaScriptInIsolatedWorld(WORLD,[{code}],true):null;
     return [{result}];
   }
-  async message(id,message,projectId) {if(!message||!TYPES.has(message.type))throw Error('Loại yêu cầu AI không được phép.');const win=this.find(id);await this.boot(win,projectId);return win.webContents.executeJavaScriptInIsolatedWorld(WORLD,[{code:`globalThis.__workflowHost.dispatch(${JSON.stringify(message)})`}],true);}
+  async rawMessage(id,message,projectId){const win=this.find(id);await this.boot(win,projectId);return win.webContents.executeJavaScriptInIsolatedWorld(WORLD,[{code:`globalThis.__workflowHost.dispatch(${JSON.stringify(message)})`}],true);}
+  async message(id,message,projectId) {if(!message||!TYPES.has(message.type))throw Error('Loại yêu cầu AI không được phép.');const win=this.find(id);await this.boot(win,projectId);const send=value=>win.webContents.executeJavaScriptInIsolatedWorld(WORLD,[{code:`globalThis.__workflowHost.dispatch(${JSON.stringify(value)})`}],true);return this.dispatch?this.dispatch.invoke('native:'+id,providerForURL(win.webContents.getURL()),message,send):send(message);}
+
   closeAll() {for(const win of this.windows.values())if(!win.isDestroyed())win.close();}
 }
 module.exports={AIWindows};

@@ -2,7 +2,7 @@
 (() => {
   if(globalThis.__workflowAIBridge)return;globalThis.__workflowAIBridge=true;
   const isGPT=/(^|\.)chatgpt\.com$/.test(location.hostname)||location.hostname==='chat.openai.com';
-  const active=new Map(),earlySend=new Set(),manualResults=new Map();let busy=false,lastScan=null;
+  const active=new Map(),earlySend=new Set(),manualResults=new Map();let busy=false,lastScan=null,currentRequest=null;
   const visible=el=>el&&el.getClientRects().length&&getComputedStyle(el).visibility!=='hidden';
   const activity=globalThis.WorkflowAIActivity,readable=el=>activity?activity.readable(el):visible(el);
   function composer(){
@@ -71,7 +71,7 @@
     return [...candidates].filter(el=>visible(el)&&!el.closest(historySelector)&&(String(el.innerText||el.textContent||'').trim()||el.querySelector('img[src],video[src],[data-file-name],[role="progressbar"]')||buttons(el).some(b=>/remove|xóa|xoá/i.test(label(b)))));
   }
   const uploading=()=>root(composer()).querySelector('[role="progressbar"],[aria-busy="true"],[data-state="uploading"],[data-status="uploading"],.animate-spin');
-  async function wait(check,ms,signal,message){const end=Date.now()+ms;while(Date.now()<end){if(signal?.aborted)throw new DOMException('Đã dừng.','AbortError');const result=await check();if(signal?.aborted)throw new DOMException('Đã dừng.','AbortError');if(result)return result;if(activity)await activity.wait(180,signal);else await new Promise(resolve=>setTimeout(resolve,180));}throw new Error(message);}
+  async function wait(check,ms,signal,message){const end=Date.now()+ms;while(Date.now()<end){WorkflowComposer.assertService(currentRequest);if(signal?.aborted)throw new DOMException('Đã dừng.','AbortError');const result=await check();if(signal?.aborted)throw new DOMException('Đã dừng.','AbortError');if(result)return result;if(activity)await activity.wait(180,signal);else await new Promise(resolve=>setTimeout(resolve,180));}throw new Error(message);}
   async function imageFingerprint(blob){return [...new Uint8Array(await crypto.subtle.digest('SHA-256',await blob.arrayBuffer()))].map(b=>b.toString(16).padStart(2,'0')).join('');}
   const imageSources=el=>[...el.querySelectorAll('img')].map(img=>img.currentSrc||img.src).filter(Boolean);
   function setText(el,text){
@@ -116,6 +116,7 @@
     return fingerprints;
   }
   async function generate(request,signal){
+    currentRequest=request;await WorkflowComposer.waitTurn(request,'prepare',signal,text=>report(request,text));
     if(!String(request.prompt||'').trim())throw new Error('Yêu cầu trống.');
     const deadline=Date.now()+120000,initialOrigin=location.origin;let conversation=initialOrigin+location.pathname;
     const initialPath=location.pathname.replace(/\/$/,'');
@@ -215,8 +216,19 @@
       }
       checkConversation();WorkflowComposer.assertUpload(root(composer()));
       if(!submitted()){
-        const button=await wait(()=>{checkConversation();if(submitted())return true;WorkflowComposer.assertUpload(root(composer()));return !uploading()&&send();},600000,signal,'Không tìm thấy nút Gửi sẵn sàng. Prompt chưa được gửi.');
-        if(button!==true){checkConversation();for(const src of imageSources(document))baselineImages.add(src);button.click();report(request,'Đã bấm Gửi. Đang xác nhận AI nhận yêu cầu…');}
+        let button=await wait(()=>{checkConversation();if(submitted())return true;WorkflowComposer.assertUpload(root(composer()));return !uploading()&&send();},600000,signal,'Không tìm thấy nút Gửi sẵn sàng. Prompt chưa được gửi.');
+        if(button!==true){
+          let permit;
+          do{
+            permit=await WorkflowComposer.waitTurn(request,'permit',signal,text=>report(request,text));
+            if(submitted()){button=true;break;}
+            WorkflowComposer.assertService(request);checkConversation();WorkflowComposer.assertUpload(root(composer()));
+            if(normalized(composer()?.value??composer()?.innerText)!==normalized(wireText))throw Error('Prompt đã thay đổi trong lúc chờ lượt. Chưa gửi AI; kiểm tra lại ô soạn thảo.');
+            button=send();if(!button||uploading())throw Error('Ô chat chưa sẵn sàng sau khi chờ lượt. Chưa gửi AI.');
+            for(const src of imageSources(document))baselineImages.add(src);
+          }while(permit.expiresAt<=Date.now());
+          if(button!==true){button.click();await WorkflowComposer.sent(request);report(request,'Đã bấm Gửi. Đang xác nhận AI nhận yêu cầu…');}
+        }
       }
     }
     report(request,'Đang xác nhận AI nhận yêu cầu; không gửi lại prompt…');
@@ -249,7 +261,7 @@
   chrome.runtime.onMessage.addListener((request,sender,respond)=>{
     if(sender.id!==chrome.runtime.id)return false;
     if(request.type==='WORKFLOW_AI_CHECK'){
-      const capabilities=()=>({bridgeVersion:chrome.runtime.getManifest?.()?.version||'0.38.2',resultProtocol:3,backgroundProtocol:activity?1:0,lastScan});
+      const capabilities=()=>({sendProtocol:1,...(WorkflowComposer.serviceState()?{block:WorkflowComposer.serviceState()}:{}),bridgeVersion:chrome.runtime.getManifest?.()?.version||'0.38.2',resultProtocol:3,backgroundProtocol:activity?1:0,lastScan});
       if(busy){respond({ok:true,signedIn:true,composer:!!composer(),busy:true,...capabilities()});return false;}
       wait(composer,3500,null,'Không nhận diện được ô nhập trên trang AI đang mở.').then(()=>respond({ok:true,signedIn:true,composer:true,busy:!!stopped(),...capabilities()}),()=>respond({ok:true,signedIn:false,composer:false,...capabilities(),error:'Tab AI đã kết nối nhưng chưa nhận diện được ô nhập đang chỉnh sửa. Mở cuộc trò chuyện và tải lại tab AI.'}));return true;
     }
@@ -260,6 +272,6 @@
     if(busy){respond({ok:false,error:'Tab AI đang xử lý một yêu cầu khác.'});return false;}
     busy=true;const controller=new AbortController();active.set(request.requestId,controller);activity?.start(request.requestId);
     const manual=new Promise(resolve=>manualResults.set(request.requestId,resolve));
-    Promise.race([generate(request,controller.signal),manual]).then(respond,error=>respond({ok:false,error:error.message})).finally(()=>{controller.abort();busy=false;active.delete(request.requestId);earlySend.delete(request.requestId);manualResults.delete(request.requestId);activity?.finish(request.requestId);});return true;
+    Promise.race([generate(request,controller.signal),manual]).then(respond,error=>respond({ok:false,error:error.message,code:error.code,block:error.block})).finally(()=>{controller.abort();currentRequest=null;busy=false;active.delete(request.requestId);earlySend.delete(request.requestId);manualResults.delete(request.requestId);activity?.finish(request.requestId);});return true;
   });
 })();

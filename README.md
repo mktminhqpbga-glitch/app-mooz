@@ -1,4 +1,6 @@
-# Workflow · MuseFlow 0.47.0
+# Workflow · MuseFlow 0.47.1
+
+Bản 0.47.1 sửa nhịp gửi AI dùng chung toàn app, dừng khi dịch vụ yêu cầu xác minh/ngắt kết nối và bỏ tự tạo lại cảnh bị từ chối. Tab Chrome cần **Workflow Connect 1.1.0**; [hướng dẫn cập nhật và cài đặt nhịp gửi](docs/AI-SEND-SAFETY.md).
 
 Bản 0.47.0 thêm **Video hàng loạt** tại thư viện dự án: cập nhật các tab AI tự mở, chọn tab nhận việc, chạy luồng riêng theo từng sản phẩm, kho media và hậu kỳ xuất MP4 cục bộ. Hướng dẫn và giới hạn: [Tạo video hàng loạt](docs/BATCH-VIDEO-STUDIO-PLAN.md#bản-tích-hợp-0470).
 

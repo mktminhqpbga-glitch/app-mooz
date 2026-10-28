@@ -4,7 +4,7 @@
     "extension_pages": "script-src 'self'; object-src 'none';"
   },
   "name": "Workflow Connect",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Kết nối các tab Muse, Gemini và ChatGPT trong Chrome với ứng dụng Workflow.",
   "action": {
     "default_title": "Kết nối Workflow",

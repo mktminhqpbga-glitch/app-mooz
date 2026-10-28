@@ -43,7 +43,7 @@ class AffiliateService{
   if(this.working){this.wakeRequested=true;return;}if(this.paused||this.closed)return;let processed=false;
   // Set the lease before any await, including the durable queue read.
   this.working=(async()=>{
-   const next=(await this.all()).filter(j=>j.status==='queued').at(-1);if(!next||this.paused||this.closed)return;processed=true;
+   const next=(await this.all()).filter(j=>{if(j.status!=='queued')return false;if(!j.target?.url||j.prepareOnly||j.mode==='own')return true;const provider=require('./policy.cjs').providerForURL(j.target.url)||'api:'+new URL(j.target.url).origin;return !this.ai.dispatch?.holdError(provider);}).at(-1);if(!next||this.paused||this.closed)return;processed=true;
    const controller=new AbortController();this.controllers.set(next.id,controller);const signal=controller.signal;
    try{
     if(!await this.save(next.id,{status:'reading',error:''},'queued'))return;if(signal.aborted)throw signal.reason;

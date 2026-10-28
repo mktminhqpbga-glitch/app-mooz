@@ -7,7 +7,7 @@
  let socket=null,connection=null,state='disconnected',heartbeat=null,appVersion=null;
  const PROTOCOL=1,releaseURL='https://raw.githubusercontent.com/mktminhqpbga-glitch/app-mooz/main/extension/companion-release.json';
  let updateInfo=null,updateTask=null,lastUpdateAttempt=0;
- const knownTabs=new Set();
+ const knownTabs=new Set(),gateCalls=new Map();
  function supportedURL(value){try{const url=new URL(value);return url.protocol==='https:'&&!url.username&&!url.password&&!url.port&&(/^(?:chatgpt\.com|www\.chatgpt\.com|chat\.openai\.com|gemini\.google\.com|(?:[a-z0-9-]+\.)*muse\.ai)$/.test(url.hostname));}catch{return false;}}
  function parseURI(value){
   const uri=new URL(String(value||''));
@@ -55,7 +55,7 @@
   }
   throw Error('Thao tác Chrome không được phép.');
  }
- async function disconnect(){const previous=socket;socket=null;connection=null;state='disconnected';clearInterval(heartbeat);heartbeat=null;previous?.close();await chrome.storage.session.remove(SETTINGS);return status();}
+ async function disconnect(){for(const p of gateCalls.values()){clearTimeout(p.timer);p.reply({ok:false,error:'Chrome đã ngắt kết nối; chưa gửi AI.'});}gateCalls.clear();const previous=socket;socket=null;connection=null;state='disconnected';clearInterval(heartbeat);heartbeat=null;previous?.close();await chrome.storage.session.remove(SETTINGS);return status();}
  async function connect(uri){
   const next=parseURI(uri);await disconnect();connection=next;state='connecting';
   return new Promise((resolve,reject)=>{
@@ -64,6 +64,7 @@
    current.onopen=()=>current.send(JSON.stringify({type:'auth',token:next.token,protocol:PROTOCOL,extensionVersion:chrome.runtime.getManifest?.()?.version||''}));
    current.onmessage=event=>{
     let message;try{message=JSON.parse(event.data);}catch{return;}
+    if(message.type==='gate-result'){const p=gateCalls.get(message.callId);if(p){clearTimeout(p.timer);gateCalls.delete(message.callId);p.reply(message.result);}return;}
     if(message.type==='ready'){
      if(message.protocol!==undefined&&message.protocol!==PROTOCOL){clearTimeout(timeout);current.close();reject(Error('App dùng giao thức kết nối khác. Cập nhật app hoặc tiện ích tương thích.'));return;}
      appVersion=typeof message.appVersion==='string'?message.appVersion:null;
@@ -78,6 +79,12 @@
  }
  function extensionPage(sender){const prefix=chrome.runtime.getURL('');return sender.id===chrome.runtime.id&&typeof sender.url==='string'&&sender.url.startsWith(prefix)&&(!sender.tab?.url||sender.tab.url.startsWith(prefix));}
  chrome.runtime.onMessage.addListener((message,sender,reply)=>{
+  if(message?.type==='WORKFLOW_AI_GATE'){
+   if(sender.id!==chrome.runtime.id||!Number.isInteger(sender.tab?.id)||!supportedURL(sender.tab.url)){reply({ok:false,error:'Nguồn xin quyền gửi không hợp lệ.'});return false;}
+   if(state!=='connected'||socket?.readyState!==WebSocket.OPEN){reply({ok:false,error:'Kết nối lại app trước khi gửi AI.'});return false;}
+   const callId=crypto.randomUUID(),timer=setTimeout(()=>{gateCalls.delete(callId);reply({ok:false,error:'Mất kết nối điều phối; chưa gửi AI.'});},10000);gateCalls.set(callId,{reply,timer});
+   try{send({type:'gate',callId,tabId:sender.tab.id,message});}catch{clearTimeout(timer);gateCalls.delete(callId);reply({ok:false,error:'Chưa chuyển được quyền gửi đến app.'});}return true;
+  }
   if(['DESKTOP_CONNECT','DESKTOP_STATUS','DESKTOP_DISCONNECT','DESKTOP_CHECK_UPDATE'].includes(message?.type)){
    if(!extensionPage(sender)){reply({ok:false,error:'Chỉ trang tiện ích Workflow được phép ghép nối.'});return false;}
    const action=message.type==='DESKTOP_CONNECT'?()=>connect(message.uri):message.type==='DESKTOP_DISCONNECT'?disconnect:message.type==='DESKTOP_CHECK_UPDATE'?checkUpdate:async()=>status();

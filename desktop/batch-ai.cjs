@@ -21,7 +21,7 @@ class BatchAI {
    for(const ref of refs){if(typeof ref!=='string'||!/^data:image\/(png|jpeg|webp|gif|avif);base64,[a-zA-Z0-9+/=]+$/.test(ref))throw Error('Ảnh tham chiếu không hợp lệ.');bytes+=ref.length*.75;if(ref.length*.75>8*1024*1024||bytes>20*1024*1024)throw Error('Tối đa 8 MB/ảnh và 20 MB/lượt gửi AI.');}
    await script(['ai-activity.js','composer-controls.js',muse?'muse-bridge.js':'ai-bridge.js']);
    const check=await message({type:muse?'MUSEFLOW_CHECK_SESSION':'WORKFLOW_AI_CHECK'});
-   if(check?.busy)throw Error('Tab đang xử lý một việc khác. Chờ hoàn tất rồi chạy tiếp.');
+if(check?.sendUpgrade||check?.blocked)throw Error(check.error);   if(check?.busy)throw Error('Tab đang xử lý một việc khác. Chờ hoàn tất rồi chạy tiếp.');
    if(!check?.composer||!check?.signedIn)throw Error('Mở tab, đăng nhập AI và vào cuộc trò chuyện trước.');
    if(muse?(check.jobProtocol!==1||check.resultProtocol!==2||data.mediaType==='text'&&check.textProtocol!==1):check.resultProtocol!==3)throw Error('Cập nhật tiện ích rồi tải lại tab AI.');
    const signal=controller.signal,delay=Math.max(0,5000-(Date.now()-(this.lastSend.get(key)||0)));

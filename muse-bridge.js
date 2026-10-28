@@ -27,13 +27,13 @@
       for(const [key,job] of museJobs)if(job.result&&Date.now()-(job.finishedAt||job.createdAt)>1200000)museJobs.delete(key);
       const completed=[...museJobs].filter(([,job])=>job.result);while(completed.length>=3)museJobs.delete(completed.shift()[0]);
       const controller=new AbortController(),job={createdAt:Date.now(),result:null};museJobs.set(id,job);activeGenerations.set(id,controller);activity?.start(id);
-      generate(message,controller.signal).then(result=>{job.result={...result,conversationUrl:location.href};job.finishedAt=Date.now();},error=>{job.finishedAt=Date.now();job.result={ok:false,code:error.code||'MUSE_ERROR',error:error.message||String(error)};}).finally(()=>{activeGenerations.delete(id);textStates.delete(id);activity?.finish(id);});
+      generate(message,controller.signal).then(result=>{job.result={...result,conversationUrl:location.href};job.finishedAt=Date.now();},error=>{job.finishedAt=Date.now();job.result={ok:false,code:error.code||'MUSE_ERROR',error:error.message||String(error),block:error.block};}).finally(()=>{activeGenerations.delete(id);textStates.delete(id);activity?.finish(id);});
       sendResponse({ok:true,accepted:true,requestId:id});return false;
     }
     if (message?.type === 'MUSEFLOW_GENERATE') {
       if(activeGenerations.size){sendResponse({ok:false,error:'Muse đang xử lý yêu cầu khác.'});return false;}
       const controller=new AbortController();activeGenerations.set(message.requestId,controller);activity?.start(message.requestId);
-      generate(message,controller.signal).then(result=>sendResponse({...result,conversationUrl:location.href}), error => sendResponse({ ok: false, code:error.code||'MUSE_ERROR', error: error.message || String(error) })).finally(()=>{activeGenerations.delete(message.requestId);textStates.delete(message.requestId);activity?.finish(message.requestId);});
+      generate(message,controller.signal).then(result=>sendResponse({...result,conversationUrl:location.href}), error => sendResponse({ ok: false, code:error.code||'MUSE_ERROR', error: error.message || String(error),block:error.block })).finally(()=>{activeGenerations.delete(message.requestId);textStates.delete(message.requestId);activity?.finish(message.requestId);});
       return true;
     }
     if(message?.type==='MUSEFLOW_STOP_GENERATION'){
@@ -73,11 +73,12 @@
   }
 
   async function checkSession() {
+    const block=WorkflowComposer.serviceState();if(block)return {ok:false,sendProtocol:1,block,composer:false,signedIn:false,busy:false};
     await waitHydrated(5000);
     const composer=findComposer();
     const ready=Boolean(composer&&visible(composer)&&!composer.disabled&&!composer.readOnly);
     const loginRequired=Boolean(document.querySelector('input[type="password"],button[type="submit"]'))&&/sign in|log in|登录/i.test(document.body?.innerText||'');
-    return {ok:true,jobProtocol:1,bridgeProtocol:1,resultProtocol:2,textProtocol:1,videoReferenceProtocol:1,backgroundProtocol:activity?1:0,bridgeVersion:window.__museFlowBridgeVersion,signedIn:ready&&!loginRequired,busy:activeGenerations.size>0||[...document.querySelectorAll('[data-testid="hatch-composer-stop-button"],button[aria-label*="Stop" i]')].some(readable),title:document.title,composer:ready,loginRequired,url:location.href};
+    return {ok:true,sendProtocol:1,jobProtocol:1,bridgeProtocol:1,resultProtocol:2,textProtocol:1,videoReferenceProtocol:1,backgroundProtocol:activity?1:0,bridgeVersion:window.__museFlowBridgeVersion,signedIn:ready&&!loginRequired,busy:activeGenerations.size>0||[...document.querySelectorAll('[data-testid="hatch-composer-stop-button"],button[aria-label*="Stop" i]')].some(readable),title:document.title,composer:ready,loginRequired,url:location.href};
   }
 
   async function waitHydrated(timeout,signal) {
@@ -155,8 +156,10 @@
 
   function report(requestId,text){const job=museJobs.get(requestId);if(job)job.progress=text;if(chrome.runtime.sendMessage)void chrome.runtime.sendMessage({type:'WORKFLOW_AI_PROGRESS',requestId,text}).catch(()=>{});}
 
-  async function generate({prompt,rules='',stageBeforeSend=false,timeoutSec=600,mediaType='image',referenceImage='',referenceImages=[],referenceVideos=[],size='1:1',requestId},signal) {
-    const throwIfAborted=()=>{if(signal?.aborted)throw new DOMException('Generation stopped by user.','AbortError');};
+  async function generate(request,signal) {
+    let {prompt,rules='',stageBeforeSend=false,timeoutSec=600,mediaType='image',referenceImage='',referenceImages=[],referenceVideos=[],size='1:1',requestId}=request;
+    await WorkflowComposer.waitTurn(request,'prepare',signal,text=>report(requestId,text));
+    const throwIfAborted=()=>{WorkflowComposer.assertService(request);if(signal?.aborted)throw new DOMException('Generation stopped by user.','AbortError');};
     throwIfAborted();
     if(!String(prompt||'').trim())throw new Error('Prompt is empty.');
     if(!['text','image','video'].includes(mediaType))throw Error('Muse không hỗ trợ loại kết quả này.');
@@ -177,7 +180,7 @@
     if(removeDraft().length)throw new Error('Không xóa được tệp cũ trong Muse. Xóa tệp trong ô chat trước khi chạy lại.');
     const referenceList=Array.isArray(referenceImages)&&referenceImages.length?referenceImages:referenceImage?[referenceImage]:[];
     let referenceFingerprints=new Set();
-    if(referenceList.length||referenceVideos.length){report(requestId,'Muse: đang tải tệp tham chiếu…');referenceFingerprints=await attachReferences([...referenceList,...referenceVideos],signal,referenceVideos.length>0);}
+    if(referenceList.length||referenceVideos.length){report(requestId,'Muse: đang tải tệp tham chiếu…');referenceFingerprints=await attachReferences([...referenceList,...referenceVideos],signal,referenceVideos.length>0,request);}
     if(mediaType==='text'&&textStates.get(requestId)?.manual)return {ok:true,text:textStates.get(requestId).manual};
     composer=findComposer();if(!composer?.isConnected)throw new Error('Ô nhập Muse đã thay đổi. Hãy tải lại tab Muse rồi thử lại.');
     throwIfAborted();
@@ -257,15 +260,24 @@
     }
     throwIfAborted();
     if(!submitted){
-      if(!findComposer()?.value.trim())throw new Error('Muse không giữ được prompt. Chưa xác nhận gửi yêu cầu.');
-      if(!sendButton&&!keyboardSend)throw new Error('Không nhận diện được nút Gửi đang sẵn sàng của Muse.');
-      // Ignore history/media which finished hydrating while the Send button was pending.
-      for(const item of attachments())baseline.add(item.src);
-      for(const el of assistantMessageElements())priorBubbleTexts.set(el,(el.innerText||el.textContent||'').replace(/\s+/g,' ').trim());
-      oldReceipts=new Set(promptReceipts());
-      if(sendButton){sendButton.click();report(requestId,'Muse: đã bấm Gửi, đang xác nhận…');}
-      else{const input=findComposer();input.focus();for(const type of ['keydown','keyup'])input.dispatchEvent(new KeyboardEvent(type,{key:'Enter',code:'Enter',keyCode:13,which:13,bubbles:true,cancelable:true}));report(requestId,'Muse: đã yêu cầu gửi bằng Enter, đang xác nhận…');}
-      submitted=true;
+      let permit;
+      do{
+        permit=await WorkflowComposer.waitTurn(request,'permit',signal,text=>report(requestId,text));
+        if(sendActivity()){submitted=true;break;}
+        throwIfAborted();WorkflowComposer.assertUpload(composerScope(findComposer()));
+        if(location.origin+location.pathname!==initialConversation)throw Error('Cuộc trò chuyện Muse đã đổi trong lúc chờ. Chưa gửi yêu cầu.');
+        if(String(findComposer()?.value||'').replace(/\s+/g,' ').trim()!==promptText)throw Error('Prompt Muse đã thay đổi trong lúc chờ. Chưa gửi yêu cầu.');
+        sendButton=WorkflowComposer.findSend(composerScope(findComposer()));
+        if(!sendButton&&!keyboardSend)throw Error('Nút Gửi Muse chưa sẵn sàng sau khi chờ lượt. Chưa gửi yêu cầu.');
+        for(const item of attachments())baseline.add(item.src);
+        for(const el of assistantMessageElements())priorBubbleTexts.set(el,(el.innerText||el.textContent||'').replace(/\s+/g,' ').trim());
+        oldReceipts=new Set(promptReceipts());
+      }while(permit.expiresAt<=Date.now());
+      if(!submitted){
+        if(sendButton){sendButton.click();report(requestId,'Muse: đã bấm Gửi, đang xác nhận…');}
+        else{const input=findComposer();input.focus();for(const type of ['keydown','keyup'])input.dispatchEvent(new KeyboardEvent(type,{key:'Enter',code:'Enter',keyCode:13,which:13,bubbles:true,cancelable:true}));report(requestId,'Muse: đã yêu cầu gửi bằng Enter, đang xác nhận…');}
+        submitted=true;await WorkflowComposer.sent(request);
+      }
     }
     let accepted=false;
     for(let i=0;i<150;i++){throwIfAborted();if(sendActivity()){accepted=true;break;}await delay(100,signal);}
@@ -356,7 +368,7 @@
     throw new Error(`Timed out waiting for a new Muse ${mediaType} attachment. Prompt was submitted once; it was not resubmitted.`);
   }
 
-  async function attachReferences(references,signal,allowVideo=false){
+  async function attachReferences(references,signal,allowVideo=false,request){
     const rawFiles=await Promise.all(references.map(async(reference,index)=>{
       const url=typeof reference==='string'?reference:reference?.url;
       if(!url)throw new Error(`Reference image ${index+1} has no URL.`);
@@ -410,7 +422,7 @@
         const key=previewKey(el),src=el.matches('img')?(el.currentSrc||el.src||''):key.split('|',1)[0];
         return !previousPreviews.has(key)&&Boolean(src);
       });
-      while(Date.now()<deadline){WorkflowComposer.assertUpload(composerScope(findComposer()));if(signal?.aborted)throw new DOMException('Generation stopped by user.','AbortError');if(previewSeen()&&!composerScope(findComposer()).querySelector('[role="progressbar"],[aria-busy="true"]')&&Date.now()-started>1500)return;await delay(160,signal);}
+      while(Date.now()<deadline){WorkflowComposer.assertService(request);WorkflowComposer.assertUpload(composerScope(findComposer()));if(signal?.aborted)throw new DOMException('Generation stopped by user.','AbortError');if(previewSeen()&&!composerScope(findComposer()).querySelector('[role="progressbar"],[aria-busy="true"]')&&Date.now()-started>1500)return;await delay(160,signal);}
       throw new Error(`Muse did not confirm ${batch.length} reference image${batch.length===1?'':'s'} in the chat composer (upload input accepts: ${input.accept||'any file'}); the prompt was not submitted.`);
     };
     if(files.length>1&&!input.multiple){

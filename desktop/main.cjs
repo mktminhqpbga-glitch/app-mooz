@@ -15,6 +15,7 @@ const {FacebookPublisher}=require('./facebook-publisher.cjs');
 const {PostingService}=require('./posting-service.cjs');
 const {PostingAI}=require('./posting-ai.cjs');
 const {BatchAI}=require('./batch-ai.cjs');
+const {AIDispatch}=require('./ai-dispatch.cjs');
 const {MusePublishing}=require('./muse-publishing.cjs');
 const {PostingOAuth}=require('./posting-oauth.cjs');
 const {BrandStore}=require('./brand-store.cjs');
@@ -31,11 +32,11 @@ const testMode=process.env.WORKFLOW_DESKTOP_TEST==='1'&&!app.isPackaged;
 if(testMode){if(!process.env.WORKFLOW_TEST_DATA)throw Error('Missing test data directory');app.setPath('userData',path.resolve(process.env.WORKFLOW_TEST_DATA));}
 if(!app.requestSingleInstanceLock())app.exit(0);
 app.on('second-instance',()=>{if(home&&!home.isDestroyed()){home.show();home.focus();}});
-let diagnostics,aiConnections,uiPreferences,store,home,ai,relay,updater,downloads,posting,postingAI,postingOAuth,brands,chats,facebookPages,facebookLogin,postingWindow,affiliate,affiliateWindow,batchWindow,batchAI,chromeEverConnected=false;
+let diagnostics,aiConnections,uiPreferences,store,home,ai,relay,updater,downloads,posting,postingAI,postingOAuth,brands,chats,facebookPages,facebookLogin,postingWindow,affiliate,affiliateWindow,batchWindow,batchAI,aiDispatch,chromeEverConnected=false;
 const managedProjects=new Set();
 const canvases=new Map(),sessionData=new Map(),requests=new Map(),installedSessions=new WeakSet();
 const projectTransitions=new Set(),affiliateTransitions=new Set();
-function notify(value){if(value.type==='message'&&value.message?.type==='WORKFLOW_AI_PROGRESS')batchAI?.report(value.message.requestId,value.message.text);if(batchWindow&&!batchWindow.isDestroyed())batchWindow.webContents.send('workflow:event',value);if(affiliateWindow&&!affiliateWindow.isDestroyed())affiliateWindow.webContents.send('workflow:event',value);if(postingWindow&&!postingWindow.isDestroyed())postingWindow.webContents.send('workflow:event',value);if(['update','brands','projects','appearance','aiConnections','diagnostics'].includes(value.type)&&home&&!home.isDestroyed())home.webContents.send('workflow:event',value);if(value.type==='relay'&&value.connected){chromeEverConnected=true;managedProjects.clear();}for(const win of canvases.values())if(!win.isDestroyed())win.webContents.send('workflow:event',value);}
+function notify(value){if(value.type==='message'&&value.message?.type==='WORKFLOW_AI_PROGRESS')batchAI?.report(value.message.requestId,value.message.text);if(batchWindow&&!batchWindow.isDestroyed())batchWindow.webContents.send('workflow:event',value);if(affiliateWindow&&!affiliateWindow.isDestroyed())affiliateWindow.webContents.send('workflow:event',value);if(postingWindow&&!postingWindow.isDestroyed())postingWindow.webContents.send('workflow:event',value);if(['update','brands','projects','appearance','aiConnections','diagnostics','aiDispatch'].includes(value.type)&&home&&!home.isDestroyed())home.webContents.send('workflow:event',value);if(value.type==='relay'&&value.connected){chromeEverConnected=true;managedProjects.clear();}for(const win of canvases.values())if(!win.isDestroyed())win.webContents.send('workflow:event',value);}
 async function setupSession(ses){
   if(installedSessions.has(ses))return;installedSessions.add(ses);
   downloads.install(ses);
@@ -124,22 +125,33 @@ async function fetchBounded(id,data){
   if(!['GET','POST','PUT','DELETE'].includes(data.method||'GET'))throw Error('HTTP method not permitted.');
   const requestId=id+':'+data.requestId;if(requests.has(requestId))throw Error('Duplicate network request.');
   const controller=new AbortController();requests.set(requestId,controller);const timer=setTimeout(()=>controller.abort(),120000);
-  try{
+  const provider='api:'+new URL(data.url).origin;const perform=async()=>{
     let url=data.url;let response;
     for(let step=0;step<6;step++){
       response=await net.fetch(url,{method:data.method||'GET',headers:data.headers,body:data.body||undefined,signal:controller.signal,redirect:'manual',credentials:'omit'});
       if(response.status<300||response.status>=400)break;
-      if(data.redirect==='error')throw Error('API redirect refused.');
+      if(data.redirect==='error'||data.method==='POST')throw Error('API redirect refused.');
       const next=new URL(response.headers.get('location'),url);if(!allowedNetworkURL(next.href)||next.origin!==new URL(url).origin)throw Error('Unsafe redirect refused.');url=next.href;
     }
     if(response.status>=300&&response.status<400)throw Error('Too many redirects.');
+    if(response.status===429)await aiDispatch.rateLimit(provider,response.headers.get('retry-after'));
     const chunks=[];let bytes=0;for await(const chunk of response.body||[]){bytes+=chunk.byteLength;if(bytes>128*1024*1024)throw Error('Tệp vượt giới hạn 128 MB.');chunks.push(Buffer.from(chunk));}
     return {status:response.status,headers:Object.fromEntries(response.headers),bytes:new Uint8Array(Buffer.concat(chunks))};
-  }finally{clearTimeout(timer);requests.delete(requestId);}
+  };try{return data.method==='POST'?await aiDispatch.api(provider,controller.signal,perform):await perform();}finally{clearTimeout(timer);requests.delete(requestId);}
 }
 async function handleWorkflowCall(event,method,data={}){
   const ctx=context(event),{win,id}=ctx;
   if(typeof method!=='string')throw Error('Thao tác không hợp lệ.');
+  if(method==='aiDispatch.snapshot')return aiDispatch.snapshot();
+  if(method==='aiDispatch.save')return aiDispatch.configure(data);
+  if(method==='aiDispatch.resume'){
+   const provider=data.provider,h=aiDispatch.holds[provider];if(!h)return aiDispatch.snapshot();
+   if(provider.startsWith('api:')){if(h.until>Date.now())throw Error('API vẫn còn thời hạn chờ của dịch vụ.');return aiDispatch.resume(provider);}
+   const tabs=[...ai.list().map(t=>({...t,transport:'native'})),...(relay.status().connected?(await relay.rawRequest('tabs.query',{})).map(t=>({...t,transport:'chrome'})):[])].filter(t=>providerForURL(t.url)===provider);
+   if(!tabs.length)throw Error('Mở tab AI và xử lý thông báo của dịch vụ trước khi tiếp tục.');let ready=false;
+   for(const tab of tabs){const files=['ai-activity.js','composer-controls.js',provider==='muse'?'muse-bridge.js':'ai-bridge.js'];if(tab.transport==='native')await ai.script(tab.id,files,null,null);else await relay.rawRequest('tabs.script',{id:tab.id,files});const message={type:provider==='muse'?'MUSEFLOW_CHECK_SESSION':'WORKFLOW_AI_CHECK'};const result=tab.transport==='native'?await ai.rawMessage(tab.id,message,null):await relay.rawRequest('tabs.message',{id:tab.id,message});if(result?.block)throw Error(result.block.message);if(result?.composer&&result.signedIn&&!result.busy&&result.sendProtocol===1)ready=true;}
+   if(!ready)throw Error('Chưa có tab AI sẵn sàng. Đăng nhập, cập nhật tiện ích và chờ tác vụ trước hoàn tất.');return aiDispatch.resume(provider);
+  }
   if(method.startsWith('diagnostics.')){
    const surface=ctx.home?'library':ctx.posting?'posting':ctx.affiliate?'affiliate':'canvas';
    if(method==='diagnostics.list')return diagnostics.snapshot();
@@ -320,15 +332,17 @@ app.whenReady().then(async()=>{
   store=new ProjectStore(path.join(app.getPath('userData'),'projects'));
   uiPreferences=new UIPreferences(app.getPath('userData'));await uiPreferences.load();
   diagnostics=new Diagnostics(app.getPath('userData'),{version,secretValues:()=>[...(aiConnections?.keys?.values()||[]),...[...sessionData.values()].flatMap(v=>Object.values(v?.workflowApiKeys||{}))]});await diagnostics.init();
+  aiDispatch=new AIDispatch(app.getPath('userData'),{notify});await aiDispatch.init();
   relay=new ChromeRelay({notify,version});await relay.start();
   ai=new AIWindows(root,version,notify,async projectId=>projectId?(await store.readStorage(projectId)).workflowMuseSendTarget:null);
+  ai.dispatch=aiDispatch;relay.dispatch=aiDispatch;
   const postingRoot=path.join(app.getPath('userData'),'posting');
   const postingStore=new PostingStore(postingRoot),publisher=new FacebookPublisher({root:postingRoot,fetch:net.fetch.bind(net),safeStorage:require('electron').safeStorage});
   brands=new BrandStore(path.join(app.getPath('userData'),'brands'));await brands.init();chats=new ChatStore(path.join(app.getPath('userData'),'chats'));
   facebookPages=new FacebookPages(publisher);facebookLogin=new FacebookLogin({fetch:net.fetch.bind(net),openExternal:url=>shell.openExternal(url),pages:facebookPages});
   postingOAuth=new PostingOAuth({fetch:net.fetch.bind(net),openExternal:url=>shell.openExternal(url)});
-  aiConnections=new AIConnections(app.getPath('userData'),net.fetch.bind(net));await aiConnections.init();
-  postingAI=new PostingAI({ai,relay,store:postingStore,connections:aiConnections});batchAI=new BatchAI({client:postingAI,ai,relay,onProgress:notify});publisher.muse=new MusePublishing({client:postingAI});posting=new PostingService({store:postingStore,publisher,brands,ask:(...args)=>postingAI.ask(...args),notify:()=>notify({type:'posting'})});await posting.init();posting.start();
+  aiConnections=new AIConnections(app.getPath('userData'),net.fetch.bind(net));await aiConnections.init();aiConnections.dispatch=aiDispatch;
+  postingAI=new PostingAI({ai,relay,store:postingStore,connections:aiConnections});postingAI.dispatch=aiDispatch;batchAI=new BatchAI({client:postingAI,ai,relay,onProgress:notify});publisher.muse=new MusePublishing({client:postingAI});posting=new PostingService({store:postingStore,publisher,brands,ask:(...args)=>postingAI.ask(...args),notify:()=>notify({type:'posting'})});await posting.init();posting.start();
   affiliate=new AffiliateService({root:path.join(app.getPath('userData'),'affiliate'),ai:postingAI,fetchImpl:net.fetch.bind(net),notify:()=>notify({type:'affiliate'}),decodeImage:bytes=>{let image=nativeImage.createFromBuffer(bytes);if(image.isEmpty())throw Error('Không giải mã được ảnh sản phẩm.');const {width,height}=image.getSize();if(width*height>25000000)throw Error('Ảnh sản phẩm quá lớn.');const scale=Math.min(1,1600/Math.max(width,height));if(scale<1)image=image.resize({width:Math.round(width*scale),height:Math.round(height*scale),quality:'best'});const jpeg=image.toJPEG(90);if(jpeg.length>4*1024*1024)throw Error('Ảnh sản phẩm sau thu nhỏ vẫn quá lớn.');return 'data:image/jpeg;base64,'+jpeg.toString('base64');}});await affiliate.init();
   const signed=app.isPackaged&&process.platform==='darwin'&&await isDeveloperIDSigned(path.dirname(path.dirname(path.dirname(process.execPath))));
   updater=new UpdateService({version,packaged:app.isPackaged,platform:process.platform,signed,engine:signed?require('electron-updater').autoUpdater:null,fetchRelease:()=>latestPublicRelease(net.fetch.bind(net)),
@@ -344,7 +358,7 @@ app.whenReady().then(async()=>{
       }finally{if(!quitApproved)posting.hold=false;}
     },onInstallStart:()=>{posting.hold=true;quitApproved=true;},onInstallFailed:()=>{posting.hold=false;quitApproved=false;}});
   updater.on('status',status=>notify({type:'update',status}));updater.start();
-  if(testMode)globalThis.workflowTest={diagnostics,aiConnections,store,ai,relay,updater,posting,postingAI,postingOAuth,brands,chats,facebookPages,facebookLogin,affiliate,batchAI,openBatch,openProject,openHome,openPosting,openAffiliate};
+  if(testMode)globalThis.workflowTest={diagnostics,aiConnections,store,ai,relay,updater,posting,postingAI,postingOAuth,brands,chats,facebookPages,facebookLogin,affiliate,batchAI,aiDispatch,openBatch,openProject,openHome,openPosting,openAffiliate};
   Menu.setApplicationMenu(Menu.buildFromTemplate([
     ...(process.platform==='darwin'?[{role:'appMenu'}]:[]),
     {label:'Dự án',submenu:[{label:'Thư viện dự án',accelerator:'CmdOrCtrl+Shift+P',click:()=>void openHome()},{role:'close'},{role:'quit'}]},
@@ -360,6 +374,6 @@ app.on('window-all-closed',()=>{if(process.platform!=='darwin')app.quit();});
 let quitApproved=false,quitInProgress=false;
 app.on('before-quit',event=>{
   if(quitApproved)return;event.preventDefault();if(quitInProgress)return;quitInProgress=true;if(posting)posting.hold=true;
-  void(async()=>{try{await diagnostics?.writes.catch(()=>{});await brands?.writes.catch(()=>{});if(chats)await Promise.allSettled([...chats.writes.values()]);if(posting?.busy()){const answer=await dialog.showMessageBox({type:'warning',buttons:['Ở lại','Thoát ứng dụng'],defaultId:0,cancelId:0,message:'Đăng bài đang xử lý. Thoát có thể làm gián đoạn gửi bài; kiểm tra nền tảng trước khi thử lại.'});if(answer.response!==1)return;}for(const win of [...canvases.values()])if(!await win.prepareToClose())return;if(batchWindow&&!batchWindow.isDestroyed()){const busy=await batchWindow.webContents.executeJavaScript('!!window.MooZBatch?.busy()');if(busy){const answer=await dialog.showMessageBox(batchWindow,{type:'warning',buttons:['Ở lại','Lưu, dừng và thoát'],defaultId:0,cancelId:0,message:'Video hàng loạt đang chạy. Dừng và thoát? Kiểm tra tab AI trước khi chạy tiếp tác vụ bị gián đoạn.'});if(answer.response!==1)return;}await batchWindow.webContents.executeJavaScript('window.MooZBatch?.flushAndStop()');}batchAI?.close();await affiliate?.close();quitApproved=true;app.quit();}finally{quitInProgress=false;if(posting&&!quitApproved)posting.hold=false;}})();
+  void(async()=>{try{await aiDispatch?.writes.catch(()=>{});await diagnostics?.writes.catch(()=>{});await brands?.writes.catch(()=>{});if(chats)await Promise.allSettled([...chats.writes.values()]);if(posting?.busy()){const answer=await dialog.showMessageBox({type:'warning',buttons:['Ở lại','Thoát ứng dụng'],defaultId:0,cancelId:0,message:'Đăng bài đang xử lý. Thoát có thể làm gián đoạn gửi bài; kiểm tra nền tảng trước khi thử lại.'});if(answer.response!==1)return;}for(const win of [...canvases.values()])if(!await win.prepareToClose())return;if(batchWindow&&!batchWindow.isDestroyed()){const busy=await batchWindow.webContents.executeJavaScript('!!window.MooZBatch?.busy()');if(busy){const answer=await dialog.showMessageBox(batchWindow,{type:'warning',buttons:['Ở lại','Lưu, dừng và thoát'],defaultId:0,cancelId:0,message:'Video hàng loạt đang chạy. Dừng và thoát? Kiểm tra tab AI trước khi chạy tiếp tác vụ bị gián đoạn.'});if(answer.response!==1)return;}await batchWindow.webContents.executeJavaScript('window.MooZBatch?.flushAndStop()');}batchAI?.close();await affiliate?.close();for(const key of new Set([...aiDispatch.records.values()].filter(r=>r.stage!=='done').map(r=>r.key)))await aiDispatch.disconnect(key);await aiDispatch.writes.catch(()=>{});quitApproved=true;app.quit();}finally{quitInProgress=false;if(posting&&!quitApproved)posting.hold=false;}})();
 });
 app.on('will-quit',()=>{postingOAuth?.cancel();facebookLogin?.cancel();facebookPages?.clear();posting?.close();updater?.stop();void relay?.close();for(const controller of requests.values())controller.abort();});

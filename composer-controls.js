@@ -119,5 +119,31 @@
       return false;
     });
   }
-  globalThis.WorkflowComposer={prepareImage,assertUpload,findSend,removeButtons,scopeFor,describe,bindTarget,setPreferred};
+  // Detect service-owned notices, excluding conversation content and uploaded media.
+  function serviceState(){
+    const history='article,[data-message-author-role],[data-turn],model-response,.model-response,user-query,[class*="hatch-chat-groupable-bubble"],[data-testid*="message" i]';
+    const shown=el=>{if(!el?.isConnected)return false;for(let n=el;n instanceof Element;n=n.parentElement){const s=getComputedStyle(n);if(n.hidden||n.getAttribute('aria-hidden')==='true'||s.display==='none'||s.visibility==='hidden')return false;}return true;};
+    const nodes=[...document.querySelectorAll('h1,h2,[role="alert"],#challenge-running,#cf-challenge-running,.cf-browser-verification,iframe[src*="challenges.cloudflare.com"]')].filter(el=>shown(el)&&!el.closest(history));
+    const editable=[...document.querySelectorAll('textarea,[contenteditable="true"]')].some(shown);
+    if(!editable&&document.body){const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);let node,text='';while((node=walker.nextNode())&&text.length<12000){const p=node.parentElement;if(p&&!p.closest(history+',script,style,template,nav,header')&&shown(p))text+=' '+node.textContent;}nodes.push({textContent:text});}
+    const text=nodes.map(el=>el.textContent||'').join(' ').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[đĐ]/g,'d').toLowerCase().replace(/\s+/g,' ');
+    if(/da ngat ket noi muse|muse (?:has been |is )?disconnected|disconnected (?:from )?muse/.test(text))return {code:'AI_DISCONNECTED',message:'Muse đã ngắt kết nối và yêu cầu hỗ trợ. Đã ngừng cấp việc mới; mở Muse để làm theo hướng dẫn dịch vụ.'};
+    if(/access denied|access blocked|account suspended|account disabled/.test(text))return {code:'AI_DISCONNECTED',message:'Dịch vụ AI đã giới hạn truy cập. Đã ngừng cấp việc; mở trang để kiểm tra hoặc liên hệ hỗ trợ.'};
+    if(nodes.some(el=>el.tagName==='IFRAME')||/verify (?:that )?you(?: are|'re) human|verify your identity|xac minh ban la (?:con )?nguoi|xac minh danh tinh|verifying (?:that )?you are human|checking your browser|security verification|complete the captcha/.test(text))return {code:'AI_VERIFICATION',message:'Trang AI yêu cầu xác minh. Đã tạm dừng gửi; người dùng cần xử lý trực tiếp trên trang.'};
+    if(/too many requests|rate limit exceeded|qua nhieu yeu cau|you(?: have|'ve) reached (?:your |the )?(?:usage |message )?limit/.test(text))return {code:'AI_RATE_LIMIT',message:'Trang AI báo giới hạn lượt sử dụng. Đã tạm dừng; kiểm tra hạn mức trước khi tiếp tục.'};
+    return null;
+  }
+  function assertService(request){const block=serviceState();if(!block)return;const error=Object.assign(Error(block.message),{code:block.code,block});if(request?.dispatchProtocol===1)void chrome.runtime.sendMessage({type:'WORKFLOW_AI_GATE',requestId:request.requestId,token:request.dispatchToken,operation:'block',block}).catch(()=>{});throw error;}
+  async function waitTurn(request,operation,signal,onWait=()=>{}){
+    assertService(request);if(request?.dispatchProtocol!==1)return {ok:true,expiresAt:Infinity};
+    while(true){if(signal?.aborted)throw new DOMException('Đã dừng.','AbortError');assertService(request);
+      const result=await chrome.runtime.sendMessage({type:'WORKFLOW_AI_GATE',requestId:request.requestId,token:request.dispatchToken,operation});
+      if(!result?.ok)throw Object.assign(Error(result?.error||'Chưa được app cấp quyền gửi AI.'),{code:result?.code||'AI_GATE_FAILED'});
+      if(!result.waiting)return result;onWait(operation==='prepare'?'Đang đợi lượt thao tác AI chung của ứng dụng…':'Tệp đã sẵn sàng. Đang chờ nhịp gửi AI chung…');
+      await new Promise((resolve,reject)=>{const stop=()=>{clearTimeout(timer);reject(new DOMException('Đã dừng.','AbortError'));},timer=setTimeout(()=>{signal?.removeEventListener('abort',stop);resolve();},Math.max(100,Math.min(1000,result.waitMs||1000)));signal?.addEventListener('abort',stop,{once:true});if(signal?.aborted)stop();});
+    }
+  }
+  async function sent(request){if(request?.dispatchProtocol===1){const result=await chrome.runtime.sendMessage({type:'WORKFLOW_AI_GATE',requestId:request.requestId,token:request.dispatchToken,operation:'sent'});if(!result?.ok){const message='Đã thao tác gửi nhưng chưa xác nhận điều phối. Kiểm tra tab AI; không gửi lại.';throw Object.assign(Error(message),{code:'AI_SEND_UNCERTAIN',block:{code:'AI_DISCONNECTED',message}});}}}
+
+  globalThis.WorkflowComposer={serviceState,assertService,waitTurn,sent,prepareImage,assertUpload,findSend,removeButtons,scopeFor,describe,bindTarget,setPreferred};
 })();

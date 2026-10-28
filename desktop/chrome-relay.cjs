@@ -48,6 +48,9 @@ class ChromeRelay {
    }
    if(socket!==this.client)return;
    if(message.type==='ping'){try{this.send(socket,{type:'pong'});}catch{}return;}
+   if(message.type==='gate'&&typeof message.callId==='string'&&/^[a-f0-9-]{36}$/.test(message.callId)&&Number.isInteger(message.tabId)&&JSON.stringify(message.message||{}).length<2000){
+    void Promise.resolve(this.dispatch?.gate('chrome:'+message.tabId,message.message)||{ok:false,error:'App chưa hỗ trợ điều phối gửi.'}).then(result=>{if(socket===this.client)this.send(socket,{type:'gate-result',callId:message.callId,result});}).catch(()=>{});return;
+   }
    if(message.type==='response'&&typeof message.id==='string'){
     const item=this.pending.get(message.id);if(!item)return;clearTimeout(item.timer);this.pending.delete(message.id);
     if(typeof message.error==='string')item.reject(Error(message.error));else item.resolve(message.result);
@@ -55,6 +58,7 @@ class ChromeRelay {
     const event=message.event;
     if(!event||!['message','created','updated','removed'].includes(event.type))return;
     if(event.type==='message'&&(event.message?.type!=='WORKFLOW_AI_PROGRESS'||typeof event.message.requestId!=='string'||typeof event.message.text!=='string'||!Number.isInteger(event.tabId)))return;
+    if(event.type==='removed'&&Number.isInteger(event.tabId))void this.dispatch?.disconnect('chrome:'+event.tabId);
     try{this.notify(event);}catch{}
    }
   });
@@ -62,9 +66,17 @@ class ChromeRelay {
  clearClient(){
   this.client=null;this.extensionId=null;this.companion=null;
   for(const item of this.pending.values()){clearTimeout(item.timer);item.reject(Error('Chrome đã ngắt kết nối. Kiểm tra tab AI trước khi chạy lại; không tự gửi lại yêu cầu.'));}
-  this.pending.clear();this.changed();
+  this.pending.clear();for(const key of new Set([...this.dispatch?.records.values()||[]].filter(r=>r.key.startsWith('chrome:')).map(r=>r.key)))void this.dispatch.disconnect(key);this.changed();
  }
- request(operation,payload={}){
+ async request(operation,payload={}){
+  if(this.dispatch&&operation==='tabs.message'){
+   let provider=this.dispatch.find('chrome:'+payload.id,payload.message?.requestId)?.provider;
+   if(!provider&&['WORKFLOW_AI_GENERATE','MUSEFLOW_GENERATE','MUSEFLOW_JOB_START','WORKFLOW_AI_CHECK','MUSEFLOW_CHECK_SESSION'].includes(payload.message?.type)){const tab=await this.rawRequest('tabs.get',{id:payload.id});provider=require('./policy.cjs').providerForURL(tab.url);}
+   if(provider)return this.dispatch.invoke('chrome:'+payload.id,provider,payload.message,message=>this.rawRequest(operation,{...payload,message}));
+  }
+  return this.rawRequest(operation,payload);
+ }
+ rawRequest(operation,payload={}){
   if(!OPERATIONS.has(operation))return Promise.reject(Error('Thao tác Chrome không được phép.'));
   if(!this.isConnected)return Promise.reject(Error('Chưa kết nối tiện ích Workflow trong Chrome.'));
   if(this.pending.size>=64)return Promise.reject(Error('Có quá nhiều yêu cầu Chrome đang chờ.'));
