@@ -40,7 +40,7 @@ AI đánh giá nội dung có thể sai. Ba khung hình không chứng minh toà
 
 ## Đăng bài
 
-Mặc định **không cấp quyền đăng**. Agent có thể tạo bản nháp để bạn kiểm tra. Nếu bật quyền đăng, phải chọn trước các tài khoản đã kết nối và giờ đăng (trống = gửi ngay); duyệt kế hoạch có bước gửi là cấp quyền cho nhiệm vụ đó. Caption/media đã thay đổi sau khi chuẩn bị sẽ chặn gửi tự động để bạn kiểm tra lại. Quyền này không mở rộng sang tài khoản khác.
+Mặc định **không cấp quyền đăng**. Agent có thể tạo bản nháp để bạn kiểm tra. Nếu bật quyền đăng, phải chọn trước các tài khoản đã kết nối và giờ đăng (trống = gửi ngay); duyệt kế hoạch có bước gửi là cấp quyền cho nhiệm vụ đó. Caption/media đã thay đổi sau khi chuẩn bị sẽ chặn gửi tự động để bạn kiểm tra lại. Quyền này không mở rộng sang tài khoản khác trong hàng chờ MooZ. Các công cụ/tài khoản đã kết nối trực tiếp trong Muse do Muse quản lý riêng; giới hạn công cụ của MooZ không thay đổi quyền bên trong dịch vụ AI đó.
 
 Hàng chờ theo dõi độc lập từng nền tảng. “Đã gửi cho Muse”, “submitted” hay câu trả lời AI không đồng nghĩa đã đăng thành công. Agent giữ trạng thái **Đang theo dõi đăng bài** cho tới khi hàng chờ có xác nhận thật; bấm đối chiếu hoặc mở Đăng bài để kiểm tra/lỗi/thử lại theo từng nơi. Tạm dừng Agent không rút bài đã xếp vào lịch; muốn hủy lịch cần rút trong Đăng bài.
 
