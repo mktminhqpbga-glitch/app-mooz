@@ -48,6 +48,8 @@ jobs:
         run: npm run setup:desktop
       - name: Run unit tests
         run: npm test
+      - name: Prepare Chromium for two-machine remote transport tests
+        run: npm run setup:remote-tests
       - name: Verify desktop integration and canvas layout in Electron
         env:
           MOOZ_UI_AUDIT_DIR: ${{ runner.temp }}/mooz-ui-review

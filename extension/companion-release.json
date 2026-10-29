@@ -1,5 +1,5 @@
 {
-  "version": "1.1.0",
+  "version": "1.2.0",
   "protocol": 1,
-  "notes": "Điều phối gửi AI chung từ app, chờ tệp sẵn sàng và tạm dừng khi dịch vụ yêu cầu xác minh. App cũ vẫn kết nối qua giao thức 1."
+  "notes": "Thêm kết nối Chrome từ máy khác qua WSS/Tailscale, mã ghép cặp hết hạn và thu hồi phiên. Giữ giao thức 1 cho app cũ cùng máy."
 }

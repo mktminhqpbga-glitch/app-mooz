@@ -1,10 +1,10 @@
 {
   "manifest_version": 3,
   "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'none';"
+    "extension_pages": "script-src 'self'; object-src 'none'; connect-src 'self' https: wss: ws://127.0.0.1:*"
   },
   "name": "Workflow Connect",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Kết nối các tab Muse, Gemini và ChatGPT trong Chrome với ứng dụng Workflow.",
   "action": {
     "default_title": "Kết nối Workflow",
@@ -65,5 +65,8 @@
       ],
       "run_at": "document_idle"
     }
+  ],
+  "optional_host_permissions": [
+    "https://*/*"
   ]
 }

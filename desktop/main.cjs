@@ -9,6 +9,7 @@ const {AIConnections}=require('./ai-connections.cjs');
 const {providerForURL,allowedNetworkURL,resolveAppPath}=require('./policy.cjs');
 const {AIWindows}=require('./ai-windows.cjs');
 const {ChromeRelay}=require('./chrome-relay.cjs');
+const {RemoteChrome}=require('./remote-chrome.cjs');
 const {Downloads}=require('./downloads.cjs');
 const {PostingStore}=require('./posting-store.cjs');
 const {FacebookPublisher}=require('./facebook-publisher.cjs');
@@ -33,11 +34,11 @@ const testMode=process.env.WORKFLOW_DESKTOP_TEST==='1'&&!app.isPackaged;
 if(testMode){if(!process.env.WORKFLOW_TEST_DATA)throw Error('Missing test data directory');app.setPath('userData',path.resolve(process.env.WORKFLOW_TEST_DATA));}
 if(!app.requestSingleInstanceLock())app.exit(0);
 app.on('second-instance',()=>{if(home&&!home.isDestroyed()){home.show();home.focus();}});
-let agent,diagnostics,aiConnections,uiPreferences,store,home,ai,relay,updater,downloads,posting,postingAI,postingOAuth,brands,chats,facebookPages,facebookLogin,postingWindow,affiliate,affiliateWindow,batchWindow,batchAI,aiDispatch,chromeEverConnected=false;
+let remoteChrome,agent,diagnostics,aiConnections,uiPreferences,store,home,ai,relay,updater,downloads,posting,postingAI,postingOAuth,brands,chats,facebookPages,facebookLogin,postingWindow,affiliate,affiliateWindow,batchWindow,batchAI,aiDispatch,chromeEverConnected=false;
 const managedProjects=new Set();
 const canvases=new Map(),sessionData=new Map(),requests=new Map(),installedSessions=new WeakSet();
 const projectTransitions=new Set(),affiliateTransitions=new Set();
-function notify(value){if(value.type==='message'&&value.message?.type==='WORKFLOW_AI_PROGRESS')batchAI?.report(value.message.requestId,value.message.text);if(batchWindow&&!batchWindow.isDestroyed())batchWindow.webContents.send('workflow:event',value);if(affiliateWindow&&!affiliateWindow.isDestroyed())affiliateWindow.webContents.send('workflow:event',value);if(postingWindow&&!postingWindow.isDestroyed())postingWindow.webContents.send('workflow:event',value);if(['update','brands','projects','appearance','aiConnections','diagnostics','aiDispatch','agent'].includes(value.type)&&home&&!home.isDestroyed())home.webContents.send('workflow:event',value);if(value.type==='relay'&&value.connected){chromeEverConnected=true;managedProjects.clear();}for(const win of canvases.values())if(!win.isDestroyed())win.webContents.send('workflow:event',value);}
+function notify(value){if(value.type==='message'&&value.message?.type==='WORKFLOW_AI_PROGRESS')batchAI?.report(value.message.requestId,value.message.text);if(batchWindow&&!batchWindow.isDestroyed())batchWindow.webContents.send('workflow:event',value);if(affiliateWindow&&!affiliateWindow.isDestroyed())affiliateWindow.webContents.send('workflow:event',value);if(postingWindow&&!postingWindow.isDestroyed())postingWindow.webContents.send('workflow:event',value);if(['update','brands','projects','appearance','aiConnections','diagnostics','aiDispatch','agent','remoteChrome','relay'].includes(value.type)&&home&&!home.isDestroyed())home.webContents.send('workflow:event',value);if(value.type==='relay'&&value.connected){chromeEverConnected=true;managedProjects.clear();}for(const win of canvases.values())if(!win.isDestroyed())win.webContents.send('workflow:event',value);}
 async function setupSession(ses){
   if(installedSessions.has(ses))return;installedSessions.add(ses);
   downloads.install(ses);
@@ -268,6 +269,18 @@ async function handleWorkflowCall(event,method,data={}){
   // Copy only the host-generated pairing code; no renderer-supplied text or clipboard reads.
   if(method==='relay.copy'){await clipboard.writeText(relay.pairingURI());return {copied:true};}
   if(method==='relay.status')return relay.status();
+  if(method==='relay.disconnect'){if(relay.connectionMode==='local')relay.revokeLocal();else relay.revokeRemote();return relay.status();}
+  if(method==='remoteChrome.status')return remoteChrome.status();
+  if(method==='remoteChrome.setup')return remoteChrome.setup();
+  if(method==='remoteChrome.custom')return remoteChrome.custom(data.endpoint);
+  if(method==='remoteChrome.check')return remoteChrome.check();
+  if(method==='remoteChrome.pair')return remoteChrome.pair();
+  if(method==='remoteChrome.copy'){const pair=remoteChrome.pair();await clipboard.writeText(pair.url);return {copied:true,expiresAt:pair.expiresAt};}
+  if(method==='remoteChrome.revoke')return remoteChrome.revoke();
+  if(method==='remoteChrome.disable')return remoteChrome.disable();
+  if(method==='remoteChrome.reset')return remoteChrome.reset();
+  if(method==='remoteChrome.guide'){await shell.openExternal('https://tailscale.com/download');return;}
+  if(method==='remoteChrome.admin'){await shell.openExternal('https://login.tailscale.com/admin/dns');return;}
   if(method==='projects.list')return store.list();
   if(method==='projects.create'){if(!ctx.home)throw Error('Open project library first.');const project=await store.create(data.name);notify({type:'projects'});return project;}
   if(method==='projects.open'){if(!ctx.home)throw Error('Open project library first.');const info=await openProject(data.id);if(data.view==='agent')await canvases.get(data.id).webContents.executeJavaScript('window.MooZAgent?.open()');if(data.view==='chat')await canvases.get(data.id).webContents.executeJavaScript('window.WorkflowChat?.open()');if(data.view==='voiceover')await canvases.get(data.id).webContents.executeJavaScript('window.WorkflowVoice?.open()');return info;}
@@ -348,7 +361,7 @@ app.whenReady().then(async()=>{
   uiPreferences=new UIPreferences(app.getPath('userData'));await uiPreferences.load();
   diagnostics=new Diagnostics(app.getPath('userData'),{version,secretValues:()=>[...(aiConnections?.keys?.values()||[]),...[...sessionData.values()].flatMap(v=>Object.values(v?.workflowApiKeys||{}))]});await diagnostics.init();
   aiDispatch=new AIDispatch(app.getPath('userData'),{notify});await aiDispatch.init();
-  relay=new ChromeRelay({notify,version});await relay.start();
+  remoteChrome=new RemoteChrome({root:app.getPath('userData'),notify});await remoteChrome.init();relay=new ChromeRelay({notify,version});let portUnavailable=false;try{await relay.start({port:remoteChrome.config.enabled?remoteChrome.config.listenPort:0});}catch(e){if(e.code!=='EADDRINUSE')throw e;portUnavailable=true;await relay.start();}remoteChrome.attach(relay,{portUnavailable});
   ai=new AIWindows(root,version,notify,async projectId=>projectId?(await store.readStorage(projectId)).workflowMuseSendTarget:null);
   ai.dispatch=aiDispatch;relay.dispatch=aiDispatch;
   const postingRoot=path.join(app.getPath('userData'),'posting');
@@ -374,7 +387,7 @@ app.whenReady().then(async()=>{
       }finally{if(!quitApproved)posting.hold=false;}
     },onInstallStart:()=>{posting.hold=true;quitApproved=true;},onInstallFailed:()=>{posting.hold=false;quitApproved=false;}});
   updater.on('status',status=>notify({type:'update',status}));updater.start();
-  if(testMode)globalThis.workflowTest={agent,diagnostics,aiConnections,store,ai,relay,updater,posting,postingAI,postingOAuth,brands,chats,facebookPages,facebookLogin,affiliate,batchAI,aiDispatch,openBatch,openProject,openHome,openPosting,openAffiliate};
+  if(testMode)globalThis.workflowTest={remoteChrome,agent,diagnostics,aiConnections,store,ai,relay,updater,posting,postingAI,postingOAuth,brands,chats,facebookPages,facebookLogin,affiliate,batchAI,aiDispatch,openBatch,openProject,openHome,openPosting,openAffiliate};
   Menu.setApplicationMenu(Menu.buildFromTemplate([
     ...(process.platform==='darwin'?[{role:'appMenu'}]:[]),
     {label:'Dự án',submenu:[{label:'Thư viện dự án',accelerator:'CmdOrCtrl+Shift+P',click:()=>void openHome()},{role:'close'},{role:'quit'}]},
