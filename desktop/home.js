@@ -179,7 +179,8 @@
     document.querySelector('.project-library').scrollIntoView({block:'start', behavior:'smooth'});
   };
   let appTool = 'canvas';
-  function pickProject(tool) {appTool=tool;$('appProjectTitle').textContent=tool==='voiceover'?'Lồng tiếng trong canvas':'Mở canvas';$('appProjectDescription').textContent=tool==='voiceover'?'Lồng tiếng hiện có trong canvas bằng OpenAI API: Thêm node → Lồng tiếng, nhập lời đọc hoặc nối Văn bản, cấu hình khóa OpenAI trong Kết nối AI, rồi bấm Thực hiện. Dịch vụ có thể tính phí. Ứng dụng lồng tiếng riêng vẫn chờ tích hợp.':'Chọn dự án để mở không gian làm việc. Ảnh, video và các bước được giữ trong đúng dự án đó.';$('appProjectOpen').textContent=tool==='voiceover'?'Mở canvas lồng tiếng':'Mở canvas';$('appProjectNew').textContent=tool==='voiceover'?'＋ Dự án lồng tiếng':'＋ Dự án mới';void selectProject();}
+  function pickProject(tool) {appTool=tool;$('appProjectTitle').textContent=tool==='agent'?'MooZ Agent':tool==='voiceover'?'Lồng tiếng trong canvas':'Mở canvas';$('appProjectDescription').textContent=tool==='voiceover'?'Lồng tiếng hiện có trong canvas bằng OpenAI API: Thêm node → Lồng tiếng, nhập lời đọc hoặc nối Văn bản, cấu hình khóa OpenAI trong Kết nối AI, rồi bấm Thực hiện. Dịch vụ có thể tính phí. Ứng dụng lồng tiếng riêng vẫn chờ tích hợp.':'Chọn dự án để mở không gian làm việc. Ảnh, video và các bước được giữ trong đúng dự án đó.';$('appProjectOpen').textContent=tool==='voiceover'?'Mở canvas lồng tiếng':'Mở canvas';$('appProjectNew').textContent=tool==='voiceover'?'＋ Dự án lồng tiếng':'＋ Dự án mới';void selectProject();}
+  $('aiAppsAgent').onclick=()=>pickProject('agent');
   $('aiAppsVoice').onclick = ()=>pickProject('voiceover');
   async function selectProject() {
     $('appProjectError').textContent = '';

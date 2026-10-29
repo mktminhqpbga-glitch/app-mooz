@@ -13,6 +13,7 @@ const {Downloads}=require('./downloads.cjs');
 const {PostingStore}=require('./posting-store.cjs');
 const {FacebookPublisher}=require('./facebook-publisher.cjs');
 const {PostingService}=require('./posting-service.cjs');
+const {AgentService}=require('./agent-service.cjs');
 const {PostingAI}=require('./posting-ai.cjs');
 const {BatchAI}=require('./batch-ai.cjs');
 const {AIDispatch}=require('./ai-dispatch.cjs');
@@ -32,11 +33,11 @@ const testMode=process.env.WORKFLOW_DESKTOP_TEST==='1'&&!app.isPackaged;
 if(testMode){if(!process.env.WORKFLOW_TEST_DATA)throw Error('Missing test data directory');app.setPath('userData',path.resolve(process.env.WORKFLOW_TEST_DATA));}
 if(!app.requestSingleInstanceLock())app.exit(0);
 app.on('second-instance',()=>{if(home&&!home.isDestroyed()){home.show();home.focus();}});
-let diagnostics,aiConnections,uiPreferences,store,home,ai,relay,updater,downloads,posting,postingAI,postingOAuth,brands,chats,facebookPages,facebookLogin,postingWindow,affiliate,affiliateWindow,batchWindow,batchAI,aiDispatch,chromeEverConnected=false;
+let agent,diagnostics,aiConnections,uiPreferences,store,home,ai,relay,updater,downloads,posting,postingAI,postingOAuth,brands,chats,facebookPages,facebookLogin,postingWindow,affiliate,affiliateWindow,batchWindow,batchAI,aiDispatch,chromeEverConnected=false;
 const managedProjects=new Set();
 const canvases=new Map(),sessionData=new Map(),requests=new Map(),installedSessions=new WeakSet();
 const projectTransitions=new Set(),affiliateTransitions=new Set();
-function notify(value){if(value.type==='message'&&value.message?.type==='WORKFLOW_AI_PROGRESS')batchAI?.report(value.message.requestId,value.message.text);if(batchWindow&&!batchWindow.isDestroyed())batchWindow.webContents.send('workflow:event',value);if(affiliateWindow&&!affiliateWindow.isDestroyed())affiliateWindow.webContents.send('workflow:event',value);if(postingWindow&&!postingWindow.isDestroyed())postingWindow.webContents.send('workflow:event',value);if(['update','brands','projects','appearance','aiConnections','diagnostics','aiDispatch'].includes(value.type)&&home&&!home.isDestroyed())home.webContents.send('workflow:event',value);if(value.type==='relay'&&value.connected){chromeEverConnected=true;managedProjects.clear();}for(const win of canvases.values())if(!win.isDestroyed())win.webContents.send('workflow:event',value);}
+function notify(value){if(value.type==='message'&&value.message?.type==='WORKFLOW_AI_PROGRESS')batchAI?.report(value.message.requestId,value.message.text);if(batchWindow&&!batchWindow.isDestroyed())batchWindow.webContents.send('workflow:event',value);if(affiliateWindow&&!affiliateWindow.isDestroyed())affiliateWindow.webContents.send('workflow:event',value);if(postingWindow&&!postingWindow.isDestroyed())postingWindow.webContents.send('workflow:event',value);if(['update','brands','projects','appearance','aiConnections','diagnostics','aiDispatch','agent'].includes(value.type)&&home&&!home.isDestroyed())home.webContents.send('workflow:event',value);if(value.type==='relay'&&value.connected){chromeEverConnected=true;managedProjects.clear();}for(const win of canvases.values())if(!win.isDestroyed())win.webContents.send('workflow:event',value);}
 async function setupSession(ses){
   if(installedSessions.has(ses))return;installedSessions.add(ses);
   downloads.install(ses);
@@ -103,6 +104,7 @@ async function openProject(id){
     try{
       const busy=await win.webContents.executeJavaScript('!!window.WorkflowDesktopLifecycle?.busy()');
       if(busy){const answer=await dialog.showMessageBox(win,{type:'warning',buttons:['Ở lại','Lưu, dừng và đóng'],defaultId:0,cancelId:0,message:'Workflow đang chạy. Bạn muốn lưu, dừng tác vụ và đóng dự án?'});if(answer.response!==1)return false;}
+      await agent?.closeProject(id);await agent?.store.writes;
       await win.webContents.executeJavaScript('window.WorkflowDesktopLifecycle?.stop()');
       await win.webContents.executeJavaScript('window.WorkflowDesktopLifecycle?.flush()');
       win.workflowCloseAllowed=true;win.close();return true;
@@ -268,7 +270,7 @@ async function handleWorkflowCall(event,method,data={}){
   if(method==='relay.status')return relay.status();
   if(method==='projects.list')return store.list();
   if(method==='projects.create'){if(!ctx.home)throw Error('Open project library first.');const project=await store.create(data.name);notify({type:'projects'});return project;}
-  if(method==='projects.open'){if(!ctx.home)throw Error('Open project library first.');const info=await openProject(data.id);if(data.view==='chat')await canvases.get(data.id).webContents.executeJavaScript('window.WorkflowChat?.open()');if(data.view==='voiceover')await canvases.get(data.id).webContents.executeJavaScript('window.WorkflowVoice?.open()');return info;}
+  if(method==='projects.open'){if(!ctx.home)throw Error('Open project library first.');const info=await openProject(data.id);if(data.view==='agent')await canvases.get(data.id).webContents.executeJavaScript('window.MooZAgent?.open()');if(data.view==='chat')await canvases.get(data.id).webContents.executeJavaScript('window.WorkflowChat?.open()');if(data.view==='voiceover')await canvases.get(data.id).webContents.executeJavaScript('window.WorkflowVoice?.open()');return info;}
   if(method==='projects.rename'){if(!ctx.home)throw Error('Open project library first.');const project=await store.rename(data.id,data.name);notify({type:'projects'});return project;}
   if(method==='projects.restore'){if(!ctx.home)throw Error('Open project library first.');if(canvases.has(data.id))throw Error('Đóng cửa sổ dự án trước khi khôi phục.');const project=await store.restore(data.id);notify({type:'projects'});return project;}
   if(method==='projects.trash'||method==='projects.undoTrash'){
@@ -292,6 +294,19 @@ async function handleWorkflowCall(event,method,data={}){
   if(method==='windows.focus'){const target=data.key==='home'?home:data.key==='posting'?postingWindow:data.key==='affiliate'?affiliateWindow:data.key==='batch'?batchWindow:canvases.get(data.key);if(!target||target.isDestroyed())throw Error('Cửa sổ đã đóng.');target.show();if(target.isMinimized())target.restore();target.focus();return;}
   if(method==='home.open'){await openHome();return;}
   if(!id)throw Error('Project context required.');
+  if(method.startsWith('agent.')){
+    if(method==='agent.options')return {connections:(await posting.publisher.list()).map(c=>({id:c.id,name:c.name,platform:c.platform}))};
+    if(method==='agent.list')return agent.list(id);
+    if(method==='agent.create')return agent.create(id,data);
+    if(method==='agent.get')return agent.get(id,data.id);
+    if(method==='agent.edit')return agent.edit(id,data.id,data.plan);
+    if(method==='agent.approve')return agent.approve(id,data.id,data);
+    if(method==='agent.resume')return agent.resume(id,data.id,data);
+    if(method==='agent.pause')return agent.pause(id,data.id);
+    if(method==='agent.retryUnknown')return agent.retryUnknown(id,data.id,data);
+    if(method==='agent.receipt')return agent.receipt(id,data);
+    throw Error('Thao tác Agent không được hỗ trợ.');
+  }
   if(method==='project.info')return (await store.list()).find(item=>item.id===id);
   if(method==='storage.get')return data.area==='session'?(sessionData.get(id)||{}):store.readStorage(id);
   if(method==='storage.set'){
@@ -343,6 +358,7 @@ app.whenReady().then(async()=>{
   postingOAuth=new PostingOAuth({fetch:net.fetch.bind(net),openExternal:url=>shell.openExternal(url)});
   aiConnections=new AIConnections(app.getPath('userData'),net.fetch.bind(net));await aiConnections.init();aiConnections.dispatch=aiDispatch;
   postingAI=new PostingAI({ai,relay,store:postingStore,connections:aiConnections});postingAI.dispatch=aiDispatch;batchAI=new BatchAI({client:postingAI,ai,relay,onProgress:notify});publisher.muse=new MusePublishing({client:postingAI});posting=new PostingService({store:postingStore,publisher,brands,ask:(...args)=>postingAI.ask(...args),notify:()=>notify({type:'posting'})});await posting.init();posting.start();
+  agent=new AgentService({root:path.join(app.getPath('userData'),'agent-runs'),posting,dispatch:aiDispatch,notify,invoke:async(project,packet)=>{const win=canvases.get(project);if(!win||win.isDestroyed())throw Error('Dự án đã đóng; chưa gửi công cụ mới.');return win.webContents.executeJavaScript('window.MooZAgentRuntime.invoke('+JSON.stringify(packet)+')');}});await agent.init();
   affiliate=new AffiliateService({root:path.join(app.getPath('userData'),'affiliate'),ai:postingAI,fetchImpl:net.fetch.bind(net),notify:()=>notify({type:'affiliate'}),decodeImage:bytes=>{let image=nativeImage.createFromBuffer(bytes);if(image.isEmpty())throw Error('Không giải mã được ảnh sản phẩm.');const {width,height}=image.getSize();if(width*height>25000000)throw Error('Ảnh sản phẩm quá lớn.');const scale=Math.min(1,1600/Math.max(width,height));if(scale<1)image=image.resize({width:Math.round(width*scale),height:Math.round(height*scale),quality:'best'});const jpeg=image.toJPEG(90);if(jpeg.length>4*1024*1024)throw Error('Ảnh sản phẩm sau thu nhỏ vẫn quá lớn.');return 'data:image/jpeg;base64,'+jpeg.toString('base64');}});await affiliate.init();
   const signed=app.isPackaged&&process.platform==='darwin'&&await isDeveloperIDSigned(path.dirname(path.dirname(path.dirname(process.execPath))));
   updater=new UpdateService({version,packaged:app.isPackaged,platform:process.platform,signed,engine:signed?require('electron-updater').autoUpdater:null,fetchRelease:()=>latestPublicRelease(net.fetch.bind(net)),
@@ -358,7 +374,7 @@ app.whenReady().then(async()=>{
       }finally{if(!quitApproved)posting.hold=false;}
     },onInstallStart:()=>{posting.hold=true;quitApproved=true;},onInstallFailed:()=>{posting.hold=false;quitApproved=false;}});
   updater.on('status',status=>notify({type:'update',status}));updater.start();
-  if(testMode)globalThis.workflowTest={diagnostics,aiConnections,store,ai,relay,updater,posting,postingAI,postingOAuth,brands,chats,facebookPages,facebookLogin,affiliate,batchAI,aiDispatch,openBatch,openProject,openHome,openPosting,openAffiliate};
+  if(testMode)globalThis.workflowTest={agent,diagnostics,aiConnections,store,ai,relay,updater,posting,postingAI,postingOAuth,brands,chats,facebookPages,facebookLogin,affiliate,batchAI,aiDispatch,openBatch,openProject,openHome,openPosting,openAffiliate};
   Menu.setApplicationMenu(Menu.buildFromTemplate([
     ...(process.platform==='darwin'?[{role:'appMenu'}]:[]),
     {label:'Dự án',submenu:[{label:'Thư viện dự án',accelerator:'CmdOrCtrl+Shift+P',click:()=>void openHome()},{role:'close'},{role:'quit'}]},

@@ -1,4 +1,6 @@
-# Workflow · MuseFlow 0.47.1
+# Workflow · MuseFlow 0.48.0
+
+**0.48.0 · MooZ Agent:** giao mục tiêu, chọn tệp và AI, duyệt kế hoạch rồi theo dõi Agent tạo nội dung, kiểm tra và sửa từng bước, hậu kỳ, lưu thành phẩm / chuẩn bị bản đăng. Có hạn mức lượt AI, nhật ký bền vững, đối chiếu sau gián đoạn và quyền đăng theo từng nhiệm vụ. [Cách dùng và giới hạn](docs/AGENT-WORKSPACE.md).
 
 Bản 0.47.1 sửa nhịp gửi AI dùng chung toàn app, dừng khi dịch vụ yêu cầu xác minh/ngắt kết nối và bỏ tự tạo lại cảnh bị từ chối. Tab Chrome cần **Workflow Connect 1.1.0**; [hướng dẫn cập nhật và cài đặt nhịp gửi](docs/AI-SEND-SAFETY.md).
 
@@ -6,7 +8,7 @@ Bản 0.47.0 thêm **Video hàng loạt** tại thư viện dự án: cập nh�
 
 [Bắt đầu trong 5 phút](docs/QUICKSTART.md) · [Xử lý góp ý người dùng 28/10](docs/USER-REVIEW-2026-10-28.md) · [Thiết kế MooZ Agent](designs/MOOZ-AGENT-PLAN.md)
 
-**Tiện ích đi kèm:** `extension/Workflow-Connect.zip` chứa **Workflow Connect 1.0.0**, dùng với app **0.44.0–0.45.3**. ZIP đã được đóng gói kèm từ 0.42.0; `extension/manifest.json` là bộ cập nhật dữ liệu cũ, không phải manifest của ZIP đồng hành này. App và tiện ích có phiên bản riêng, kiểm tra tương thích theo giao thức. Chỉ nâng app không đồng nghĩa phải cài lại tiện ích; khi app báo không tương thích, tải ZIP trong **Cài đặt & kết nối AI**, thay thư mục tiện ích, bấm **Tải lại** trong `chrome://extensions`, tải lại các tab AI và kết nối lại bằng mã phiên.
+**Tiện ích đi kèm:** `extension/Workflow-Connect.zip` chứa **Workflow Connect 1.1.0**, dùng với app **0.47.1–0.48.0**. ZIP đã được đóng gói kèm từ 0.42.0; `extension/manifest.json` là bộ cập nhật dữ liệu cũ, không phải manifest của ZIP đồng hành này. App và tiện ích có phiên bản riêng, kiểm tra tương thích theo giao thức. Chỉ nâng app không đồng nghĩa phải cài lại tiện ích; khi app báo không tương thích, tải ZIP trong **Cài đặt & kết nối AI**, thay thư mục tiện ích, bấm **Tải lại** trong `chrome://extensions`, tải lại các tab AI và kết nối lại bằng mã phiên.
 
 **0.45.3 · Thêm công cụ làm việc:** bốn node cục bộ Cắt video, Xoay/lật video, Chỉnh màu video, Tách âm thanh MP3; ba nút Tìm node, Chọn node lỗi và Xem vùng đang chọn. Có lối thêm nhanh bên trái, trong picker và từ dây Video. [Cách dùng và kiểm tra](docs/LOCAL-TOOLS.md).
 
