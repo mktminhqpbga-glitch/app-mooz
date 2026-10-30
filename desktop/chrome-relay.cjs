@@ -10,7 +10,7 @@ class ChromeRelay {
  constructor(options={}) {
   this.notify=typeof options==='function'?options:options.notify||(()=>{});
   this.appVersion=typeof options==='object'?options.version||null:null;this.companion=null;
-  this.server=null;this.client=null;this.extensionId=null;this.port=null;this.token=null;this.pending=new Map();this.remoteEndpoint=null;this.remoteLease=null;this.remoteSession=null;this.connectionMode=null;this.heartbeat=null;
+  this.server=null;this.remoteServer=null;this.remoteIngressPort=null;this.client=null;this.extensionId=null;this.port=null;this.token=null;this.pending=new Map();this.remoteEndpoint=null;this.remoteLease=null;this.remoteSession=null;this.connectionMode=null;this.heartbeat=null;
  }
  get isConnected(){return this.client?.readyState===WebSocket.OPEN;}
  status(){return {connected:!!this.isConnected,port:this.port,extensionId:this.extensionId,companion:this.companion,mode:this.connectionMode,remoteEnabled:!!this.remoteEndpoint};}
@@ -20,8 +20,17 @@ class ChromeRelay {
   const server=new WebSocketServer({host:'127.0.0.1',port,maxPayload:MAX_BYTES,perMessageDeflate:false,verifyClient:({origin,req})=>EXTENSION_ORIGIN.test(origin||'')&&server.clients.size<16&&(req.url==='/'||!!this.remoteEndpoint&&['/remote',new URL(this.remoteEndpoint).pathname].includes(req.url))});
   this.server=server;
   server.on('connection',(socket,request)=>this.accept(socket,request));
-  try{await new Promise((resolve,reject)=>{server.once('listening',resolve);server.once('error',reject);});}catch(e){this.server=null;throw e;}this.heartbeat=setInterval(()=>{for(const s of server.clients){if(s.alive===false){s.terminate();continue;}s.alive=false;s.ping();}},20000);this.heartbeat.unref?.();
+  try{await new Promise((resolve,reject)=>{server.once('listening',resolve);server.once('error',reject);});}catch(e){this.server=null;throw e;}this.heartbeat=setInterval(()=>{for(const s of [...server.clients,...(this.remoteServer?.clients||[])]){if(s.alive===false){s.terminate();continue;}s.alive=false;s.ping();}},20000);this.heartbeat.unref?.();
   this.port=server.address().port;return this.status();
+ }
+ async startRemoteIngress({port=0}={}){
+  if(this.remoteServer)return this.remoteIngressPort;
+  // Public tunnels target a separate loopback listener: '/' and local pairing
+  // credentials are never exposed through the Cloudflare ingress.
+  const server=new WebSocketServer({host:'127.0.0.1',port,maxPayload:MAX_BYTES,perMessageDeflate:false,verifyClient:({origin,req})=>EXTENSION_ORIGIN.test(origin||'')&&server.clients.size<16&&!!this.remoteEndpoint&&req.url==='/remote'});
+  this.remoteServer=server;server.on('connection',(socket,request)=>this.accept(socket,request));
+  try{await new Promise((resolve,reject)=>{server.once('listening',resolve);server.once('error',reject);});}catch(e){this.remoteServer=null;throw e;}
+  this.remoteIngressPort=server.address().port;return this.remoteIngressPort;
  }
  pairingURI(){if(!this.port||!this.token)throw Error('Kết nối Chrome chưa được khởi tạo.');return `workflow-connect://127.0.0.1:${this.port}/${this.token}`;}
  configureRemote(value){const next=value?Remote.endpoint(value):null;if(next===this.remoteEndpoint)return;this.revokeRemote();this.remoteEndpoint=next;this.changed();}
@@ -36,9 +45,13 @@ class ChromeRelay {
  }
  accept(socket,request){
   let authenticated=false;const remote=request.url!=='/';socket.alive=true;socket.on('pong',()=>{socket.alive=true;});
+  // Bound unauthenticated traffic before a large/fragmented WebSocket message
+  // has been assembled. The public ingress must not buffer 128 MB to reject it.
+  let authBytes=0;const budget=chunk=>{if(authenticated)return;authBytes+=chunk.length;if(authBytes>8192)socket.terminate();};
+  request.socket?.on('data',budget);
   const authTimer=setTimeout(()=>socket.close(1008,'Authentication required'),5000);authTimer.unref?.();
   socket.on('error',()=>{});
-  socket.on('close',()=>{clearTimeout(authTimer);if(this.client===socket)this.clearClient();});
+  socket.on('close',()=>{request.socket?.removeListener('data',budget);clearTimeout(authTimer);if(this.client===socket)this.clearClient();});
   socket.on('message',bytes=>{
    if(!authenticated&&bytes.length>4096){socket.close(1008,'Invalid authentication');return;}let message;try{message=JSON.parse(bytes.toString());}catch{socket.close(1008,'Invalid message');return;}
    if(!message||typeof message!=='object'||Array.isArray(message)){socket.close(1008,'Invalid message');return;}
@@ -48,7 +61,7 @@ class ChromeRelay {
     if(message.type!=='auth'||!supplied||!allowed.some(token=>timingSafeEqual(supplied,Buffer.from(token,'hex')))||remote&&(!this.remoteEndpoint||message.remoteProtocol!==1)){socket.close(1008,'Authentication failed or pairing expired');return;}
     if(this.isConnected){socket.close(1013,'Already connected');return;}
     if(message.protocol!==undefined&&message.protocol!==1){socket.close(1008,'Companion protocol update required');return;}
-    authenticated=true;clearTimeout(authTimer);this.client=socket;this.connectionMode=remote?'remote':'local';if(remote){this.remoteLease=null;this.remoteSession=randomBytes(32).toString('hex');}this.extensionId=EXTENSION_ORIGIN.exec(request.headers.origin)[1];
+    authenticated=true;request.socket?.removeListener('data',budget);clearTimeout(authTimer);this.client=socket;this.connectionMode=remote?'remote':'local';if(remote){this.remoteLease=null;this.remoteSession=randomBytes(32).toString('hex');}this.extensionId=EXTENSION_ORIGIN.exec(request.headers.origin)[1];
     this.companion={protocol:message.protocol||1,version:typeof message.extensionVersion==='string'&&/^\d+\.\d+\.\d+$/.test(message.extensionVersion)?message.extensionVersion:null};
     this.send(socket,{type:'ready',protocol:1,appVersion:this.appVersion,...(remote?{remoteProtocol:1,sessionToken:this.remoteSession}:{})});this.changed();return;
    }
@@ -96,7 +109,8 @@ class ChromeRelay {
  disconnect(){if(this.client){const socket=this.client;this.clearClient();socket.close(1000,'Disconnected');}}
  async close(){
   clearInterval(this.heartbeat);this.heartbeat=null;this.revokeRemote();this.remoteEndpoint=null;this.disconnect();const server=this.server;this.server=null;this.token=null;this.port=null;
-  if(server){for(const socket of server.clients)socket.terminate();await new Promise(resolve=>server.close(resolve));}
+  const remote=this.remoteServer;this.remoteServer=null;this.remoteIngressPort=null;
+  for(const target of [server,remote].filter(Boolean)){for(const socket of target.clients)socket.terminate();await new Promise(resolve=>target.close(resolve));}
  }
 }
 module.exports={ChromeRelay};

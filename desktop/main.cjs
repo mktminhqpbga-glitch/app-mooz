@@ -272,10 +272,15 @@ async function handleWorkflowCall(event,method,data={}){
   if(method==='relay.disconnect'){if(relay.connectionMode==='local')relay.revokeLocal();else relay.revokeRemote();return relay.status();}
   if(method==='remoteChrome.status')return remoteChrome.status();
   if(method==='remoteChrome.setup')return remoteChrome.setup();
+  if(method==='remoteChrome.cloudflareInspect')return remoteChrome.locked(()=>remoteChrome.tunnel.inspect());
+  if(method==='remoteChrome.cloudflareInstall')return remoteChrome.locked(()=>remoteChrome.tunnel.install());
+  if(method==='remoteChrome.cloudflareStart')return remoteChrome.cloudflareStart();
+  if(method==='remoteChrome.cloudflareDownloads'){await shell.openExternal(require('./cloudflare-tunnel.cjs').DOWNLOADS);return;}
+  if(method==='remoteChrome.cloudflareGuide'){await shell.openExternal(require('./cloudflare-tunnel.cjs').GUIDE);return;}
   if(method==='remoteChrome.custom')return remoteChrome.custom(data.endpoint);
   if(method==='remoteChrome.check')return remoteChrome.check();
   if(method==='remoteChrome.pair')return remoteChrome.pair();
-  if(method==='remoteChrome.copy'){const pair=remoteChrome.pair();await clipboard.writeText(pair.url);return {copied:true,expiresAt:pair.expiresAt};}
+  if(method==='remoteChrome.copy'){const pair=remoteChrome.pair();await clipboard.writeText(pair.url);return {copied:true,url:pair.url,expiresAt:pair.expiresAt};}
   if(method==='remoteChrome.revoke')return remoteChrome.revoke();
   if(method==='remoteChrome.disable')return remoteChrome.disable();
   if(method==='remoteChrome.reset')return remoteChrome.reset();
@@ -361,7 +366,7 @@ app.whenReady().then(async()=>{
   uiPreferences=new UIPreferences(app.getPath('userData'));await uiPreferences.load();
   diagnostics=new Diagnostics(app.getPath('userData'),{version,secretValues:()=>[...(aiConnections?.keys?.values()||[]),...[...sessionData.values()].flatMap(v=>Object.values(v?.workflowApiKeys||{}))]});await diagnostics.init();
   aiDispatch=new AIDispatch(app.getPath('userData'),{notify});await aiDispatch.init();
-  remoteChrome=new RemoteChrome({root:app.getPath('userData'),notify});await remoteChrome.init();relay=new ChromeRelay({notify,version});let portUnavailable=false;try{await relay.start({port:remoteChrome.config.enabled?remoteChrome.config.listenPort:0});}catch(e){if(e.code!=='EADDRINUSE')throw e;portUnavailable=true;await relay.start();}remoteChrome.attach(relay,{portUnavailable});
+  remoteChrome=new RemoteChrome({root:app.getPath('userData'),notify});remoteChrome.tunnel.fetchImpl=net.fetch.bind(net);await remoteChrome.init();relay=new ChromeRelay({notify,version});let portUnavailable=false;try{await relay.start({port:remoteChrome.config.enabled?remoteChrome.config.listenPort:0});}catch(e){if(e.code!=='EADDRINUSE')throw e;portUnavailable=true;await relay.start();}try{await relay.startRemoteIngress({port:remoteChrome.config.enabled?remoteChrome.config.remotePort||0:0});}catch(e){if(e.code!=='EADDRINUSE')throw e;if(remoteChrome.config.mode==='custom')portUnavailable=true;await relay.startRemoteIngress();}remoteChrome.attach(relay,{portUnavailable});
   ai=new AIWindows(root,version,notify,async projectId=>projectId?(await store.readStorage(projectId)).workflowMuseSendTarget:null);
   ai.dispatch=aiDispatch;relay.dispatch=aiDispatch;
   const postingRoot=path.join(app.getPath('userData'),'posting');
@@ -403,6 +408,6 @@ app.on('window-all-closed',()=>{if(process.platform!=='darwin')app.quit();});
 let quitApproved=false,quitInProgress=false;
 app.on('before-quit',event=>{
   if(quitApproved)return;event.preventDefault();if(quitInProgress)return;quitInProgress=true;if(posting)posting.hold=true;
-  void(async()=>{try{await aiDispatch?.writes.catch(()=>{});await diagnostics?.writes.catch(()=>{});await brands?.writes.catch(()=>{});if(chats)await Promise.allSettled([...chats.writes.values()]);if(posting?.busy()){const answer=await dialog.showMessageBox({type:'warning',buttons:['Ở lại','Thoát ứng dụng'],defaultId:0,cancelId:0,message:'Đăng bài đang xử lý. Thoát có thể làm gián đoạn gửi bài; kiểm tra nền tảng trước khi thử lại.'});if(answer.response!==1)return;}for(const win of [...canvases.values()])if(!await win.prepareToClose())return;if(batchWindow&&!batchWindow.isDestroyed()){const busy=await batchWindow.webContents.executeJavaScript('!!window.MooZBatch?.busy()');if(busy){const answer=await dialog.showMessageBox(batchWindow,{type:'warning',buttons:['Ở lại','Lưu, dừng và thoát'],defaultId:0,cancelId:0,message:'Video hàng loạt đang chạy. Dừng và thoát? Kiểm tra tab AI trước khi chạy tiếp tác vụ bị gián đoạn.'});if(answer.response!==1)return;}await batchWindow.webContents.executeJavaScript('window.MooZBatch?.flushAndStop()');}batchAI?.close();await affiliate?.close();for(const key of new Set([...aiDispatch.records.values()].filter(r=>r.stage!=='done').map(r=>r.key)))await aiDispatch.disconnect(key);await aiDispatch.writes.catch(()=>{});quitApproved=true;app.quit();}finally{quitInProgress=false;if(posting&&!quitApproved)posting.hold=false;}})();
+  void(async()=>{try{await aiDispatch?.writes.catch(()=>{});await diagnostics?.writes.catch(()=>{});await brands?.writes.catch(()=>{});if(chats)await Promise.allSettled([...chats.writes.values()]);if(posting?.busy()){const answer=await dialog.showMessageBox({type:'warning',buttons:['Ở lại','Thoát ứng dụng'],defaultId:0,cancelId:0,message:'Đăng bài đang xử lý. Thoát có thể làm gián đoạn gửi bài; kiểm tra nền tảng trước khi thử lại.'});if(answer.response!==1)return;}for(const win of [...canvases.values()])if(!await win.prepareToClose())return;if(batchWindow&&!batchWindow.isDestroyed()){const busy=await batchWindow.webContents.executeJavaScript('!!window.MooZBatch?.busy()');if(busy){const answer=await dialog.showMessageBox(batchWindow,{type:'warning',buttons:['Ở lại','Lưu, dừng và thoát'],defaultId:0,cancelId:0,message:'Video hàng loạt đang chạy. Dừng và thoát? Kiểm tra tab AI trước khi chạy tiếp tác vụ bị gián đoạn.'});if(answer.response!==1)return;}await batchWindow.webContents.executeJavaScript('window.MooZBatch?.flushAndStop()');}batchAI?.close();await affiliate?.close();for(const key of new Set([...aiDispatch.records.values()].filter(r=>r.stage!=='done').map(r=>r.key)))await aiDispatch.disconnect(key);await aiDispatch.writes.catch(()=>{});await remoteChrome?.close();quitApproved=true;app.quit();}finally{quitInProgress=false;if(posting&&!quitApproved)posting.hold=false;}})();
 });
-app.on('will-quit',()=>{postingOAuth?.cancel();facebookLogin?.cancel();facebookPages?.clear();posting?.close();updater?.stop();void relay?.close();for(const controller of requests.values())controller.abort();});
+app.on('will-quit',()=>{postingOAuth?.cancel();facebookLogin?.cancel();facebookPages?.clear();posting?.close();updater?.stop();void remoteChrome?.close();void relay?.close();for(const controller of requests.values())controller.abort();});

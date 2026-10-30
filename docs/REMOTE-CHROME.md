@@ -1,8 +1,48 @@
-# Chrome trên máy khác · MooZ Agent 0.49.0
+# Chrome trên máy khác · MooZ Agent 0.50.0
 
-Máy A chạy MooZ để điều phối workflow, lưu dự án và xuất thành phẩm. Máy B chạy Chrome với các tab AI đã đăng nhập, Workflow Connect **1.2.0** và Tailscale. Hai máy có thể ở hai mạng Internet khác nhau. Không cần cài MooZ trên máy B.
+Máy A chạy MooZ để điều phối workflow, lưu dự án và xuất thành phẩm. Máy B chạy Chrome với các tab AI đã đăng nhập và Workflow Connect **1.2.0 trở lên** (bản đóng kèm **1.2.1**). Hai máy có thể ở hai mạng Internet khác nhau. Không cần cài MooZ trên máy B. Chọn Cloudflare Tunnel nếu không muốn cài Tailscale.
 
-## Cài lần đầu
+## Cách nhanh: Cloudflare Tunnel, không cần Tailscale
+
+**Trên máy A (MooZ):**
+
+1. Cài MooZ **0.50.0 trở lên**, mở **Cài đặt & kết nối AI → Chrome ở máy khác**.
+2. Bấm **Tải cloudflared**. MooZ tải bản phù hợp với kiến trúc app từ kho phát hành chính thức `cloudflare/cloudflared`, kiểm tra kích thước/SHA256 trong metadata GitHub, rồi kiểm tra phiên bản trước khi thay công cụ cũ. Công cụ chỉ nằm trong thư mục dữ liệu MooZ; không cần Homebrew, `sudo`, tài khoản Cloudflare hay chỉnh InfinityFree. Nếu đã cài cloudflared qua Homebrew/WinGet, bấm **Kiểm tra công cụ** để dùng bản có sẵn.
+3. Bấm **Bắt đầu Cloudflare Tunnel**, đợi thông báo đường kết nối đã khởi động. App chỉ bật tạo mã khi công cụ đã báo hostname hợp lệ và đăng ký kết nối với Cloudflare. Đây chưa phải xác nhận Chrome máy B đã kết nối.
+4. Bấm **Tạo & sao chép mã**. Mã vẫn hiện dạng ẩn trong ô; có thể bấm **Hiện mã**, chọn rồi dùng ⌘C/Ctrl+C nếu cần. Mã mới hủy mã chưa dùng trước đó.
+
+**Trên máy B (Chrome):**
+
+1. Tải ZIP bằng nút **Tải tiện ích Chrome** trong MooZ rồi chuyển sang máy B. Giải nén ZIP, mở `chrome://extensions`, bật **Chế độ nhà phát triển → Tải tiện ích đã giải nén** và chọn thư mục vừa giải nén. Nếu đã dùng Workflow Connect 1.2.0 thì không bắt buộc cài lại để kết nối Cloudflare.
+2. Mở Workflow Connect, dán mã, bấm **Kết nối** và chấp nhận quyền tới đúng hostname Cloudflare của mã. Máy B không cần cloudflared hay Tailscale.
+3. Mở/đăng nhập các tab Muse, ChatGPT hoặc Gemini. Trở về MooZ trên A, **Làm mới danh sách chat / Cập nhật tab AI**, chọn tab của B và thử một tác vụ nhỏ.
+
+**Hằng ngày:** giữ máy A thức và MooZ mở. MooZ giữ cloudflared chạy nền, không cần giữ cửa sổ Terminal. Máy B giữ Chrome và tab AI hoạt động. Bấm **Dừng kết nối từ xa** để dừng đúng tiến trình tunnel do MooZ mở và thu hồi mã/phiên. Thoát app cũng dừng tunnel. App không cài cloudflared thành dịch vụ hệ thống và không dừng các tunnel bạn tự chạy.
+
+Quick Tunnel tạo địa chỉ ngẫu nhiên `*.trycloudflare.com` mới mỗi lần bắt đầu; sau khi thoát app hoặc tunnel dừng, bấm Bắt đầu và ghép mã mới. Không tự mở lại đường công khai khi app khởi động. Nếu chỉ Chrome/mạng B bị ngắt trong khi tunnel A còn chạy, có thể dùng **Kết nối lại** trong tiện ích; tác vụ AI đang dở vẫn cần đối chiếu, không tự phát lại.
+
+**Lưu ý về dịch vụ:** [Cloudflare mô tả Quick Tunnel](https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/) dành cho thử nghiệm, không có bảo đảm thời gian hoạt động, giới hạn 200 yêu cầu đang diễn ra và không hỗ trợ SSE. Bộ nối MooZ dùng WebSocket, không dùng SSE. Để chạy thường xuyên, nên cấu hình tunnel có tên/hostname ổn định của Cloudflare và nhập WSS ở mục nâng cao. Không bật thử thách JavaScript hoặc email Access cho đường WSS của extension; bộ nối này không thực hiện đăng nhập tương tác Cloudflare Access.
+
+**Kết nối và dữ liệu:** A chỉ mở thêm một cổng loopback riêng cho `/remote`, yêu cầu Origin extension và mã/khóa phiên hợp lệ; không chuyển tiếp giao diện app, tệp máy hay endpoint ghép cùng máy `/`. HTTPS/WSS có kiểm tra chứng chỉ; không có cờ bỏ xác minh TLS. Cloudflare là proxy TLS nên có thể đọc dữ liệu chuyển tiếp; đây không phải mã hóa đầu cuối giữa A và B. Chỉ dùng nếu bạn chấp nhận đưa dữ liệu workflow qua Cloudflare. Giới hạn 128 MB/thông điệp của bộ nối vẫn áp dụng.
+
+### Nếu máy báo `command not found: brew`
+
+Đó là chưa có Homebrew, không phải lỗi MooZ. Dùng nút **Tải cloudflared** ở bước 2, không cần chạy lệnh `brew`. Nếu cần cài riêng, xem [trang tải Cloudflare](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/downloads/). Máy có Homebrew có thể dùng `brew install cloudflared`, Windows có WinGet có thể dùng `winget install --id Cloudflare.cloudflared --exact`.
+
+### Lỗi Cloudflare thường gặp
+
+| Hiện tượng | Cách xử lý |
+| --- | --- |
+| Không tải được công cụ / GitHub giới hạn | Thử lại sau hoặc cài cloudflared từ trang chính thức rồi bấm Kiểm tra công cụ |
+| SHA256 không khớp | Tệp không được cài/chạy; tải lại, không bỏ kiểm tra |
+| Không đăng ký được tunnel / timeout cổng 7844 | Kiểm tra Internet, DNS và firewall cho cloudflared kết nối ra TCP 7844; app dùng HTTP/2 |
+| Đường đã khởi động nhưng Chrome chưa vào được | Đợi DNS/edge sẵn sàng rồi thử mã còn hiệu lực; kiểm tra hai máy đang mở và quyền hostname |
+| Tunnel bị ngắt / máy A ngủ | App thu hồi mã/phiên khi nhận thấy tunnel dừng; khởi động tunnel và ghép mã mới, đối chiếu kết quả đang dở |
+| Nút sao chép bị mờ | Chưa có tunnel sẵn sàng; Tải công cụ → Bắt đầu trước |
+
+## Cách thay thế: Tailscale trên hai máy
+
+### Cài Tailscale lần đầu
 
 1. Cài và mở **Tailscale trên cả hai máy** từ https://tailscale.com/download. Đăng nhập cùng mạng riêng (tailnet), bảo đảm hai máy được phép kết nối theo cấu hình Tailscale của bạn.
 2. Máy A: mở **Cài đặt & kết nối AI → Chrome ở máy khác → Thiết lập Tailscale**. MooZ dùng HTTPS riêng trên cổng Tailscale 9443 và một đường dẫn riêng cho app; không mở cổng router, không bật Funnel công khai, không xóa cấu hình Serve của ứng dụng khác.
@@ -22,7 +62,7 @@ Giữ hai máy, Chrome, MooZ và Tailscale cùng hoạt động. Máy Chrome ph�
 - **Thu hồi phiên từ xa** ngắt Chrome và vô hiệu hóa khóa ghép/phiên. **Tắt kết nối từ xa** còn vô hiệu hóa đường nhận từ xa của MooZ; app cố gỡ đúng đường Serve riêng, không dùng lệnh reset toàn bộ Tailscale.
 - Tắt kết nối từ xa không thu hồi việc website AI đã nhận, cũng không rút lịch đăng đã xếp; kiểm tra trong AI và Đăng bài.
 
-## Đường truyền và giới hạn
+## Đường truyền Tailscale và giới hạn
 
 Luồng: `MooZ (loopback) ↔ Tailscale Serve trên A ↔ WSS/TLS trong mạng riêng ↔ Workflow Connect trên B ↔ tab AI`. Dữ liệu tham chiếu và kết quả đi qua cùng bộ nối AI đang có; không gửi cookie Chrome hay khóa API của app sang máy B. Tailscale không phải máy chủ đăng bài và không thay thế quyền API của các nền tảng.
 
@@ -34,7 +74,7 @@ Tailscale Serve chạy nền nên giữ đường dẫn khi MooZ thoát, nhưng 
 
 ## Nâng cao: WSS có sẵn
 
-Có thể dùng reverse proxy/tunnel TLS do bạn quản lý. Mở mục nâng cao, nhập địa chỉ `wss://.../remote`; chuyển tiếp tới `http://127.0.0.1:<cổng hiện trong app>`, hỗ trợ WebSocket Upgrade, giữ Origin và mã đóng kết nối. App nhận cả `/remote` lẫn đường dẫn đầy đủ đã cấu hình để tương thích proxy có hoặc không bỏ prefix. Không đặt token vào URL WebSocket, không dùng HTTP/WS công khai và không bỏ kiểm tra TLS. Phải dùng một TLS endpoint bạn tin cậy; proxy TLS trên máy đó có thể đọc dữ liệu chuyển tiếp.
+Có thể dùng reverse proxy/tunnel TLS do bạn quản lý. Mở mục nâng cao, nhập địa chỉ `wss://.../remote`; chuyển tiếp tới `http://127.0.0.1:<cổng từ xa riêng hiện trong mục nâng cao>`, hỗ trợ WebSocket Upgrade, giữ Origin và mã đóng kết nối. Cổng từ xa riêng chỉ nhận `/remote`, nên proxy phải bỏ prefix để chuyển đúng `/remote`. Cổng loopback cũ vẫn nhận cả `/remote` lẫn đường dẫn đầy đủ nhằm giữ tương thích cấu hình trước 0.50.0, nhưng nên chuyển sang cổng từ xa riêng để tránh chuyển tiếp endpoint cùng máy. Không đặt token vào URL WebSocket, không dùng HTTP/WS công khai và không bỏ kiểm tra TLS. Phải dùng một TLS endpoint bạn tin cậy; proxy TLS trên máy đó có thể đọc dữ liệu chuyển tiếp.
 
 ## Xử lý lỗi
 
@@ -53,3 +93,6 @@ Có thể dùng reverse proxy/tunnel TLS do bạn quản lý. Mở mục nâng c
 Kiểm thử đơn vị bao gồm định dạng mã, TTL, mã dùng một lần, khóa phiên luân chuyển, thu hồi, cách ly mã cùng máy, bảo toàn cấu hình Serve khác và khôi phục tệp cấu hình lỗi. Kiểm thử tích hợp chạy Electron và Chromium tách tiến trình qua một tunnel WSS cục bộ: từ chối chứng chỉ không tin cậy, gửi/nhận AI qua trang mô phỏng, ảnh/video và gói trên 2 MB giữ nguyên byte, giải mã và tải MP4 thật, mất kết nối sau khi gửi, kết nối lại không phát lại tác vụ, giữ cổng qua khởi động lại và thu hồi phiên.
 
 CLI Tailscale và website AI được mô phỏng trong kiểm thử; TLS dùng chứng chỉ chỉ tin trong bài test. Chưa kiểm tra đường Internet hoặc tài khoản Tailscale thật của người dùng trong môi trường phát triển. Sau khi cài, làm bước thử nhỏ giữa hai máy thật ở mục Cài lần đầu.
+
+
+Kiểm thử Cloudflare bao gồm kiểm tra SHA256 trước khi thực thi, từ chối nguồn tải lạ, xử lý archive Mac chỉ lấy tệp thường `cloudflared`, hostname đầy đủ và trạng thái registered trước khi cho ghép, timeout/dừng/thoát tiến trình, thu hồi mã và hủy RPC khi tunnel mất kết nối, không phát lại tác vụ, không phục hồi URL tạm sau khi khởi động app. Bộ kiểm tra Electron mở giao diện thật và chạy tiến trình CLI fixture thật để thử tải/cài/start/copy clipboard/stop; metadata phát hành và đăng ký Cloudflare của bài đó được mô phỏng. Đã tải/kiểm tra công cụ Linux và archive Mac chính thức; chưa xác minh đường TryCloudflare qua Internet giữa hai máy người dùng. Các kiểm thử WSS/Chromium phía trên dùng TLS proxy cục bộ, không phải tunnel Cloudflare thật.

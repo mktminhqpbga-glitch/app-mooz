@@ -70,7 +70,7 @@
   return new Promise((resolve,reject)=>{
    const current=new WebSocket(next.mode==='remote'?next.endpoint:`ws://127.0.0.1:${next.port}/`);socket=current;
    const fail=text=>{lastError=text;reject(Error(text));};
-   const timeout=setTimeout(()=>{current.close();fail(next.mode==='remote'?'Không kết nối được máy MooZ. Kiểm tra app, Tailscale trên cả hai máy và mã ghép cặp.':'Không kết nối được ứng dụng Workflow. Mở ứng dụng và lấy mã mới.');},15000);
+   const timeout=setTimeout(()=>{current.close();fail(next.mode==='remote'?'Không kết nối được máy MooZ. Kiểm tra app, đường Cloudflare/Tailscale và mã ghép cặp.':'Không kết nối được ứng dụng Workflow. Mở ứng dụng và lấy mã mới.');},15000);
    current.onopen=()=>current.send(JSON.stringify({type:'auth',token:next.token,protocol:PROTOCOL,extensionVersion:chrome.runtime.getManifest?.()?.version||'',...(next.mode==='remote'?{remoteProtocol:1}:{})}));
    current.onmessage=event=>{
     if(socket!==current)return;let message;try{if(typeof event.data!=='string'||event.data.length>128*1024*1024)throw Error();message=JSON.parse(event.data);}catch{current.close(1008,'Invalid message');return;}lastSeen=Date.now();
@@ -84,7 +84,7 @@
     if(state!=='connected'||message.type!=='request'||typeof message.id!=='string')return;
     void perform(message.operation,message.payload).then(result=>{if(socket===current)send({type:'response',id:message.id,result});},error=>{if(socket===current)send({type:'response',id:message.id,error:error?.message||'Không thực hiện được thao tác Chrome.'});}).catch(()=>{});
    };
-   current.onerror=()=>{if(socket!==current)return;clearTimeout(timeout);fail(next.mode==='remote'?'Không kết nối được máy MooZ. Kiểm tra Tailscale, HTTPS và app đang mở; không có chế độ bỏ kiểm tra chứng chỉ.':'Không kết nối được ứng dụng Workflow. Kiểm tra ứng dụng đã mở và mã còn hiệu lực.');current.close();};
+   current.onerror=()=>{if(socket!==current)return;clearTimeout(timeout);fail(next.mode==='remote'?'Không kết nối được máy MooZ. Kiểm tra đường Cloudflare/Tailscale, HTTPS và app đang mở; không có chế độ bỏ kiểm tra chứng chỉ.':'Không kết nối được ứng dụng Workflow. Kiểm tra ứng dụng đã mở và mã còn hiệu lực.');current.close();};
    current.onclose=event=>{clearTimeout(timeout);if(socket===current){socket=null;state='disconnected';clearInterval(heartbeat);heartbeat=null;clearGates();if(!lastError)lastError=event?.code===1013?'App đã kết nối với một Chrome khác. Ngắt kết nối cũ trong MooZ trước.':event?.code===1008?'Mã hoặc phiên đã hết hiệu lực. Tạo mã mới trong MooZ.':'Kết nối đã ngắt. Kiểm tra hai máy rồi bấm Kết nối lại. App không tự gửi lại yêu cầu AI.';}reject(Error(lastError||'Kết nối đã đóng.'));};
   });
  }
