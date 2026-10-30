@@ -16,15 +16,14 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 20
           cache: 'npm'
 
-      - name: Install dependencies
+      - name: Install locked dependencies
         run: npm ci
 
       - name: Build Windows app
-        run: |
-          npm run build:win
+        run: npx electron-builder --win --x64
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
