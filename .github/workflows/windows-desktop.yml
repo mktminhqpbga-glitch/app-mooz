@@ -1,9 +1,7 @@
 name: Đóng gói / Cập nhật app Windows
 
 on:
-  push:
-    branches: [ main ]
-  workflow_dispatch:
+  workflow_dispatch: # Chỉ chạy khi bấm thủ công, không tự chạy khi push code
 
 jobs:
   build-win:
