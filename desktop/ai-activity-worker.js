@@ -1,7 +1,7 @@
 /* Wake only jobs started by this extension on supported AI pages. */
 (()=>{
  const KEY='workflowAIActivity',leases=new Map();let timer=null,saving=Promise.resolve(),pending=Promise.resolve();
- const supported=value=>{try{const u=new URL(value);return u.protocol==='https:'&&!u.port&&!u.username&&!u.password&&/^(?:chatgpt\.com|www\.chatgpt\.com|chat\.openai\.com|gemini\.google\.com|(?:[a-z0-9-]+\.)*muse\.ai)$/.test(u.hostname);}catch{return false;}};
+ const supported=value=>!!globalThis.WorkflowAISites?.providerForURL(value);
  const validId=id=>typeof id==='string'&&id.length>0&&id.length<=160;
  const persist=()=>{const records=[...leases].map(([tabId,item])=>({tabId,original:item.original,expires:item.expires,ids:[...item.ids]}));saving=saving.catch(()=>{}).then(()=>chrome.storage.session.set({[KEY]:records}));return saving;};
  const schedule=()=>{if(leases.size&&!timer)timer=setInterval(()=>{pending=pending.catch(()=>{}).then(pulse);},1000);else if(!leases.size&&timer){clearInterval(timer);timer=null;}};

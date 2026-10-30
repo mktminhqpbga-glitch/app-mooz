@@ -172,7 +172,7 @@ async function handleWorkflowCall(event,method,data={}){
    if(method==='batch.tabs')return batchAI.tabs();
    if(method==='batch.generate')return batchAI.generate(data);
    if(method==='batch.stop'){batchAI.stop(data.workerId);return;}
-   if(method==='batch.openAI'){if(!['muse','gemini','chatgpt'].includes(data.provider))throw Error('AI không hợp lệ.');return ai.open(data.provider);}
+   if(method==='batch.openAI'){if(!Object.hasOwn(require('../ai-sites.js').sites,data.provider))throw Error('AI không hợp lệ.');return ai.open(data.provider);}
    if(method==='batch.download')return downloads.download(win,{url:data.url,filename:data.filename,saveAs:false});
    throw Error('Thao tác Video hàng loạt không hợp lệ.');
   }
@@ -194,7 +194,7 @@ async function handleWorkflowCall(event,method,data={}){
     if(affiliateTransitions.has(data.id))throw Error('Workflow affiliate đang được mở.');affiliateTransitions.add(data.id);
     try{
      const job=await affiliate.get(data.id);if(!job.story?.review?.approved||job.status!=='ready')throw Error('Hoàn tất kịch bản và kiểm tra trước khi tạo workflow.');
-     if(!['muse','google'].includes(data.videoProvider||'muse'))throw Error('AI video không hợp lệ.');
+     if(!['muse','google','flow','grok'].includes(data.videoProvider||'muse'))throw Error('AI video không hợp lệ.');
      let project=job.projectId&&(await store.list()).find(p=>p.id===job.projectId);
      if(!project){project=await store.create(('Affiliate · '+job.product.title).slice(0,100));await store.writeStorage(project.id,{museflow:{nodes:[],edges:[],groups:[],notes:[],settings:{}}});await affiliate.save(job.id,{projectId:project.id});notify({type:'projects'});}
      try{await openProject(project.id);await canvases.get(project.id).webContents.executeJavaScript('window.WorkflowAffiliate.create('+JSON.stringify({jobId:job.id,title:job.product.title,affiliate:job.affiliate,caption:job.caption,scenes:job.story.scenes,scriptOrigin:job.story.origin||'ai',images:await affiliate.readImages(job.id),videoProvider:data.videoProvider||'muse',voice:!!data.voice})+')');await affiliate.save(job.id,{workflowError:''});return {id:project.id};}
@@ -303,6 +303,7 @@ async function handleWorkflowCall(event,method,data={}){
     try{const result=await (method==='projects.trash'?store.trash(data.id):store.undoTrash(data.id));notify({type:'projects'});return result;}
     finally{projectTransitions.delete(data.id);}
   }
+  if(method==='aiConnections.open'){if(id)managedProjects.add(id);return ai.open(data.provider);}
   if(method==='aiConnections.list')return aiConnections.list();
   if(method==='aiConnections.status')return aiConnections.status();
   if(method==='aiConnections.reset'){const result=await aiConnections.reset();notify({type:'aiConnections'});return result;}
@@ -401,7 +402,7 @@ app.whenReady().then(async()=>{
     ...(process.platform==='darwin'?[{role:'appMenu'}]:[]),
     {label:'Dự án',submenu:[{label:'Thư viện dự án',accelerator:'CmdOrCtrl+Shift+P',click:()=>void openHome()},{role:'close'},{role:'quit'}]},
     {role:'editMenu'},{label:'Hiển thị',submenu:[{role:'reload'},{role:'toggleDevTools'},{role:'resetZoom'},{role:'zoomIn'},{role:'zoomOut'}]},
-    {label:'AI',submenu:Object.entries({chatgpt:'ChatGPT',gemini:'Gemini',muse:'Muse'}).map(([id,label])=>({label:'Mở '+label,click:()=>ai.open(id)}))}
+    {label:'AI',submenu:Object.entries(Object.fromEntries(Object.entries(require('../ai-sites.js').sites).map(([id,s])=>[id,s.name]))).map(([id,label])=>({label:'Mở '+label,click:()=>ai.open(id)}))}
   ]));
   await openHome();
 // A user can quit as soon as the library is visible, before loadURL settles.

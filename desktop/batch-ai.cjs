@@ -5,7 +5,7 @@ const {run:runMuse}=require('../muse-jobs.js');
 class BatchAI {
  constructor({client,ai,relay,onProgress=()=>{}}) {Object.assign(this,{client,ai,relay,onProgress});this.running=new Map();this.lastSend=new Map();}
  report(requestId,text){for(const [workerId,entry]of this.running)if(entry.requestId===requestId){this.onProgress({type:'batch.progress',workerId,text:String(text).slice(0,500)});break;}}
- async tabs(){return (await this.client.tabs()).filter(t=>t.transport!=='api');}
+ async tabs(){return (await this.client.tabs({all:true})).filter(t=>t.transport!=='api');}
  async generate(data){
   const key=data?.workerId;
   if(typeof key!=='string'||this.running.has(key))throw Error('Tab đang được dùng; chờ tác vụ hiện tại kết thúc.');
@@ -16,7 +16,7 @@ class BatchAI {
    const script=files=>tab.transport==='chrome'?this.relay.request('tabs.script',{id:tab.id,files}):this.ai.script(tab.id,files,null,null);
    const message=value=>tab.transport==='chrome'?this.relay.request('tabs.message',{id:tab.id,message:value}):this.ai.message(tab.id,value,null);
    const muse=tab.provider==='muse';
-   if(data.mediaType==='video'&&!muse)throw Error('Tạo video hàng loạt hiện dùng tab Muse; các bước đọc ảnh, văn bản và tạo ảnh có thể chọn AI khác.');
+   if(!require('../ai-sites.js').sites[tab.provider]?.types.includes(data.mediaType))throw Error('Tab AI này không hỗ trợ loại kết quả đã chọn.');
    const refs=data.referenceImages||[];let bytes=0;if(!Array.isArray(refs)||refs.length>8)throw Error('Mỗi lượt tối đa 8 ảnh tham chiếu.');
    for(const ref of refs){if(typeof ref!=='string'||!/^data:image\/(png|jpeg|webp|gif|avif);base64,[a-zA-Z0-9+/=]+$/.test(ref))throw Error('Ảnh tham chiếu không hợp lệ.');bytes+=ref.length*.75;if(ref.length*.75>8*1024*1024||bytes>20*1024*1024)throw Error('Tối đa 8 MB/ảnh và 20 MB/lượt gửi AI.');}
    await script(['ai-activity.js','composer-controls.js',muse?'muse-bridge.js':'ai-bridge.js']);

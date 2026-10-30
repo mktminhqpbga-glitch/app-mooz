@@ -78,3 +78,10 @@ test('video duration opt-out stays null while legacy and supported choices remai
 test('Veo opt-out omits durationSeconds rather than sending zero or a forced default',async()=>{
  for(const duration of [null,undefined]){let body;globalThis.fetch=async(url,options)=>{if(url.includes(':predictLongRunning')){body=JSON.parse(options.body);return response({done:true,response:{generateVideoResponse:{generatedSamples:[{video:{uri:'https://generativelanguage.googleapis.com/v1beta/files/video:download'}}]}}});}return new Response(new Blob(['video'],{type:'video/mp4'}));};const result=await api('google',{mediaType:'video',duration,size:'9:16',prompt:'Scene'},'test-key');assert.equal(Object.hasOwn(body.parameters,'durationSeconds'),false);assert.equal(body.parameters.aspectRatio,'9:16');URL.revokeObjectURL(result.url);}
 });
+
+test('Grok/Flow expose correct outputs and reject video references before dispatch',()=>{
+ for(const id of ['grok','flow'])for(const type of ['image','video'])assert.doesNotThrow(()=>validate(id,{mediaType:type,duration:null}));
+ assert.doesNotThrow(()=>validate('grok',{mediaType:'text'}));assert.throws(()=>validate('flow',{mediaType:'text'}));
+ for(const id of ['grok','flow'])assert.throws(()=>validate(id,{mediaType:'video',referenceVideos:['video']}),/chưa hỗ trợ/);
+});
+test('retired Veo model returns an actionable error without fallback or another submission',async()=>{let calls=0;globalThis.fetch=async()=>{calls++;return new Response('',{status:404});};await assert.rejects(api('google',{mediaType:'video',prompt:'Scene',duration:null},'key'),/Veo API.*404.*Flow/);assert.equal(calls,1);});

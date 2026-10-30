@@ -108,7 +108,7 @@
   const failureHealth=message=>/chưa|đăng nhập|chọn|cuộc trò chuyện|hết thời gian|không nhận diện|timeout/i.test(message||'')?'check':'error';
   function renderHealth(){
     const host=$('#aiHealth');if(!host)return;host.replaceChildren();
-    const ids=['muse','gemini','chatgpt',...Object.keys(WorkflowAI.providers).filter(id=>!WorkflowAI.providers[id].urls&&(aiKeys[id]||state.nodes.some(n=>n.data.provider===id)))];
+    const ids=['muse','gemini','chatgpt','grok','flow',...Object.keys(WorkflowAI.providers).filter(id=>!WorkflowAI.providers[id].urls&&(aiKeys[id]||state.nodes.some(n=>n.data.provider===id)))];
     for(const id of ids){const jobs=[...providerJobs.values()].filter(job=>job.provider===id),known=providerHealth.get(id)||{status:'check',detail:'Chưa kiểm tra'};
       const status=jobs.some(job=>job.phase==='busy')?'busy':jobs.length?'check':known.status;
       const text=({ready:'Đã kết nối · Rảnh',busy:'Đang làm tác vụ',error:'Lỗi',check:'Cần kiểm tra'})[status];
@@ -131,7 +131,7 @@
       if(result?.busy)setProviderHealth(provider,'busy','Tab AI đang xử lý');else if(result?.ok&&result.composer&&result.signedIn!==false)setProviderHealth(provider,'ready',tab.title||'Ô chat sẵn sàng');else setProviderHealth(provider,'check','Mở chat/đăng nhập hoặc tải lại tab');
     }catch(error){setProviderHealth(provider,'error',error.message);}finally{healthChecks.delete(provider);}
   }
-  function refreshHealth(force=false){return Promise.allSettled(['muse','gemini','chatgpt',...Object.keys(WorkflowAI.providers).filter(id=>!WorkflowAI.providers[id].urls&&(aiKeys[id]||state.nodes.some(n=>n.data.provider===id)))].map(id=>refreshProviderHealth(id,force)));}
+  function refreshHealth(force=false){return Promise.allSettled(['muse','gemini','chatgpt','grok','flow',...Object.keys(WorkflowAI.providers).filter(id=>!WorkflowAI.providers[id].urls&&(aiKeys[id]||state.nodes.some(n=>n.data.provider===id)))].map(id=>refreshProviderHealth(id,force)));}
 
   const aiChatTabs={},aiChatTargets={};let pendingChatSelections=0;
   const museChatTransitions=new Map();
@@ -139,7 +139,7 @@
   const chatKey=url=>{try{const value=new URL(url);return value.origin+value.pathname.replace(/\/$/,'');}catch{return '';}};
   async function refreshChatTabs(){
     await Promise.all(Object.entries(WorkflowAI.providers).filter(([,provider])=>provider.urls).map(async([id,provider])=>{try{aiChatTabs[id]=await chrome.tabs.query({url:provider.urls});if(!aiChatTargets[id]&&aiChatTabs[id].length===1){const tab=aiChatTabs[id][0];aiChatTargets[id]={tabId:tab.id,url:chatKey(tab.url)};}}catch{aiChatTabs[id]=[];}}));
-    const host=$('#aiChatTargets');if(host){host.replaceChildren();for(const id of ['muse','gemini','chatgpt']){const label=document.createElement('label');label.textContent=WorkflowAI.providers[id].name;const select=chatSelector(id,aiChatTargets[id],target=>{if(target)aiChatTargets[id]=target;else delete aiChatTargets[id];void chrome.storage.local.set({workflowAIChatTargets:aiChatTargets});render();updateChatUsageLabels();});label.append(select);host.append(label);}}
+    const host=$('#aiChatTargets');if(host){host.replaceChildren();for(const id of ['muse','gemini','chatgpt','grok','flow']){const label=document.createElement('label');label.textContent=WorkflowAI.providers[id].name;const select=chatSelector(id,aiChatTargets[id],target=>{if(target)aiChatTargets[id]=target;else delete aiChatTargets[id];void chrome.storage.local.set({workflowAIChatTargets:aiChatTargets});render();updateChatUsageLabels();});label.append(select);host.append(label);}}
   }
   let chatLabelsQueued=false;
   function scheduleChatUsageLabels(){if(chatLabelsQueued)return;chatLabelsQueued=true;queueMicrotask(()=>{chatLabelsQueued=false;updateChatUsageLabels();});}
@@ -304,7 +304,7 @@
     WorkflowAI.validate(provider,request);
     providerJobs.set(request.requestId,{provider,phase:'queued'});renderHealth();
     let release,finishPacing,paceKey='provider:'+provider;const pace=async()=>{finishPacing=await generationPacer.wait(paceKey,signal,ms=>progressNode(n,'Đợi '+Math.ceil(ms/1000)+' giây trước khi gửi lượt AI tiếp theo…'));};try{
-    if(['muse','chatgpt','gemini'].includes(provider)){
+    if(WorkflowAI.providers[provider]?.urls){
       const tabs=await chrome.tabs.query({url:WorkflowAI.providers[provider].urls});const tab=chooseChat(provider,tabs,request.chatTarget);
       request={...request,chatTarget:{tabId:tab.id,url:chatKey(tab.url)}};paceKey='tab:'+tab.id;
       release=await tabQueue.acquire('tab:'+tab.id,signal,()=>progressNode(n,'Đang đợi lượt dùng tab AI này. Bạn có thể chạy nhánh ở tab khác.'));
@@ -312,7 +312,7 @@
     providerJobs.get(request.requestId).phase='busy';renderHealth();
     if(release){const tabs=await chrome.tabs.query({url:WorkflowAI.providers[provider].urls});chooseChat(provider,tabs,request.chatTarget);if(signal?.aborted)throw new DOMException('Đã dừng.','AbortError');}
     if(provider==='muse'){const referenceImages=await Promise.all((request.referenceImages||[]).map(url=>blobAsDataUrlFromUrl(url))),referenceVideos=await Promise.all((request.referenceVideos||[]).map(url=>blobAsDataUrlFromUrl(url)));await pace();const reply=await museTabMessage({...request,referenceImages,referenceVideos,type:'MUSEFLOW_GENERATE'},preferredMuseTabId,signal);if(!reply?.ok){setProviderHealth(provider,failureHealth(reply?.error),reply?.error||'Muse không trả kết quả.',true);return reply;}setProviderHealth(provider,'ready','Đã nhận kết quả');if(reply.chatTarget){n.data.chatTarget=reply.chatTarget;if(aiChatTargets.muse?.tabId===reply.chatTarget.tabId)aiChatTargets.muse=reply.chatTarget;}return reply;}
-    if(provider==='chatgpt'||provider==='gemini'){
+    if(provider!=='muse'&&WorkflowAI.providers[provider]?.urls){
       const safe={...request};safe.referenceImages=await Promise.all((request.referenceImages||[]).map(url=>blobAsDataUrlFromUrl(url)));safe.referenceVideos=await Promise.all((request.referenceVideos||[]).map(url=>blobAsDataUrlFromUrl(url)));
       try{await pace();const reply=await otherTabMessage(provider,{...safe,type:'WORKFLOW_AI_GENERATE'},signal);if(!reply?.ok){setProviderHealth(provider,failureHealth(reply?.error),reply?.error||'Chưa nhận kết quả.',true);return reply;}setProviderHealth(provider,'ready','Đã nhận kết quả');if(reply.chatTarget){n.data.chatTarget=reply.chatTarget;if(aiChatTargets[provider]?.tabId===reply.chatTarget.tabId)aiChatTargets[provider]=reply.chatTarget;}return reply;}finally{aiTabs.delete(request.requestId);}
     }
@@ -623,7 +623,7 @@
       node.data.provider ||= 'gemini';body.append(providerControls({...node,type:'generateText'}));
       button(storyPlanning.has(node.id)?'■ Dừng chia kịch bản':'AI chia hồi/cảnh',async()=>{if(storyPlanning.has(node.id)){stopGeneration(node.id);return;}if(state.isRunning)throw Error('Đợi lượt chạy hiện tại hoàn tất trước.');storyPlanning.add(node.id);try{await execute(node.id);}finally{storyPlanning.delete(node.id);render();}},state.isRunning&&!storyPlanning.has(node.id));
       if(node.data.plan!==undefined){const planField=toolField(body,node,'plan','Bản chia hồi/cảnh — có thể sửa trước khi tạo node',{type:'textarea'});planField.disabled=state.isRunning;WorkflowStoryReferences.attach(planField,node.id);button('Bỏ bản chia AI',()=>{delete node.data.plan;delete node.data.planSource;render();scheduleAutoSave();},state.isRunning);}
-      studioSelect(body,node,'storyImageProvider','AI tạo ảnh',Object.entries(WorkflowAI.providers).filter(([,p])=>p.types.includes('image')).map(([id,p])=>[id,p.name]),'gemini');studioSelect(body,node,'storyVideoProvider','AI tạo video',[['muse','Muse · tab'],['google','Google Veo · API']],'muse');studioSelect(body,node,'storySize','Tỷ lệ mặc định',[['16:9','Ngang 16:9'],['9:16','Dọc 9:16'],['1:1','Vuông 1:1']],'16:9');
+      studioSelect(body,node,'storyImageProvider','AI tạo ảnh',Object.entries(WorkflowAI.providers).filter(([,p])=>p.types.includes('image')).map(([id,p])=>[id,p.name]),'gemini');studioSelect(body,node,'storyVideoProvider','AI tạo video',Object.entries(WorkflowAI.providers).filter(([,p])=>p.types.includes('video')).map(([id,p])=>[id,p.name]),'muse');studioSelect(body,node,'storySize','Tỷ lệ mặc định',[['16:9','Ngang 16:9'],['9:16','Dọc 9:16'],['1:1','Vuông 1:1']],'16:9');
       button('Tạo bản dựng mới',()=>{if(state.isRunning)throw Error('Dừng chạy trước.');const copy=makeNode('masterScript',node.x,node.y+600);copy.data={...structuredClone(node.data),filmId:undefined,actIds:[],storyBuildSource:undefined,asset:undefined,status:'idle',componentId:undefined};const registered=new Set(Object.values(node.data.storyReferenceNodes||{})),refs=getIncoming(node.id,'reference').filter(ref=>!registered.has(ref.source)).map(ref=>({...ref,id:uid('edge'),target:copy.id})),copies=[];copy.data.storyReferenceNodes={};for(const [tag,id] of Object.entries(node.data.storyReferenceNodes||{})){const source=nodeById(id);if(!source)continue;const input=makeNode('imageInput',copy.x-330,copy.y+copies.length*280);input.data={...structuredClone(source.data),storyReferenceOwner:copy.id,componentId:undefined};if(input.data.asset)input.data.asset={...input.data.asset,id:uid('asset'),sourceNodeId:input.id};copies.push(input);Object.defineProperty(copy.data.storyReferenceNodes,tag,{value:input.id,writable:true,enumerable:true,configurable:true});refs.push({id:uid('edge'),source:input.id,sourcePort:'image',target:copy.id,targetPort:'reference'});}state.nodes.push(copy,...copies);state.edges.push(...refs);try{buildMasterStory(copy);}catch(error){const failed=new Set([copy.id,...copies.map(n=>n.id)]);state.nodes=state.nodes.filter(n=>!failed.has(n.id));state.edges=state.edges.filter(e=>!failed.has(e.target)&&!failed.has(e.source));render();throw error;}},state.isRunning);
       for(const id of node.data.actIds||[]){const act=nodeById(id),assembly=nodeById(act?.data.assemblyId);if(!act)continue;help(act.data.customName);button('Xem node '+act.data.customName,()=>storyFocus(act));button('▶ Chạy '+act.data.customName,()=>execute(assembly.id),!assembly||!!runForNode(assembly.id));button('⇩ Tải '+act.data.customName,()=>storyDownload(assembly),!assembly?.data.asset?.url||!!assembly?.data.storyDirty);}
       help('Dùng @1, @2… trong từng cảnh rồi mở Ảnh tham chiếu của kịch bản để nhập ảnh. Mỗi cảnh chỉ nối đúng mã được nhắc; ảnh nối thủ công vào cổng tham chiếu vẫn dùng chung. Hồi/Chương → Phần → Đoạn → Cảnh → Ảnh → Video. Chạy và tải từng cấp; dùng lại kết quả đã có. Nếu thiếu Prompt ảnh, dùng mô tả cảnh làm yêu cầu tạo khung đầu. Kịch bản văn xuôi cần AI chia rồi bạn kiểm tra trước khi tạo node.');
@@ -2553,7 +2553,7 @@
   const workflowReady=loadState(); detectMuse();applyCanvasTransform();
   if(window.workflowDesktop)window.WorkflowAffiliate=Object.freeze({create:async(input)=>{
     await workflowReady;if(state.isRunning)throw Error('Chờ workflow hiện tại hoàn tất trước khi thêm affiliate.');
-    if(!input||!Array.isArray(input.scenes)||input.scenes.length<(input.scriptOrigin==='user'?1:3)||input.scenes.length>(input.scriptOrigin==='user'?12:5)||!Array.isArray(input.images)||!input.images.length||input.images.length>5||!['muse','google'].includes(input.videoProvider))throw Error('Dữ liệu affiliate không hợp lệ.');
+    if(!input||!Array.isArray(input.scenes)||input.scenes.length<(input.scriptOrigin==='user'?1:3)||input.scenes.length>(input.scriptOrigin==='user'?12:5)||!Array.isArray(input.images)||!input.images.length||input.images.length>5||!['muse','google','flow','grok'].includes(input.videoProvider))throw Error('Dữ liệu affiliate không hợp lệ.');
     const existing=state.nodes.find(n=>n.data.affiliateJobId===input.jobId);if(existing)return {existing:true};
     const nodes=[],edges=[],videos=[],voices=[],baseY=Math.max(100,...state.nodes.map(n=>n.y+500)),make=(type,x,y,data)=>{const n=makeNode(type,x,y);n.data={...n.data,...data,affiliateJobId:input.jobId};nodes.push(n);return n;},edge=(source,sourcePort,target,targetPort)=>edges.push({id:uid('edge'),source:source.id,sourcePort,target:target.id,targetPort});
     for(const [i,scene]of input.scenes.entries()){

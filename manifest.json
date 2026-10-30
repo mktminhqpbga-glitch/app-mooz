@@ -4,8 +4,8 @@
     "extension_pages": "script-src 'self'; object-src 'none'; connect-src 'self' https: wss: ws://127.0.0.1:*"
   },
   "name": "Workflow Connect",
-  "version": "1.3.0",
-  "description": "Kết nối các tab Muse, Gemini và ChatGPT trong Chrome với ứng dụng Workflow.",
+  "version": "1.4.0",
+  "description": "Kết nối Muse, ChatGPT, Gemini, Grok và Google Flow/Veo với MooZ.",
   "action": {
     "default_title": "Kết nối Workflow",
     "default_icon": {
@@ -36,7 +36,12 @@
     "https://raw.githubusercontent.com/mktminhqpbga-glitch/app-mooz/*",
     "https://www.chatgpt.com/*",
     "https://chat.openai.com/*",
-    "http://127.0.0.1/*"
+    "http://127.0.0.1/*",
+    "https://grok.com/*",
+    "https://www.grok.com/*",
+    "https://labs.google/fx/tools/flow*",
+    "https://labs.google/fx/*/tools/flow*",
+    "https://flow.google.com/*"
   ],
   "content_scripts": [
     {
@@ -56,7 +61,12 @@
         "https://chatgpt.com/*",
         "https://gemini.google.com/*",
         "https://www.chatgpt.com/*",
-        "https://chat.openai.com/*"
+        "https://chat.openai.com/*",
+        "https://grok.com/*",
+        "https://www.grok.com/*",
+        "https://labs.google/fx/tools/flow*",
+        "https://labs.google/fx/*/tools/flow*",
+        "https://flow.google.com/*"
       ],
       "js": [
         "ai-activity.js",

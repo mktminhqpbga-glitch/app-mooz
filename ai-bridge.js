@@ -2,20 +2,22 @@
 (() => {
   if(globalThis.__workflowAIBridge)return;globalThis.__workflowAIBridge=true;
   const isGPT=/(^|\.)chatgpt\.com$/.test(location.hostname)||location.hostname==='chat.openai.com';
+  const isGrok=/^(?:www\.)?grok\.com$/.test(location.hostname),isFlow=location.hostname==='flow.google.com'||location.hostname==='labs.google'&&/^\/fx\/(?:[a-z]{2}(?:-[A-Za-z]{2})?\/)?tools\/flow(?:\/|$)/.test(location.pathname);
+  const provider=isGPT?'chatgpt':isGrok?'grok':isFlow?'flow':'gemini';
   const active=new Map(),earlySend=new Set(),manualResults=new Map();let busy=false,lastScan=null,currentRequest=null;
   const visible=el=>el&&el.getClientRects().length&&getComputedStyle(el).visibility!=='hidden';
   const activity=globalThis.WorkflowAIActivity,readable=el=>activity?activity.readable(el):visible(el);
   function composer(){
     const selectors=isGPT
       ? '#prompt-textarea,textarea[data-id="root"],#composer-background [contenteditable="true"],form [contenteditable="true"],[contenteditable="true"][role="textbox"],main [contenteditable="true"],textarea[placeholder],textarea[aria-label]'
-      : 'rich-textarea [contenteditable="true"],[contenteditable="true"][role="textbox"],textarea';
-    const score=el=>(!isGPT&&el.closest('rich-textarea')?40:0)+(el.id==='prompt-textarea'?100:0)+(el.closest('#composer-background,[data-testid="composer"],form')?30:0)+(el.getAttribute('role')==='textbox'?10:0)+(/hỏi chatgpt|ask chatgpt|ask anything|message|gửi|nhắn|prompt/i.test([el.getAttribute('placeholder'),el.getAttribute('aria-label'),el.getAttribute('data-placeholder')].join(' '))?20:0);
+      : 'rich-textarea [contenteditable="true"],[contenteditable="true"][role="textbox"],[contenteditable="true"][data-lexical-editor],[contenteditable="true"][data-placeholder],textarea';
+    const score=el=>(!isGPT&&el.closest('rich-textarea')?40:0)+(el.id==='prompt-textarea'||isFlow&&el.id==='PINHOLE_TEXT_AREA_ELEMENT_ID'?100:0)+(el.closest('#composer-background,[data-testid="composer"],form')?30:0)+(el.getAttribute('role')==='textbox'||isFlow&&el.hasAttribute('data-lexical-editor')?10:0)+(/hỏi chatgpt|ask chatgpt|ask anything|ask grok|message|gửi|nhắn|prompt|describe|imagine|what.*create|mô tả|tạo/i.test([el.getAttribute('placeholder'),el.getAttribute('aria-label'),el.getAttribute('data-placeholder')].join(' '))?20:0);
     const candidates=[...document.querySelectorAll(selectors)].filter(el=>
       (el instanceof HTMLTextAreaElement||el.isContentEditable)&&(visible(el)||activity&&busy&&readable(el))&&!el.matches(':disabled')&&!el.readOnly&&el.getAttribute('aria-disabled')!=='true'&&el.getAttribute('aria-readonly')!=='true'&&!el.closest('article,[data-message-author-role],[data-turn],[data-testid*="writing-block"],[data-type="writing-block"],.writing-block,[data-testid="canvas-editor"],[data-testid="canvas"],model-response,user-query,pre,code,[role="dialog"],[role="search"],nav,header')&&score(el)>0
     );
     return candidates.sort((a,b)=>score(b)-score(a))[0]||null;
   }
-  const historySelector='model-response,user-query,[data-message-author-role],[data-testid^="conversation-turn-"]';
+  const historySelector='model-response,user-query,[data-message-author-role],[data-role="assistant"],[data-role="user"],.response-content-markdown,[data-testid^="conversation-turn-"]';
   // Never use <main>: Gemini keeps the conversation and composer under it.
   function root(el){
     if(!el)throw new Error('Không tìm thấy ô nhập AI. Mở trang chat rồi thử lại.');
@@ -32,15 +34,17 @@
   }
   const buttons=(scope=document)=>[...scope.querySelectorAll('button,[role="button"]')].filter(visible);
   const label=el=>`${el.getAttribute('aria-label')||''} ${el.getAttribute('data-testid')||''} ${el.getAttribute('title')||''} ${el.textContent||''}`;
-  const stopped=()=>[...document.querySelectorAll('button,[role="button"]')].filter(readable).find(el=>!el.disabled&&el.getAttribute('aria-disabled')!=='true'&&(/stop generating|stop streaming|stop response|dừng phát trực tuyến|dừng phản hồi|dừng trả lời|dừng tạo|stop-button/i.test(label(el))||el.matches('.stop-button,[data-testid="stop-button"]')));
+  const stopped=()=>[...document.querySelectorAll('button,[role="button"]')].filter(readable).find(el=>!el.disabled&&el.getAttribute('aria-disabled')!=='true'&&((isFlow||isGrok)&&/^\s*(?:stop|dừng|stop_circle)\s*$/i.test(label(el))||/stop generating|stop streaming|stop response|dừng phát trực tuyến|dừng phản hồi|dừng trả lời|dừng tạo|stop-button/i.test(label(el))||el.matches('.stop-button,[data-testid="stop-button"]')));
+  const generating=()=>!!((isFlow||isGrok)&&[...document.querySelectorAll('main [role="progressbar"],[data-state="generating"],[data-testid="generation-card"][aria-busy="true"]')].some(readable));
   const send=()=>WorkflowComposer.findSend(root(composer()));
   const writingSelector='[data-testid="writing-block"],[data-testid^="writing-block-"],[data-type="writing-block"],.writing-block';
   function replies(){
-    const selector=isGPT?'[data-message-author-role="assistant"],[data-turn="assistant"],'+writingSelector:'model-response,.model-response,[data-message-author-role="model"],[data-message-author-role="assistant"],.model-response-text,.markdown-main-panel,message-content';
+    if(isFlow||isGrok&&currentRequest?.mediaType!=='text'){const media=[...document.querySelectorAll(currentRequest?.mediaType==='image'?'img':'video')].filter(el=>readable(el)&&!el.closest('form,[role="dialog"],nav,header,[data-role="user"],[data-message-author-role="user"],[data-turn="user"]')&&!root(composer())?.contains(el));return [...new Set(media.map(el=>el.closest('[data-testid="generation-card"],[data-testid="asset-card"],[data-generation-id],[data-item-id],article')||el))];}
+    const selector=isGrok?'[data-role="assistant"],[data-message-author-role="assistant"],.response-content-markdown,[data-testid="assistant-message"]':isGPT?'[data-message-author-role="assistant"],[data-turn="assistant"],'+writingSelector:'model-response,.model-response,[data-message-author-role="model"],[data-message-author-role="assistant"],.model-response-text,.markdown-main-panel,message-content';
     const nodes=[...document.querySelectorAll(selector)];
     if(isGPT)for(const turn of document.querySelectorAll('article[data-testid^="conversation-turn-"],[data-testid^="conversation-turn-"]')){if(!turn.matches('[data-turn="user"]')&&!turn.querySelector('[data-message-author-role="user"],[data-turn="user"]')&&turn.querySelector('[data-testid="copy-turn-action-button"],'+writingSelector+',.markdown.prose'))nodes.push(turn);}
     if(isGPT)for(const copy of document.querySelectorAll('[data-testid="copy-turn-action-button"]')){const turn=copy.closest('article,[data-testid^="conversation-turn-"]');if(turn&&!turn.querySelector('[data-message-author-role="user"],[data-turn="user"]'))nodes.push(turn);}
-    const candidates=[...new Set(nodes)].filter(el=>!el.closest('user-query,[data-message-author-role="user"],[data-turn="user"]')&&(!composer()||!el.contains(composer())));
+    const candidates=[...new Set(nodes)].filter(el=>!el.closest('user-query,[data-message-author-role="user"],[data-turn="user"],[data-role="user"]')&&(!composer()||!el.contains(composer())));
     const rendered=candidates.filter(el=>readable(el)||[...el.querySelectorAll('p,div,img,pre')].some(readable));
     return rendered.filter(el=>!rendered.some(parent=>parent!==el&&parent.contains(el)));
   }
@@ -73,7 +77,9 @@
   const uploading=()=>root(composer()).querySelector('[role="progressbar"],[aria-busy="true"],[data-state="uploading"],[data-status="uploading"],.animate-spin');
   async function wait(check,ms,signal,message){const end=Date.now()+ms;while(Date.now()<end){WorkflowComposer.assertService(currentRequest);if(signal?.aborted)throw new DOMException('Đã dừng.','AbortError');const result=await check();if(signal?.aborted)throw new DOMException('Đã dừng.','AbortError');if(result)return result;if(activity)await activity.wait(180,signal);else await new Promise(resolve=>setTimeout(resolve,180));}throw new Error(message);}
   async function imageFingerprint(blob){return [...new Uint8Array(await crypto.subtle.digest('SHA-256',await blob.arrayBuffer()))].map(b=>b.toString(16).padStart(2,'0')).join('');}
-  const imageSources=el=>[...el.querySelectorAll('img')].map(img=>img.currentSrc||img.src).filter(Boolean);
+  const mediaNodes=(el,tag)=>[...(el.matches?.(tag)?[el]:[]),...el.querySelectorAll(tag)];
+  const videoSources=el=>mediaNodes(el,'video').map(v=>v.currentSrc||v.src||v.querySelector('source')?.src).filter(Boolean);
+  const imageSources=el=>mediaNodes(el,'img').map(img=>img.currentSrc||img.src).filter(Boolean);
   function setText(el,text){
     el.focus();
     if(el instanceof HTMLTextAreaElement){Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set.call(el,text);el.dispatchEvent(new InputEvent('input',{bubbles:true,inputType:'insertText',data:text}));}
@@ -85,7 +91,7 @@
   }
   async function clearDraft(signal){
     const el=await wait(composer,5000,signal,'Ô nhập AI đang tải hoặc chưa được nhận diện. Tải lại tab AI rồi thử lại.');
-    if(stopped())throw new Error('AI đang trả lời. Hãy đợi hoặc dừng câu trả lời hiện tại.');
+    if(stopped()||generating())throw new Error('AI đang trả lời. Hãy đợi hoặc dừng câu trả lời hiện tại.');
     setText(el,'');
     const scope=root(el);const remove=()=>WorkflowComposer.removeButtons(root(composer()),composer());
     for(const b of remove())b.click();
@@ -116,16 +122,19 @@
     return fingerprints;
   }
   async function generate(request,signal){
+    if(isFlow&&request.mediaType==='text')throw Error('Google Flow tạo ảnh/video; chọn Grok, Gemini, ChatGPT hoặc Muse để viết văn bản.');
+    if((isFlow||isGrok)&&request.referenceVideos?.length)throw Error('Bộ nối này chưa tải video tham chiếu. Chưa gửi prompt.');
+    if(request.mediaType==='video'&&!isFlow&&!isGrok)throw Error('Tab này chưa hỗ trợ nhận video.');
     currentRequest=request;await WorkflowComposer.waitTurn(request,'prepare',signal,text=>report(request,text));
     if(!String(request.prompt||'').trim())throw new Error('Yêu cầu trống.');
     const deadline=Date.now()+120000,initialOrigin=location.origin;let conversation=initialOrigin+location.pathname;
     const initialPath=location.pathname.replace(/\/$/,'');
-    const startsNewChat=isGPT?/^(?:|\/g\/[^/]+(?:\/project)?)$/.test(initialPath):/^(?:\/u\/\d+)?\/app$/.test(initialPath);
-    const assignedPrefix=isGPT?(initialPath.replace(/\/project$/,'')+'/c/'):initialPath+'/';
+    const startsNewChat=isGrok?/^(?:|\/imagine)$/.test(initialPath):isGPT?/^(?:|\/g\/[^/]+(?:\/project)?)$/.test(initialPath):/^(?:\/u\/\d+)?\/app$/.test(initialPath);
+    const assignedPrefix=isGrok?(initialPath==='/imagine'?'/imagine/post/':'/c/'):isGPT?(initialPath.replace(/\/project$/,'')+'/c/'):initialPath+'/';
     let conversationAssigned=false;
     const markerId=crypto.randomUUID().replaceAll('-',''),opening=`[[WF:${markerId}]]`,closing=`[[/WF:${markerId}]]`;
     const format=request.mediaType==='text'?`Dòng đầu chỉ ghi ${opening}; dòng cuối chỉ ghi ${closing}. Đặt toàn bộ kết quả ở giữa, không thêm lời dẫn.`:'';
-    const wireText=[request.rules,format,request.prompt].filter(Boolean).join('\n\n');
+    const wireText=[request.rules,format,request.prompt,...((isGrok||isFlow)&&request.mediaType!=='text'?[`Tạo ${request.mediaType==='video'?'video':'ảnh'}${request.size?' tỷ lệ '+request.size:''}${request.mediaType==='video'&&request.duration!=null?', thời lượng mong muốn '+request.duration+' giây':''}.`]:[])].filter(Boolean).join('\n\n');
     const escape=value=>value.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
     const markedResult=reply=>{
       if(request.mediaType!=='text')return '';
@@ -136,11 +145,11 @@
     };
 
     await clearDraft(signal);
-    const replySnapshot=el=>request.mediaType==='image'?replyText(el)+'\n'+imageSources(el).join('\n'):replyText(el);
+    const replySnapshot=el=>request.mediaType==='video'?replyText(el)+'\n'+videoSources(el).join('\n'):request.mediaType==='image'?replyText(el)+'\n'+imageSources(el).join('\n'):replyText(el);
     const before=new Map(replies().map(el=>[el,replySnapshot(el)]));
-    const baselineImages=new Set(imageSources(document));
+    const baselineImages=new Set(imageSources(document)),baselineVideos=new Set(videoSources(document));
     const users=()=>{
-      const all=[...document.querySelectorAll(isGPT?'[data-message-author-role="user"],[data-turn="user"]':'user-query,.user-query-container,[data-message-author-role="user"]')];
+      const all=[...document.querySelectorAll(isGPT||isGrok?'[data-message-author-role="user"],[data-turn="user"],[data-role="user"]':'user-query,.user-query-container,[data-message-author-role="user"]')];
       return all.filter(el=>!all.some(parent=>parent!==el&&parent.contains(el)));
     };
     const priorUsers=new Map(users().map(el=>[el,el.textContent]));
@@ -156,7 +165,7 @@
       // still usable inside a single response block, never across the whole page.
       if(request.mediaType==='text'){
         const marked=[...document.querySelectorAll('section,article,div,p,pre,message-content')].filter(el=>
-          readable(el)&&!known.some(parent=>parent.contains(el))&&!el.contains(composer())&&!el.closest('form,user-query,.user-query-container,[data-message-author-role="user"],[data-turn="user"],nav,header')&&el.textContent.includes(opening)&&el.textContent.includes(closing)&&markedResult(el));
+          readable(el)&&!known.some(parent=>parent.contains(el))&&!el.contains(composer())&&!el.closest('form,user-query,.user-query-container,[data-message-author-role="user"],[data-turn="user"],[data-role="user"],nav,header')&&el.textContent.includes(opening)&&el.textContent.includes(closing)&&markedResult(el));
         fresh.push(...marked.filter(el=>!marked.some(child=>child!==el&&el.contains(child))));
       }
       return fresh;
@@ -168,6 +177,7 @@
         // no different user turn appeared, and the reply is after the old tail.
         const input=composer(),draft=normalize(input?.value??input?.innerText);
         if(draft===normalize(wireText)||users().some(el=>!priorUsers.has(el)||priorUsers.get(el)!==el.textContent))return false;
+        if(isFlow)return !before.has(reply);
         const tail=[...before.keys()].at(-1),anchor=tail?.isConnected?tail:replies().find(el=>replySnapshot(el)===before.get(tail));
         return !before.has(reply)&&(!tail||anchor&&!!(anchor.compareDocumentPosition(reply)&Node.DOCUMENT_POSITION_FOLLOWING));
       }
@@ -198,7 +208,7 @@
     if(!submitted()){
       before.clear();for(const el of replies())before.set(el,replySnapshot(el));
       priorUsers.clear();for(const el of users())priorUsers.set(el,el.textContent);
-      for(const src of imageSources(document))baselineImages.add(src);
+      for(const src of imageSources(document))baselineImages.add(src);for(const src of videoSources(document))baselineVideos.add(src);
       const text=wireText;
       const editor=await wait(composer,5000,signal,'Ô nhập AI vừa thay đổi. Tải lại tab AI rồi thử lại.');
       setText(editor,text);prepared=true;
@@ -225,7 +235,7 @@
             WorkflowComposer.assertService(request);checkConversation();WorkflowComposer.assertUpload(root(composer()));
             if(normalized(composer()?.value??composer()?.innerText)!==normalized(wireText))throw Error('Prompt đã thay đổi trong lúc chờ lượt. Chưa gửi AI; kiểm tra lại ô soạn thảo.');
             button=send();if(!button||uploading())throw Error('Ô chat chưa sẵn sàng sau khi chờ lượt. Chưa gửi AI.');
-            for(const src of imageSources(document))baselineImages.add(src);
+            for(const src of imageSources(document))baselineImages.add(src);for(const src of videoSources(document))baselineVideos.add(src);
           }while(permit.expiresAt<=Date.now());
           if(button!==true){button.click();await WorkflowComposer.sent(request);report(request,'Đã bấm Gửi. Đang xác nhận AI nhận yêu cầu…');}
         }
@@ -244,12 +254,20 @@
     const result=await wait(async()=>{
       checkConversation();
       const fresh=freshReplies().filter(currentReply);const reply=fresh.at(-1);
-      lastScan={provider:isGPT?'chatgpt':'gemini',kind:request.mediaType,replies:replies().length,current:fresh.length,images:reply?.querySelectorAll('img').length||0};
+      lastScan={provider,kind:request.mediaType,replies:replies().length,current:fresh.length,images:reply?.querySelectorAll('img').length||0};
       if(!reply)return false;
+      if(isFlow&&fresh.length>1)throw Error('Có nhiều kết quả mới trong Flow; chưa tự chọn để tránh lấy nhầm. Kiểm tra tab và dùng Khôi phục thủ công.');
       const text=replyText(reply);if(!reportedReply&&text){reportedReply=true;report(request,'Đã thấy phản hồi. Đang đợi AI hoàn tất…');}if(text!==last){last=text;since=Date.now();}
-      if(stopped()||reply.matches('[aria-busy="true"],[data-is-streaming="true"]')||reply.querySelector('[aria-busy="true"],[data-is-streaming="true"]')||Date.now()-since<3500)return false;
+      if(stopped()||generating()||reply.matches('[aria-busy="true"],[data-is-streaming="true"]')||reply.querySelector('[aria-busy="true"],[data-is-streaming="true"]')||Date.now()-since<3500)return false;
       if(request.mediaType==='text'){if(text.includes(opening)&&!text.includes(closing))return false;const clean=markedResult(reply)||text.replaceAll(opening,'').replaceAll(closing,'').trim();return clean?{ok:true,text:clean}:false;}
-      const images=[...reply.querySelectorAll('img')].filter(img=>readable(img)&&(activity||img.naturalWidth>=256&&img.naturalHeight>=256)&&!img.closest('user-query,[data-message-author-role="user"],[data-turn="user"],[data-testid*="avatar" i],[class*="avatar" i]')&&!baselineImages.has(img.currentSrc||img.src)&&Boolean(img.currentSrc||img.src));
+      if(request.mediaType==='video'){
+        const videos=mediaNodes(reply,'video').filter(v=>readable(v)&&!baselineVideos.has(v.currentSrc||v.src||v.querySelector('source')?.src)&&!v.closest('[data-role="user"],[data-message-author-role="user"],[data-turn="user"],[class*="avatar" i]'));
+        const video=videos.at(-1),src=video&&(video.currentSrc||video.src||video.querySelector('source')?.src);if(!src||video.readyState<2||!video.videoWidth||!(video.duration>0)||!Number.isFinite(video.duration))return false;
+        if(lastImage!==src){lastImage=src;imageSince=Date.now();}if(Date.now()-imageSince<1500||Date.now()<nextImageRead)return false;
+        try{const response=await fetch(src,{signal});if(!response.ok)throw Error('Không tải được video.');const blob=await response.blob();if(!blob.type.startsWith('video/')||!blob.size||blob.size>100*1024*1024)throw Error('Video chưa có tệp hợp lệ hoặc vượt 100 MB.');const url=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(reader.error);reader.readAsDataURL(blob);});return {ok:true,url};}
+        catch(error){if(signal.aborted)throw error;nextImageRead=Date.now()+8000;report(request,'Đã thấy video mới nhưng chưa đọc được tệp. Mở kết quả trong tab AI để kiểm tra quyền tải; chưa đánh dấu hoàn tất.');return false;}
+      }
+      const images=mediaNodes(reply,'img').filter(img=>readable(img)&&(activity||img.naturalWidth>=256&&img.naturalHeight>=256)&&!img.closest('user-query,[data-message-author-role="user"],[data-turn="user"],[data-role="user"],[data-testid*="avatar" i],[class*="avatar" i]')&&!baselineImages.has(img.currentSrc||img.src)&&Boolean(img.currentSrc||img.src));
       const image=images.at(-1);if(!image){lastImage='';return false;}
       const src=image.currentSrc||image.src,key=src+'|'+image.naturalWidth+'x'+image.naturalHeight;
       if(key!==lastImage){lastImage=key;imageSince=Date.now();nextImageRead=0;imageFailures=0;}if(Date.now()-imageSince<1500||Date.now()<nextImageRead)return false;
@@ -261,9 +279,9 @@
   chrome.runtime.onMessage.addListener((request,sender,respond)=>{
     if(sender.id!==chrome.runtime.id)return false;
     if(request.type==='WORKFLOW_AI_CHECK'){
-      const capabilities=()=>({sendProtocol:1,...(WorkflowComposer.serviceState()?{block:WorkflowComposer.serviceState()}:{}),bridgeVersion:chrome.runtime.getManifest?.()?.version||'0.38.2',resultProtocol:3,backgroundProtocol:activity?1:0,lastScan});
+      const capabilities=()=>({provider,types:isFlow?['image','video']:isGrok?['text','image','video']:['text','image'],sendProtocol:1,...(WorkflowComposer.serviceState()?{block:WorkflowComposer.serviceState()}:{}),bridgeVersion:chrome.runtime.getManifest?.()?.version||'0.38.2',resultProtocol:3,backgroundProtocol:activity?1:0,lastScan});
       if(busy){respond({ok:true,signedIn:true,composer:!!composer(),busy:true,...capabilities()});return false;}
-      wait(composer,3500,null,'Không nhận diện được ô nhập trên trang AI đang mở.').then(()=>respond({ok:true,signedIn:true,composer:true,busy:!!stopped(),...capabilities()}),()=>respond({ok:true,signedIn:false,composer:false,...capabilities(),error:'Tab AI đã kết nối nhưng chưa nhận diện được ô nhập đang chỉnh sửa. Mở cuộc trò chuyện và tải lại tab AI.'}));return true;
+      wait(composer,3500,null,'Không nhận diện được ô nhập trên trang AI đang mở.').then(()=>respond({ok:true,signedIn:true,composer:true,busy:!!stopped()||generating(),...capabilities()}),()=>respond({ok:true,signedIn:false,composer:false,...capabilities(),error:'Tab AI đã kết nối nhưng chưa nhận diện được ô nhập đang chỉnh sửa. Mở cuộc trò chuyện và tải lại tab AI.'}));return true;
     }
     if(request.type==='WORKFLOW_AI_USE_RESULT'){const resolve=manualResults.get(request.requestId);if(!resolve||typeof request.text!=='string'||!request.text.trim()){respond({ok:false});return false;}resolve({ok:true,text:request.text.trim()});respond({ok:true});return false;}
     if(request.type==='WORKFLOW_AI_SEND_NOW'){const pending=active.has(request.requestId);if(pending)earlySend.add(request.requestId);respond({ok:pending});return false;}

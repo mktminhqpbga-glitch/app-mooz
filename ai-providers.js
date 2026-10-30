@@ -4,7 +4,9 @@
     muse: {name:'Muse.ai · tab', types:['text','image','video'], urls:['https://muse.ai/*','https://*.muse.ai/*']},
     chatgpt: {name:'ChatGPT · tab', types:['text','image'], urls:['https://chatgpt.com/*','https://www.chatgpt.com/*','https://chat.openai.com/*']},
     gemini: {name:'Gemini · tab', types:['text','image'], urls:['https://gemini.google.com/*']},
-    google: {name:'Google Gemini / Veo · API', types:['text','image','video']},
+    grok: {name:'Grok · tab', types:['text','image','video'], urls:['https://grok.com/*','https://www.grok.com/*']},
+    flow: {name:'Google Flow / Veo · tab', types:['image','video'], urls:['https://flow.google.com/*','https://labs.google/fx/tools/flow*','https://labs.google/fx/*/tools/flow*']},
+    google: {name:'Google Gemini / Veo 3 · API', types:['text','image','video']},
     openai: {name:'OpenAI · API', types:['text','image']},
     fal: {name:'fal.ai Kling Motion Control · API', types:['video']}
   };
@@ -13,6 +15,7 @@
   const sleep = (ms,signal) => new Promise((resolve,reject)=>{abort(signal);const cancel=()=>{clearTimeout(timer);reject(new DOMException('Đã dừng.','AbortError'));};const timer=setTimeout(()=>{signal?.removeEventListener('abort',cancel);resolve();},ms);signal?.addEventListener('abort',cancel,{once:true});});
   async function json(url,options={}) {
     const r=await fetch(url,{...options,redirect:'error'});
+    if(!r.ok&&[404,410].includes(r.status)&&url.includes(':predictLongRunning'))throw new Error(`Veo API trả HTTP ${r.status}: model có thể đã ngừng hỗ trợ hoặc chưa được cấp quyền. Kiểm tra model Google; có thể chọn Google Flow / Veo · tab. Chưa tự chuyển model hay gửi lại.`);
     if(!r.ok)throw new Error(`API trả về HTTP ${r.status}. Kiểm tra khóa, quyền model, hạn mức và đầu vào.`);
     return r.json();
   }
@@ -31,6 +34,7 @@
   }
   function validate(provider,r) {
     if(!providers[provider]?.types.includes(r.mediaType))throw new Error('AI này không hỗ trợ loại đầu ra đã chọn.');
+    if(r.referenceVideos?.length&&['grok','flow'].includes(provider))throw new Error('Bộ nối Grok/Flow hiện nhận ảnh tham chiếu; chưa hỗ trợ tải video gốc.');
     if(r.referenceVideos?.length&&provider==='openai')throw new Error('OpenAI adapter chưa hỗ trợ video gốc. Chọn Gemini để phân tích video.');
     if(r.mediaType==='video'&&provider==='google'&&r.referenceVideos?.length)throw new Error('Veo adapter chưa hỗ trợ Motion Control. Chọn fal.ai.');
     if(r.mediaType==='video'&&provider==='google'&&(r.referenceImages||[]).length>1)throw new Error('Veo adapter chỉ nhận một ảnh khởi đầu.');

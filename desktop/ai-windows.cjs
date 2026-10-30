@@ -5,7 +5,7 @@ const {providerForURL, matchesPattern} = require('./policy.cjs');
 const WORLD = 1001;
 const FILES = new Set(['ai-activity.js', 'composer-controls.js', 'ai-bridge.js', 'muse-bridge.js', 'result-picker.js', 'muse-support.js']);
 const TYPES = new Set(['WORKFLOW_AI_CHECK', 'WORKFLOW_AI_GENERATE', 'WORKFLOW_AI_STOP', 'WORKFLOW_AI_SEND_NOW', 'WORKFLOW_AI_USE_RESULT', 'MUSEFLOW_CHECK_SESSION', 'MUSEFLOW_GENERATE', 'MUSEFLOW_STOP_GENERATION', 'MUSEFLOW_JOB_STATUS', 'MUSEFLOW_JOB_START', 'MUSEFLOW_JOB_ACK']);
-const URLS = {chatgpt: 'https://chatgpt.com/', gemini: 'https://gemini.google.com/app', muse: 'https://muse.ai/'};
+const URLS=Object.fromEntries(Object.entries(require('../ai-sites.js').sites).map(([id,s])=>[id,s.start]));
 class AIWindows {
   constructor(root, version, notify, readPreferred) {this.root=root; this.version=version; this.notify=notify; this.readPreferred=readPreferred; this.windows=new Map();}
   tab(win) {return {id:win.webContents.id, windowId:win.webContents.id, url:win.webContents.getURL(), title:win.webContents.getTitle()};}

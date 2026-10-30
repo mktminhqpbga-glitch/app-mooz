@@ -1,4 +1,6 @@
-# Workflow · MuseFlow 0.51.0
+# Workflow · MuseFlow 0.52.0
+
+**0.52.0 · Thêm AI:** Grok (văn bản/ảnh/video), Google Flow (ảnh/video qua tab), tên Veo 3 API rõ ràng; chọn tab trong workflow, Agent và hàng loạt. Cần Workflow Connect 1.4.0. [Cách kết nối và giới hạn](docs/AI-CONNECTORS.md).
 
 **0.51.0 · Relay Internet:** app và Chrome cùng mở WSS ra một relay Node.js, không cần tunnel/Tailscale/tên miền. Có bộ [triển khai Render Free](https://render.com/deploy?repo=https://github.com/mktminhqpbga-glitch/app-mooz), ghép một lần, mã hóa nội dung hai đầu, chia nhỏ ảnh/video và khôi phục kết nối có kiểm soát. Cần **Workflow Connect 1.3.0** cho chế độ này. [Hướng dẫn triển khai và hạn mức](docs/OUTBOUND-RELAY.md).
 

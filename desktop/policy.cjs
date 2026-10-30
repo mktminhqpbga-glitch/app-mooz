@@ -15,14 +15,7 @@ function parseURL(value) {
   }
 }
 
-function providerForURL(value) {
-  const url = parseURL(value);
-  if (!url || url.protocol !== 'https:' || url.port) return null;
-  if (['chatgpt.com', 'www.chatgpt.com', 'chat.openai.com'].includes(url.hostname)) return 'chatgpt';
-  if (url.hostname === 'gemini.google.com') return 'gemini';
-  if (url.hostname === 'muse.ai' || url.hostname.endsWith('.muse.ai')) return 'muse';
-  return null;
-}
+const {providerForURL}=require('../ai-sites.js');
 
 // Deliberately limited to the HTTPS match patterns used by the AI connectors.
 // Chrome's *.example.com includes both the bare domain and its subdomains.

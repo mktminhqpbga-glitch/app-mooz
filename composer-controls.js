@@ -97,7 +97,7 @@
       const text=label(el);
       if(icon(el,'remove')||/remove|delete|attach|upload|stop|cancel|close|xóa|xoá|đính kèm|tải lên|dừng|hủy/i.test(text))return null;
       let score=0;
-      if(/send|submit prompt|gửi|发送/i.test(text)||el.matches('.send-button,[data-testid="hatch-composer-send-button"]'))score=3;
+      if(((location.hostname==='flow.google.com'||location.hostname==='labs.google'&&/^\/fx\/(?:[a-z]{2}(?:-[A-Za-z]{2})?\/)?tools\/flow(?:\/|$)/.test(location.pathname))&&/\barrow_forward\b|\bgenerate\b|\btạo\b/i.test(text))||/send|submit prompt|gửi|发送/i.test(text)||el.matches('.send-button,[data-testid="hatch-composer-send-button"]'))score=3;
       else if(icon(el,'send'))score=2;
       else if(el.matches('input[type="submit"]')||el instanceof HTMLButtonElement&&el.type==='submit'&&el.form)score=1;
       return score?{el,score}:null;

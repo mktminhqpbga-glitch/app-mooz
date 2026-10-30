@@ -1,7 +1,7 @@
 /* Real asynchronous batch scheduler. Persist an intent before sending to an AI. */
 (function(root){'use strict';
  const copy=value=>JSON.parse(JSON.stringify(value));
- const capabilities={muse:['vision','text','image','video'],gemini:['vision','text','image'],chatgpt:['vision','text','image'],local:['assemble']};
+ const capabilities={muse:['vision','text','image','video'],gemini:['vision','text','image'],chatgpt:['vision','text','image'],grok:['vision','text','image','video'],flow:['image','video'],local:['assemble']};
  const labels={vision:'Đọc ảnh sản phẩm',text:'Viết kịch bản',image:'Tạo ảnh',video:'Tạo video',assemble:'Ghép thành phẩm'};
  const defaultWorkers=()=>[{id:'local',name:'Trên máy',provider:'local',selected:true,online:true}];
  const defaultWorkflow=()=>({id:'sales',name:'Video bán hàng · Ảnh → Thành phẩm',version:1,ratio:'9:16',scenes:3,duration:null,steps:Object.entries(labels).map(([type,name],i)=>({id:'step-'+i,type,name,provider:type==='assemble'?'local':'muse',prompt:type==='text'?'Viết kịch bản tiếng Việt theo thông tin sản phẩm; chia rõ từng cảnh. Không tự tạo giá bán hoặc công dụng.':type==='video'?'Giữ đúng sản phẩm, màu sắc và nhân vật. Chuyển động tự nhiên, máy quay ổn định.':''}))});

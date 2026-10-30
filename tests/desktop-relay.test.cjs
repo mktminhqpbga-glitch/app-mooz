@@ -64,8 +64,8 @@ function worker(){
  class FakeSocket{static OPEN=1;constructor(url){this.url=url;this.readyState=1;this.bufferedAmount=0;this.sent=[];sockets.push(this);}send(text){this.sent.push(JSON.parse(text));}close(){this.readyState=3;this.onclose?.();}}
  const tabs=[{id:1,windowId:1,url:'https://chatgpt.com/c/existing',title:'Existing chat'},{id:2,windowId:1,url:'https://unrelated.example/private',title:'Private'}];
  const chrome={runtime:{id:'a'.repeat(32),getURL:path=>ORIGIN+'/'+path,onMessage:{addListener:fn=>listeners.push(fn)}},storage:{session:{get:async()=>({}),set:async()=>{},remove:async()=>{}}},tabs:{query:async()=>tabs,get:async id=>tabs.find(tab=>tab.id===id),update:async()=>{},sendMessage:async(id,message)=>{calls.push({type:'message',id,message});return {ok:true};},onUpdated:{addListener(){}},onCreated:{addListener(){}},onRemoved:{addListener(){}}},windows:{update:async()=>{}},scripting:{executeScript:async options=>{calls.push({type:'script',options});return [{result:true}];}}};
- const context={chrome,WebSocket:FakeSocket,URL,setTimeout,clearTimeout,setInterval,clearInterval,console};vm.runInNewContext(readFileSync(require.resolve('../chrome-remote-protocol.js'),'utf8'),context);vm.runInNewContext(readFileSync(require.resolve('../desktop/chrome-relay-worker.js'),'utf8'),context);
- return {context,sockets,listeners,calls};
+ const context={chrome,WorkflowAISites:require('../ai-sites.js'),WebSocket:FakeSocket,URL,setTimeout,clearTimeout,setInterval,clearInterval,console};vm.runInNewContext(readFileSync(require.resolve('../chrome-remote-protocol.js'),'utf8'),context);vm.runInNewContext(readFileSync(require.resolve('../desktop/chrome-relay-worker.js'),'utf8'),context);
+ return {context,sockets,listeners,calls,tabs};
 }
 async function connectWorker(instance){const ready=instance.context.WorkflowChromeRelay.connect('workflow-connect://127.0.0.1:54321/'+'b'.repeat(64));await pause();const socket=instance.sockets[0];socket.onopen();socket.onmessage({data:JSON.stringify({type:'ready'})});await ready;return socket;}
 async function invoke(socket,id,operation,payload){socket.onmessage({data:JSON.stringify({type:'request',id,operation,payload})});for(let i=0;i<5;i++)await pause();return socket.sent.find(message=>message.type==='response'&&message.id===id);}
@@ -93,4 +93,13 @@ test('web pages and content scripts cannot initiate pairing',async()=>{
 
 test('remote companion requires explicit host permission before opening socket and stores only rotated session credentials',async()=>{
  const i=worker(),P=require('../chrome-remote-protocol.js'),endpoint='wss://computer.tail123.ts.net:9443/mooz/remote',code=P.pairing(endpoint,'c'.repeat(64),Date.now()+600000);i.context.chrome.permissions={contains:async()=>false};await assert.rejects(()=>i.context.WorkflowChromeRelay.connect(code),/Chưa cấp quyền/);assert.equal(i.sockets.length,0);let saved;i.context.chrome.storage.session.set=async value=>{saved=value;};i.context.chrome.permissions.contains=async value=>{assert.equal(value.origins[0],'https://computer.tail123.ts.net/*');return true;};const connected=i.context.WorkflowChromeRelay.connect(code);await pause();const socket=i.sockets[0];assert.equal(socket.url,endpoint);socket.onopen();assert.equal(socket.sent[0].remoteProtocol,1);socket.onmessage({data:JSON.stringify({type:'ready',protocol:1,remoteProtocol:1,sessionToken:'d'.repeat(64)})});await connected;assert.equal(saved.workflowDesktopRelay.token,'d'.repeat(64));assert.equal(JSON.stringify(i.context.WorkflowChromeRelay.status()).includes('d'.repeat(64)),false);await i.context.WorkflowChromeRelay.disconnect();
+});
+
+test('companion forwards Grok and exact Flow routes while refusing other Google tools and spoofed hosts',async()=>{
+ const i=worker(),socket=await connectWorker(i);
+ for(const [id,url]of [[3,'https://grok.com/c/test'],[4,'https://flow.google.com/project/test'],[5,'https://labs.google/fx/vi/tools/flow/project/test'],[6,'https://labs.google/fx/tools/imagefx'],[7,'https://grok.com.evil/']])i.tabs.push({id,url,title:'Fixture'});
+ const list=await invoke(socket,'new-list','tabs.query',{});assert.deepEqual(Array.from(list.result,t=>t.id),[1,3,4,5]);
+ for(const id of [3,4,5]){const reply=await invoke(socket,'new-script-'+id,'tabs.script',{id,files:['ai-activity.js','composer-controls.js','ai-bridge.js']});assert.ok(!reply.error);}
+ for(const id of [6,7])assert.match((await invoke(socket,'refuse-'+id,'tabs.message',{id,message:{type:'WORKFLOW_AI_CHECK'}})).error,/không thuộc/);
+ await i.context.WorkflowChromeRelay.disconnect();
 });

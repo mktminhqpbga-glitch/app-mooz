@@ -11,7 +11,7 @@
  const PROTOCOL=1,releaseURL='https://raw.githubusercontent.com/mktminhqpbga-glitch/app-mooz/main/extension/companion-release.json';
  let updateInfo=null,updateTask=null,lastUpdateAttempt=0;
  const knownTabs=new Set(),gateCalls=new Map();
- function supportedURL(value){try{const url=new URL(value);return url.protocol==='https:'&&!url.username&&!url.password&&!url.port&&(/^(?:chatgpt\.com|www\.chatgpt\.com|chat\.openai\.com|gemini\.google\.com|(?:[a-z0-9-]+\.)*muse\.ai)$/.test(url.hostname));}catch{return false;}}
+ function supportedURL(value){return !!globalThis.WorkflowAISites?.providerForURL(value);}
  function parseURI(value){
   if(Remote)return Remote.parseURI(value);
   const uri=new URL(String(value||''));

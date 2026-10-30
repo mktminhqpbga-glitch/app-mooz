@@ -6,7 +6,7 @@ const turn=()=>new Promise(resolve=>setImmediate(resolve));
 function fixture(saved=[]){
  const tab={id:7,url:'https://gemini.google.com/app/test',autoDiscardable:true},calls=[],messages=[],listeners=[],removed=[],storage={workflowAIActivity:saved};let tick,active=['a'];
  const chrome={runtime:{id:'own',onMessage:{addListener:fn=>listeners.push(fn)}},storage:{session:{get:async()=>storage,set:async patch=>Object.assign(storage,JSON.parse(JSON.stringify(patch)))}},tabs:{get:async()=>({...tab}),update:async(id,options)=>{calls.push({id,...JSON.parse(JSON.stringify(options))});Object.assign(tab,options);},sendMessage:async(id,msg)=>{messages.push({id,...JSON.parse(JSON.stringify(msg))});return {ok:true,activeRequestIds:active};},onRemoved:{addListener:fn=>removed.push(fn)}}};
- vm.runInNewContext(fs.readFileSync(require.resolve('../desktop/ai-activity-worker.js'),'utf8'),{chrome,URL,Date,setInterval:fn=>{tick=fn;return 1;},clearInterval:()=>{tick=null;}});
+ vm.runInNewContext(fs.readFileSync(require.resolve('../desktop/ai-activity-worker.js'),'utf8'),{chrome,WorkflowAISites:require('../ai-sites.js'),URL,Date,setInterval:fn=>{tick=fn;return 1;},clearInterval:()=>{tick=null;}});
  const sender={id:'own',frameId:0,url:tab.url,tab:{id:7,url:tab.url}};
  async function call(type,id='a',from=sender){return new Promise(resolve=>{const handled=listeners[0]({type,requestId:id},from,resolve);if(!handled)resolve({ok:false});});}
  return {tab,calls,messages,storage,call,removed,active:value=>{active=value;},pulse:async()=>{tick?.();for(let i=0;i<20;i++)await turn();}};
