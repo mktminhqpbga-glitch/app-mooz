@@ -271,6 +271,8 @@ async function handleWorkflowCall(event,method,data={}){
   if(method==='relay.status')return relay.status();
   if(method==='relay.disconnect'){if(relay.connectionMode==='local')relay.revokeLocal();else relay.revokeRemote();return relay.status();}
   if(method==='remoteChrome.status')return remoteChrome.status();
+  if(method==='remoteChrome.copyTestURL'){const endpoint=remoteChrome.status().endpoint;if(!endpoint)throw Error('Chưa có địa chỉ tunnel hiện tại.');const url=new URL(endpoint);url.protocol='https:';await clipboard.writeText(url.href);return {copied:true};}
+  if(method==='remoteChrome.copyDiagnostics'){await clipboard.writeText(JSON.stringify(remoteChrome.diagnostics(),null,2));return {copied:true};}
   if(method==='remoteChrome.setup')return remoteChrome.setup();
   if(method==='remoteChrome.cloudflareInspect')return remoteChrome.locked(()=>remoteChrome.tunnel.inspect());
   if(method==='remoteChrome.cloudflareInstall')return remoteChrome.locked(()=>remoteChrome.tunnel.install());
@@ -280,7 +282,7 @@ async function handleWorkflowCall(event,method,data={}){
   if(method==='remoteChrome.custom')return remoteChrome.custom(data.endpoint);
   if(method==='remoteChrome.check')return remoteChrome.check();
   if(method==='remoteChrome.pair')return remoteChrome.pair();
-  if(method==='remoteChrome.copy'){const pair=remoteChrome.pair();await clipboard.writeText(pair.url);return {copied:true,url:pair.url,expiresAt:pair.expiresAt};}
+  if(method==='remoteChrome.copy'){const pair=await remoteChrome.pair();await clipboard.writeText(pair.url);return {copied:true,url:pair.url,expiresAt:pair.expiresAt};}
   if(method==='remoteChrome.revoke')return remoteChrome.revoke();
   if(method==='remoteChrome.disable')return remoteChrome.disable();
   if(method==='remoteChrome.reset')return remoteChrome.reset();
@@ -366,7 +368,7 @@ app.whenReady().then(async()=>{
   uiPreferences=new UIPreferences(app.getPath('userData'));await uiPreferences.load();
   diagnostics=new Diagnostics(app.getPath('userData'),{version,secretValues:()=>[...(aiConnections?.keys?.values()||[]),...[...sessionData.values()].flatMap(v=>Object.values(v?.workflowApiKeys||{}))]});await diagnostics.init();
   aiDispatch=new AIDispatch(app.getPath('userData'),{notify});await aiDispatch.init();
-  remoteChrome=new RemoteChrome({root:app.getPath('userData'),notify});remoteChrome.tunnel.fetchImpl=net.fetch.bind(net);await remoteChrome.init();relay=new ChromeRelay({notify,version});let portUnavailable=false;try{await relay.start({port:remoteChrome.config.enabled?remoteChrome.config.listenPort:0});}catch(e){if(e.code!=='EADDRINUSE')throw e;portUnavailable=true;await relay.start();}try{await relay.startRemoteIngress({port:remoteChrome.config.enabled?remoteChrome.config.remotePort||0:0});}catch(e){if(e.code!=='EADDRINUSE')throw e;if(remoteChrome.config.mode==='custom')portUnavailable=true;await relay.startRemoteIngress();}remoteChrome.attach(relay,{portUnavailable});
+  remoteChrome=new RemoteChrome({root:app.getPath('userData'),notify});remoteChrome.tunnel.fetchImpl=net.fetch.bind(net);remoteChrome.fetchImpl=net.fetch.bind(net);await remoteChrome.init();relay=new ChromeRelay({notify,version});let portUnavailable=false;try{await relay.start({port:remoteChrome.config.enabled?remoteChrome.config.listenPort:0});}catch(e){if(e.code!=='EADDRINUSE')throw e;portUnavailable=true;await relay.start();}try{await relay.startRemoteIngress({port:remoteChrome.config.enabled?remoteChrome.config.remotePort||0:0});}catch(e){if(e.code!=='EADDRINUSE')throw e;if(remoteChrome.config.mode==='custom')portUnavailable=true;await relay.startRemoteIngress();}remoteChrome.attach(relay,{portUnavailable});
   ai=new AIWindows(root,version,notify,async projectId=>projectId?(await store.readStorage(projectId)).workflowMuseSendTarget:null);
   ai.dispatch=aiDispatch;relay.dispatch=aiDispatch;
   const postingRoot=path.join(app.getPath('userData'),'posting');

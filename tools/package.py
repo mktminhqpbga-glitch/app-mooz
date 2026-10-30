@@ -4,7 +4,7 @@ from pathlib import Path
 from zipfile import ZipFile, ZIP_DEFLATED
 
 root = Path(__file__).resolve().parents[1]
-files = ['manifest.json','chrome-remote-protocol.js','background.js','ai-activity.js','composer-controls.js','ai-bridge.js','muse-bridge.js','muse-support.js','result-picker.js','desktop/ai-activity-worker.js','desktop/chrome-relay-worker.js','desktop/connect.html','desktop/connect.js','desktop/connect.css','LICENSE']
+files = ['manifest.json','chrome-remote-protocol.js','chrome-remote-diagnostics.js','background.js','ai-activity.js','composer-controls.js','ai-bridge.js','muse-bridge.js','muse-support.js','result-picker.js','desktop/ai-activity-worker.js','desktop/chrome-relay-worker.js','desktop/connect.html','desktop/connect.js','desktop/connect.css','LICENSE']
 directories = ['icons']
 parser=argparse.ArgumentParser()
 parser.add_argument('--output',type=Path,default=root/'downloads'/'Workflow-extension.zip')

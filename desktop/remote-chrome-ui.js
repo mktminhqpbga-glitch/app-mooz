@@ -14,7 +14,7 @@
   <h3>Cloudflare Tunnel <span class="remote-tag">Không cần Tailscale</span></h3>
   <ol class="remote-steps">
    <li><strong>1. Trên máy MooZ:</strong> bấm Tải cloudflared một lần. App chọn đúng bản cho máy và kiểm tra SHA256 từ nguồn phát hành chính thức. Không cần Homebrew hay quyền quản trị.</li>
-   <li><strong>2. Bấm Bắt đầu:</strong> MooZ chạy Quick Tunnel, rồi bật nút tạo mã khi đường kết nối đã khởi động.</li>
+   <li><strong>2. Bấm Bắt đầu:</strong> MooZ chạy Quick Tunnel và kiểm tra đường Internet tới đúng app trước khi bật nút tạo mã.</li>
    <li><strong>3. Trên máy Chrome:</strong> cài tiện ích, dán mã và bấm Kết nối. Sau đó làm mới danh sách tab AI trong MooZ.</li>
   </ol>
   <p id="remoteChromeTool" role="status"></p>
@@ -38,7 +38,7 @@
    <button id="remoteChromeDisconnect" type="button" hidden>Ngắt Chrome cùng máy</button>
    <button id="remoteChromePair" class="primary" type="button">Tạo mã từ xa</button>
    <button id="remoteChromeCopy" type="button">Tạo & sao chép mã</button>
-   <button id="remoteChromeCheck" type="button">Kiểm tra kết nối</button>
+   <button id="remoteChromeCheck" type="button">Kiểm tra đường truyền</button><button id="remoteChromeCopyURL" type="button">Sao chép địa chỉ kiểm tra</button><button id="remoteChromeReport" type="button">Sao chép báo cáo kết nối</button>
   </div>
   <label>Mã ghép cặp · dùng một lần, hiệu lực 10 phút<input id="remoteChromeCode" type="password" readonly autocomplete="off" spellcheck="false"></label>
   <div class="connections-actions">
@@ -73,11 +73,11 @@
   $('remoteChromeReveal').setAttribute('aria-pressed', 'false');
  }
  function render(s) {
-  if (lastEndpoint !== s.endpoint || s.connected) clear();
+  if (lastEndpoint !== s.endpoint || s.connected || s.publicCheck?.ok===false) clear();
   lastEndpoint = s.endpoint;
   const cf = s.cloudflare || {}, transport = s.mode === 'cloudflare' ? 'Cloudflare' : s.mode === 'tailscale' ? 'Tailscale' : 'WSS';
-  $('remoteChromeTool').textContent = cf.running ? 'Cloudflare Tunnel đang chạy · cloudflared ' + cf.version : cf.starting ? 'Đang chờ Cloudflare cấp đường kết nối…' : cf.installed ? 'Đã có cloudflared ' + cf.version + '. Có thể bấm Bắt đầu.' : 'Chưa tìm thấy cloudflared. Bấm Tải cloudflared hoặc Kiểm tra công cụ nếu đã cài.';
-  $('remoteChromeState').textContent = s.connected ? 'Đã kết nối Chrome từ xa qua ' + transport + (s.companionVersion ? ' · Tiện ích ' + s.companionVersion : '') : s.connectionMode === 'local' ? 'Chrome cùng máy đang kết nối. Ngắt kết nối đó trước khi ghép máy khác.' : s.enabled ? 'Đường ' + transport + ' đã khởi động. Tạo mã và kết nối trên máy Chrome để xác nhận đường truyền.' : 'Chưa bật kết nối từ xa. Bắt đầu Cloudflare Tunnel để tạo mã.';
+  $('remoteChromeTool').textContent = cf.running ? (s.publicCheck?.ok?'Đã kiểm tra đường Internet · cloudflared ':'Công cụ đang chạy; cần xác nhận đường Internet · cloudflared ') + cf.version : cf.starting ? 'Đang chờ Cloudflare cấp đường kết nối…' : cf.installed ? 'Đã có cloudflared ' + cf.version + '. Có thể bấm Bắt đầu.' : 'Chưa tìm thấy cloudflared. Bấm Tải cloudflared hoặc Kiểm tra công cụ nếu đã cài.';
+  $('remoteChromeState').textContent = s.connected ? 'Đã kết nối Chrome từ xa qua ' + transport + (s.companionVersion ? ' · Tiện ích ' + s.companionVersion : '') : s.connectionMode === 'local' ? 'Chrome cùng máy đang kết nối. Ngắt kết nối đó trước khi ghép máy khác.' : s.mode==='cloudflare'&&cf.running&&!s.publicCheck?.ok ? 'Chưa xác nhận được đường Internet. Bấm Kiểm tra đường truyền; chưa tạo mã khi đường còn lỗi.' : s.enabled ? 'Đường ' + transport + ' đã khởi động. Tạo mã và kết nối trên máy Chrome để xác nhận đường truyền.' : 'Chưa bật kết nối từ xa. Bắt đầu Cloudflare Tunnel để tạo mã.';
   $('remoteChromeEndpoint').textContent = s.endpoint || '';
   $('remoteChromeBackend').textContent = s.remoteIngressPort ? 'Đích nội bộ chỉ nhận từ xa: http://127.0.0.1:' + s.remoteIngressPort + ' · WebSocket nhận đường dẫn /remote.' : s.listenPort ? 'Đích nội bộ: http://127.0.0.1:' + s.listenPort + ' · WebSocket nhận đường dẫn /remote.' : '';
   $('remoteChromeWarning').textContent = s.warning || '';
@@ -88,7 +88,11 @@
   for (const id of ['remoteChromeSetup', 'remoteChromeCustom', 'remoteChromeCloudflareInspect']) $(id).disabled = blocked;
   $('remoteChromeCloudflareInstall').disabled = blocked || cf.running;
   $('remoteChromeCloudflareStart').disabled = blocked || cf.running || !cf.installed;
-  for (const id of ['remoteChromePair', 'remoteChromeCopy', 'remoteChromeCheck', 'remoteChromeRevoke', 'remoteChromeDisable']) $(id).disabled = blocked || !s.enabled;
+  for (const id of ['remoteChromePair', 'remoteChromeCopy']) $(id).disabled = blocked || !(s.canPair??s.enabled);
+  for (const id of ['remoteChromeCheck','remoteChromeDisable']) $(id).disabled=blocked||!(s.enabled||cf.running);
+  $('remoteChromeRevoke').disabled=blocked||!s.enabled;
+  $('remoteChromeCopyURL').disabled=blocked||!s.endpoint;
+  $('remoteChromeReport').disabled=busy;
   $('remoteChromeReveal').disabled = !$('remoteChromeCode').value;
  }
  async function sync() { render(await call('status')); }
@@ -114,11 +118,13 @@
  $('remoteChromeExtension').onclick = () => void act(async () => { await host.call('extension.download'); notice('Đã tải tiện ích. Chuyển ZIP sang máy Chrome để giải nén và cài.'); });
  $('remoteChromeCloudflareInspect').onclick = () => void act(async () => { const result = await call('cloudflareInspect'); notice(result.installed ? 'Đã tìm thấy cloudflared ' + result.version + '.' : 'Chưa có cloudflared. Bấm Tải cloudflared; không cần cài Homebrew.'); });
  $('remoteChromeCloudflareInstall').onclick = () => void act(async () => { notice('Đang tải cloudflared từ nguồn chính thức và kiểm tra SHA256…'); await call('cloudflareInstall'); notice('Đã cài công cụ cho MooZ. Bấm Bắt đầu Cloudflare Tunnel.'); });
- $('remoteChromeCloudflareStart').onclick = () => void act(async () => { clear(); notice('Đang khởi động Cloudflare Tunnel, có thể mất khoảng một phút…'); await call('cloudflareStart'); notice('Đã khởi động tunnel. Bấm Tạo & sao chép mã để ghép máy Chrome.'); });
+ $('remoteChromeCloudflareStart').onclick = () => void act(async () => { clear(); notice('Đang khởi động Cloudflare Tunnel, đang kiểm tra đường Internet, có thể mất khoảng 90 giây…'); await call('cloudflareStart'); notice('Đã xác nhận tunnel tới đúng phiên MooZ. Bấm Tạo & sao chép mã để ghép máy Chrome.'); });
  $('remoteChromeSetup').onclick = () => void act(async () => { clear(); await call('setup'); notice('Đã thiết lập đường riêng qua Tailscale. Tạo mã để ghép máy Chrome.'); });
  $('remoteChromeCustom').onclick = () => void act(async () => { clear(); await call('custom', {endpoint: $('remoteChromeCustomURL').value.trim()}); notice('Đã lưu đường WSS. Kết nối từ máy Chrome để xác nhận đường truyền.'); });
  $('remoteChromeDisconnect').onclick = () => void act(async () => { await host.call('relay.disconnect'); notice('Đã ngắt Chrome cùng máy và thu hồi mã cũ. Có thể ghép máy Chrome khác.'); });
- $('remoteChromeCheck').onclick = () => void act(async () => { await call('check'); notice('Đã kiểm tra cấu hình trên máy này. Kết nối từ máy Chrome để xác nhận đường truyền hai chiều.'); });
+ $('remoteChromeCheck').onclick = () => void act(async () => { await call('check'); notice('Đã kiểm tra đường truyền. Máy Chrome vẫn cần được mạng cho phép truy cập địa chỉ này.'); });
+ $('remoteChromeCopyURL').onclick=()=>void act(async()=>{await call('copyTestURL');notice('Đã sao chép địa chỉ hiện tại. Mở địa chỉ này trên máy Chrome, tránh dùng link của tunnel cũ.');});
+ $('remoteChromeReport').onclick=()=>void act(async()=>{await call('copyDiagnostics');notice('Đã sao chép báo cáo kết nối; không chứa mã ghép cặp, khóa phiên hay nội dung AI.');});
  function showPair(p) { clear(); $('remoteChromeCode').value = p.url; $('remoteChromeReveal').disabled = false; }
  $('remoteChromePair').onclick = () => void act(async () => { const p = await call('pair'); showPair(p); notice('Mã mới có hiệu lực đến ' + new Date(p.expiresAt).toLocaleTimeString('vi-VN') + '. Mã cũ chưa dùng đã bị hủy.'); });
  $('remoteChromeCopy').onclick = () => void act(async () => { const p = await call('copy'); showPair(p); notice('Đã tạo và sao chép mã. Dán vào tiện ích trên máy Chrome trước ' + new Date(p.expiresAt).toLocaleTimeString('vi-VN') + '.'); });

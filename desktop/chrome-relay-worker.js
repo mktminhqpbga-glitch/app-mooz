@@ -4,6 +4,7 @@
  const ALLOWED_FILES=new Set(['ai-activity.js','composer-controls.js','ai-bridge.js','muse-bridge.js','result-picker.js','muse-support.js']);
  const ALLOWED_TYPES=new Set(['WORKFLOW_AI_CHECK','WORKFLOW_AI_GENERATE','WORKFLOW_AI_STOP','WORKFLOW_AI_SEND_NOW','WORKFLOW_AI_USE_RESULT','MUSEFLOW_CHECK_SESSION','MUSEFLOW_GENERATE','MUSEFLOW_STOP_GENERATION','MUSEFLOW_JOB_START','MUSEFLOW_JOB_STATUS','MUSEFLOW_JOB_ACK']);
  const SETTINGS='workflowDesktopRelay';
+ let lastDiagnostic=null,diagnosticTask=null;
  let socket=null,connection=null,state='disconnected',heartbeat=null,appVersion=null,lastSeen=0,lastError='';
  const Remote=globalThis.WorkflowRemoteProtocol;
  const PROTOCOL=1,releaseURL='https://raw.githubusercontent.com/mktminhqpbga-glitch/app-mooz/main/extension/companion-release.json';
@@ -16,7 +17,7 @@
   if(uri.protocol!=='workflow-connect:'||uri.hostname!=='127.0.0.1'||!/^\d+$/.test(uri.port)||Number(uri.port)<1||Number(uri.port)>65535||uri.username||uri.password||uri.search||uri.hash||!/^\/[a-f0-9]{64}$/.test(uri.pathname))throw Error('Mã kết nối không hợp lệ. Sao chép lại từ ứng dụng Workflow.');
   return {port:Number(uri.port),token:uri.pathname.slice(1)};
  }
- function status(){return {connected:state==='connected',state,port:connection?.port||null,protocol:PROTOCOL,appVersion,extensionVersion:chrome.runtime.getManifest?.()?.version||'',update:updateInfo,mode:connection?.mode||'local',endpoint:connection?.mode==='remote'?connection.endpoint:null,canReconnect:!!connection&&state!=='connected'&&state!=='connecting',error:lastError||undefined};}
+ function status(){return {connected:state==='connected',state,port:connection?.port||null,protocol:PROTOCOL,appVersion,extensionVersion:chrome.runtime.getManifest?.()?.version||'',update:updateInfo,mode:connection?.mode||'local',endpoint:connection?.mode==='remote'?connection.endpoint:null,canReconnect:!!connection&&state!=='connected'&&state!=='connecting',error:lastError||undefined,diagnostics:lastDiagnostic};}
  async function checkUpdate(){
   if(updateTask)return updateTask;if(typeof fetch!=='function')return status();
   updateTask=(async()=>{try{
@@ -58,7 +59,7 @@
   throw Error('Thao tác Chrome không được phép.');
  }
  function clearGates(){for(const p of gateCalls.values()){clearTimeout(p.timer);p.reply({ok:false,error:'Chrome đã ngắt kết nối; chưa gửi AI.'});}gateCalls.clear();}
- async function disconnect(){clearGates();lastError='';const previous=socket;socket=null;connection=null;state='disconnected';clearInterval(heartbeat);heartbeat=null;previous?.close();await chrome.storage.session.remove(SETTINGS);return status();}
+ async function disconnect(){lastDiagnostic=null;diagnosticTask=null;clearGates();lastError='';const previous=socket;socket=null;connection=null;state='disconnected';clearInterval(heartbeat);heartbeat=null;previous?.close();await chrome.storage.session.remove(SETTINGS);return status();}
  async function connect(uri){return connectState(parseURI(uri));}
  async function connectState(next){
   if(next.mode==='remote'){
@@ -89,6 +90,13 @@
   });
  }
  async function reconnect(){if(!connection)throw Error('Dán mã mới từ MooZ trước.');return connectState(Remote?Remote.saved(connection):connection);}
+ async function diagnose(){
+  const target=connection;if(target?.mode!=='remote')throw Error('Dán mã từ xa và bấm Kết nối trước khi kiểm tra.');
+  if(!globalThis.WorkflowRemoteDiagnostics)throw Error('Cập nhật tiện ích để kiểm tra đường truyền.');
+  if(!await chrome.permissions.contains({origins:[Remote.origin(target.endpoint)]}))throw Error('Chưa cấp quyền tới địa chỉ này. Dán mã và bấm Kết nối trước.');
+  if(diagnosticTask)return diagnosticTask;
+  const task=(async()=>{const result=await globalThis.WorkflowRemoteDiagnostics.check(target.endpoint);if(connection===target){lastDiagnostic=result;}return status();})();diagnosticTask=task;try{return await task;}finally{if(diagnosticTask===task)diagnosticTask=null;}
+ }
  function extensionPage(sender){const prefix=chrome.runtime.getURL('');return sender.id===chrome.runtime.id&&typeof sender.url==='string'&&sender.url.startsWith(prefix)&&(!sender.tab?.url||sender.tab.url.startsWith(prefix));}
  chrome.runtime.onMessage.addListener((message,sender,reply)=>{
   if(message?.type==='WORKFLOW_AI_GATE'){
@@ -97,9 +105,9 @@
    const callId=crypto.randomUUID(),timer=setTimeout(()=>{gateCalls.delete(callId);reply({ok:false,error:'Mất kết nối điều phối; chưa gửi AI.'});},10000);gateCalls.set(callId,{reply,timer});
    try{send({type:'gate',callId,tabId:sender.tab.id,message});}catch{clearTimeout(timer);gateCalls.delete(callId);reply({ok:false,error:'Chưa chuyển được quyền gửi đến app.'});}return true;
   }
-  if(['DESKTOP_CONNECT','DESKTOP_STATUS','DESKTOP_DISCONNECT','DESKTOP_RECONNECT','DESKTOP_CHECK_UPDATE'].includes(message?.type)){
+  if(['DESKTOP_CONNECT','DESKTOP_STATUS','DESKTOP_DISCONNECT','DESKTOP_RECONNECT','DESKTOP_CHECK_UPDATE','DESKTOP_DIAGNOSE'].includes(message?.type)){
    if(!extensionPage(sender)){reply({ok:false,error:'Chỉ trang tiện ích Workflow được phép ghép nối.'});return false;}
-   const action=message.type==='DESKTOP_CONNECT'?()=>connect(message.uri):message.type==='DESKTOP_DISCONNECT'?disconnect:message.type==='DESKTOP_RECONNECT'?reconnect:message.type==='DESKTOP_CHECK_UPDATE'?checkUpdate:async()=>status();
+   const action=message.type==='DESKTOP_CONNECT'?()=>connect(message.uri):message.type==='DESKTOP_DISCONNECT'?disconnect:message.type==='DESKTOP_RECONNECT'?reconnect:message.type==='DESKTOP_CHECK_UPDATE'?checkUpdate:message.type==='DESKTOP_DIAGNOSE'?diagnose:async()=>status();
    void action().then(result=>reply({ok:true,...result}),error=>reply({ok:false,error:error.message}));return true;
   }
   if(message?.type==='WORKFLOW_AI_PROGRESS'&&sender.id===chrome.runtime.id&&supportedURL(sender.tab?.url)&&typeof message.requestId==='string'&&typeof message.text==='string'){

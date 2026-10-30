@@ -1,14 +1,14 @@
-# Chrome trên máy khác · MooZ Agent 0.50.0
+# Chrome trên máy khác · MooZ Agent 0.50.1
 
-Máy A chạy MooZ để điều phối workflow, lưu dự án và xuất thành phẩm. Máy B chạy Chrome với các tab AI đã đăng nhập và Workflow Connect **1.2.0 trở lên** (bản đóng kèm **1.2.1**). Hai máy có thể ở hai mạng Internet khác nhau. Không cần cài MooZ trên máy B. Chọn Cloudflare Tunnel nếu không muốn cài Tailscale.
+Máy A chạy MooZ để điều phối workflow, lưu dự án và xuất thành phẩm. Máy B chạy Chrome với các tab AI đã đăng nhập và Workflow Connect **1.2.0 trở lên** (bản đóng kèm **1.2.2**). Hai máy có thể ở hai mạng Internet khác nhau. Không cần cài MooZ trên máy B. Chọn Cloudflare Tunnel nếu không muốn cài Tailscale.
 
 ## Cách nhanh: Cloudflare Tunnel, không cần Tailscale
 
 **Trên máy A (MooZ):**
 
-1. Cài MooZ **0.50.0 trở lên**, mở **Cài đặt & kết nối AI → Chrome ở máy khác**.
+1. Cài MooZ **0.50.1 trở lên**, mở **Cài đặt & kết nối AI → Chrome ở máy khác**.
 2. Bấm **Tải cloudflared**. MooZ tải bản phù hợp với kiến trúc app từ kho phát hành chính thức `cloudflare/cloudflared`, kiểm tra kích thước/SHA256 trong metadata GitHub, rồi kiểm tra phiên bản trước khi thay công cụ cũ. Công cụ chỉ nằm trong thư mục dữ liệu MooZ; không cần Homebrew, `sudo`, tài khoản Cloudflare hay chỉnh InfinityFree. Nếu đã cài cloudflared qua Homebrew/WinGet, bấm **Kiểm tra công cụ** để dùng bản có sẵn.
-3. Bấm **Bắt đầu Cloudflare Tunnel**, đợi thông báo đường kết nối đã khởi động. App chỉ bật tạo mã khi công cụ đã báo hostname hợp lệ và đăng ký kết nối với Cloudflare. Đây chưa phải xác nhận Chrome máy B đã kết nối.
+3. Bấm **Bắt đầu Cloudflare Tunnel**, đợi thông báo đường kết nối đã được xác nhận (có thể mất khoảng 90 giây). App đợi công cụ báo hostname hợp lệ/đăng ký kết nối, rồi gửi kiểm tra HTTPS không chứa mã hay khóa phiên qua tunnel. Chỉ bật tạo mã khi trả về đúng định danh phiên MooZ và nonce mới. Mỗi lần tạo mã kiểm tra lại đường này; không chỉ dựa vào log công cụ. Đây chưa phải xác nhận Chrome máy B đã kết nối.
 4. Bấm **Tạo & sao chép mã**. Mã vẫn hiện dạng ẩn trong ô; có thể bấm **Hiện mã**, chọn rồi dùng ⌘C/Ctrl+C nếu cần. Mã mới hủy mã chưa dùng trước đó.
 
 **Trên máy B (Chrome):**
@@ -19,7 +19,7 @@ Máy A chạy MooZ để điều phối workflow, lưu dự án và xuất thàn
 
 **Hằng ngày:** giữ máy A thức và MooZ mở. MooZ giữ cloudflared chạy nền, không cần giữ cửa sổ Terminal. Máy B giữ Chrome và tab AI hoạt động. Bấm **Dừng kết nối từ xa** để dừng đúng tiến trình tunnel do MooZ mở và thu hồi mã/phiên. Thoát app cũng dừng tunnel. App không cài cloudflared thành dịch vụ hệ thống và không dừng các tunnel bạn tự chạy.
 
-Quick Tunnel tạo địa chỉ ngẫu nhiên `*.trycloudflare.com` mới mỗi lần bắt đầu; sau khi thoát app hoặc tunnel dừng, bấm Bắt đầu và ghép mã mới. Không tự mở lại đường công khai khi app khởi động. Nếu chỉ Chrome/mạng B bị ngắt trong khi tunnel A còn chạy, có thể dùng **Kết nối lại** trong tiện ích; tác vụ AI đang dở vẫn cần đối chiếu, không tự phát lại.
+Quick Tunnel tạo địa chỉ ngẫu nhiên `*.trycloudflare.com` mới mỗi lần bắt đầu; sau khi thoát app hoặc tunnel dừng, bấm Bắt đầu và ghép mã mới. Không dùng lại link kiểm tra cố định trong chat hoặc tab trình duyệt cũ: bấm **Sao chép địa chỉ kiểm tra** trong MooZ để lấy đúng URL hiện tại. Không tự mở lại đường công khai khi app khởi động. Nếu chỉ Chrome/mạng B bị ngắt trong khi tunnel A còn chạy, có thể dùng **Kết nối lại** trong tiện ích; tác vụ AI đang dở vẫn cần đối chiếu, không tự phát lại.
 
 **Lưu ý về dịch vụ:** [Cloudflare mô tả Quick Tunnel](https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/) dành cho thử nghiệm, không có bảo đảm thời gian hoạt động, giới hạn 200 yêu cầu đang diễn ra và không hỗ trợ SSE. Bộ nối MooZ dùng WebSocket, không dùng SSE. Để chạy thường xuyên, nên cấu hình tunnel có tên/hostname ổn định của Cloudflare và nhập WSS ở mục nâng cao. Không bật thử thách JavaScript hoặc email Access cho đường WSS của extension; bộ nối này không thực hiện đăng nhập tương tác Cloudflare Access.
 
@@ -38,7 +38,11 @@ Quick Tunnel tạo địa chỉ ngẫu nhiên `*.trycloudflare.com` mới mỗi 
 | Không đăng ký được tunnel / timeout cổng 7844 | Kiểm tra Internet, DNS và firewall cho cloudflared kết nối ra TCP 7844; app dùng HTTP/2 |
 | Đường đã khởi động nhưng Chrome chưa vào được | Đợi DNS/edge sẵn sàng rồi thử mã còn hiệu lực; kiểm tra hai máy đang mở và quyền hostname |
 | Tunnel bị ngắt / máy A ngủ | App thu hồi mã/phiên khi nhận thấy tunnel dừng; khởi động tunnel và ghép mã mới, đối chiếu kết quả đang dở |
-| Nút sao chép bị mờ | Chưa có tunnel sẵn sàng; Tải công cụ → Bắt đầu trước |
+| Nút sao chép bị mờ | Chưa xác nhận tunnel; Tải công cụ → Bắt đầu, xem thông báo hoặc bấm Kiểm tra đường truyền |
+| Error 1033 ở URL cũ | Đối chiếu hostname với app. Dùng nút Sao chép địa chỉ kiểm tra; mỗi Quick Tunnel có địa chỉ riêng |
+| Công cụ chạy nhưng kiểm tra lỗi 1033 | Chưa bật mã. Giữ cửa sổ app mở, kiểm tra mạng/công cụ; có thể bấm Kiểm tra đường truyền cùng địa chỉ sau khi xử lý |
+| Your request was blocked trên máy Chrome | Mạng/máy ảo/edge đang từ chối truy cập từ máy đó. Nhờ bên quản trị kiểm tra và cho phép nếu phù hợp; không phải lỗi TTL mã |
+| HTTPS đã xác nhận nhưng WebSocket chưa kết nối | Dán đúng mã hiện tại, kiểm tra quyền hostname của tiện ích và việc mạng hỗ trợ WSS; một kiểm tra HTTPS không chứng minh đường từ mọi máy đều được phép |
 
 ## Cách thay thế: Tailscale trên hai máy
 
@@ -96,3 +100,12 @@ CLI Tailscale và website AI được mô phỏng trong kiểm thử; TLS dùng 
 
 
 Kiểm thử Cloudflare bao gồm kiểm tra SHA256 trước khi thực thi, từ chối nguồn tải lạ, xử lý archive Mac chỉ lấy tệp thường `cloudflared`, hostname đầy đủ và trạng thái registered trước khi cho ghép, timeout/dừng/thoát tiến trình, thu hồi mã và hủy RPC khi tunnel mất kết nối, không phát lại tác vụ, không phục hồi URL tạm sau khi khởi động app. Bộ kiểm tra Electron mở giao diện thật và chạy tiến trình CLI fixture thật để thử tải/cài/start/copy clipboard/stop; metadata phát hành và đăng ký Cloudflare của bài đó được mô phỏng. Đã tải/kiểm tra công cụ Linux và archive Mac chính thức; chưa xác minh đường TryCloudflare qua Internet giữa hai máy người dùng. Các kiểm thử WSS/Chromium phía trên dùng TLS proxy cục bộ, không phải tunnel Cloudflare thật.
+
+
+## Báo cáo và kiểm tra ở hai đầu (0.50.1 / Connect 1.2.2)
+
+- **Máy MooZ:** Kiểm tra đường truyền gửi GET HTTPS qua tunnel tới `/remote/health?probe=<nonce>`; đối chiếu service/protocol, nonce và UUID phiên đang chạy. Lỗi 403 kết thúc kiểm tra ngay, không đổi hostname hay tự tìm đường vòng. Tạo mã chỉ được thực hiện sau kiểm tra thành công. Nếu kiểm tra ban đầu chưa thành công, công cụ có thể vẫn chạy để giữ URL phục vụ chẩn đoán; Dừng kết nối từ xa vẫn dùng được.
+- **Sao chép địa chỉ kiểm tra** luôn lấy endpoint hiện tại từ host, chuyển WSS thành HTTPS, không chứa mã/khóa. Mở URL đó trên máy Chrome: `Upgrade Required` cho thấy tới bộ nối; Cloudflare 1033 cho thấy hostname không có tunnel hoạt động; thông báo bị chặn cần kiểm tra chính sách mạng/edge. Việc máy A truy cập được không chứng minh mạng máy B được phép.
+- **Sao chép báo cáo kết nối** chứa version app/công cụ, trạng thái, hostname hiện tại, mã kết quả kiểm tra/HTTP và thời điểm; không có mã ghép cặp, khóa phiên, cookie hoặc nội dung AI. Có thể dán báo cáo khi cần hỗ trợ.
+- **Extension 1.2.2:** nút Kiểm tra đường truyền chỉ kiểm tra HTTPS trên hostname đã được cấp quyền, không gửi thông tin xác thực, không đụng tab AI và không chạy lại công việc. Với app cũ trả 426, báo chưa có endpoint chẩn đoán; cần 0.50.1 để xác nhận đầy đủ. HTTPS thành công không thay thế kết nối WSS bằng mã.
+- Kiểm thử mới có HTTP health thật trên cổng loopback, proxy TLS thật và Chromium extension thật: nonce/UUID chống nhận cache/sai phiên, 1033 không bật mã, 403 không thử lại vô hạn/đổi hostname, endpoint hiện tại/report clipboard, phân loại chặn ở extension nhưng giữ WSS đang hoạt động. Phản hồi của Cloudflare và AI vẫn là fixture; không xác nhận được chính sách mạng máy ảo người dùng từ môi trường phát triển.

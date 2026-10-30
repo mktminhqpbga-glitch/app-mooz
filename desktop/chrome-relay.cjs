@@ -1,6 +1,7 @@
 'use strict';
 const {randomBytes,timingSafeEqual,randomUUID}=require('node:crypto');
 const {WebSocketServer,WebSocket}=require('ws');
+const http=require('node:http');
 const Remote=require('../chrome-remote-protocol.js');
 const MAX_BYTES=128*1024*1024;
 const OPERATIONS=new Set(['tabs.query','tabs.get','tabs.focus','tabs.script','tabs.message']);
@@ -10,7 +11,7 @@ class ChromeRelay {
  constructor(options={}) {
   this.notify=typeof options==='function'?options:options.notify||(()=>{});
   this.appVersion=typeof options==='object'?options.version||null:null;this.companion=null;
-  this.server=null;this.remoteServer=null;this.remoteIngressPort=null;this.client=null;this.extensionId=null;this.port=null;this.token=null;this.pending=new Map();this.remoteEndpoint=null;this.remoteLease=null;this.remoteSession=null;this.connectionMode=null;this.heartbeat=null;
+  this.instanceId=randomUUID();this.remoteHttp=null;this.server=null;this.remoteServer=null;this.remoteIngressPort=null;this.client=null;this.extensionId=null;this.port=null;this.token=null;this.pending=new Map();this.remoteEndpoint=null;this.remoteLease=null;this.remoteSession=null;this.connectionMode=null;this.heartbeat=null;
  }
  get isConnected(){return this.client?.readyState===WebSocket.OPEN;}
  status(){return {connected:!!this.isConnected,port:this.port,extensionId:this.extensionId,companion:this.companion,mode:this.connectionMode,remoteEnabled:!!this.remoteEndpoint};}
@@ -27,10 +28,17 @@ class ChromeRelay {
   if(this.remoteServer)return this.remoteIngressPort;
   // Public tunnels target a separate loopback listener: '/' and local pairing
   // credentials are never exposed through the Cloudflare ingress.
-  const server=new WebSocketServer({host:'127.0.0.1',port,maxPayload:MAX_BYTES,perMessageDeflate:false,verifyClient:({origin,req})=>EXTENSION_ORIGIN.test(origin||'')&&server.clients.size<16&&!!this.remoteEndpoint&&req.url==='/remote'});
+  const listener=http.createServer((req,res)=>{
+   res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');
+   let url;try{url=new URL(req.url,'http://127.0.0.1');}catch{res.writeHead(400).end();return;}
+   if(req.method==='GET'&&url.pathname==='/remote/health'&&/^[a-f0-9]{32}$/.test(url.searchParams.get('probe')||'')&&req.url.length<150){res.setHeader('Content-Type','application/json');res.end(JSON.stringify({service:'mooz-chrome-relay',protocol:1,instance:this.instanceId,probe:url.searchParams.get('probe')}));return;}
+   res.setHeader('Content-Type','text/plain; charset=utf-8');res.writeHead(url.pathname==='/remote'?426:404);res.end(url.pathname==='/remote'?'Upgrade Required':'Not found');
+  });
+  this.remoteHttp=listener;
+  const server=new WebSocketServer({server:listener,maxPayload:MAX_BYTES,perMessageDeflate:false,verifyClient:({origin,req})=>EXTENSION_ORIGIN.test(origin||'')&&server.clients.size<16&&!!this.remoteEndpoint&&req.url==='/remote'});
   this.remoteServer=server;server.on('connection',(socket,request)=>this.accept(socket,request));
-  try{await new Promise((resolve,reject)=>{server.once('listening',resolve);server.once('error',reject);});}catch(e){this.remoteServer=null;throw e;}
-  this.remoteIngressPort=server.address().port;return this.remoteIngressPort;
+  try{await new Promise((resolve,reject)=>{listener.once('error',reject);listener.listen(port,'127.0.0.1',resolve);});}catch(e){server.close();this.remoteServer=null;this.remoteHttp=null;throw e;}
+  this.remoteIngressPort=listener.address().port;return this.remoteIngressPort;
  }
  pairingURI(){if(!this.port||!this.token)throw Error('Kết nối Chrome chưa được khởi tạo.');return `workflow-connect://127.0.0.1:${this.port}/${this.token}`;}
  configureRemote(value){const next=value?Remote.endpoint(value):null;if(next===this.remoteEndpoint)return;this.revokeRemote();this.remoteEndpoint=next;this.changed();}
@@ -111,6 +119,7 @@ class ChromeRelay {
   clearInterval(this.heartbeat);this.heartbeat=null;this.revokeRemote();this.remoteEndpoint=null;this.disconnect();const server=this.server;this.server=null;this.token=null;this.port=null;
   const remote=this.remoteServer;this.remoteServer=null;this.remoteIngressPort=null;
   for(const target of [server,remote].filter(Boolean)){for(const socket of target.clients)socket.terminate();await new Promise(resolve=>target.close(resolve));}
+  const listener=this.remoteHttp;this.remoteHttp=null;if(listener){listener.closeAllConnections();await new Promise(resolve=>listener.close(resolve));}
  }
 }
 module.exports={ChromeRelay};
