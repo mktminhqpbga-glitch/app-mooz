@@ -24,5 +24,10 @@
    return result(false,'unreachable','Máy này chưa truy cập được HTTPS của tunnel. Kiểm tra DNS, mạng, chứng chỉ và app đang mở; chưa thể kết luận riêng nguyên nhân từ lỗi này.');
   }
  }
- const api={check,SERVICE};if(typeof module!=='undefined')module.exports=api;else root.WorkflowRemoteDiagnostics=api;
+ async function checkRelay(endpoint,{fetchImpl=globalThis.fetch,timeoutMs=8000}={}){
+  const url=new URL(P.relayEndpoint(endpoint));url.protocol='https:';url.pathname='/health';
+  const result=(ok,code,message,status=null)=>({ok,code,message,status,checkedAt:Date.now()});
+  try{const r=await fetchImpl(url.href,{credentials:'omit',redirect:'error',cache:'no-store',signal:AbortSignal.timeout(timeoutMs)});const reader=r.body?.getReader();let text='',size=0;try{if(reader)while(size<8192){const part=await reader.read();if(part.done)break;const bytes=part.value.subarray(0,8192-size);text+=new TextDecoder().decode(bytes);size+=bytes.length;}}finally{await reader?.cancel().catch(()=>{});}if(r.status===403||/your request was blocked/i.test(text))return result(false,'blocked','Máy này bị từ chối truy cập máy chủ relay. Cần kiểm tra quyền truy cập với nhà cung cấp mạng/dịch vụ.',r.status);let body;try{body=JSON.parse(text);}catch{}if(r.status!==200||body?.service!=='mooz-outbound-relay'||body.relayProtocol!==1)return result(false,'wrong_service','Máy chủ relay chưa sẵn sàng hoặc không đúng bộ cài MooZ. Kiểm tra dịch vụ Live và địa chỉ Render; gói Free có thể cần khoảng một phút để mở lại.',r.status);return result(true,'ready','Đã tới máy chủ relay. App MooZ vẫn phải đăng nhập relay và ghép Chrome bằng mã.',200);}catch{return result(false,'unreachable','Chưa truy cập được máy chủ relay qua HTTPS. Kiểm tra mạng và dịch vụ đã Live; gói Free có thể đang khởi động.');}
+ }
+ const api={check,checkRelay,SERVICE};if(typeof module!=='undefined')module.exports=api;else root.WorkflowRemoteDiagnostics=api;
 })(globalThis);

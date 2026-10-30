@@ -7,6 +7,7 @@
  let lastDiagnostic=null,diagnosticTask=null;
  let socket=null,connection=null,state='disconnected',heartbeat=null,appVersion=null,lastSeen=0,lastError='';
  const Remote=globalThis.WorkflowRemoteProtocol;
+ const remoteMode=v=>v?.mode==='remote'||v?.mode==='relay';
  const PROTOCOL=1,releaseURL='https://raw.githubusercontent.com/mktminhqpbga-glitch/app-mooz/main/extension/companion-release.json';
  let updateInfo=null,updateTask=null,lastUpdateAttempt=0;
  const knownTabs=new Set(),gateCalls=new Map();
@@ -17,7 +18,7 @@
   if(uri.protocol!=='workflow-connect:'||uri.hostname!=='127.0.0.1'||!/^\d+$/.test(uri.port)||Number(uri.port)<1||Number(uri.port)>65535||uri.username||uri.password||uri.search||uri.hash||!/^\/[a-f0-9]{64}$/.test(uri.pathname))throw Error('Mã kết nối không hợp lệ. Sao chép lại từ ứng dụng Workflow.');
   return {port:Number(uri.port),token:uri.pathname.slice(1)};
  }
- function status(){return {connected:state==='connected',state,port:connection?.port||null,protocol:PROTOCOL,appVersion,extensionVersion:chrome.runtime.getManifest?.()?.version||'',update:updateInfo,mode:connection?.mode||'local',endpoint:connection?.mode==='remote'?connection.endpoint:null,canReconnect:!!connection&&state!=='connected'&&state!=='connecting',error:lastError||undefined,diagnostics:lastDiagnostic};}
+ function status(){return {connected:state==='connected',state,port:connection?.port||null,protocol:PROTOCOL,appVersion,extensionVersion:chrome.runtime.getManifest?.()?.version||'',update:updateInfo,mode:connection?.mode||'local',endpoint:remoteMode(connection)?connection.endpoint:null,canReconnect:!!connection&&state!=='connected'&&state!=='connecting',error:lastError||undefined,diagnostics:lastDiagnostic};}
  async function checkUpdate(){
   if(updateTask)return updateTask;if(typeof fetch!=='function')return status();
   updateTask=(async()=>{try{
@@ -62,40 +63,40 @@
  async function disconnect(){lastDiagnostic=null;diagnosticTask=null;clearGates();lastError='';const previous=socket;socket=null;connection=null;state='disconnected';clearInterval(heartbeat);heartbeat=null;previous?.close();await chrome.storage.session.remove(SETTINGS);return status();}
  async function connect(uri){return connectState(parseURI(uri));}
  async function connectState(next){
-  if(next.mode==='remote'){
-   if(!Remote)throw Error('Cập nhật Workflow Connect để kết nối từ xa.');next=Remote.saved(next);
+  if(remoteMode(next)){
+   if(!Remote||next.mode==='relay'&&!globalThis.WorkflowRelayChannel)throw Error('Cập nhật Workflow Connect 1.3.0 để kết nối relay.');next=Remote.saved(next);
    if(next.expiresAt&&next.expiresAt<=Date.now())throw Error('Mã từ xa đã hết hạn. Tạo mã mới trong MooZ.');
    if(!await chrome.permissions.contains({origins:[Remote.origin(next.endpoint)]}))throw Error('Chưa cấp quyền kết nối tới máy MooZ. Dán mã và bấm Kết nối để cấp quyền.');
   }
   await disconnect();connection=next;state='connecting';lastError='';
   return new Promise((resolve,reject)=>{
-   const current=new WebSocket(next.mode==='remote'?next.endpoint:`ws://127.0.0.1:${next.port}/`);socket=current;
+   const current=next.mode==='relay'?new globalThis.WorkflowRelayChannel.RelaySocket(next,chrome.runtime.id):new WebSocket(remoteMode(next)?next.endpoint:`ws://127.0.0.1:${next.port}/`);socket=current;
    const fail=text=>{lastError=text;reject(Error(text));};
-   const timeout=setTimeout(()=>{current.close();fail(next.mode==='remote'?'Không kết nối được máy MooZ. Kiểm tra app, đường Cloudflare/Tailscale và mã ghép cặp.':'Không kết nối được ứng dụng Workflow. Mở ứng dụng và lấy mã mới.');},15000);
-   current.onopen=()=>current.send(JSON.stringify({type:'auth',token:next.token,protocol:PROTOCOL,extensionVersion:chrome.runtime.getManifest?.()?.version||'',...(next.mode==='remote'?{remoteProtocol:1}:{})}));
+   const timeout=setTimeout(()=>{current.close();fail(remoteMode(next)?'Không kết nối được máy MooZ. Kiểm tra app, máy chủ kết nối và mã ghép cặp; bấm Kiểm tra đường truyền để biết thêm.':'Không kết nối được ứng dụng Workflow. Mở ứng dụng và lấy mã mới.');},15000);
+   current.onopen=()=>current.send(JSON.stringify({type:'auth',token:next.token,protocol:PROTOCOL,extensionVersion:chrome.runtime.getManifest?.()?.version||'',...(remoteMode(next)?{remoteProtocol:1}:{})}));
    current.onmessage=event=>{
     if(socket!==current)return;let message;try{if(typeof event.data!=='string'||event.data.length>128*1024*1024)throw Error();message=JSON.parse(event.data);}catch{current.close(1008,'Invalid message');return;}lastSeen=Date.now();
     if(message.type==='gate-result'){const p=gateCalls.get(message.callId);if(p){clearTimeout(p.timer);gateCalls.delete(message.callId);p.reply(message.result);}return;}
     if(message.type==='ready'){
-     if(message.protocol!==undefined&&message.protocol!==PROTOCOL||next.mode==='remote'&&(message.remoteProtocol!==1||!/^[a-f0-9]{64}$/.test(message.sessionToken||''))){clearTimeout(timeout);current.close();fail('App và tiện ích cần cập nhật giao thức kết nối tương thích.');return;}
+     if(message.protocol!==undefined&&message.protocol!==PROTOCOL||remoteMode(next)&&(message.remoteProtocol!==1||!/^[a-f0-9]{64}$/.test(message.sessionToken||''))){clearTimeout(timeout);current.close();fail('App và tiện ích cần cập nhật giao thức kết nối tương thích.');return;}
      if(state==='connected')return;appVersion=typeof message.appVersion==='string'?message.appVersion:null;
-     if(next.mode==='remote'){connection={mode:'remote',endpoint:next.endpoint,token:message.sessionToken,expiresAt:null};}
+     if(remoteMode(next)){connection=next.mode==='relay'?{...current.state(),token:message.sessionToken,expiresAt:null}:{mode:'remote',endpoint:next.endpoint,token:message.sessionToken,expiresAt:null};}
      clearTimeout(timeout);state='connected';lastError='';void chrome.storage.session.set({[SETTINGS]:connection});heartbeat=setInterval(()=>{if(Date.now()-lastSeen>60000){current.close();return;}try{send({type:'ping'});}catch{}void checkUpdate();},20000);resolve(status());return;
     }
     if(state!=='connected'||message.type!=='request'||typeof message.id!=='string')return;
     void perform(message.operation,message.payload).then(result=>{if(socket===current)send({type:'response',id:message.id,result});},error=>{if(socket===current)send({type:'response',id:message.id,error:error?.message||'Không thực hiện được thao tác Chrome.'});}).catch(()=>{});
    };
-   current.onerror=()=>{if(socket!==current)return;clearTimeout(timeout);fail(next.mode==='remote'?'Không kết nối được máy MooZ. Kiểm tra đường Cloudflare/Tailscale, HTTPS và app đang mở; không có chế độ bỏ kiểm tra chứng chỉ.':'Không kết nối được ứng dụng Workflow. Kiểm tra ứng dụng đã mở và mã còn hiệu lực.');current.close();};
+   current.onerror=()=>{if(socket!==current)return;clearTimeout(timeout);fail(remoteMode(next)?'Không kết nối được máy MooZ. Bấm Kiểm tra đường truyền và đối chiếu địa chỉ hiện tại trong app.':'Không kết nối được ứng dụng Workflow. Kiểm tra ứng dụng đã mở và mã còn hiệu lực.');current.close();};
    current.onclose=event=>{clearTimeout(timeout);if(socket===current){socket=null;state='disconnected';clearInterval(heartbeat);heartbeat=null;clearGates();if(!lastError)lastError=event?.code===1013?'App đã kết nối với một Chrome khác. Ngắt kết nối cũ trong MooZ trước.':event?.code===1008?'Mã hoặc phiên đã hết hiệu lực. Tạo mã mới trong MooZ.':'Kết nối đã ngắt. Kiểm tra hai máy rồi bấm Kết nối lại. App không tự gửi lại yêu cầu AI.';}reject(Error(lastError||'Kết nối đã đóng.'));};
   });
  }
  async function reconnect(){if(!connection)throw Error('Dán mã mới từ MooZ trước.');return connectState(Remote?Remote.saved(connection):connection);}
  async function diagnose(){
-  const target=connection;if(target?.mode!=='remote')throw Error('Dán mã từ xa và bấm Kết nối trước khi kiểm tra.');
+  const target=connection;if(!remoteMode(target))throw Error('Dán mã từ xa và bấm Kết nối trước khi kiểm tra.');
   if(!globalThis.WorkflowRemoteDiagnostics)throw Error('Cập nhật tiện ích để kiểm tra đường truyền.');
   if(!await chrome.permissions.contains({origins:[Remote.origin(target.endpoint)]}))throw Error('Chưa cấp quyền tới địa chỉ này. Dán mã và bấm Kết nối trước.');
   if(diagnosticTask)return diagnosticTask;
-  const task=(async()=>{const result=await globalThis.WorkflowRemoteDiagnostics.check(target.endpoint);if(connection===target){lastDiagnostic=result;}return status();})();diagnosticTask=task;try{return await task;}finally{if(diagnosticTask===task)diagnosticTask=null;}
+  const task=(async()=>{const result=await (target.mode==='relay'?globalThis.WorkflowRemoteDiagnostics.checkRelay:globalThis.WorkflowRemoteDiagnostics.check)(target.endpoint);if(connection===target){lastDiagnostic=result;}return status();})();diagnosticTask=task;try{return await task;}finally{if(diagnosticTask===task)diagnosticTask=null;}
  }
  function extensionPage(sender){const prefix=chrome.runtime.getURL('');return sender.id===chrome.runtime.id&&typeof sender.url==='string'&&sender.url.startsWith(prefix)&&(!sender.tab?.url||sender.tab.url.startsWith(prefix));}
  chrome.runtime.onMessage.addListener((message,sender,reply)=>{

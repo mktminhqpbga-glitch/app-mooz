@@ -270,6 +270,8 @@ async function handleWorkflowCall(event,method,data={}){
   if(method==='relay.copy'){await clipboard.writeText(relay.pairingURI());return {copied:true};}
   if(method==='relay.status')return relay.status();
   if(method==='relay.disconnect'){if(relay.connectionMode==='local')relay.revokeLocal();else relay.revokeRemote();return relay.status();}
+  if(method==='remoteChrome.relaySetup')return remoteChrome.relaySetup(data.endpoint,data.key);
+  if(method==='remoteChrome.deployRelay'){await shell.openExternal('https://render.com/deploy?repo=https://github.com/mktminhqpbga-glitch/app-mooz');return;}
   if(method==='remoteChrome.status')return remoteChrome.status();
   if(method==='remoteChrome.copyTestURL'){const endpoint=remoteChrome.status().endpoint;if(!endpoint)throw Error('Chưa có địa chỉ tunnel hiện tại.');const url=new URL(endpoint);url.protocol='https:';await clipboard.writeText(url.href);return {copied:true};}
   if(method==='remoteChrome.copyDiagnostics'){await clipboard.writeText(JSON.stringify(remoteChrome.diagnostics(),null,2));return {copied:true};}
@@ -368,7 +370,7 @@ app.whenReady().then(async()=>{
   uiPreferences=new UIPreferences(app.getPath('userData'));await uiPreferences.load();
   diagnostics=new Diagnostics(app.getPath('userData'),{version,secretValues:()=>[...(aiConnections?.keys?.values()||[]),...[...sessionData.values()].flatMap(v=>Object.values(v?.workflowApiKeys||{}))]});await diagnostics.init();
   aiDispatch=new AIDispatch(app.getPath('userData'),{notify});await aiDispatch.init();
-  remoteChrome=new RemoteChrome({root:app.getPath('userData'),notify});remoteChrome.tunnel.fetchImpl=net.fetch.bind(net);remoteChrome.fetchImpl=net.fetch.bind(net);await remoteChrome.init();relay=new ChromeRelay({notify,version});let portUnavailable=false;try{await relay.start({port:remoteChrome.config.enabled?remoteChrome.config.listenPort:0});}catch(e){if(e.code!=='EADDRINUSE')throw e;portUnavailable=true;await relay.start();}try{await relay.startRemoteIngress({port:remoteChrome.config.enabled?remoteChrome.config.remotePort||0:0});}catch(e){if(e.code!=='EADDRINUSE')throw e;if(remoteChrome.config.mode==='custom')portUnavailable=true;await relay.startRemoteIngress();}remoteChrome.attach(relay,{portUnavailable});
+  remoteChrome=new RemoteChrome({root:app.getPath('userData'),notify});remoteChrome.tunnel.fetchImpl=net.fetch.bind(net);remoteChrome.fetchImpl=net.fetch.bind(net);remoteChrome.broker.socketOptions=endpoint=>require('./relay-proxy.cjs').relaySocketOptions(endpoint,{resolveProxy:url=>net.resolveProxy(url)});await remoteChrome.init();relay=new ChromeRelay({notify,version});let portUnavailable=false;try{await relay.start({port:remoteChrome.config.enabled?remoteChrome.config.listenPort:0});}catch(e){if(e.code!=='EADDRINUSE')throw e;portUnavailable=true;await relay.start();}try{await relay.startRemoteIngress({port:remoteChrome.config.enabled?remoteChrome.config.remotePort||0:0});}catch(e){if(e.code!=='EADDRINUSE')throw e;if(remoteChrome.config.mode==='custom')portUnavailable=true;await relay.startRemoteIngress();}remoteChrome.attach(relay,{portUnavailable});
   ai=new AIWindows(root,version,notify,async projectId=>projectId?(await store.readStorage(projectId)).workflowMuseSendTarget:null);
   ai.dispatch=aiDispatch;relay.dispatch=aiDispatch;
   const postingRoot=path.join(app.getPath('userData'),'posting');

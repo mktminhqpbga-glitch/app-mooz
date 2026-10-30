@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: mooz-relay
+    runtime: node
+    plan: free
+    rootDir: relay-server
+    buildCommand: npm ci --omit=dev
+    startCommand: node server.cjs
+    healthCheckPath: /health
+    autoDeployTrigger: 'off'
+    envVars:
+      - key: NODE_VERSION
+        value: '24'
+      - key: RELAY_ADMIN_KEY
+        generateValue: true

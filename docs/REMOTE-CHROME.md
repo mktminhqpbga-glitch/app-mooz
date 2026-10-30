@@ -1,4 +1,6 @@
-# Chrome trên máy khác · MooZ Agent 0.50.1
+# Chrome trên máy khác · MooZ Agent 0.51.0
+
+**Không có tên miền hoặc không dùng được Quick Tunnel?** Dùng [Relay Internet](OUTBOUND-RELAY.md): app và Chrome đều mở kết nối WSS ra relay do bạn triển khai. Bộ Render có gói Free trong hạn mức, không cần hosting PHP, Cloudflare Tunnel hay Tailscale; extension cần 1.3.0. Vẫn phải kiểm tra máy Chrome được phép truy cập hostname của dịch vụ.
 
 Máy A chạy MooZ để điều phối workflow, lưu dự án và xuất thành phẩm. Máy B chạy Chrome với các tab AI đã đăng nhập và Workflow Connect **1.2.0 trở lên** (bản đóng kèm **1.2.2**). Hai máy có thể ở hai mạng Internet khác nhau. Không cần cài MooZ trên máy B. Chọn Cloudflare Tunnel nếu không muốn cài Tailscale.
 

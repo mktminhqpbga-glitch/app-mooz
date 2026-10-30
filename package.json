@@ -1,6 +1,6 @@
 {
   "name": "workflow-museflow",
-  "version": "0.50.1",
+  "version": "0.51.0",
   "private": true,
   "description": "Ứng dụng desktop tạo workflow AI với dự án cục bộ và cửa sổ AI tích hợp.",
   "license": "GPL-2.0-or-later",
@@ -9,7 +9,7 @@
   "scripts": {
     "start": "electron .",
     "test": "node --test tests/*.test.mjs tests/desktop-*.test.cjs",
-    "test:desktop": "node tests/desktop-smoke.cjs && node tests/desktop-layout-smoke.cjs && node tests/desktop-posting-smoke.cjs && node tests/desktop-workspace-smoke.cjs && node tests/desktop-ai-results-smoke.cjs && node tests/desktop-affiliate-smoke.cjs && node tests/desktop-ai-tools-smoke.cjs && node tests/desktop-ux-smoke.cjs && node tests/desktop-muse-publishing-smoke.cjs && node tests/desktop-video-aggregate-smoke.cjs && node tests/desktop-studio-refresh-smoke.cjs && node tests/desktop-workflow-audit-smoke.cjs && node tests/desktop-user-review-smoke.cjs && node tests/desktop-diagnostics-smoke.cjs && node tests/desktop-layout-review-smoke.cjs && node tests/desktop-extra-tools-smoke.cjs && node tests/desktop-theme-smoke.cjs && node tests/desktop-batch-smoke.cjs && node tests/desktop-ai-dispatch-smoke.cjs && node tests/desktop-agent-smoke.cjs && node tests/desktop-remote-chrome-smoke.cjs",
+    "test:desktop": "node tests/desktop-smoke.cjs && node tests/desktop-layout-smoke.cjs && node tests/desktop-posting-smoke.cjs && node tests/desktop-workspace-smoke.cjs && node tests/desktop-ai-results-smoke.cjs && node tests/desktop-affiliate-smoke.cjs && node tests/desktop-ai-tools-smoke.cjs && node tests/desktop-ux-smoke.cjs && node tests/desktop-muse-publishing-smoke.cjs && node tests/desktop-video-aggregate-smoke.cjs && node tests/desktop-studio-refresh-smoke.cjs && node tests/desktop-workflow-audit-smoke.cjs && node tests/desktop-user-review-smoke.cjs && node tests/desktop-diagnostics-smoke.cjs && node tests/desktop-layout-review-smoke.cjs && node tests/desktop-extra-tools-smoke.cjs && node tests/desktop-theme-smoke.cjs && node tests/desktop-batch-smoke.cjs && node tests/desktop-ai-dispatch-smoke.cjs && node tests/desktop-agent-smoke.cjs && node tests/desktop-remote-chrome-smoke.cjs && node tests/desktop-outbound-relay-smoke.cjs",
     "test:browser": "node tests/browser-smoke.cjs",
     "test:reliability": "node tests/core-reliability-smoke.cjs",
     "package:extension": "python3 tools/package.py",
@@ -19,7 +19,8 @@
     "setup:desktop": "install-electron",
     "version:app": "node tools/set-version.cjs",
     "test:remote": "node tests/desktop-remote-chrome-smoke.cjs",
-    "setup:remote-tests": "playwright install chromium"
+    "setup:remote-tests": "playwright install chromium",
+    "test:relay": "node tests/desktop-outbound-relay-smoke.cjs"
   },
   "engines": {
     "node": ">=22.12.0"
@@ -91,7 +92,9 @@
   },
   "dependencies": {
     "electron-updater": "6.8.9",
+    "https-proxy-agent": "7.0.6",
     "parse5": "^8.0.0",
+    "proxy-from-env": "1.1.0",
     "ws": "8.22.0"
   }
 }
