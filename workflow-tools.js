@@ -4,6 +4,7 @@
  const definitions={
   characterLock:{title:'Khóa nhân vật',inputs:[image],outputs:[image,text]},
   imageRoles:{title:'Gán vai trò ảnh',inputs:['character','background','clothing','pose'].map((id,i)=>({id,label:['Nhân vật','Bối cảnh','Trang phục','Tư thế'][i],type:'image'})),outputs:[image]},
+  scriptSplit:{title:'Tách kịch bản',inputs:[{id:'prompt',label:'Kết quả AI',type:'text'}],outputs:[text]},
   sceneSplit:{title:'Chia cảnh tự động',inputs:[{id:'prompt',label:'Kịch bản',type:'text'}],outputs:[text]},
   review:{title:'Duyệt trước khi chạy',inputs:[{id:'prompt',label:'Prompt',type:'text'},{id:'reference',label:'Ảnh',type:'image'},{id:'video',label:'Video',type:'video'}],outputs:[text,image,{id:'video',label:'Video',type:'video'}]},
   qualityCheck:{title:'Kiểm tra kết quả',inputs:[{id:'media',label:'Ảnh/video',type:'media'}],outputs:[text,{id:'media',label:'Ảnh/video',type:'media'}]},

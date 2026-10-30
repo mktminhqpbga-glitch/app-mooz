@@ -1,4 +1,6 @@
-# Workflow · MuseFlow 0.52.0
+# Workflow · MuseFlow 0.53.0
+
+**0.53.0 · Tách kịch bản:** chốt cấu trúc và quy tắc, nhận JSON từ ChatGPT, xem/duyệt từng cảnh rồi tạo prompt ảnh, video và lời thoại. Có bảng chỉnh bên phải, kiểm tra dữ liệu và chống tạo trùng; giữ đúng số giây/null. [Hướng dẫn](docs/SCRIPT-SPLITTER.md).
 
 **0.52.0 · Thêm AI:** Grok (văn bản/ảnh/video), Google Flow (ảnh/video qua tab), tên Veo 3 API rõ ràng; chọn tab trong workflow, Agent và hàng loạt. Cần Workflow Connect 1.4.0. [Cách kết nối và giới hạn](docs/AI-CONNECTORS.md).
 

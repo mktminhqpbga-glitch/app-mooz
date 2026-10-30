@@ -2,6 +2,9 @@ name: Đóng gói / Cập nhật app Windows
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [package.json]
 
 permissions:
   contents: read
@@ -30,7 +33,7 @@ jobs:
         run: npm run setup:desktop
 
       - name: Verify AI adapters and remote transport on Windows
-        run: node --test tests/providers.test.mjs tests/desktop-ai-sites.test.cjs tests/desktop-relay.test.cjs tests/desktop-outbound-relay.test.cjs tests/desktop-remote-diagnostics.test.cjs tests/desktop-ai-connections.test.cjs
+        run: node --test tests/providers.test.mjs tests/script-splitter.test.mjs tests/desktop-ai-sites.test.cjs tests/desktop-relay.test.cjs tests/desktop-outbound-relay.test.cjs tests/desktop-remote-diagnostics.test.cjs tests/desktop-ai-connections.test.cjs
 
       - name: Build Windows installer without publishing
         run: npm exec electron-builder -- --win --x64 --publish never

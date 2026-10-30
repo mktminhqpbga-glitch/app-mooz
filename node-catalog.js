@@ -3,6 +3,7 @@
  const groups={text:{name:'Văn bản',icon:'T',color:'#bca5ff'},image:{name:'Ảnh',icon:'▧',color:'#90c5ff'},video:{name:'Video',icon:'▷',color:'#8fe0c6'},audio:{name:'Âm thanh',icon:'♫',color:'#f2bc84'},control:{name:'Kiểm soát',icon:'◇',color:'#e6cf87'}};
  const rows=[
  ['masterScript','Kịch bản tổng','text','Viết kịch bản chính, chia hồi và cảnh để phát triển workflow.'],
+ ['scriptSplit','Tách kịch bản','text','Chốt cấu trúc và quy tắc, kiểm tra JSON ChatGPT rồi tạo node theo từng cảnh đã duyệt.'],
  ['prompt','Yêu cầu','text','Nhập prompt hoặc nội dung sản phẩm cho các bước AI.'],
  ['generateText','Tạo văn bản','text','Viết hoặc phân tích bằng AI đã chọn; có thể gửi ảnh và video.'],
  ['generateImage','Tạo ảnh','image','Tạo ảnh từ yêu cầu và các ảnh tham chiếu đã nối.'],
@@ -50,7 +51,7 @@
  ];
  const entries=Object.fromEntries(rows.map(([id,title,group,description])=>[id,{id,title,group,description,...groups[group]}]));
  entries.videoAssembly.internal=true;
- const common=['masterScript','prompt','generateText','generateImage','generateVideo','finalOutput'];
+ const common=['masterScript','prompt','generateText','scriptSplit','generateImage','generateVideo','finalOutput'];
  const fold=value=>String(value).normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').replace(/Đ/g,'D').toLowerCase();
  const keywords={finalOutput:'ghép video nối clip xuất mp4',sceneSplit:'tách cảnh chia cảnh',textConcat:'gộp chữ nối văn bản',voiceover:'đọc lời thoại giọng nói text to speech tts',referenceBoard:'ảnh chung tham chiếu sản phẩm nhân vật'};
  for(const [id,words]of Object.entries(keywords))entries[id].keywords=words;

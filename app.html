@@ -4,15 +4,15 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <script src="desktop/theme-colors.js"></script><script src="desktop/theme-init.js"></script>
-  <title>MooZ Agent 0.52.0</title>
+  <title>MooZ Agent 0.53.0</title>
   <link rel="icon" type="image/png" sizes="128x128" href="icons/icon128.png" />
   <link rel="stylesheet" href="styles.css" />
   <link rel="stylesheet" href="studio.css" />
   <link rel="stylesheet" href="desktop/update-ui.css">
-<link rel="stylesheet" href="desktop/appearance.css"><link rel="stylesheet" href="desktop/studio-polish.css"><link rel="stylesheet" href="desktop/usability.css"><link rel="stylesheet" href="desktop/theme.css"><link rel="stylesheet" href="agent-ui.css"></head>
+<link rel="stylesheet" href="desktop/appearance.css"><link rel="stylesheet" href="desktop/studio-polish.css"><link rel="stylesheet" href="desktop/usability.css"><link rel="stylesheet" href="desktop/theme.css"><link rel="stylesheet" href="agent-ui.css"><link rel="stylesheet" href="script-splitter.css"></head>
 <body data-app-surface="canvas">
   <header class="toolbar">
-    <div class="brand"><img class="brand-logo" src="icons/mooz-mark.svg" alt="" /><strong class="brand-name">MooZ Agent</strong><span class="brand-version">0.52.0</span></div>
+    <div class="brand"><img class="brand-logo" src="icons/mooz-mark.svg" alt="" /><strong class="brand-name">MooZ Agent</strong><span class="brand-version">0.53.0</span></div>
     <div class="toolbar-tools" aria-label="Tạo node cho workflow">
       <button id="creativeToolsBtn" type="button">Trợ lý sáng tạo</button><button id="referenceBoardBtn" type="button">Ảnh tham chiếu chung</button><button id="mediaLibraryBtn" type="button">⇩ Tải media</button><button id="promptLibraryBtn" type="button">Kho prompt</button>
       <button id="batchManagerBtn" type="button">Hàng đợi · Kho ảnh</button><button id="flowStudioBtn" type="button">Tạo hàng loạt</button><button id="batchImagesBtn" type="button">＋ Tạo ảnh hàng loạt</button><button id="scriptImportBtn" type="button">＋ Script → Nodes</button>
@@ -193,6 +193,8 @@
   <script src="batch-images.js"></script>
   <script src="ai-providers.js"></script>
   <script src="workflow-tools.js"></script>
+  <script src="script-splitter.js"></script>
+  <script src="script-splitter-ui.js"></script>
   <script src="workflow-runtime.js"></script>
   <script src="media-studio.js"></script>
   <script src="media-library.js"></script>
