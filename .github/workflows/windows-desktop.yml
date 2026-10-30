@@ -1,12 +1,18 @@
 name: Đóng gói / Cập nhật app Windows
 
 on:
-  workflow_dispatch: # Chỉ chạy khi bấm thủ công, không tự chạy khi push code
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   build-win:
+    name: Build và kiểm tra Windows x64
     runs-on: windows-latest
-    
+    timeout-minutes: 30
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
@@ -14,21 +20,62 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: 'npm'
+          node-version: '24'
+          cache: npm
 
       - name: Install locked dependencies
         run: npm ci
 
-      - name: Build Windows app
-        run: npx electron-builder --win --x64
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Prepare Electron runtime
+        run: npm run setup:desktop
 
-      - name: Upload Windows Artifacts
+      - name: Verify AI adapters and remote transport on Windows
+        run: node --test tests/providers.test.mjs tests/desktop-ai-sites.test.cjs tests/desktop-relay.test.cjs tests/desktop-outbound-relay.test.cjs tests/desktop-remote-diagnostics.test.cjs tests/desktop-ai-connections.test.cjs
+
+      - name: Build Windows installer without publishing
+        run: npm exec electron-builder -- --win --x64 --publish never
+
+      - name: Open the actual packaged Windows app
+        env:
+          MOOZ_UI_AUDIT_DIR: ${{ runner.temp }}/mooz-windows-review
+        run: node tests/desktop-windows-packaged-smoke.cjs
+
+      - name: Verify installer and record checksum
+        shell: pwsh
+        run: |
+          $packages = @(Get-ChildItem dist -File -Filter *.exe)
+          if ($packages.Count -ne 1 -or $packages[0].Length -lt 1MB) {
+            throw 'Expected one non-empty Windows installer'
+          }
+          $file = $packages[0]
+          $stream = [System.IO.File]::OpenRead($file.FullName)
+          try {
+            if ($stream.ReadByte() -ne 77 -or $stream.ReadByte() -ne 90) {
+              throw 'Installer is not a Windows executable'
+            }
+          } finally { $stream.Dispose() }
+          $hash = (Get-FileHash $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  $($file.Name)" | Set-Content dist/SHA256SUMS-Windows.txt -Encoding utf8NoBOM
+          $version = node -p "require('./package.json').version"
+          "MooZ $version Windows x64`nSource: $env:GITHUB_SHA`nInstaller: $($file.Name)`nUnsigned build; no release was published." | Set-Content dist/Windows-build-info.txt -Encoding utf8NoBOM
+
+      - name: Upload Windows installer
         uses: actions/upload-artifact@v4
         with:
-          name: MooZ-App-Windows
+          name: MooZ-App-Windows-x64
           path: |
             dist/*.exe
-            dist/*.zip
+            dist/SHA256SUMS-Windows.txt
+            dist/Windows-build-info.txt
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Save packaged app verification
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: MooZ-Windows-review
+          path: ${{ runner.temp }}/mooz-windows-review
+          if-no-files-found: ignore
+          retention-days: 14
