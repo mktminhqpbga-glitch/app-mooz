@@ -1,4 +1,6 @@
-# Workflow · MuseFlow 0.53.1
+# Workflow · MuseFlow 0.54.0
+
+**0.54.0 · Shopee trên Chrome:** mở Shopee, tự đăng nhập, cập nhật/chọn tab sản phẩm rồi lấy ảnh và thông tin về Affiliate. Giữ link affiliate, từ chối tab đổi sản phẩm, không đọc mật khẩu/cookie. Cần **Workflow Connect 1.5.0**. Đăng nhập Facebook chịu lỗi mạng tạm thời khi lấy trạng thái trong cùng phiên. [Hướng dẫn](docs/SHOPEE-CHROME.md).
 
 **0.53.1 · Sửa kết nối relay:** dùng API proxy của Electron Session, khắc phục lỗi `net.resolveProxy is not a function` khi kết nối Render. Kiểm thử Electron nay đi qua cấu hình proxy thật của app trước khi thêm chứng chỉ TLS thử nghiệm. Extension giữ nguyên 1.4.0.
 

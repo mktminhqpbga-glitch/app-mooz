@@ -183,6 +183,12 @@ async function handleWorkflowCall(event,method,data={}){
    if(method==='affiliate.get')return affiliate.get(data.id);
    if(method==='affiliate.tabs')return postingAI.tabs();
    if(method==='affiliate.openAI')return ai.open(data.provider||'chatgpt');
+   if(['affiliate.shopeeTabs','affiliate.shopeeOpen','affiliate.create'].includes(method)&&(method!=='affiliate.create'||data.sourceMode==='chrome')){
+    if(!relay.isConnected)throw Error('Kết nối Chrome bằng Workflow Connect trước. Mở Cài đặt & kết nối AI để lấy mã.');
+    const v=(relay.companion?.version||'0.0.0').split('.').map(Number);if(v[0]<1||v[0]===1&&v[1]<5)throw Error('Cập nhật Workflow Connect 1.5.0 để lấy dữ liệu Shopee từ Chrome.');
+   }
+   if(method==='affiliate.shopeeTabs')return relay.request('shopee.tabs');
+   if(method==='affiliate.shopeeOpen')return relay.request('shopee.open',{url:data.url?affiliateURL(data.url):'https://shopee.vn/'});
    if(method==='affiliate.create')return affiliate.create(data);
    if(method==='affiliate.generate')return affiliate.generate(data);
    if(method==='affiliate.draft')return affiliate.saveDraft(data);
@@ -377,12 +383,12 @@ app.whenReady().then(async()=>{
   const postingRoot=path.join(app.getPath('userData'),'posting');
   const postingStore=new PostingStore(postingRoot),publisher=new FacebookPublisher({root:postingRoot,fetch:net.fetch.bind(net),safeStorage:require('electron').safeStorage});
   brands=new BrandStore(path.join(app.getPath('userData'),'brands'));await brands.init();chats=new ChatStore(path.join(app.getPath('userData'),'chats'));
-  facebookPages=new FacebookPages(publisher);facebookLogin=new FacebookLogin({fetch:net.fetch.bind(net),openExternal:url=>shell.openExternal(url),pages:facebookPages});
+  facebookPages=new FacebookPages(publisher);facebookLogin=new FacebookLogin({fetch:net.fetch.bind(net),openExternal:url=>shell.openExternal(url),pages:facebookPages,notify:event=>notify({type:'facebookLogin',...event})});
   postingOAuth=new PostingOAuth({fetch:net.fetch.bind(net),openExternal:url=>shell.openExternal(url)});
   aiConnections=new AIConnections(app.getPath('userData'),net.fetch.bind(net));await aiConnections.init();aiConnections.dispatch=aiDispatch;
   postingAI=new PostingAI({ai,relay,store:postingStore,connections:aiConnections});postingAI.dispatch=aiDispatch;batchAI=new BatchAI({client:postingAI,ai,relay,onProgress:notify});publisher.muse=new MusePublishing({client:postingAI});posting=new PostingService({store:postingStore,publisher,brands,ask:(...args)=>postingAI.ask(...args),notify:()=>notify({type:'posting'})});await posting.init();posting.start();
   agent=new AgentService({root:path.join(app.getPath('userData'),'agent-runs'),posting,dispatch:aiDispatch,notify,invoke:async(project,packet)=>{const win=canvases.get(project);if(!win||win.isDestroyed())throw Error('Dự án đã đóng; chưa gửi công cụ mới.');return win.webContents.executeJavaScript('window.MooZAgentRuntime.invoke('+JSON.stringify(packet)+')');}});await agent.init();
-  affiliate=new AffiliateService({root:path.join(app.getPath('userData'),'affiliate'),ai:postingAI,fetchImpl:net.fetch.bind(net),notify:()=>notify({type:'affiliate'}),decodeImage:bytes=>{let image=nativeImage.createFromBuffer(bytes);if(image.isEmpty())throw Error('Không giải mã được ảnh sản phẩm.');const {width,height}=image.getSize();if(width*height>25000000)throw Error('Ảnh sản phẩm quá lớn.');const scale=Math.min(1,1600/Math.max(width,height));if(scale<1)image=image.resize({width:Math.round(width*scale),height:Math.round(height*scale),quality:'best'});const jpeg=image.toJPEG(90);if(jpeg.length>4*1024*1024)throw Error('Ảnh sản phẩm sau thu nhỏ vẫn quá lớn.');return 'data:image/jpeg;base64,'+jpeg.toString('base64');}});await affiliate.init();
+  affiliate=new AffiliateService({root:path.join(app.getPath('userData'),'affiliate'),ai:postingAI,fetchImpl:net.fetch.bind(net),readChrome:payload=>relay.request('shopee.read',payload),notify:()=>notify({type:'affiliate'}),decodeImage:bytes=>{let image=nativeImage.createFromBuffer(bytes);if(image.isEmpty())throw Error('Không giải mã được ảnh sản phẩm.');const {width,height}=image.getSize();if(width*height>25000000)throw Error('Ảnh sản phẩm quá lớn.');const scale=Math.min(1,1600/Math.max(width,height));if(scale<1)image=image.resize({width:Math.round(width*scale),height:Math.round(height*scale),quality:'best'});const jpeg=image.toJPEG(90);if(jpeg.length>4*1024*1024)throw Error('Ảnh sản phẩm sau thu nhỏ vẫn quá lớn.');return 'data:image/jpeg;base64,'+jpeg.toString('base64');}});await affiliate.init();
   const signed=app.isPackaged&&process.platform==='darwin'&&await isDeveloperIDSigned(path.dirname(path.dirname(path.dirname(process.execPath))));
   updater=new UpdateService({version,packaged:app.isPackaged,platform:process.platform,signed,engine:signed?require('electron-updater').autoUpdater:null,fetchRelease:()=>latestPublicRelease(net.fetch.bind(net)),
     prepareInstall:async()=>{

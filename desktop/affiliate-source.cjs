@@ -38,4 +38,20 @@ async function parseProduct(source){
  if(!imageURLs.length)throw Error('Không tìm thấy ảnh sản phẩm công khai trên CDN Shopee. Chưa gọi AI.');
  return {key:(ids[1]||ids[3])+':'+(ids[2]||ids[4]),title,description:clean(data.description||meta['og:description']||'',5000),sourceURL:url.href,imageURLs,fetchedAt:new Date().toISOString(),sourceHash:createHash('sha256').update(source.bytes).digest('hex')};
 }
-module.exports={checkedURL,download,parseProduct};
+function parseBrowserCapture(capture,expectedURL){
+ const S=require('../shopee-source.js'),p=capture?.product;
+ if(!p||typeof p!=='object'||p.sourceURL!==expectedURL||!S.productKey(p.sourceURL))throw Error('Kết quả Chrome không còn khớp trang sản phẩm đã chọn. Làm mới danh sách tab.');
+ if(typeof p.title!=='string'||!p.title.trim()||p.title.length>180||typeof p.description!=='string'||p.description.length>5000||!Array.isArray(p.imageURLs)||!p.imageURLs.length||p.imageURLs.length>5)throw Error('Thông tin sản phẩm Chrome thiếu tên, mô tả hoặc ảnh hợp lệ.');
+ const imageURLs=[...new Set(p.imageURLs.map(url=>checkedURL(url,'image')))];
+ if(!Array.isArray(capture.images)||!capture.images.length||capture.images.length>5)throw Error('Chrome chưa gửi ảnh sản phẩm.');
+ const images=new Map();let total=0;
+ for(const img of capture.images){
+  if(!img||!imageURLs.includes(img.url)||images.has(img.url)||typeof img.data!=='string'||img.data.length>12*1024*1024)throw Error('Ảnh Chrome không khớp nguồn sản phẩm.');
+  const m=/^data:image\/(?:jpeg|png|webp|avif);base64,([A-Za-z0-9+/]+={0,2})$/.exec(img.data);if(!m||m[1].length%4)throw Error('Dữ liệu ảnh Chrome không hợp lệ.');
+  const bytes=Buffer.from(m[1],'base64');total+=bytes.length;if(!bytes.length||bytes.length>8*1024*1024||total>20*1024*1024)throw Error('Ảnh Chrome vượt giới hạn 8 MB/ảnh hoặc 20 MB/sản phẩm.');images.set(img.url,{bytes});
+ }
+ const product={key:S.productKey(p.sourceURL),title:p.title.trim(),description:p.description,sourceURL:checkedURL(p.sourceURL),imageURLs,fetchedAt:new Date().toISOString(),sourceMode:'chrome'};
+ const {fetchedAt:_,...hashData}=product;product.sourceHash=createHash('sha256').update(JSON.stringify(hashData)).digest('hex');
+ return {product,images};
+}
+module.exports={checkedURL,download,parseProduct,parseBrowserCapture};

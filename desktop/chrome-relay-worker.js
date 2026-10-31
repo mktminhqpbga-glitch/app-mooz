@@ -34,6 +34,22 @@
  function publicTab(tab){return {id:tab.id,windowId:tab.windowId,url:tab.url,title:tab.title,active:tab.active};}
  async function perform(operation,payload={}){
   if(!payload||typeof payload!=='object'||Array.isArray(payload))throw Error('Yêu cầu Chrome không hợp lệ.');
+  if(operation.startsWith('shopee.')){
+   const source=globalThis.WorkflowShopeeSource;if(!source)throw Error('Cập nhật Workflow Connect 1.5.0 để đọc Shopee.');
+   if(operation==='shopee.open'){const url=source.checked(payload.url||'https://shopee.vn/');return publicTab(await chrome.tabs.create({url,active:true}));}
+   if(operation==='shopee.tabs'){const tabs=await chrome.tabs.query({url:['https://shopee.vn/*','https://*.shopee.vn/*','https://shp.ee/*','https://*.shp.ee/*']});return tabs.filter(t=>{try{return !!source.checked(t.url);}catch{return false;}}).map(publicTab);}
+   if(operation!=='shopee.read')throw Error('Thao tác Shopee không được phép.');
+   if(!Number.isInteger(payload.id)||payload.id<0||typeof payload.expectedURL!=='string')throw Error('Chọn tab sản phẩm Shopee trước.');
+   const tab=await chrome.tabs.get(payload.id);source.checked(tab.url);if(tab.url!==source.checked(payload.expectedURL))throw Error('Tab Shopee đã đổi trang. Làm mới danh sách và chọn lại sản phẩm.');
+   await chrome.scripting.executeScript({target:{tabId:tab.id},files:['shopee-source.js']});
+   const rows=await chrome.scripting.executeScript({target:{tabId:tab.id},func:()=>{try{return {product:WorkflowShopeeSource.capture(document,location.href)};}catch(e){return {error:e.message};}}});
+   const result=rows?.[0]?.result;if(result?.error)throw Error(result.error);const product=result?.product;
+   if(!product||product.sourceURL!==tab.url)throw Error('Trang sản phẩm đã thay đổi trong lúc đọc. Làm mới danh sách rồi thử lại.');
+   const images=[];let total=0;for(const url of product.imageURLs){try{const img=await source.image(url);total+=img.bytes;if(total>20*1024*1024)break;images.push({url:img.url,data:img.data});}catch{}}
+   if(!images.length)throw Error('Không tải được ảnh trên CDN Shopee. Kiểm tra ảnh trên Chrome và thử lại; chưa gọi AI.');
+   if((await chrome.tabs.get(tab.id)).url!==tab.url)throw Error('Tab Shopee đã đổi sản phẩm trong lúc tải ảnh. Chọn lại và thử lại.');
+   return {product,images};
+  }
   if(operation==='tabs.query'){
    if(payload.url!==undefined&&typeof payload.url!=='string'&&(!Array.isArray(payload.url)||payload.url.some(url=>typeof url!=='string')))throw Error('Bộ lọc tab không hợp lệ.');
    const tabs=await chrome.tabs.query(payload.url===undefined?{}:{url:payload.url});return tabs.filter(tab=>supportedURL(tab.url)).map(tab=>{knownTabs.add(tab.id);return publicTab(tab);});

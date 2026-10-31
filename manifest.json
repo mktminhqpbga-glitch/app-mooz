@@ -4,8 +4,8 @@
     "extension_pages": "script-src 'self'; object-src 'none'; connect-src 'self' https: wss: ws://127.0.0.1:*"
   },
   "name": "Workflow Connect",
-  "version": "1.4.0",
-  "description": "Kết nối Muse, ChatGPT, Gemini, Grok và Google Flow/Veo với MooZ.",
+  "version": "1.5.0",
+  "description": "Kết nối AI và lấy thông tin, ảnh sản phẩm từ tab Shopee đã mở trong Chrome cho MooZ.",
   "action": {
     "default_title": "Kết nối Workflow",
     "default_icon": {
@@ -41,7 +41,12 @@
     "https://www.grok.com/*",
     "https://labs.google/fx/tools/flow*",
     "https://labs.google/fx/*/tools/flow*",
-    "https://flow.google.com/*"
+    "https://flow.google.com/*",
+    "https://shopee.vn/*",
+    "https://*.shopee.vn/*",
+    "https://shp.ee/*",
+    "https://*.shp.ee/*",
+    "https://*.susercontent.com/*"
   ],
   "content_scripts": [
     {

@@ -4,7 +4,7 @@ const {WebSocketServer,WebSocket}=require('ws');
 const http=require('node:http');
 const Remote=require('../chrome-remote-protocol.js');
 const MAX_BYTES=128*1024*1024;
-const OPERATIONS=new Set(['tabs.query','tabs.get','tabs.focus','tabs.script','tabs.message']);
+const OPERATIONS=new Set(['tabs.query','tabs.get','tabs.focus','tabs.script','tabs.message','shopee.open','shopee.tabs','shopee.read']);
 const EXTENSION_ORIGIN=/^chrome-extension:\/\/([a-p]{32})$/;
 
 class ChromeRelay {
@@ -107,7 +107,7 @@ class ChromeRelay {
   if(!OPERATIONS.has(operation))return Promise.reject(Error('Thao tác Chrome không được phép.'));
   if(!this.isConnected)return Promise.reject(Error('Chưa kết nối tiện ích Workflow trong Chrome.'));
   if(this.pending.size>=64)return Promise.reject(Error('Có quá nhiều yêu cầu Chrome đang chờ.'));
-  const id=randomUUID(),timeout=operation==='tabs.message'&&/GENERATE|JOB_START/.test(payload?.message?.type||'')?11*60*1000:this.connectionMode==='remote'?60000:30000;
+  const id=randomUUID(),timeout=operation==='shopee.read'?90000:operation==='tabs.message'&&/GENERATE|JOB_START/.test(payload?.message?.type||'')?11*60*1000:this.connectionMode==='remote'?60000:30000;
   return new Promise((resolve,reject)=>{
    const timer=setTimeout(()=>{this.pending.delete(id);reject(Error('Chrome chưa trả kết quả trong thời gian cho phép. Kiểm tra tab AI trước khi chạy lại.'));},timeout);timer.unref?.();
    this.pending.set(id,{resolve,reject,timer});
