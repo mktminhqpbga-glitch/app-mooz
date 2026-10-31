@@ -1,4 +1,6 @@
-# Workflow · MuseFlow 0.53.0
+# Workflow · MuseFlow 0.53.1
+
+**0.53.1 · Sửa kết nối relay:** dùng API proxy của Electron Session, khắc phục lỗi `net.resolveProxy is not a function` khi kết nối Render. Kiểm thử Electron nay đi qua cấu hình proxy thật của app trước khi thêm chứng chỉ TLS thử nghiệm. Extension giữ nguyên 1.4.0.
 
 **0.53.0 · Tách kịch bản:** chốt cấu trúc và quy tắc, nhận JSON từ ChatGPT, xem/duyệt từng cảnh rồi tạo prompt ảnh, video và lời thoại. Có bảng chỉnh bên phải, kiểm tra dữ liệu và chống tạo trùng; giữ đúng số giây/null. [Hướng dẫn](docs/SCRIPT-SPLITTER.md).
 
