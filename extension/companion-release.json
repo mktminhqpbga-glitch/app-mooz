@@ -1,5 +1,5 @@
 {
-  "version": "1.5.0",
+  "version": "1.5.1",
   "protocol": 1,
-  "notes": "Thêm mở Shopee, chọn tab sản phẩm và đọc ảnh/thông tin qua Chrome. Không đọc cookie/mật khẩu; giữ giao thức kết nối 1."
+  "notes": "Tách bước mở WebSocket, vào phòng relay và xác thực MooZ; kiểm tra HTTPS/WSS riêng và sao chép chẩn đoán không chứa mã/khóa. Giữ giao thức 1, dùng với MooZ 0.54.0."
 }

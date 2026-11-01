@@ -1,4 +1,4 @@
-# Kết nối qua relay Internet · MooZ 0.51.0 / Workflow Connect 1.3.0
+# Kết nối qua relay Internet · MooZ 0.54.0 / Workflow Connect 1.5.1
 
 MooZ và extension cùng mở kết nối WSS ra máy chủ relay. Không cần mở cổng router, chạy Cloudflare Tunnel, cài Tailscale, mua tên miền hoặc nâng cấp hosting InfinityFree. Relay Node.js không chạy trên hosting PHP Free của InfinityFree.
 
@@ -41,7 +41,10 @@ Khóa quản trị chỉ giữ trong phiên app, không ghi vào thiết lập, 
 1. Cài/cập nhật **Workflow Connect 1.3.0**, bấm **Tải lại** ở `chrome://extensions` và tải lại các tab AI đang dùng. Bản 1.2.x vẫn dùng được kết nối cũ, nhưng không có transport relay mới.
 2. Mở extension, dán mã mới và bấm **Kết nối**; chấp nhận quyền tới đúng hostname dịch vụ của bạn.
 3. Mở/đăng nhập các tab AI. Trong MooZ, làm mới danh sách chat, chọn đúng tab và thử một tác vụ nhỏ.
-4. **Kiểm tra đường truyền** trong extension chỉ kiểm tra dịch vụ HTTPS; không gửi khóa/mã hay làm việc với tab AI.
+4. Từ **Workflow Connect 1.5.1**, **Kiểm tra đường truyền** kiểm tra HTTPS và mở WebSocket riêng. Socket thử đóng ngay sau khi mở; không gửi khóa/mã, không vào phòng và không làm việc với tab AI. HTTPS 200 không chứng minh WSS hoạt động; WSS mở được cũng chưa chứng minh ghép đúng phòng hoặc app đã xác thực.
+5. Nếu kết nối lỗi, bấm **Sao chép chẩn đoán** và gửi báo cáo để kiểm tra. Báo cáo phân biệt `opening_socket`, `joining_relay`, `authenticating_app` và `connected`, kèm mã đóng socket. Không chứa mã ghép cặp, room/invite, khóa mã hóa/resume, khóa quản trị hoặc nội dung AI. Thông tin an toàn này giữ trong `chrome.storage.session` qua các lần service worker ngủ/khởi động lại; không giữ mã ghép thất bại để tự thử lại. Khi extension được tải lại/cập nhật hoặc Chrome đóng, cần thử lại bằng mã mới để ghi nhận lần thử mới.
+
+Nếu popup từng không hiện kết quả chẩn đoán, cập nhật 1.5.1: bản này giữ thông báo trong khi kiểm tra và sau lỗi, thay vì để vòng làm mới trạng thái mỗi 3 giây xóa đi. Console trống sau khi worker ngủ không đủ để xác định đường truyền đã hoạt động.
 
 Một app ghép một Chrome tại một thời điểm; Chrome đó có thể có nhiều tab AI. Giữ app và Chrome hoạt động. Thời hạn 10 phút chỉ để ghép ban đầu, không bắt tạo lại mã mỗi 10 phút sau khi đã kết nối.
 

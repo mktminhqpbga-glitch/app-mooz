@@ -3,8 +3,9 @@
  if(globalThis.WorkflowChromeRelay)return;
  const ALLOWED_FILES=new Set(['ai-activity.js','composer-controls.js','ai-bridge.js','muse-bridge.js','result-picker.js','muse-support.js']);
  const ALLOWED_TYPES=new Set(['WORKFLOW_AI_CHECK','WORKFLOW_AI_GENERATE','WORKFLOW_AI_STOP','WORKFLOW_AI_SEND_NOW','WORKFLOW_AI_USE_RESULT','MUSEFLOW_CHECK_SESSION','MUSEFLOW_GENERATE','MUSEFLOW_STOP_GENERATION','MUSEFLOW_JOB_START','MUSEFLOW_JOB_STATUS','MUSEFLOW_JOB_ACK']);
- const SETTINGS='workflowDesktopRelay';
- let lastDiagnostic=null,diagnosticTask=null;
+ const SETTINGS='workflowDesktopRelay',DIAGNOSTIC='workflowDesktopRelayDiagnostic';
+ let restoredReport=null,diagnosticWrites=Promise.resolve(),lifecycle=0;
+ let lastDiagnostic=null,diagnosticTask=null,lastTransport=null;
  let socket=null,connection=null,state='disconnected',heartbeat=null,appVersion=null,lastSeen=0,lastError='';
  const Remote=globalThis.WorkflowRemoteProtocol;
  const remoteMode=v=>v?.mode==='remote'||v?.mode==='relay';
@@ -18,7 +19,8 @@
   if(uri.protocol!=='workflow-connect:'||uri.hostname!=='127.0.0.1'||!/^\d+$/.test(uri.port)||Number(uri.port)<1||Number(uri.port)>65535||uri.username||uri.password||uri.search||uri.hash||!/^\/[a-f0-9]{64}$/.test(uri.pathname))throw Error('Mã kết nối không hợp lệ. Sao chép lại từ ứng dụng Workflow.');
   return {port:Number(uri.port),token:uri.pathname.slice(1)};
  }
- function status(){return {connected:state==='connected',state,port:connection?.port||null,protocol:PROTOCOL,appVersion,extensionVersion:chrome.runtime.getManifest?.()?.version||'',update:updateInfo,mode:connection?.mode||'local',endpoint:remoteMode(connection)?connection.endpoint:null,canReconnect:!!connection&&state!=='connected'&&state!=='connecting',error:lastError||undefined,diagnostics:lastDiagnostic};}
+ function status(){return {connected:state==='connected',state,port:connection?.port||null,protocol:PROTOCOL,appVersion,extensionVersion:chrome.runtime.getManifest?.()?.version||'',update:updateInfo,mode:connection?.mode||restoredReport?.mode||'local',endpoint:remoteMode(connection)?connection.endpoint:restoredReport?.endpoint||null,canReconnect:!!connection&&state!=='connected'&&state!=='connecting',error:lastError||undefined,diagnostics:lastDiagnostic,transport:lastTransport?{stage:lastTransport.stage,socketOpened:lastTransport.socketOpened,roomJoined:lastTransport.roomJoined,appAuthenticated:lastTransport.appAuthenticated,closeCode:lastTransport.closeCode,failure:lastTransport.failure,elapsedMs:(lastTransport.endedAt||Date.now())-lastTransport.startedAt}:restoredReport?.connection||null};}
+ function rememberDiagnostic(){const report=globalThis.WorkflowRemoteDiagnostics.connectionReport(status());restoredReport=report;diagnosticWrites=diagnosticWrites.catch(()=>{}).then(()=>chrome.storage.session.set({[DIAGNOSTIC]:report}));void diagnosticWrites.catch(()=>{});}
  async function checkUpdate(){
   if(updateTask)return updateTask;if(typeof fetch!=='function')return status();
   updateTask=(async()=>{try{
@@ -76,7 +78,7 @@
   throw Error('Thao tác Chrome không được phép.');
  }
  function clearGates(){for(const p of gateCalls.values()){clearTimeout(p.timer);p.reply({ok:false,error:'Chrome đã ngắt kết nối; chưa gửi AI.'});}gateCalls.clear();}
- async function disconnect(){lastDiagnostic=null;diagnosticTask=null;clearGates();lastError='';const previous=socket;socket=null;connection=null;state='disconnected';clearInterval(heartbeat);heartbeat=null;previous?.close();await chrome.storage.session.remove(SETTINGS);return status();}
+ async function disconnect(){lifecycle++;restoredReport=null;lastDiagnostic=null;diagnosticTask=null;clearGates();lastError='';lastTransport=null;appVersion=null;const previous=socket;socket=null;connection=null;state='disconnected';clearInterval(heartbeat);heartbeat=null;previous?.close();await diagnosticWrites.catch(()=>{});await chrome.storage.session.remove([SETTINGS,DIAGNOSTIC]);return status();}
  async function connect(uri){return connectState(parseURI(uri));}
  async function connectState(next){
   if(remoteMode(next)){
@@ -86,33 +88,35 @@
   }
   await disconnect();connection=next;state='connecting';lastError='';
   return new Promise((resolve,reject)=>{
-   const current=next.mode==='relay'?new globalThis.WorkflowRelayChannel.RelaySocket(next,chrome.runtime.id):new WebSocket(remoteMode(next)?next.endpoint:`ws://127.0.0.1:${next.port}/`);socket=current;
-   const fail=text=>{lastError=text;reject(Error(text));};
-   const timeout=setTimeout(()=>{current.close();fail(remoteMode(next)?'Không kết nối được máy MooZ. Kiểm tra app, máy chủ kết nối và mã ghép cặp; bấm Kiểm tra đường truyền để biết thêm.':'Không kết nối được ứng dụng Workflow. Mở ứng dụng và lấy mã mới.');},15000);
-   current.onopen=()=>current.send(JSON.stringify({type:'auth',token:next.token,protocol:PROTOCOL,extensionVersion:chrome.runtime.getManifest?.()?.version||'',...(remoteMode(next)?{remoteProtocol:1}:{})}));
+   const trace={stage:'opening_socket',socketOpened:false,roomJoined:false,appAuthenticated:false,closeCode:null,failure:null,startedAt:Date.now(),endedAt:null};lastTransport=trace;
+   const phase=stage=>{trace.stage=stage;trace.socketOpened=true;if(stage==='authenticating_app')trace.roomJoined=true;};
+   let current;try{current=next.mode==='relay'?new globalThis.WorkflowRelayChannel.RelaySocket(next,chrome.runtime.id,{onStage:phase}):new WebSocket(remoteMode(next)?next.endpoint:`ws://127.0.0.1:${next.port}/`);}catch{trace.failure='SOCKET_CONSTRUCTION_FAILED';trace.endedAt=Date.now();state='disconnected';lastError='Chrome không khởi tạo được WebSocket. Kiểm tra quyền truy cập địa chỉ và tải lại tiện ích.';rememberDiagnostic();reject(Error(lastError));return;}socket=current;
+   const fail=(text,code)=>{trace.failure=code||'TRANSPORT_CLOSED';trace.endedAt=Date.now();lastError=text;rememberDiagnostic();reject(Error(text));};
+   const timeout=setTimeout(()=>{if(socket!==current)return;const failure=globalThis.WorkflowRemoteDiagnostics.connectionFailure(trace,'timeout');fail(failure.message,failure.code);current.close();},remoteMode(next)?45000:15000);
+   current.onopen=()=>{trace.socketOpened=true;trace.stage='authenticating_app';current.send(JSON.stringify({type:'auth',token:next.token,protocol:PROTOCOL,extensionVersion:chrome.runtime.getManifest?.()?.version||'',...(remoteMode(next)?{remoteProtocol:1}:{})}));};
    current.onmessage=event=>{
     if(socket!==current)return;let message;try{if(typeof event.data!=='string'||event.data.length>128*1024*1024)throw Error();message=JSON.parse(event.data);}catch{current.close(1008,'Invalid message');return;}lastSeen=Date.now();
     if(message.type==='gate-result'){const p=gateCalls.get(message.callId);if(p){clearTimeout(p.timer);gateCalls.delete(message.callId);p.reply(message.result);}return;}
     if(message.type==='ready'){
-     if(message.protocol!==undefined&&message.protocol!==PROTOCOL||remoteMode(next)&&(message.remoteProtocol!==1||!/^[a-f0-9]{64}$/.test(message.sessionToken||''))){clearTimeout(timeout);current.close();fail('App và tiện ích cần cập nhật giao thức kết nối tương thích.');return;}
+     if(message.protocol!==undefined&&message.protocol!==PROTOCOL||remoteMode(next)&&(message.remoteProtocol!==1||!/^[a-f0-9]{64}$/.test(message.sessionToken||''))){clearTimeout(timeout);current.close();fail('App và tiện ích cần cập nhật giao thức kết nối tương thích.','RELAY_PROTOCOL_ERROR');return;}
      if(state==='connected')return;appVersion=typeof message.appVersion==='string'?message.appVersion:null;
      if(remoteMode(next)){connection=next.mode==='relay'?{...current.state(),token:message.sessionToken,expiresAt:null}:{mode:'remote',endpoint:next.endpoint,token:message.sessionToken,expiresAt:null};}
-     clearTimeout(timeout);state='connected';lastError='';void chrome.storage.session.set({[SETTINGS]:connection});heartbeat=setInterval(()=>{if(Date.now()-lastSeen>60000){current.close();return;}try{send({type:'ping'});}catch{}void checkUpdate();},20000);resolve(status());return;
+     clearTimeout(timeout);trace.stage='connected';trace.appAuthenticated=true;trace.endedAt=Date.now();state='connected';lastError='';void chrome.storage.session.set({[SETTINGS]:connection});heartbeat=setInterval(()=>{if(Date.now()-lastSeen>60000){current.close();return;}try{send({type:'ping'});}catch{}void checkUpdate();},20000);resolve(status());return;
     }
     if(state!=='connected'||message.type!=='request'||typeof message.id!=='string')return;
     void perform(message.operation,message.payload).then(result=>{if(socket===current)send({type:'response',id:message.id,result});},error=>{if(socket===current)send({type:'response',id:message.id,error:error?.message||'Không thực hiện được thao tác Chrome.'});}).catch(()=>{});
    };
-   current.onerror=()=>{if(socket!==current)return;clearTimeout(timeout);fail(remoteMode(next)?'Không kết nối được máy MooZ. Bấm Kiểm tra đường truyền và đối chiếu địa chỉ hiện tại trong app.':'Không kết nối được ứng dụng Workflow. Kiểm tra ứng dụng đã mở và mã còn hiệu lực.');current.close();};
-   current.onclose=event=>{clearTimeout(timeout);if(socket===current){socket=null;state='disconnected';clearInterval(heartbeat);heartbeat=null;clearGates();if(!lastError)lastError=event?.code===1013?'App đã kết nối với một Chrome khác. Ngắt kết nối cũ trong MooZ trước.':event?.code===1008?'Mã hoặc phiên đã hết hiệu lực. Tạo mã mới trong MooZ.':'Kết nối đã ngắt. Kiểm tra hai máy rồi bấm Kết nối lại. App không tự gửi lại yêu cầu AI.';}reject(Error(lastError||'Kết nối đã đóng.'));};
+   current.onerror=()=>{if(socket!==current)return;clearTimeout(timeout);const failure=globalThis.WorkflowRemoteDiagnostics.connectionFailure(trace);fail(remoteMode(next)?failure.message:'Không kết nối được ứng dụng Workflow. Kiểm tra ứng dụng đã mở và mã còn hiệu lực.',failure.code);current.close();};
+   current.onclose=event=>{clearTimeout(timeout);if(socket===current){socket=null;state='disconnected';clearInterval(heartbeat);heartbeat=null;clearGates();trace.closeCode=event?.code;trace.endedAt=Date.now();if(!lastError){const failure=globalThis.WorkflowRemoteDiagnostics.connectionFailure(trace);trace.failure=failure.code;lastError=failure.message;}rememberDiagnostic();}reject(Error(lastError||'Kết nối đã đóng.'));};
   });
  }
  async function reconnect(){if(!connection)throw Error('Dán mã mới từ MooZ trước.');return connectState(Remote?Remote.saved(connection):connection);}
  async function diagnose(){
-  const target=connection;if(!remoteMode(target))throw Error('Dán mã từ xa và bấm Kết nối trước khi kiểm tra.');
+  const target=connection||(restoredReport?.endpoint?{mode:restoredReport.mode,endpoint:restoredReport.endpoint}:null),epoch=lifecycle;if(!remoteMode(target))throw Error('Dán mã từ xa và bấm Kết nối trước khi kiểm tra.');
   if(!globalThis.WorkflowRemoteDiagnostics)throw Error('Cập nhật tiện ích để kiểm tra đường truyền.');
   if(!await chrome.permissions.contains({origins:[Remote.origin(target.endpoint)]}))throw Error('Chưa cấp quyền tới địa chỉ này. Dán mã và bấm Kết nối trước.');
   if(diagnosticTask)return diagnosticTask;
-  const task=(async()=>{const result=await (target.mode==='relay'?globalThis.WorkflowRemoteDiagnostics.checkRelay:globalThis.WorkflowRemoteDiagnostics.check)(target.endpoint);if(connection===target){lastDiagnostic=result;}return status();})();diagnosticTask=task;try{return await task;}finally{if(diagnosticTask===task)diagnosticTask=null;}
+  const task=(async()=>{const result=await (target.mode==='relay'?globalThis.WorkflowRemoteDiagnostics.checkRelayTransport:globalThis.WorkflowRemoteDiagnostics.check)(target.endpoint);if(lifecycle===epoch){lastDiagnostic=result;rememberDiagnostic();}return status();})();diagnosticTask=task;try{return await task;}finally{if(diagnosticTask===task)diagnosticTask=null;}
  }
  function extensionPage(sender){const prefix=chrome.runtime.getURL('');return sender.id===chrome.runtime.id&&typeof sender.url==='string'&&sender.url.startsWith(prefix)&&(!sender.tab?.url||sender.tab.url.startsWith(prefix));}
  chrome.runtime.onMessage.addListener((message,sender,reply)=>{
@@ -138,5 +142,14 @@
  globalThis.WorkflowChromeRelay={connect,reconnect,disconnect,status};
  if(typeof fetch==='function')setTimeout(()=>void checkUpdate(),5000);
  // A restarted service worker attempts its existing session once, never an endless retry loop.
- void chrome.storage.session.get(SETTINGS).then(saved=>{const last=saved[SETTINGS];if(last&&!socket)return connectState(Remote?Remote.saved(last):last);}).catch(()=>{});
+ const startupEpoch=lifecycle;
+ void chrome.storage.session.get([SETTINGS,DIAGNOSTIC]).then(saved=>{
+  if(lifecycle!==startupEpoch)return;
+  const prior=saved[DIAGNOSTIC];if(prior&&!socket&&!connection){
+   restoredReport=globalThis.WorkflowRemoteDiagnostics.connectionReport({...prior,transport:prior.connection,diagnostics:{https:prior.checks?.https,websocket:prior.checks?.websocket}});
+   const c=restoredReport.connection;if(c.failure)lastError=globalThis.WorkflowRemoteDiagnostics.connectionFailure(c,c.failure==='CONNECT_TIMEOUT'?'timeout':'closed').message;
+   const probes=restoredReport.checks;if(probes.https)lastDiagnostic={...probes,ok:probes.https.ok&&probes.websocket?.ok,message:'Kết quả lần kiểm tra trước: HTTPS '+(probes.https.ok?'tới được':'chưa đạt')+' · WebSocket '+(probes.websocket?.ok?'mở được':'chưa xác nhận')+'. Bấm Kiểm tra đường truyền để cập nhật.'};
+  }
+  const last=saved[SETTINGS];if(last&&!socket&&!connection)return connectState(Remote?Remote.saved(last):last);
+ }).catch(()=>{});
 })();
