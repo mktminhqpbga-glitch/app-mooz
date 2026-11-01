@@ -244,14 +244,14 @@
       if(tab){n.data.chatTarget={tabId:tab.id,url:chatKey(tab.url)};if(n.data.error?.includes('cuộc trò chuyện')){n.data.error='';n.data.status='idle';}scheduleAutoSave();setRunStatus('Đã chọn cuộc trò chuyện hiện tại của tab: '+(tab.title||tab.url),'ok');}
       render();
     };wrap.append(refresh);if(kind==='text'){const hint=document.createElement('small');hint.textContent='Tự gửi sau khi tải tệp xong và tự lấy văn bản về node.';const mode=document.createElement('select');mode.setAttribute('aria-label','Chế độ gửi');mode.append(new Option('Tự gửi khi sẵn sàng','auto'),new Option('Chờ 2 phút trước khi gửi','delay'));mode.value=n.data.sendMode||'auto';mode.onchange=()=>{n.data.sendMode=mode.value;scheduleAutoSave();};wrap.append(mode);wrap.append(hint);}}
-    if(WorkflowAI.models[provider]&&!WorkflowAI.providers[provider]?.custom){const model=document.createElement('input');model.placeholder=WorkflowAI.models[provider][kind]||'Model';model.value=n.data.apiModel||'';model.setAttribute('aria-label','Model API');model.onchange=()=>{n.data.apiModel=model.value.trim();scheduleAutoSave();};wrap.appendChild(model);}
+    if(WorkflowAI.models[provider]&&!WorkflowAI.providers[provider]?.urls&&!WorkflowAI.providers[provider]?.custom){const model=document.createElement('input');model.placeholder=WorkflowAI.models[provider][kind]||'Model';model.value=n.data.apiModel||'';model.setAttribute('aria-label','Model API');model.onchange=()=>{n.data.apiModel=model.value.trim();scheduleAutoSave();};wrap.appendChild(model);}
     if(kind==='video'){const hint=document.createElement('small');hint.textContent=provider==='fal'?'Motion Control: nối đúng 1 ảnh nhân vật + 1 video chuyển động. Thời lượng theo video nguồn.':provider==='google'?'Veo: chọn 4/6/8 giây hoặc Không chọn để dùng thời lượng mặc định của dịch vụ.':'Không chọn: không yêu cầu số giây. Nếu chọn số giây cụ thể, thời lượng thực tế vẫn phụ thuộc AI.';wrap.appendChild(hint);}
     return wrap;
   }
   function assertCurrentBridge(type,result){
     if(!result?.bridgeVersion)return;
     const muse=type==='MUSEFLOW_CHECK_SESSION';
-    if(result.resultProtocol!==(muse?2:3)||result.backgroundProtocol!==(muse?2:1))throw Error('Bộ nối trên tab '+(muse?'Muse':'Gemini/ChatGPT')+' đang là bản '+result.bridgeVersion+' và chưa hỗ trợ bộ nhận kết quả mới. Cập nhật tiện ích đồng hành, dừng lượt cũ trên trang AI. Tải lại tab '+(muse?'Muse':'Gemini/ChatGPT')+' bằng ⌘R/Ctrl+R. Chưa gửi prompt mới.');
+    if(result.resultProtocol!==(muse?2:3)||result.backgroundProtocol!==(muse?2:1)||muse&&result.modeProtocol!==1)throw Error('Bộ nối trên tab '+(muse?'Muse':'Gemini/ChatGPT')+' đang là bản '+result.bridgeVersion+' và chưa hỗ trợ bộ nhận kết quả mới. Cập nhật tiện ích đồng hành, dừng lượt cũ trên trang AI. Tải lại tab '+(muse?'Muse':'Gemini/ChatGPT')+' bằng ⌘R/Ctrl+R. Chưa gửi prompt mới.');
   }
   async function waitTabIdle(tabId,type,requestId,signal,first){
     let result=first;const end=Date.now()+600000;
@@ -272,14 +272,13 @@
     const target=message.chatTarget||aiChatTargets[provider];const ordered=message.type==='WORKFLOW_AI_CHECK'&&!target?tabs:[chooseChat(provider,tabs,target)];let chosen=null,lastError='';
     for(const tab of ordered){
       checkAbort();
-      try{if(message.type==='WORKFLOW_AI_GENERATE'&&chrome.tabs.update){await chrome.tabs.update(tab.id,{active:true});if(tab.windowId&&chrome.windows?.update)await chrome.windows.update(tab.windowId,{focused:true});}await chrome.scripting.executeScript({target:{tabId:tab.id},files:['ai-activity.js','composer-controls.js','ai-bridge.js']});let check=await sendMuseTabMessage(tab.id,{type:'WORKFLOW_AI_CHECK'},signal);assertCurrentBridge('WORKFLOW_AI_CHECK',check);if(message.type==='WORKFLOW_AI_GENERATE'&&check?.busy)check=await waitTabIdle(tab.id,'WORKFLOW_AI_CHECK',message.requestId,signal,check);if(check?.ok&&check.composer&&check.signedIn!==false){chosen=tab;break;}lastError=check?.error||'Chưa tìm thấy ô chat. Nếu trang đã đăng nhập, hãy tải lại tab AI để cập nhật bộ kết nối.';}
+      try{await chrome.scripting.executeScript({target:{tabId:tab.id},files:['ai-activity.js','composer-controls.js','ai-bridge.js']});let check=await sendMuseTabMessage(tab.id,{type:'WORKFLOW_AI_CHECK'},signal);assertCurrentBridge('WORKFLOW_AI_CHECK',check);if(message.type==='WORKFLOW_AI_GENERATE'&&check?.busy)check=await waitTabIdle(tab.id,'WORKFLOW_AI_CHECK',message.requestId,signal,check);if(check?.ok&&check.composer&&check.signedIn!==false){chosen=tab;break;}lastError=check?.error||'Chưa tìm thấy ô chat. Nếu trang đã đăng nhập, hãy tải lại tab AI để cập nhật bộ kết nối.';}
       catch(error){if(error.name==='AbortError')throw error;lastError=error.message;}
     }
     if(!chosen)throw new Error(`${WorkflowAI.providers[provider].name}: ${lastError||'không kết nối được'}`);
     if(message.type==='WORKFLOW_AI_CHECK')return {ok:true,signedIn:true,composer:true};
     progress('Đã tìm thấy ô chat. Đang gửi yêu cầu và chờ AI trả lời…');
-    // Native editing requires an active editor. Select only a verified chat tab.
-    if(chrome.tabs.update)await chrome.tabs.update(chosen.id,{active:true});
+    // Edit the verified composer without activating the browser tab/window.
     checkAbort();
     const cancel=()=>{void chrome.tabs.sendMessage(chosen.id,{type:'WORKFLOW_AI_STOP',requestId:message.requestId}).catch(()=>{});};
     if(message.requestId)aiTabs.set(message.requestId,chosen.id);signal?.addEventListener('abort',cancel,{once:true});

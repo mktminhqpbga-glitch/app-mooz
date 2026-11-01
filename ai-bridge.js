@@ -13,7 +13,7 @@
       : 'rich-textarea [contenteditable="true"],[contenteditable="true"][role="textbox"],[contenteditable="true"][data-lexical-editor],[contenteditable="true"][data-placeholder],textarea';
     const score=el=>(!isGPT&&el.closest('rich-textarea')?40:0)+(el.id==='prompt-textarea'||isFlow&&el.id==='PINHOLE_TEXT_AREA_ELEMENT_ID'?100:0)+(el.closest('#composer-background,[data-testid="composer"],form')?30:0)+(el.getAttribute('role')==='textbox'||isFlow&&el.hasAttribute('data-lexical-editor')?10:0)+(/hỏi chatgpt|ask chatgpt|ask anything|ask grok|message|gửi|nhắn|prompt|describe|imagine|what.*create|mô tả|tạo/i.test([el.getAttribute('placeholder'),el.getAttribute('aria-label'),el.getAttribute('data-placeholder')].join(' '))?20:0);
     const candidates=[...document.querySelectorAll(selectors)].filter(el=>
-      (el instanceof HTMLTextAreaElement||el.isContentEditable)&&(visible(el)||activity&&busy&&readable(el))&&!el.matches(':disabled')&&!el.readOnly&&el.getAttribute('aria-disabled')!=='true'&&el.getAttribute('aria-readonly')!=='true'&&!el.closest('article,[data-message-author-role],[data-turn],[data-testid*="writing-block"],[data-type="writing-block"],.writing-block,[data-testid="canvas-editor"],[data-testid="canvas"],model-response,user-query,pre,code,[role="dialog"],[role="search"],nav,header')&&score(el)>0
+      (el instanceof HTMLTextAreaElement||el.isContentEditable)&&(visible(el)||activity&&readable(el))&&!el.matches(':disabled')&&!el.readOnly&&el.getAttribute('aria-disabled')!=='true'&&el.getAttribute('aria-readonly')!=='true'&&!el.closest('article,[data-message-author-role],[data-turn],[data-testid*="writing-block"],[data-type="writing-block"],.writing-block,[data-testid="canvas-editor"],[data-testid="canvas"],model-response,user-query,pre,code,[role="dialog"],[role="search"],nav,header')&&score(el)>0
     );
     return candidates.sort((a,b)=>score(b)-score(a))[0]||null;
   }
@@ -32,7 +32,7 @@
     }
     return best;
   }
-  const buttons=(scope=document)=>[...scope.querySelectorAll('button,[role="button"]')].filter(visible);
+  const buttons=(scope=document)=>[...scope.querySelectorAll('button,[role="button"]')].filter(readable);
   const label=el=>`${el.getAttribute('aria-label')||''} ${el.getAttribute('data-testid')||''} ${el.getAttribute('title')||''} ${el.textContent||''}`;
   const stopped=()=>[...document.querySelectorAll('button,[role="button"]')].filter(readable).find(el=>!el.disabled&&el.getAttribute('aria-disabled')!=='true'&&((isFlow||isGrok)&&/^\s*(?:stop|dừng|stop_circle)\s*$/i.test(label(el))||/stop generating|stop streaming|stop response|dừng phát trực tuyến|dừng phản hồi|dừng trả lời|dừng tạo|stop-button/i.test(label(el))||el.matches('.stop-button,[data-testid="stop-button"]')));
   const generating=()=>!!((isFlow||isGrok)&&[...document.querySelectorAll('main [role="progressbar"],[data-state="generating"],[data-testid="generation-card"][aria-busy="true"]')].some(readable));

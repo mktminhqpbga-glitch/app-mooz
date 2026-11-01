@@ -19,7 +19,7 @@
   if(uri.protocol!=='workflow-connect:'||uri.hostname!=='127.0.0.1'||!/^\d+$/.test(uri.port)||Number(uri.port)<1||Number(uri.port)>65535||uri.username||uri.password||uri.search||uri.hash||!/^\/[a-f0-9]{64}$/.test(uri.pathname))throw Error('Mã kết nối không hợp lệ. Sao chép lại từ ứng dụng Workflow.');
   return {port:Number(uri.port),token:uri.pathname.slice(1)};
  }
- function status(){return {connected:state==='connected',state,port:connection?.port||null,protocol:PROTOCOL,appVersion,extensionVersion:chrome.runtime.getManifest?.()?.version||'',update:updateInfo,mode:connection?.mode||restoredReport?.mode||'local',endpoint:remoteMode(connection)?connection.endpoint:restoredReport?.endpoint||null,canReconnect:!!connection&&state!=='connected'&&state!=='connecting',error:lastError||undefined,diagnostics:lastDiagnostic,transport:lastTransport?{stage:lastTransport.stage,socketOpened:lastTransport.socketOpened,roomJoined:lastTransport.roomJoined,appAuthenticated:lastTransport.appAuthenticated,closeCode:lastTransport.closeCode,failure:lastTransport.failure,elapsedMs:(lastTransport.endedAt||Date.now())-lastTransport.startedAt}:restoredReport?.connection||null};}
+ function status(){return {museBackground:globalThis.WorkflowMuseBackground?.snapshot(),connected:state==='connected',state,port:connection?.port||null,protocol:PROTOCOL,appVersion,extensionVersion:chrome.runtime.getManifest?.()?.version||'',update:updateInfo,mode:connection?.mode||restoredReport?.mode||'local',endpoint:remoteMode(connection)?connection.endpoint:restoredReport?.endpoint||null,canReconnect:!!connection&&state!=='connected'&&state!=='connecting',error:lastError||undefined,diagnostics:lastDiagnostic,transport:lastTransport?{stage:lastTransport.stage,socketOpened:lastTransport.socketOpened,roomJoined:lastTransport.roomJoined,appAuthenticated:lastTransport.appAuthenticated,closeCode:lastTransport.closeCode,failure:lastTransport.failure,elapsedMs:(lastTransport.endedAt||Date.now())-lastTransport.startedAt}:restoredReport?.connection||null};}
  function rememberDiagnostic(){const report=globalThis.WorkflowRemoteDiagnostics.connectionReport(status());restoredReport=report;diagnosticWrites=diagnosticWrites.catch(()=>{}).then(()=>chrome.storage.session.set({[DIAGNOSTIC]:report}));void diagnosticWrites.catch(()=>{});}
  async function checkUpdate(){
   if(updateTask)return updateTask;if(typeof fetch!=='function')return status();
@@ -61,6 +61,7 @@
   if(operation==='tabs.focus'){await chrome.tabs.update(tab.id,{active:true});if(tab.windowId!==undefined)await chrome.windows.update(tab.windowId,{focused:true});return publicTab(await checkedTab(tab.id));}
   if(operation==='tabs.message'){
    if(!payload.message||!ALLOWED_TYPES.has(payload.message.type))throw Error('Loại yêu cầu AI không được phép.');
+   if(['MUSEFLOW_JOB_START','MUSEFLOW_GENERATE'].includes(payload.message.type))await globalThis.WorkflowMuseBackground?.prepare(tab.id);
    return chrome.tabs.sendMessage(tab.id,payload.message);
   }
   if(operation==='tabs.script'){
@@ -126,9 +127,9 @@
    const callId=crypto.randomUUID(),timer=setTimeout(()=>{gateCalls.delete(callId);reply({ok:false,error:'Mất kết nối điều phối; chưa gửi AI.'});},10000);gateCalls.set(callId,{reply,timer});
    try{send({type:'gate',callId,tabId:sender.tab.id,message});}catch{clearTimeout(timer);gateCalls.delete(callId);reply({ok:false,error:'Chưa chuyển được quyền gửi đến app.'});}return true;
   }
-  if(['DESKTOP_CONNECT','DESKTOP_STATUS','DESKTOP_DISCONNECT','DESKTOP_RECONNECT','DESKTOP_CHECK_UPDATE','DESKTOP_DIAGNOSE'].includes(message?.type)){
+  if(['DESKTOP_CONNECT','DESKTOP_STATUS','DESKTOP_DISCONNECT','DESKTOP_RECONNECT','DESKTOP_CHECK_UPDATE','DESKTOP_DIAGNOSE','DESKTOP_MUSE_BACKGROUND','DESKTOP_MUSE_PREPARE'].includes(message?.type)){
    if(!extensionPage(sender)){reply({ok:false,error:'Chỉ trang tiện ích Workflow được phép ghép nối.'});return false;}
-   const action=message.type==='DESKTOP_CONNECT'?()=>connect(message.uri):message.type==='DESKTOP_DISCONNECT'?disconnect:message.type==='DESKTOP_RECONNECT'?reconnect:message.type==='DESKTOP_CHECK_UPDATE'?checkUpdate:message.type==='DESKTOP_DIAGNOSE'?diagnose:async()=>status();
+   const action=message.type==='DESKTOP_CONNECT'?()=>connect(message.uri):message.type==='DESKTOP_DISCONNECT'?disconnect:message.type==='DESKTOP_RECONNECT'?reconnect:message.type==='DESKTOP_CHECK_UPDATE'?checkUpdate:message.type==='DESKTOP_DIAGNOSE'?diagnose:message.type==='DESKTOP_MUSE_BACKGROUND'?async()=>({museBackground:await WorkflowMuseBackground.configure(message.enabled)}):message.type==='DESKTOP_MUSE_PREPARE'?async()=>({museBackground:await WorkflowMuseBackground.prepareAll()}):async()=>{await globalThis.WorkflowMuseBackground?.ready;return status();};
    void action().then(result=>reply({ok:true,...result}),error=>reply({ok:false,error:error.message}));return true;
   }
   if(message?.type==='WORKFLOW_AI_PROGRESS'&&sender.id===chrome.runtime.id&&supportedURL(sender.tab?.url)&&typeof message.requestId==='string'&&typeof message.text==='string'){

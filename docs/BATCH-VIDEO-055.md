@@ -1,5 +1,7 @@
 # Video hàng loạt · MooZ 0.55.0
 
+**Mới ở 0.56.0:** [Tự chọn chế độ và cửa sổ Muse nền](MUSE-BACKGROUND-056.md).
+
 Bản này chỉnh ứng dụng thật trong `desktop/batch/`. Cài Workflow Connect **1.6.0**, bấm **Tải lại** trong `chrome://extensions`, rồi tải lại các tab Muse đang mở. Chỉ thay ZIP không cập nhật bộ nối đã nằm trong tab cũ.
 
 ```mermaid

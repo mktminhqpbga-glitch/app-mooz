@@ -11,7 +11,7 @@
  function scriptInstructions(w){return Split.instructions(scriptConfig(w));}
  function parseScenes(text,w){const rows=Split.parse(text,scriptConfig(w)).rows;if(rows.length!==w.scenes)throw Error('Kịch bản cần đúng '+w.scenes+' cảnh; AI trả '+rows.length+' cảnh. Chưa gửi tạo ảnh/video.');return rows;}
  function ready(w){return w.selected&&w.online&&w.ready!==false;}
- function suitable(w,step){return ready(w)&&(!step.workerId||step.workerId===w.id)&&(!['image','video'].includes(step.type)||!['image','video'].includes(w.mediaMode)||w.mediaMode===step.type);}
+ function suitable(w,step){return ready(w)&&(!step.workerId||step.workerId===w.id)&&(!['image','video'].includes(step.type)||w.modeProtocol===1||!['image','video'].includes(w.mediaMode)||w.mediaMode===step.type);}
  function waitingReason(j,data){
   if(j.state!=='queued')return '';
   const step=j.plan?.steps?.[j.step];if(!step)return 'Luồng đã chốt thiếu bước thực hiện. Cần kiểm tra cấu hình.';
@@ -38,7 +38,7 @@
   for(const s of w.steps){if(!capabilities[s.provider]?.includes(s.type))throw Error(s.name+': AI không hỗ trợ loại bước này.');if(requireTabs&&!workers.some(t=>t.selected&&t.online&&t.provider===s.provider))throw Error(s.name+': chưa chọn tab '+s.provider+' đang mở.');}return true;
  }
  function refreshWorkers(previous,tabs){
-  const old=new Map(previous.map(w=>[w.id,w])),next=tabs.map(t=>{const id=t.transport+':'+t.id,p=old.get(id);return {id,tabId:t.id,transport:t.transport,provider:t.provider,name:p?.customName||t.title||t.provider,url:t.url,selected:p?.selected||false,online:true,ready:t.ready!==false,health:t.health||'unchecked',reason:t.reason||'',visibility:t.visibility||'unknown',mediaMode:t.mediaMode||'unknown',checkedAt:t.checkedAt||null,customName:p?.customName};});
+  const old=new Map(previous.map(w=>[w.id,w])),next=tabs.map(t=>{const id=t.transport+':'+t.id,p=old.get(id);return {id,tabId:t.id,transport:t.transport,provider:t.provider,name:p?.customName||t.title||t.provider,url:t.url,selected:p?.selected||false,online:true,ready:t.ready!==false,health:t.health||'unchecked',reason:t.reason||'',visibility:t.visibility||'unknown',mediaMode:t.mediaMode||'unknown',modeProtocol:t.modeProtocol||0,checkedAt:t.checkedAt||null,customName:p?.customName};});
   // Keep missing selections visible so queued jobs never silently switch providers.
   for(const w of previous)if(w.provider!=='local'&&!next.some(t=>t.id===w.id))next.push({...w,online:false,ready:false,health:'offline',reason:'Tab đã đóng hoặc mất kết nối.'});
   return [...next,...defaultWorkers()];

@@ -13,7 +13,7 @@ const fs=require('node:fs/promises'),os=require('node:os'),path=require('node:pa
    t.postingAI.tabs=async()=>t.fixtureTabs;
    t.ai.script=async()=>{};
    t.ai.message=async(id,message)=>{
-    if(message.type==='MUSEFLOW_CHECK_SESSION')return {composer:true,signedIn:true,sendProtocol:1,jobProtocol:1,resultProtocol:2,textProtocol:1,backgroundProtocol:2,visibility:'hidden'};
+    if(message.type==='MUSEFLOW_CHECK_SESSION')return {composer:true,signedIn:true,sendProtocol:1,jobProtocol:1,resultProtocol:2,textProtocol:1,modeProtocol:1,backgroundProtocol:2,visibility:'hidden'};
     if(message.type==='MUSEFLOW_JOB_START'){t.fixtureMessages.push({id,...message});t.fixtureResults.set(message.requestId,message.mediaType==='text'?{ok:true,text:t.fixtureScript||'Kịch bản cho đúng sản phẩm.'}:{ok:true,url:message.mediaType==='image'?'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j7ZkAAAAASUVORK5CYII=':'data:video/mp4;base64,'+video});return {ok:true};}
     if(message.type==='MUSEFLOW_JOB_STATUS')return {ok:true,state:'done',result:t.fixtureResults.get(message.requestId)};
     return {ok:true};

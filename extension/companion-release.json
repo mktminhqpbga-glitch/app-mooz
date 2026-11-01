@@ -1,5 +1,5 @@
 {
-  "version": "1.6.0",
+  "version": "1.7.0",
   "protocol": 1,
-  "notes": "Nhận kết quả Muse ở tab nền qua lượt ngắn và kiểm tra chế độ Ảnh/Video trước khi gửi. Tải lại tab AI sau khi cập nhật. Giữ giao thức 1; dùng với MooZ 0.55.0."
+  "notes": "Tự chọn và xác nhận chế độ ảnh/video trong Muse; giữ tab Muse hoạt động ở cửa sổ riêng phía sau, không tự giành màn hình. Cần tải lại tab Muse sau khi cập nhật. Giao thức kết nối 1; MooZ 0.56.0."
 }

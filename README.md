@@ -1,4 +1,6 @@
-# Workflow · MuseFlow 0.55.0
+# Workflow · MuseFlow 0.56.0
+
+**0.56.0 · Muse chạy nền:** tự chọn/xác nhận chế độ Ảnh/Video qua bộ điều khiển được nhận diện; giữ tab Muse trong cửa sổ riêng phía sau, sửa chờ preview tải ảnh ở nền và bỏ tự giành tab của các AI khác. Cần **Workflow Connect 1.7.0** và tải lại tab Muse. [Cách bật, kiểm thử và giới hạn máy ảo](docs/MUSE-BACKGROUND-056.md).
 
 **0.55.0 · Video hàng loạt:** gỡ ảnh tham chiếu, lý do chờ và trạng thái tab rõ ràng, kịch bản JSON đúng từng cảnh, prompt ảnh/video tách riêng; kiểm tra chế độ Muse và thu kết quả tab nền qua relay. Cần **Workflow Connect 1.6.0** và tải lại tab AI. [Luồng, cách dùng và giới hạn kiểm thử](docs/BATCH-VIDEO-055.md).
 
@@ -28,7 +30,7 @@ Bản 0.47.0 thêm **Video hàng loạt** tại thư viện dự án: cập nh�
 
 [Bắt đầu trong 5 phút](docs/QUICKSTART.md) · [Xử lý góp ý người dùng 28/10](docs/USER-REVIEW-2026-10-28.md) · [Thiết kế MooZ Agent](designs/MOOZ-AGENT-PLAN.md)
 
-**Tiện ích đi kèm:** `extension/Workflow-Connect.zip` chứa **Workflow Connect 1.6.0**, giữ giao thức cùng máy; kết nối từ xa cần app **0.49.0 trở lên**. ZIP đã được đóng gói kèm từ 0.42.0; `extension/manifest.json` là bộ cập nhật dữ liệu cũ, không phải manifest của ZIP đồng hành này. App và tiện ích có phiên bản riêng, kiểm tra tương thích theo giao thức. Chỉ nâng app không đồng nghĩa phải cài lại tiện ích; khi app báo không tương thích, tải ZIP trong **Cài đặt & kết nối AI**, thay thư mục tiện ích, bấm **Tải lại** trong `chrome://extensions`, tải lại các tab AI và kết nối lại bằng mã phiên.
+**Tiện ích đi kèm:** `extension/Workflow-Connect.zip` chứa **Workflow Connect 1.7.0**, giữ giao thức cùng máy; kết nối từ xa cần app **0.49.0 trở lên**. ZIP đã được đóng gói kèm từ 0.42.0; `extension/manifest.json` là bộ cập nhật dữ liệu cũ, không phải manifest của ZIP đồng hành này. App và tiện ích có phiên bản riêng, kiểm tra tương thích theo giao thức. Chỉ nâng app không đồng nghĩa phải cài lại tiện ích; khi app báo không tương thích, tải ZIP trong **Cài đặt & kết nối AI**, thay thư mục tiện ích, bấm **Tải lại** trong `chrome://extensions`, tải lại các tab AI và kết nối lại bằng mã phiên.
 
 **0.45.3 · Thêm công cụ làm việc:** bốn node cục bộ Cắt video, Xoay/lật video, Chỉnh màu video, Tách âm thanh MP3; ba nút Tìm node, Chọn node lỗi và Xem vùng đang chọn. Có lối thêm nhanh bên trái, trong picker và từ dây Video. [Cách dùng và kiểm tra](docs/LOCAL-TOOLS.md).
 
