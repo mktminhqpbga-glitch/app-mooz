@@ -1,0 +1,43 @@
+'use strict';
+const {test}=require('node:test'),assert=require('node:assert/strict'),{once}=require('node:events'),fs=require('node:fs/promises'),os=require('node:os'),path=require('node:path'),{randomUUID}=require('node:crypto'),{WebSocket}=require('ws');
+const {ChromeRelay}=require('../desktop/chrome-relay.cjs'),{RemoteChrome}=require('../desktop/remote-chrome.cjs'),{ChromeDevices}=require('../desktop/chrome-devices.cjs'),{RelaySocket}=require('../chrome-relay-channel.js'),P=require('../chrome-remote-protocol.js'),{createRelayServer}=require('../relay-server/server.cjs');
+const ORIGIN='chrome-extension://'+'a'.repeat(32),ADMIN='secret-'+ 'a'.repeat(48),ENDPOINT='wss://owned-relay.example/remote';
+const wait=async fn=>{for(let i=0;i<300;i++){if(fn())return;await new Promise(r=>setTimeout(r,5));}throw Error('Fixture timeout');};
+async function fixture(t){const root=await fs.mkdtemp(path.join(os.tmpdir(),'mooz-devices-')),primary=new ChromeRelay({version:'0.57.0'});await primary.start();await primary.startRemoteIngress();const events=[],remote=new RemoteChrome({root,relay:primary}),hub=new ChromeDevices({primary,remote,root,notify:e=>events.push(e)});await hub.init();t.after(async()=>{await remote.close();await hub.close();await fs.rm(root,{recursive:true,force:true});});return {root,primary,hub,remote,events};}
+async function local(uri,name){const url=new URL(uri),ws=new WebSocket('ws://127.0.0.1:'+url.port+'/',{origin:ORIGIN});ws.on('error',()=>{});await once(ws,'open');const ready=once(ws,'message');ws.send(JSON.stringify({type:'auth',token:url.pathname.slice(1),protocol:1,extensionVersion:'1.7.0'}));assert.equal(JSON.parse((await ready)[0]).type,'ready');return peer(ws,name);}
+function peer(ws,name){const calls=[];ws.on('message',data=>{const m=JSON.parse(data.toString());if(m.type!=='request')return;calls.push(m);if(m.payload.message?.prompt==='WAIT')return;const tab={id:7,windowId:1,url:'https://muse.ai/chat/'+name,title:'Muse'};const result=['tabs.query','shopee.tabs'].includes(m.operation)?[tab]:['tabs.get','tabs.focus','shopee.open'].includes(m.operation)?tab:{ok:true,text:name,id:m.payload.id};ws.send(JSON.stringify({type:'response',id:m.id,result}));});return {ws,calls};}
+test('two Chrome profiles with identical tab IDs route jobs, gates and progress independently',async t=>{
+ const f=await fixture(t),first=await local(f.primary.pairingURI(),'primary'),pair=await f.hub.add({name:'Máy ảo Muse',kind:'local'}),second=await local(pair.url,'remote');
+ const keys=[],disconnected=[],records=new Map();f.hub.dispatch={records,find:()=>null,invoke:(key,_p,m,send)=>{keys.push(key);return send(m);},gate:async key=>{keys.push(key);return {ok:true};},disconnect:key=>disconnected.push(key)};
+ const tabs=await f.hub.request('tabs.query');assert.equal(tabs.length,2);assert.notEqual(tabs[0].id,tabs[1].id);assert.equal(tabs[1].deviceName,'Máy ảo Muse');assert.match(tabs[1].title,/Máy ảo/);
+ const ids=tabs.map(t=>t.id),results=await Promise.all(ids.map(id=>f.hub.request('tabs.message',{id,message:{type:'MUSEFLOW_GENERATE',requestId:'same-request',prompt:'once'}})));assert.deepEqual(results.map(r=>r.text),['primary','remote']);assert.equal(results[1].id,7);assert.deepEqual(keys,ids.map(id=>'chrome:'+id));
+ second.ws.send(JSON.stringify({type:'notification',event:{type:'message',tabId:7,message:{type:'WORKFLOW_AI_PROGRESS',requestId:'same-request',text:'only remote'}}}));await wait(()=>f.events.some(e=>e.type==='message'));assert.equal(f.events.find(e=>e.type==='message').tabId,ids[1]);
+ const gate=once(second.ws,'message');second.ws.send(JSON.stringify({type:'gate',callId:randomUUID(),tabId:7,message:{}}));assert.equal(JSON.parse((await gate)[0]).type,'gate-result');assert.equal(keys.at(-1),'chrome:'+ids[1]);
+ for(const id of ids)records.set(id,{key:'chrome:'+id});
+ const waiting=f.hub.rawRequest('tabs.message',{id:ids[1],message:{prompt:'WAIT'}}),rejected=assert.rejects(waiting,/ngắt kết nối/);await wait(()=>second.calls.some(c=>c.payload.message?.prompt==='WAIT'));await f.hub.revoke(pair.deviceId);await rejected;
+ assert.deepEqual(disconnected,['chrome:'+ids[1]]);assert.equal(f.hub.status().deviceCount,1);assert.equal((await f.hub.request('tabs.message',{id:ids[0],message:{}})).text,'primary');await assert.rejects(f.hub.request('tabs.message',{id:ids[1],message:{}}),/không tự gửi sang máy khác/);assert.equal(first.calls.some(c=>c.payload.message?.prompt==='WAIT'),false);
+ const again=await f.hub.pair(pair.deviceId),replacement=await local(again.url,'replacement');await new Promise(r=>setTimeout(r,20));assert.equal(replacement.calls.length,0,'Reconnection must never replay a prompt.');
+});
+test('names persist without credentials and removed device IDs are never assigned to a different Chrome after restart',async t=>{
+ const f=await fixture(t),a=await f.hub.add({name:'Muse VM',kind:'local'});await local(a.url,'a');const oldId=(await f.hub.request('tabs.query'))[0].id;await f.hub.rename(a.deviceId,'Muse VM 2');const stored=await fs.readFile(f.hub.file,'utf8');assert.match(stored,/Muse VM 2/);assert.equal(stored.includes(new URL(a.url).pathname.slice(1)),false);
+ await f.hub.remove(a.deviceId);await f.hub.close();
+ const primary=new ChromeRelay();await primary.start();const remote=new RemoteChrome({root:f.root,relay:primary}),next=new ChromeDevices({primary,remote,root:f.root});await next.init();t.after(()=>next.close());const b=await next.add({name:'Chrome khác',kind:'local'});await local(b.url,'b');const newId=(await next.request('tabs.query'))[0].id;assert.notEqual(oldId,newId);await assert.rejects(next.request('tabs.get',{id:oldId}),/phiên Chrome/);
+ assert.equal(JSON.stringify(next.status()).includes('workflow-connect:'),false);
+});
+test('two encrypted relay rooms coexist with local Chrome; revoking one room leaves the others usable',async t=>{
+ const f=await fixture(t),server=createRelayServer({adminKey:ADMIN}),port=await server.listen();t.after(()=>server.close());
+ class Host extends WebSocket{constructor(_url,options){super('ws://127.0.0.1:'+port+'/remote',options);}}
+ class Guest extends WebSocket{constructor(){super('ws://127.0.0.1:'+port+'/remote',{origin:ORIGIN});}}
+ f.remote.fetchImpl=(url,options)=>fetch('http://127.0.0.1:'+port+new URL(url).pathname,options);f.remote.broker.WebSocketClass=Host;
+ // Production uses the inherited proxy options. This fixture maps its public
+ // name to a loopback test server without making any external requests.
+ const {OutboundRelay}=require('../desktop/outbound-relay.cjs'),original=OutboundRelay.prototype.start;
+ t.mock.method(OutboundRelay.prototype,'start',function(...args){this.WebSocketClass=Host;return original.apply(this,args);});
+ await local(f.primary.pairingURI(),'local');
+ async function connect(pair,name){const next=P.parseURI(pair.url),socket=new RelaySocket(next,'a'.repeat(32),{WebSocketClass:Guest});const ready=new Promise((resolve,reject)=>{socket.onopen=()=>socket.send(JSON.stringify({type:'auth',token:next.token,protocol:1,remoteProtocol:1,extensionVersion:'1.7.0'}));socket.onmessage=e=>{const m=JSON.parse(e.data);if(m.type==='ready')resolve();};socket.onerror=()=>reject(Error('fixture socket'));});await ready;const calls=[];socket.onmessage=e=>{const m=JSON.parse(e.data);if(m.type!=='request')return;calls.push(m);const tab={id:7,url:'https://muse.ai/chat/'+name,title:'Muse'};socket.send(JSON.stringify({type:'response',id:m.id,result:m.operation==='tabs.query'?[tab]:m.operation==='tabs.get'?tab:{ok:true,text:name}}));};return {socket,calls,next};}
+ const a=await f.hub.add({name:'Muse VM A',kind:'relay',endpoint:ENDPOINT,key:ADMIN}),ga=await connect(a,'A');
+ const b=await f.hub.add({name:'Muse VM B',kind:'relay'}),gb=await connect(b,'B');assert.equal(server.rooms.size,2);assert.equal(f.hub.status().deviceCount,3);
+ const tabs=await f.hub.request('tabs.query');assert.equal(new Set(tabs.map(t=>t.id)).size,3);const bt=tabs.find(t=>t.deviceId===b.deviceId),at=tabs.find(t=>t.deviceId===a.deviceId);
+ assert.equal((await f.hub.request('tabs.message',{id:bt.id,message:{}})).text,'B');await f.hub.revoke(a.deviceId);await wait(()=>server.rooms.size===1);assert.equal(f.hub.status().deviceCount,2);assert.equal((await f.hub.request('tabs.message',{id:bt.id,message:{}})).text,'B');await assert.rejects(f.hub.request('tabs.message',{id:at.id,message:{}}),/ngắt kết nối/);
+ const publicText=JSON.stringify(f.hub.status())+await fs.readFile(f.hub.file,'utf8');for(const secret of [ADMIN,ga.next.token,ga.next.relayKey,gb.next.token,gb.next.relayKey])assert.equal(publicText.includes(secret),false);gb.socket.close();
+});

@@ -14,6 +14,7 @@ class ChromeRelay {
   this.instanceId=randomUUID();this.remoteHttp=null;this.server=null;this.remoteServer=null;this.remoteIngressPort=null;this.client=null;this.extensionId=null;this.port=null;this.token=null;this.pending=new Map();this.remoteEndpoint=null;this.remoteLease=null;this.remoteSession=null;this.connectionMode=null;this.heartbeat=null;
  }
  get isConnected(){return this.client?.readyState===WebSocket.OPEN;}
+ dispatchKey(id){return this.tabKey?this.tabKey(id):'chrome:'+id;}
  status(){return {connected:!!this.isConnected,port:this.port,extensionId:this.extensionId,companion:this.companion,mode:this.connectionMode,remoteEnabled:!!this.remoteEndpoint};}
  async start({port=0}={}){
   if(this.server)return this.status();
@@ -76,7 +77,7 @@ class ChromeRelay {
    if(socket!==this.client)return;
    if(message.type==='ping'){try{this.send(socket,{type:'pong'});}catch{}return;}
    if(message.type==='gate'&&typeof message.callId==='string'&&/^[a-f0-9-]{36}$/.test(message.callId)&&Number.isInteger(message.tabId)&&JSON.stringify(message.message||{}).length<2000){
-    void Promise.resolve(this.dispatch?.gate('chrome:'+message.tabId,message.message)||{ok:false,error:'App chưa hỗ trợ điều phối gửi.'}).then(result=>{if(socket===this.client)this.send(socket,{type:'gate-result',callId:message.callId,result});}).catch(()=>{});return;
+    void Promise.resolve(this.dispatch?.gate(this.dispatchKey(message.tabId),message.message)||{ok:false,error:'App chưa hỗ trợ điều phối gửi.'}).then(result=>{if(socket===this.client)this.send(socket,{type:'gate-result',callId:message.callId,result});}).catch(()=>{});return;
    }
    if(message.type==='response'&&typeof message.id==='string'){
     const item=this.pending.get(message.id);if(!item)return;clearTimeout(item.timer);this.pending.delete(message.id);
@@ -85,7 +86,7 @@ class ChromeRelay {
     const event=message.event;
     if(!event||!['message','created','updated','removed'].includes(event.type))return;
     if(event.type==='message'&&(event.message?.type!=='WORKFLOW_AI_PROGRESS'||typeof event.message.requestId!=='string'||typeof event.message.text!=='string'||!Number.isInteger(event.tabId)))return;
-    if(event.type==='removed'&&Number.isInteger(event.tabId))void this.dispatch?.disconnect('chrome:'+event.tabId);
+    if(event.type==='removed'&&Number.isInteger(event.tabId))void this.dispatch?.disconnect(this.dispatchKey(event.tabId));
     try{this.notify(event);}catch{}
    }
   });
@@ -93,13 +94,13 @@ class ChromeRelay {
  clearClient(){
   this.client=null;this.extensionId=null;this.companion=null;this.connectionMode=null;
   for(const item of this.pending.values()){clearTimeout(item.timer);item.reject(Error('Chrome đã ngắt kết nối. Kiểm tra tab AI trước khi chạy lại; không tự gửi lại yêu cầu.'));}
-  this.pending.clear();for(const key of new Set([...this.dispatch?.records.values()||[]].filter(r=>r.key.startsWith('chrome:')).map(r=>r.key)))void this.dispatch.disconnect(key);this.changed();
+  this.pending.clear();for(const key of new Set([...this.dispatch?.records.values()||[]].filter(r=>r.key.startsWith('chrome:')&&(!this.ownsTabKey||this.ownsTabKey(r.key))).map(r=>r.key)))void this.dispatch.disconnect(key);this.changed();
  }
  async request(operation,payload={}){
   if(this.dispatch&&operation==='tabs.message'){
-   let provider=this.dispatch.find('chrome:'+payload.id,payload.message?.requestId)?.provider;
+   let provider=this.dispatch.find(this.dispatchKey(payload.id),payload.message?.requestId)?.provider;
    if(!provider&&['WORKFLOW_AI_GENERATE','MUSEFLOW_GENERATE','MUSEFLOW_JOB_START','WORKFLOW_AI_CHECK','MUSEFLOW_CHECK_SESSION'].includes(payload.message?.type)){const tab=await this.rawRequest('tabs.get',{id:payload.id});provider=require('./policy.cjs').providerForURL(tab.url);}
-   if(provider)return this.dispatch.invoke('chrome:'+payload.id,provider,payload.message,message=>this.rawRequest(operation,{...payload,message}));
+   if(provider)return this.dispatch.invoke(this.dispatchKey(payload.id),provider,payload.message,message=>this.rawRequest(operation,{...payload,message}));
   }
   return this.rawRequest(operation,payload);
  }

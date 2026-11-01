@@ -110,3 +110,19 @@ body[data-app-surface] .appearance-actions {margin-top:14px}
 :root[data-ui-theme] body[data-app-surface] #timelineDropZone {border-color:transparent}
 :root[data-ui-theme] body[data-app-surface] #timelineDock.drag-over #timelineDropZone {border-color:var(--mooz-link);background:var(--mooz-soft)}
 :root[data-ui-theme] body[data-app-surface] .appearance-accents button:hover:not(:disabled) {background:var(--swatch);border-color:var(--mooz-panel);color:var(--mooz-ink)}
+
+/* Distinct editable surfaces. Foreground tokens are computed for each background. */
+:root[data-ui-theme] body[data-app-surface]{color:var(--mooz-bg-ink)}
+:root[data-ui-theme] body[data-app-surface] :is(.sidebar,.studio-sidebar,.posting-sidebar,.intake,.top,.topbar,.toolbar,.desktop-bar,.statusbar,#timelineDock,.connections-dialog,.appearance-dialog){--mooz-ink:var(--mooz-panel-ink);--mooz-muted:var(--mooz-panel-muted)}
+:root[data-ui-theme] body[data-app-surface] :is(.node,.project-card,.post-card,.hub-brand-card,.flow-card){--mooz-ink:var(--mooz-node-ink);--mooz-muted:var(--mooz-node-muted);background:var(--mooz-node);color:var(--mooz-node-ink)}
+:root[data-ui-theme] body[data-app-surface] .node-header{--mooz-ink:var(--mooz-header-ink);background:var(--mooz-header);color:var(--mooz-header-ink)}
+:root[data-ui-theme] body[data-app-surface] .node-header :is(strong,.node-title){color:var(--mooz-header-ink)}
+:root[data-ui-theme] body[data-app-surface] :is(input,textarea,select){color:var(--mooz-bg-ink)}
+:root[data-ui-theme] body[data-app-surface] button:not(.primary):not(#runBtn):not([data-color]):not(.ai-health-chip){background-color:var(--mooz-button);color:var(--mooz-button-ink)}
+:root[data-ui-theme] body[data-app-surface] :is(.studio-tool-list,.studio-quick-actions,.studio-sidebar-footer) button{background:transparent;color:var(--mooz-panel-ink)}
+:root[data-ui-theme] body[data-app-surface] .studio-primary-actions .studio-connect{background:var(--mooz-success-soft);color:var(--mooz-success)}
+#appearanceSurfaceFields{display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;margin:12px 0}#appearanceSurfaceFields label{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:13px}#appearanceSurfaceFields input{width:44px;height:32px;padding:2px}#appearanceSurfaces summary{cursor:pointer;padding:8px 0}#appearanceSurfaces p{font-size:12px}
+body[data-app-surface] .appearance-preview{color:var(--mooz-bg-ink)}
+body[data-app-surface] .appearance-preview-workspace>span:nth-child(odd){background:var(--mooz-node);color:var(--mooz-node-ink);border-color:var(--mooz-line)}
+body[data-app-surface] .appearance-preview>header{background:var(--mooz-header);color:var(--mooz-header-ink);padding:8px;border-radius:6px}
+body[data-app-surface] .appearance-preview #appearanceCurrent{color:var(--mooz-bg-muted)}

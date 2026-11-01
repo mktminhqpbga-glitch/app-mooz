@@ -103,7 +103,7 @@
   function progressNode(node,text){if(!node)return;node.data.progress=text;const root=document.querySelector(`.node[data-id="${CSS.escape(node.id)}"]`),status=root?.querySelector(".status"),detail=root?.querySelector(".node-status-detail");if(status){status.textContent=text;status.title=text;}if(detail)detail.textContent=text;}
 
   const providerJobs=new Map(),providerHealth=new Map(),healthChecks=new Set();
-  const providerName=id=>({muse:'Muse',gemini:'Gemini',chatgpt:'GPT',google:'Google API',openai:'OpenAI API',fal:'fal.ai'})[id]||WorkflowAI.providers[id]?.name||id;
+  const providerName=id=>({muse:'Muse',gemini:'Gemini',chatgpt:'GPT',google:'Google API',openai:'OpenAI API',fal:'fal.ai',grok:'Grok',flow:'Flow / Veo'})[id]||WorkflowAI.providers[id]?.name||id;
   function setProviderHealth(provider,status,detail='',sticky=false){providerHealth.set(provider,{status,detail,sticky});renderHealth();}
   const failureHealth=message=>/chưa|đăng nhập|chọn|cuộc trò chuyện|hết thời gian|không nhận diện|timeout/i.test(message||'')?'check':'error';
   function renderHealth(){
@@ -111,7 +111,7 @@
     const ids=['muse','gemini','chatgpt','grok','flow',...Object.keys(WorkflowAI.providers).filter(id=>!WorkflowAI.providers[id].urls&&(aiKeys[id]||state.nodes.some(n=>n.data.provider===id)))];
     for(const id of ids){const jobs=[...providerJobs.values()].filter(job=>job.provider===id),known=providerHealth.get(id)||{status:'check',detail:'Chưa kiểm tra'};
       const status=jobs.some(job=>job.phase==='busy')?'busy':jobs.length?'check':known.status;
-      const text=({ready:'Đã kết nối',busy:'Đang chạy',error:'Lỗi kết nối',check:'Cần kiểm tra',checking:'Đang kiểm tra'})[status];
+      const text=({ready:'Đã kết nối',busy:'Đang chạy',error:'Lỗi kết nối',missing:'Chưa mở tab',offline:'Chưa nối Chrome',check:'Cần kiểm tra',checking:'Đang kiểm tra'})[status];
       const button=document.createElement('button');button.type='button';button.className='ai-health-chip';button.dataset.provider=id;button.dataset.state=status;button.textContent='● '+providerName(id)+' · '+(!providerHealth.has(id)&&status==='check'?'Chưa kiểm tra':text);button.title=providerName(id)+' · '+text+(known.detail?' · '+known.detail:'');button.setAttribute('aria-label',providerName(id)+' · '+text);button.onclick=()=>void refreshProviderHealth(id,true);host.append(button);
     }
   }
@@ -123,13 +123,13 @@
     try{
       const config=WorkflowAI.providers[provider];
       if(!config.urls){if(providerHealth.get(provider)?.status!=='ready')setProviderHealth(provider,'check',(aiKeys[provider]||WorkflowAI.providers[provider]?.keyReady)?'Có khóa, cần xác minh bằng tác vụ':'Chưa nhập API key');return;}
-      const tabs=await chrome.tabs.query({url:config.urls});if(!tabs.length){setProviderHealth(provider,'error','Chưa mở tab AI');return;}
+      const tabs=await chrome.tabs.query({url:config.urls});if(!tabs.length){setProviderHealth(provider,'missing','Chưa mở tab AI. Mở trang AI và cập nhật danh sách tab.');return;}
       const preferred=aiChatTargets[provider],tab=tabs.find(tab=>tab.id===preferred?.tabId)||tabs.find(tab=>tab.active)||tabs[0];
       await chrome.scripting.executeScript({target:{tabId:tab.id},files:provider==='muse'?['ai-activity.js','composer-controls.js','muse-bridge.js']:['ai-activity.js','composer-controls.js','ai-bridge.js']});
       const result=await chrome.tabs.sendMessage(tab.id,{type:provider==='muse'?'MUSEFLOW_CHECK_SESSION':'WORKFLOW_AI_CHECK'});
       assertCurrentBridge(provider==='muse'?'MUSEFLOW_CHECK_SESSION':'WORKFLOW_AI_CHECK',result);
       if(result?.busy)setProviderHealth(provider,'busy','Tab AI đang xử lý');else if(result?.ok&&result.composer&&result.signedIn!==false)setProviderHealth(provider,'ready',tab.title||'Ô chat sẵn sàng');else setProviderHealth(provider,'check','Mở chat/đăng nhập hoặc tải lại tab');
-    }catch(error){setProviderHealth(provider,'error',error.message);}finally{healthChecks.delete(provider);}
+    }catch(error){const disconnected=/chưa kết nối|chưa.*tiện ích|đã ngắt|mất kết nối/i.test(error.message);setProviderHealth(provider,disconnected?'offline':'error',error.message);}finally{healthChecks.delete(provider);}
   }
   function refreshHealth(force=false){return Promise.allSettled(['muse','gemini','chatgpt','grok','flow',...Object.keys(WorkflowAI.providers).filter(id=>!WorkflowAI.providers[id].urls&&(aiKeys[id]||state.nodes.some(n=>n.data.provider===id)))].map(id=>refreshProviderHealth(id,force)));}
 
@@ -2279,6 +2279,24 @@
   async function hydrateWorkflowMedia(){const cache=new Map(),changes=[];try{for(const node of state.nodes){const data=node.data||{};if(data.localDataUrl)changes.push([data,'localDataUrl',await hydrateMediaUrl(data.localDataUrl,cache)]);for(const image of data.referenceImages||[])changes.push([image,'url',await hydrateMediaUrl(image.url,cache)]);for(const field of ['asset','endFrame','lockedAsset'])if(data[field]?.url)changes.push([data[field],'url',await hydrateMediaUrl(data[field].url,cache)]);}for(const [target,key,value] of changes)target[key]=value;}catch(error){for(const url of cache.values())URL.revokeObjectURL(url);throw error;}}
   async function saveState(){clearTimeout(autoSaveTimer);if(workflowSaveBlocked&&!window.confirm('Không tải được đầy đủ bản lưu trước. Lưu canvas hiện tại sẽ thay thế bản đó. Bạn có chắc muốn tiếp tục?'))return;try{await queueWorkflowSave({allowRecoveryWrite:true});setRunStatus('Đã lưu.','ok');}catch(error){setRunStatus(`Could not save workflow: ${error?.message||String(error)}`,'error');}}
   function blobAsDataUrl(blob){return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result||''));reader.onerror=()=>reject(reader.error||new Error('Could not package workflow media.'));reader.readAsDataURL(blob);});}
+  async function snapshotCanvasCopy(){
+    await workflowReady;if(state.isRunning||state.timelineExporting||WorkflowChat.busy()||MooZAgentRuntime.busy())throw Error('Chờ hoặc dừng tác vụ đang chạy trước khi nhân bản canvas.');if(workflowSaveBlocked)throw Error('Khôi phục bản lưu trước khi nhân bản canvas.');
+    await WorkflowChat.flush();clearTimeout(autoSaveTimer);await queueWorkflowSave();
+    const copy=structuredClone({nodes:state.nodes,edges:state.edges,groups:state.groups,notes:state.notes,settings:state.settings}),cache=new Map();
+    const embed=async url=>{if(!url||url.startsWith('data:'))return url;if(!url.startsWith(idbMediaPrefix)&&!url.startsWith('blob:'))return url;if(!cache.has(url)){let blob;if(url.startsWith(idbMediaPrefix))blob=await getMedia(decodeURIComponent(url.slice(idbMediaPrefix.length)));else{const r=await fetch(url);if(!r.ok)throw Error('Không đọc được media để nhân bản.');blob=await r.blob();}if(!blob?.size)throw Error('Media không còn trong kho; chưa nhân bản canvas.');cache.set(url,await blobAsDataUrl(blob));}return cache.get(url);};
+    for(const n of copy.nodes){const d=n.data||{};if(d.localDataUrl)d.localDataUrl=await embed(d.localDataUrl);for(const image of d.referenceImages||[])image.url=await embed(image.url);for(const field of ['asset','endFrame','lockedAsset'])if(d[field]?.url)d[field].url=await embed(d[field].url);
+      for(const key of ['chatTarget','agentRunId','agentStepId','agentAttemptId','batchTaskId','requestId','generationRequestId','error','progress'])delete d[key];if(['running','queued','error'].includes(d.status))d.status=d.asset||d.lockedAsset?'success':'idle';
+    }
+    const walk=async value=>{if(Array.isArray(value)){for(let i=0;i<value.length;i++)value[i]=await walk(value[i]);}else if(value&&typeof value==='object'){for(const key of Object.keys(value)){if(['chatTarget','chatTargets','aiChatTargets','apiKey','apiKeys','workflowApiKeys','accessToken','sessionToken','relayKey'].includes(key)){delete value[key];continue;}value[key]=await walk(value[key]);}}else if(typeof value==='string'&&(value.startsWith('blob:')||value.startsWith(idbMediaPrefix)))return embed(value);return value;};return walk(copy);
+  }
+  function canvasDiagramText(includeContent=true){return WorkflowCanvasDiagram.describe(state,nodeDefs,includeContent);}
+  if(window.workflowDesktop)window.WorkflowCanvasExport=Object.freeze({snapshot:snapshotCanvasCopy,diagram:canvasDiagramText});
+  const diagramDialog=document.createElement('dialog');diagramDialog.id='canvasDiagramDialog';diagramDialog.className='appearance-dialog';diagramDialog.setAttribute('aria-labelledby','canvasDiagramTitle');diagramDialog.innerHTML='<h2 id="canvasDiagramTitle">Gửi sơ đồ canvas cho AI</h2><p>Sơ đồ bằng văn bản gồm node, dây nối, cổng vào/ra và thứ tự phụ thuộc. Xem lại trước khi chia sẻ. Ảnh/video và thông tin đăng nhập không được đính kèm; app chưa gửi gì cho AI.</p><div class="diagram-options"><label><input id="diagramIncludeContent" type="checkbox" checked>Kèm prompt, quy tắc & ghi chú</label><button id="diagramRefresh" type="button">Cập nhật sơ đồ</button></div><textarea id="canvasDiagramText" readonly aria-label="Sơ đồ canvas bằng văn bản"></textarea><p id="diagramNotice" role="status"></p><div class="appearance-actions"><button id="diagramClose" type="button">Đóng</button><button id="diagramDownload" type="button">Tải .txt</button><button id="diagramCopy" class="primary" type="button">Sao chép sơ đồ</button></div>';document.body.append(diagramDialog);
+  function refreshDiagram(){document.getElementById('canvasDiagramText').value=canvasDiagramText(document.getElementById('diagramIncludeContent').checked);document.getElementById('diagramNotice').textContent='Đã tạo sơ đồ của '+state.nodes.filter(n=>!n.data?.dockOnly).length+' node.';}
+  document.getElementById('canvasDiagramBtn').onclick=()=>{refreshDiagram();diagramDialog.showModal();};document.getElementById('diagramIncludeContent').onchange=document.getElementById('diagramRefresh').onclick=refreshDiagram;document.getElementById('diagramClose').onclick=()=>diagramDialog.close();
+  document.getElementById('diagramCopy').onclick=async()=>{try{refreshDiagram();if(window.workflowDesktop)await workflowDesktop.call('canvas.diagramCopy',{includeContent:document.getElementById('diagramIncludeContent').checked});else await navigator.clipboard.writeText(document.getElementById('canvasDiagramText').value);document.getElementById('diagramNotice').textContent='Đã sao chép. Dán vào cuộc trò chuyện AI bạn muốn.';}catch{const field=document.getElementById('canvasDiagramText');field.focus();field.select();document.getElementById('diagramNotice').textContent='Nhấn Ctrl+C hoặc ⌘C để sao chép phần đã chọn.';}};
+  document.getElementById('diagramDownload').onclick=()=>{refreshDiagram();const url=URL.createObjectURL(new Blob([document.getElementById('canvasDiagramText').value],{type:'text/plain;charset=utf-8'})),a=document.createElement('a');a.href=url;a.download='MooZ-so-do-canvas.txt';a.click();setTimeout(()=>URL.revokeObjectURL(url),60000);};
+  const copyCanvasButton=document.getElementById('duplicateCanvasBtn');if(!window.workflowDesktop)copyCanvasButton.hidden=true;else copyCanvasButton.onclick=async()=>{copyCanvasButton.disabled=true;try{await workflowDesktop.call('projects.duplicateCanvas');setRunStatus('Đã tạo và mở bản sao độc lập. Canvas gốc được giữ nguyên.','ok');}catch(e){setRunStatus(e.message,'error');}finally{copyCanvasButton.disabled=false;}};
   async function exportWorkflowFile(){
     const button=$('#workflowExportBtn');button.disabled=true;
     try{
@@ -2383,7 +2401,7 @@
   // Keep toolbar workflow execution separate from the per-node generation action.
   WorkflowLibrary.init({getSelectedPrompt:()=>{const n=nodeById(state.selectedNodeId);return n?{name:n.data.customName||nodeDefs[n.type].title,content:resolveText(n.id)}:null;},onUse:(text,name)=>{if(state.isRunning)throw Error('Dừng workflow trước khi thêm node.');addNode('prompt');const n=state.nodes.at(-1);n.data.text=text;n.data.customName=name;render();scheduleAutoSave();}});
   $('#clearPromptsBtn').onclick=()=>{try{clearCanvasPrompts();}catch(error){setRunStatus(error.message,'error');}};
-  $('#masterScriptBtn').onclick=()=>addNode('masterScript');
+
   $('#arrangeNodesBtn').onclick=()=>arrangeNodes();$('#arrangeLooseBtn').onclick=()=>arrangeNodes({looseOnly:true});
   $('#duplicateSelectionBtn').onclick=()=>{try{pasteNodeBundle(selectedNodeBundle());}catch(error){setRunStatus(error.message,'warn');}};
   $('#runBtn').onclick=onWorkflowRunButtonClick;$('#runOptionsBtn').onclick=openRunOrderModal; $('#saveBtn').onclick=saveState; $('#resetBtn').onclick=resetState;

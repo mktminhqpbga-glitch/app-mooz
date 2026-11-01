@@ -22,14 +22,14 @@ const assert=require('node:assert/strict');
  await page.goto(origin+'/app.html');await page.waitForSelector('.node');assert.equal(await page.locator('#buyCoffeeBtn,#donationModal').count(),0);await page.keyboard.press('Escape');
  await page.click('#desktopConnectBtn');assert.equal(await page.evaluate(()=>window.testCreatedTab),origin+'/desktop/connect.html','Companion pairing must remain visible after toolbar restructuring');
  assert.equal(await page.locator('.compact-toggle').count(),0);assert.equal(await page.locator('.toolbar-popover:visible').count(),0);
- for(const id of ['saveBtn','runBtn','addNodeMenuBtn','masterScriptBtn'])assert.equal(await page.locator('#'+id).isVisible(),true,id+' must be directly visible');
+ for(const id of ['saveBtn','runBtn','addNodeMenuBtn'])assert.equal(await page.locator('#'+id).isVisible(),true,id+' must be directly visible');
  await page.click('#saveBtn');await page.waitForFunction(()=>testStore.museflow?.nodes.length>0);
  assert.equal(await page.locator('#toolbar-panel-create #promptLibraryBtn').count(),1);await page.locator('#promptLibraryBtn').scrollIntoViewIfNeeded();await page.click('#promptLibraryBtn');assert.equal(await page.locator('#promptLibraryDialog').isVisible(),true);await page.click('#promptCloseBtn');
  await page.locator('#settingsBtn').scrollIntoViewIfNeeded();await page.click('#settingsBtn');assert.equal(await page.locator('#settingsModal').isVisible(),true);await page.click('#closeSettingsBtn');
  await page.click('#addNodeMenuBtn');assert.equal(await page.locator('#addNodeMenu').isVisible(),true);await page.keyboard.press('Escape');assert.equal(await page.locator('#addNodeMenu').isVisible(),false);
- const count=await page.locator('.node').count();await page.click('#masterScriptBtn');assert.equal(await page.locator('.node').count(),count+1);
+ const count=await page.locator('.node').count();await page.click('#addNodeMenuBtn');await page.click('[data-add=masterScript]');assert.equal(await page.locator('.node').count(),count+1);
  for(const width of [1500,1000,800,620]){await page.setViewportSize({width,height:850});const sidebar=await page.locator('.studio-sidebar').boundingBox(),viewport=await page.locator('#viewport').boundingBox();assert.ok(viewport.width>100,'Canvas remains usable at '+width);assert.ok(sidebar.x+sidebar.width<=viewport.x+1,'Sidebar must not cover canvas');await page.locator('#clearPromptsBtn').scrollIntoViewIfNeeded();assert.equal(await page.locator('#clearPromptsBtn').isVisible(),true);}
- await page.setViewportSize({width:1200,height:850});await page.screenshot({path:'/tmp/workflow-toolbar-clear.png'});assert.deepEqual(errors,[]);console.log('PASS toolbar: directly visible Add node/Master script/Save/Run, real scrollable command rail, shared health header, existing actions, responsive 620–1500px.');
+ await page.setViewportSize({width:1200,height:850});await page.screenshot({path:'/tmp/workflow-toolbar-clear.png'});assert.deepEqual(errors,[]);console.log('PASS toolbar: directly visible Add node/Save/Run and master script through node picker, real scrollable command rail, shared health header, existing actions, responsive 620–1500px.');
 
  }finally{await browser.close();server.close();}
 })().catch(error=>{console.error(error);process.exitCode=1});

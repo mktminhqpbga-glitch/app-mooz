@@ -9,6 +9,7 @@ const {AIConnections}=require('./ai-connections.cjs');
 const {providerForURL,allowedNetworkURL,resolveAppPath}=require('./policy.cjs');
 const {AIWindows}=require('./ai-windows.cjs');
 const {ChromeRelay}=require('./chrome-relay.cjs');
+const {ChromeDevices}=require('./chrome-devices.cjs');
 const {RemoteChrome}=require('./remote-chrome.cjs');
 const {Downloads}=require('./downloads.cjs');
 const {PostingStore}=require('./posting-store.cjs');
@@ -61,8 +62,8 @@ function protect(win){
   win.webContents.setWindowOpenHandler(({url})=>{if(/^https:\/\//.test(url))void shell.openExternal(url);return {action:'deny'};});
   win.webContents.on('will-navigate',(event,url)=>{const target=new URL(url);if(target.protocol!=='workflow:'||target.hostname!=='app')event.preventDefault();});
 }
-function appearanceURL(base){const value=uiPreferences.get(),url=new URL(base);url.searchParams.set('uiTheme',value.theme);url.searchParams.set('uiSize',value.size);url.searchParams.set('uiAccent',value.accent);return url.href;}
-function appearanceBackground(){const value=uiPreferences.get();return palette(value.theme==='system'?(require('electron').nativeTheme.shouldUseDarkColors?'dark':'light'):value.theme,value.accent).bg;}
+function appearanceURL(base){const value=uiPreferences.get(),url=new URL(base);url.searchParams.set('uiTheme',value.theme);url.searchParams.set('uiSize',value.size);url.searchParams.set('uiAccent',value.accent);if(value.colors)url.searchParams.set('uiColors',JSON.stringify(value.colors));return url.href;}
+function appearanceBackground(){const value=uiPreferences.get();return palette(value.theme==='system'?(require('electron').nativeTheme.shouldUseDarkColors?'dark':'light'):value.theme,value.accent,value.colors).bg;}
 async function openPosting(){
  if(postingWindow&&!postingWindow.isDestroyed()){postingWindow.show();postingWindow.focus();return;}
  postingWindow=new BrowserWindow({width:1400,height:930,minWidth:900,minHeight:680,title:'Đăng bài & điều hành · MooZ Agent',backgroundColor:appearanceBackground(),webPreferences:{preload:path.join(__dirname,'preload.cjs'),additionalArguments:['--workflow-version='+version],backgroundThrottling:false,contextIsolation:true,sandbox:true,nodeIntegration:false,webSecurity:true}});protect(postingWindow);postingWindow.on('closed',()=>{postingOAuth?.cancel();facebookLogin?.cancel();facebookPages?.clear();postingWindow=null;});await setupSession(session.defaultSession);await postingWindow.loadURL(appearanceURL('workflow://app/desktop/posting.html'));
@@ -276,6 +277,13 @@ async function handleWorkflowCall(event,method,data={}){
   // Copy only the host-generated pairing code; no renderer-supplied text or clipboard reads.
   if(method==='relay.copy'){await clipboard.writeText(relay.pairingURI());return {copied:true};}
   if(method==='relay.status')return relay.status();
+  if(method==='chromeDevices.status')return relay.status();
+  if(method==='chromeDevices.add')return relay.add(data);
+  if(method==='chromeDevices.pair')return relay.pair(data.id,data);
+  if(method==='chromeDevices.copyCode'){clipboard.writeText(relay.pairCode(data.id));return {copied:true};}
+  if(method==='chromeDevices.rename')return relay.rename(data.id,data.name);
+  if(method==='chromeDevices.revoke')return relay.revoke(data.id);
+  if(method==='chromeDevices.remove')return relay.remove(data.id);
   if(method==='relay.disconnect'){if(relay.connectionMode==='local')relay.revokeLocal();else relay.revokeRemote();return relay.status();}
   if(method==='remoteChrome.relaySetup')return remoteChrome.relaySetup(data.endpoint,data.key);
   if(method==='remoteChrome.deployRelay'){await shell.openExternal('https://render.com/deploy?repo=https://github.com/mktminhqpbga-glitch/app-mooz');return;}
@@ -298,6 +306,17 @@ async function handleWorkflowCall(event,method,data={}){
   if(method==='remoteChrome.guide'){await shell.openExternal('https://tailscale.com/download');return;}
   if(method==='remoteChrome.admin'){await shell.openExternal('https://login.tailscale.com/admin/dns');return;}
   if(method==='projects.list')return store.list();
+  if(method==='canvas.diagramCopy'){
+   if(!id)throw Error('Mở canvas trước khi sao chép sơ đồ.');
+   const text=await win.webContents.executeJavaScript('window.WorkflowCanvasExport.diagram('+String(data.includeContent!==false)+')');
+   if(typeof text!=='string'||text.length>4*1024*1024)throw Error('Sơ đồ quá lớn để sao chép.');clipboard.writeText(text);return {copied:true};
+  }
+  if(method==='projects.duplicateCanvas'){
+   if(!id)throw Error('Mở canvas cần nhân bản trước.');if(projectTransitions.has(id))throw Error('Dự án đang được xử lý.');projectTransitions.add(id);let created;
+   try{const snapshot=await win.webContents.executeJavaScript('window.WorkflowCanvasExport.snapshot()');if(!snapshot||!Array.isArray(snapshot.nodes)||!Array.isArray(snapshot.edges))throw Error('Không đọc được canvas để nhân bản.');
+    const original=(await store.list()).find(p=>p.id===id);created=await store.create((original?.name||'Canvas').slice(0,85)+' · bản sao');await store.writeStorage(created.id,{museflow:snapshot});await openProject(created.id);notify({type:'projects'});return created;
+   }catch(e){if(created&&!canvases.has(created.id))await store.trash(created.id).catch(()=>{});throw e;}finally{projectTransitions.delete(id);}
+  }
   if(method==='projects.create'){if(!ctx.home)throw Error('Open project library first.');const project=await store.create(data.name);notify({type:'projects'});return project;}
   if(method==='projects.open'){if(!ctx.home)throw Error('Open project library first.');const info=await openProject(data.id);if(data.view==='agent')await canvases.get(data.id).webContents.executeJavaScript('window.MooZAgent?.open()');if(data.view==='chat')await canvases.get(data.id).webContents.executeJavaScript('window.WorkflowChat?.open()');if(data.view==='voiceover')await canvases.get(data.id).webContents.executeJavaScript('window.WorkflowVoice?.open()');return info;}
   if(method==='projects.rename'){if(!ctx.home)throw Error('Open project library first.');const project=await store.rename(data.id,data.name);notify({type:'projects'});return project;}
@@ -378,7 +397,7 @@ app.whenReady().then(async()=>{
   uiPreferences=new UIPreferences(app.getPath('userData'));await uiPreferences.load();
   diagnostics=new Diagnostics(app.getPath('userData'),{version,secretValues:()=>[...(aiConnections?.keys?.values()||[]),...[...sessionData.values()].flatMap(v=>Object.values(v?.workflowApiKeys||{}))]});await diagnostics.init();
   aiDispatch=new AIDispatch(app.getPath('userData'),{notify});await aiDispatch.init();
-  remoteChrome=new RemoteChrome({root:app.getPath('userData'),notify});remoteChrome.tunnel.fetchImpl=net.fetch.bind(net);remoteChrome.fetchImpl=net.fetch.bind(net);remoteChrome.broker.socketOptions=endpoint=>require('./relay-proxy.cjs').relaySocketOptions(endpoint,{resolveProxy:url=>session.defaultSession.resolveProxy(url)});await remoteChrome.init();relay=new ChromeRelay({notify,version});let portUnavailable=false;try{await relay.start({port:remoteChrome.config.enabled?remoteChrome.config.listenPort:0});}catch(e){if(e.code!=='EADDRINUSE')throw e;portUnavailable=true;await relay.start();}try{await relay.startRemoteIngress({port:remoteChrome.config.enabled?remoteChrome.config.remotePort||0:0});}catch(e){if(e.code!=='EADDRINUSE')throw e;if(remoteChrome.config.mode==='custom')portUnavailable=true;await relay.startRemoteIngress();}remoteChrome.attach(relay,{portUnavailable});
+  remoteChrome=new RemoteChrome({root:app.getPath('userData'),notify});remoteChrome.tunnel.fetchImpl=net.fetch.bind(net);remoteChrome.fetchImpl=net.fetch.bind(net);remoteChrome.broker.socketOptions=endpoint=>require('./relay-proxy.cjs').relaySocketOptions(endpoint,{resolveProxy:url=>session.defaultSession.resolveProxy(url)});await remoteChrome.init();relay=new ChromeRelay({notify,version});let portUnavailable=false;try{await relay.start({port:remoteChrome.config.enabled?remoteChrome.config.listenPort:0});}catch(e){if(e.code!=='EADDRINUSE')throw e;portUnavailable=true;await relay.start();}try{await relay.startRemoteIngress({port:remoteChrome.config.enabled?remoteChrome.config.remotePort||0:0});}catch(e){if(e.code!=='EADDRINUSE')throw e;if(remoteChrome.config.mode==='custom')portUnavailable=true;await relay.startRemoteIngress();}remoteChrome.attach(relay,{portUnavailable});relay=new ChromeDevices({primary:relay,remote:remoteChrome,root:app.getPath('userData'),notify});await relay.init();
   ai=new AIWindows(root,version,notify,async projectId=>projectId?(await store.readStorage(projectId)).workflowMuseSendTarget:null);
   ai.dispatch=aiDispatch;relay.dispatch=aiDispatch;
   const postingRoot=path.join(app.getPath('userData'),'posting');

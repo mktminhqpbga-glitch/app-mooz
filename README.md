@@ -1,4 +1,4 @@
-# Workflow · MuseFlow 0.56.1
+# Workflow · MuseFlow 0.57.0
 
 **0.56.1 · Nhận kết quả Muse mỗi 10 giây:** app kiểm tra tác vụ đang chờ, tự nhận tệp ảnh/video/văn bản về khi có kết quả; giữ đúng mã lượt, không gửi lại prompt. Tiện ích giữ **1.7.0**. [Cách hoạt động](docs/MUSE-BACKGROUND-056.md#nhận-kết-quả-mỗi-10-giây--0561).
 
