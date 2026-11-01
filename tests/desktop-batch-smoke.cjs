@@ -13,8 +13,8 @@ const fs=require('node:fs/promises'),os=require('node:os'),path=require('node:pa
    t.postingAI.tabs=async()=>t.fixtureTabs;
    t.ai.script=async()=>{};
    t.ai.message=async(id,message)=>{
-    if(message.type==='MUSEFLOW_CHECK_SESSION')return {composer:true,signedIn:true,jobProtocol:1,resultProtocol:2,textProtocol:1};
-    if(message.type==='MUSEFLOW_JOB_START'){t.fixtureMessages.push({id,...message});t.fixtureResults.set(message.requestId,message.mediaType==='text'?{ok:true,text:'Kịch bản cho đúng sản phẩm.'}:{ok:true,url:'data:video/mp4;base64,'+video});return {ok:true};}
+    if(message.type==='MUSEFLOW_CHECK_SESSION')return {composer:true,signedIn:true,sendProtocol:1,jobProtocol:1,resultProtocol:2,textProtocol:1,backgroundProtocol:2,visibility:'hidden'};
+    if(message.type==='MUSEFLOW_JOB_START'){t.fixtureMessages.push({id,...message});t.fixtureResults.set(message.requestId,message.mediaType==='text'?{ok:true,text:t.fixtureScript||'Kịch bản cho đúng sản phẩm.'}:{ok:true,url:message.mediaType==='image'?'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j7ZkAAAAASUVORK5CYII=':'data:video/mp4;base64,'+video});return {ok:true};}
     if(message.type==='MUSEFLOW_JOB_STATUS')return {ok:true,state:'done',result:t.fixtureResults.get(message.requestId)};
     return {ok:true};
    };
@@ -35,6 +35,13 @@ const fs=require('node:fs/promises'),os=require('node:os'),path=require('node:pa
   const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j7ZkAAAAASUVORK5CYII=','base64');
   await page.setInputFiles('#productFiles',Array.from({length:13},(_,i)=>({name:'San-pham-'+(i+1)+'.png',mimeType:'image/png',buffer:png})));
   await page.waitForFunction(()=>MooZBatch.state.jobs.length===13);if(await page.locator('#productDialog').evaluate(d=>d.open))await page.locator('[data-close=productDialog]').last().click();
+  // Remove an existing reference through its visible control, reload, and add
+  // it back from the library. The shared file must survive reference removal.
+  const first=await page.evaluate(()=>({job:MooZBatch.state.jobs[0].id,image:MooZBatch.state.jobs[0].images[0]}));
+  await page.locator('.row-action').first().click();await page.click('[data-remove-image]');assert.equal(await page.evaluate(()=>MooZBatch.state.jobs[0].images.length),0);assert.equal(await page.evaluate(id=>!!MooZBatch.assets.find(a=>a.id===id)?.blob,first.image),true);
+  await page.click('#enqueueOne');await page.waitForFunction(()=>document.querySelector('#toast').textContent.includes('ảnh tham chiếu'));assert.equal(await page.evaluate(()=>MooZBatch.state.jobs[0].state),'draft');
+  await page.reload();await page.waitForFunction(()=>window.MooZBatch);assert.equal(await page.evaluate(()=>MooZBatch.state.jobs[0].images.length),0);await page.locator('.row-action').first().click();await page.click('#addProductImage');await page.click('[data-pick="'+first.image+'"]');
+  await page.click('#enqueueOne');assert.equal(await page.locator('[data-remove-image]').count(),0,'Queued input is immutable');await page.click('#unqueueProduct');assert.equal(await page.locator('[data-remove-image]').count(),1);assert.equal(await page.evaluate(()=>MooZBatch.state.jobs[0].state),'draft');
   console.log('Batch UI ready; running 13 real local fixture jobs.');await page.click('#runBatch');await page.waitForFunction(()=>MooZBatch.state.jobs.every(j=>j.state==='done'),null,{timeout:180000}).catch(async e=>{console.log(await page.evaluate(()=>MooZBatch.state));throw e;});
   const jobs=await page.evaluate(()=>MooZBatch.state.jobs);assert.ok(jobs.every(j=>j.completed.length===2&&j.resultId&&!j.resultId.startsWith('demo')));assert.equal(new Set(jobs.map(j=>j.resultId)).size,13);
   const calls=await app.evaluate(()=>globalThis.workflowTest.fixtureMessages);assert.equal(calls.length,13);assert.equal(new Set(calls.map(m=>m.id)).size,4);assert.ok(calls.every(m=>!Object.hasOwn(m,'duration')&&m.referenceImages.length===1));assert.ok(calls.every(m=>m.prompt.includes('DỮ LIỆU RIÊNG CỦA SẢN PHẨM')));
@@ -53,8 +60,16 @@ const fs=require('node:fs/promises'),os=require('node:os'),path=require('node:pa
   await page.click('#openPool');await app.evaluate((_,tabs)=>globalThis.workflowTest.fixtureTabs=tabs,tabs(3));await page.click('#refreshTabs');assert.equal(await page.evaluate(()=>MooZBatch.state.workers.find(w=>w.id==='native:103').online),false);
   await page.locator('[data-close=poolDialog]').last().click();
   for(const [width,height]of [[1024,768],[1500,960]]){await page.setViewportSize({width,height});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);}
+  // A malformed AI script stops before image/video dispatch. Repair its saved
+  // JSON in the inspector, then produce each scene without resending the text.
+  await page.click('#editWorkflow');await page.selectOption('#addStepType','text');await page.click('#addStep');await page.click('[data-move="-1"][data-index="1"]');await page.selectOption('#addStepType','image');await page.click('#addStep');await page.click('[data-move="-1"][data-index="2"]');await page.fill('#workflowScenes','2');await page.locator('#workflowScenes').blur();await page.selectOption('#workflowRatio','1:1');await page.click('#workflowSave');
+  await page.click('[data-view=production]');await page.click('#addProducts');await page.click('#productFromLibrary');await page.locator('[data-pick]').first().click();await page.click('#runBatch');await page.waitForFunction(()=>MooZBatch.state.jobs.at(-1).state==='error');
+  assert.equal((await app.evaluate(()=>workflowTest.fixtureMessages)).length,14,'Malformed script must stop media dispatch');
+  const target=await page.evaluate(()=>MooZBatch.state.jobs.at(-1).id);await page.locator('[data-job="'+target+'"]').click();await page.waitForSelector('#batchScriptRepair');assert.equal(await page.inputValue('#batchScriptRepair'),'Kịch bản cho đúng sản phẩm.');
+  const script=JSON.stringify({scenes:[1,2].map(n=>({scene:n,title:'Scene '+n,voiceover:'VOICE_'+n,imagePrompt:'STATIC_ONLY_'+n,videoPrompt:'MOTION_ONLY_'+n,duration:null,size:'1:1'}))});await page.fill('#batchScriptRepair',script);await page.click('#acceptBatchScript');await page.click('#runBatch');await page.waitForFunction(()=>MooZBatch.state.jobs.at(-1).state==='done',null,{timeout:90000});
+  const sceneCalls=(await app.evaluate(()=>workflowTest.fixtureMessages)).slice(14);assert.deepEqual(sceneCalls.map(c=>c.mediaType),['image','image','video','video']);for(const [i,c]of sceneCalls.entries()){const n=i%2+1;assert.ok(c.prompt.includes((i<2?'STATIC_ONLY_':'MOTION_ONLY_')+n));assert.ok(!c.prompt.includes((i<2?'STATIC_ONLY_':'MOTION_ONLY_')+(3-n)),'Never send another scene to the current request');if(i<2)assert.ok(!c.prompt.includes('MOTION_ONLY_'),'Image prompts exclude video instructions');assert.equal(Object.hasOwn(c,'duration'),false);}
   await fs.mkdir('/tmp/mooz-batch-review',{recursive:true});await page.screenshot({path:'/tmp/mooz-batch-review/production.png'});
   await assert.rejects(()=>home.evaluate(()=>workflowDesktop.call('batch.generate',{workerId:'native:100',mediaType:'video',prompt:'No'})),/Mở Video hàng loạt/);
-  assert.deepEqual(errors,[]);console.log('PASS desktop batch: empty real studio → refresh 4/5 tabs with opt-in → custom workflow → 13 products across 4 tabs → 26 actual local videos → native trimmed monochrome MP4 with decoded 440 Hz selected music + collision-free downloads → reload persists jobs/assets → closed tabs offline; provider transport mocked.');
+  assert.deepEqual(errors,[]);console.log('PASS desktop batch: empty real studio → refresh 4/5 tabs with opt-in → custom workflow → 13 products across 4 tabs → 26 actual local videos → native trimmed monochrome MP4 with decoded 440 Hz selected music + collision-free downloads → reload persists jobs/assets → closed tabs offline; remove/reload/restore references; queued snapshot withdrawal; strict 2-scene script repair without text replay, isolated image/video prompts; provider transport mocked.');
  }finally{await app?.close();await fs.rm(root,{recursive:true,force:true});}
 })().catch(e=>{console.error(e);process.exitCode=1;});

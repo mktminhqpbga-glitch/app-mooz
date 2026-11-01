@@ -9,7 +9,7 @@ test('Grok and Flow are exact HTTPS sites, including localized Flow projects, wi
 test('Batch assigns Grok and Flow work only to explicitly selected matching tabs',()=>{
  const tabs=[{id:1,transport:'chrome',provider:'flow',url:sites.flow.start,title:'Flow'},{id:2,transport:'chrome',provider:'grok',url:sites.grok.start,title:'Grok'}];
  const workers=M.refreshWorkers([],tabs);assert.equal(workers.filter(w=>w.selected&&w.provider!=='local').length,0);
- const w={...M.defaultWorkflow(),steps:[{id:'video',type:'video',provider:'flow',name:'Video'},{id:'assemble',type:'assemble',provider:'local',name:'Ghép'}]};
+ const w={...M.defaultWorkflow(),scenes:1,steps:[{id:'video',type:'video',provider:'flow',name:'Video'},{id:'assemble',type:'assemble',provider:'local',name:'Ghép'}]};
  assert.throws(()=>M.validate(w,workers));assert.doesNotThrow(()=>M.validate(w,workers.map(t=>({...t,selected:true}))));
  w.steps[0].type='text';assert.throws(()=>M.validate(w,workers.map(t=>({...t,selected:true}))));assert.ok(M.capabilities.grok.includes('text'));assert.ok(!M.capabilities.flow.includes('text'));
 });

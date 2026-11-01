@@ -1,5 +1,7 @@
 # MooZ Agent · Tạo video hàng loạt
 
+**Cập nhật 0.55.0:** [Luồng thực thi, chỉnh ảnh, kịch bản từng cảnh và trạng thái/chạy nền](BATCH-VIDEO-055.md).
+
 Thiết kế ngày 28/10/2026 đã được tích hợp vào **MooZ Agent 0.47.0** tại `desktop/batch/`. Phần đầu tài liệu giữ logic của HTML xem trước; mục **Bản tích hợp 0.47.0** ở cuối ghi rõ hành vi ứng dụng thật. HTML trong `designs/` vẫn là bản mô phỏng để đối chiếu thiết kế.
 
 Mở [HTML tự chứa](../designs/mooz-batch-video-preview.html) bằng Chrome. Không cần cài thư viện, không cần API key, không cần chạy server. Mọi tài nguyên minh họa được nhúng hoặc tạo trên máy. Nguồn có thể chỉnh sửa nằm trong `designs/batch-video/`.

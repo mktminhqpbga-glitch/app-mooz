@@ -29,5 +29,5 @@
  }
  for(const event of ['load','loadedmetadata','visibilitychange'])document.addEventListener(event,wake,true);
  chrome.runtime.onMessage.addListener((message,sender,respond)=>{if(sender.id!==chrome.runtime.id||message?.type!=='WORKFLOW_AI_PULSE')return false;wake();respond({ok:true,activeRequestIds:[...jobs]});return false;});
- globalThis.WorkflowAIActivity={start,finish,wait,sleep,readable,text,image};
+ globalThis.WorkflowAIActivity={version:2,start,finish,wait,sleep,wake,readable,text,image};
 })();

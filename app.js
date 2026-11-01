@@ -111,15 +111,15 @@
     const ids=['muse','gemini','chatgpt','grok','flow',...Object.keys(WorkflowAI.providers).filter(id=>!WorkflowAI.providers[id].urls&&(aiKeys[id]||state.nodes.some(n=>n.data.provider===id)))];
     for(const id of ids){const jobs=[...providerJobs.values()].filter(job=>job.provider===id),known=providerHealth.get(id)||{status:'check',detail:'Chưa kiểm tra'};
       const status=jobs.some(job=>job.phase==='busy')?'busy':jobs.length?'check':known.status;
-      const text=({ready:'Đã kết nối · Rảnh',busy:'Đang làm tác vụ',error:'Lỗi',check:'Cần kiểm tra'})[status];
-      const button=document.createElement('button');button.type='button';button.className='ai-health-chip';button.dataset.provider=id;button.dataset.state=status;button.textContent='● '+providerName(id);button.title=providerName(id)+' · '+text+(known.detail?' · '+known.detail:'');button.setAttribute('aria-label',providerName(id)+' · '+text);button.onclick=()=>void refreshProviderHealth(id,true);host.append(button);
+      const text=({ready:'Đã kết nối',busy:'Đang chạy',error:'Lỗi kết nối',check:'Cần kiểm tra',checking:'Đang kiểm tra'})[status];
+      const button=document.createElement('button');button.type='button';button.className='ai-health-chip';button.dataset.provider=id;button.dataset.state=status;button.textContent='● '+providerName(id)+' · '+(!providerHealth.has(id)&&status==='check'?'Chưa kiểm tra':text);button.title=providerName(id)+' · '+text+(known.detail?' · '+known.detail:'');button.setAttribute('aria-label',providerName(id)+' · '+text);button.onclick=()=>void refreshProviderHealth(id,true);host.append(button);
     }
   }
   async function refreshProviderHealth(provider,force=false){
     if(healthChecks.has(provider))return;
     const running=[...providerJobs.values()].some(job=>job.provider===provider&&job.phase==='busy');if(running){renderHealth();return;}
     if(!force&&providerHealth.get(provider)?.sticky){renderHealth();return;}
-    healthChecks.add(provider);
+    healthChecks.add(provider);setProviderHealth(provider,'checking','Đang kiểm tra ô chat và phiên đăng nhập');
     try{
       const config=WorkflowAI.providers[provider];
       if(!config.urls){if(providerHealth.get(provider)?.status!=='ready')setProviderHealth(provider,'check',(aiKeys[provider]||WorkflowAI.providers[provider]?.keyReady)?'Có khóa, cần xác minh bằng tác vụ':'Chưa nhập API key');return;}
@@ -251,7 +251,7 @@
   function assertCurrentBridge(type,result){
     if(!result?.bridgeVersion)return;
     const muse=type==='MUSEFLOW_CHECK_SESSION';
-    if(result.resultProtocol!==(muse?2:3)||result.backgroundProtocol!==1)throw Error('Bộ nối trên tab '+(muse?'Muse':'Gemini/ChatGPT')+' đang là bản '+result.bridgeVersion+' và chưa hỗ trợ bộ nhận kết quả mới. Cập nhật tiện ích đồng hành, dừng lượt cũ trên trang AI. Tải lại tab '+(muse?'Muse':'Gemini/ChatGPT')+' bằng ⌘R/Ctrl+R. Chưa gửi prompt mới.');
+    if(result.resultProtocol!==(muse?2:3)||result.backgroundProtocol!==(muse?2:1))throw Error('Bộ nối trên tab '+(muse?'Muse':'Gemini/ChatGPT')+' đang là bản '+result.bridgeVersion+' và chưa hỗ trợ bộ nhận kết quả mới. Cập nhật tiện ích đồng hành, dừng lượt cũ trên trang AI. Tải lại tab '+(muse?'Muse':'Gemini/ChatGPT')+' bằng ⌘R/Ctrl+R. Chưa gửi prompt mới.');
   }
   async function waitTabIdle(tabId,type,requestId,signal,first){
     let result=first;const end=Date.now()+600000;

@@ -1,6 +1,6 @@
 /* Controls are searched only inside a verified composer, never in chat history. */
 (() => {
-  const visible=el=>!!el?.getClientRects().length&&getComputedStyle(el).visibility!=='hidden';
+  const visible=el=>globalThis.WorkflowAIActivity?WorkflowAIActivity.readable(el)&&!el.closest('[aria-hidden="true"]'):!!el?.getClientRects().length&&getComputedStyle(el).visibility!=='hidden';
   function label(el){return [el.getAttribute('aria-label'),el.getAttribute('data-testid'),el.getAttribute('title'),el.textContent,...(el.getAttribute('aria-labelledby')||'').split(/\s+/).map(id=>document.getElementById(id)?.textContent)].filter(Boolean).join(' ');}
   // Verify actual image bytes before handing them to any site's upload control.
   async function prepareImage(blob,signal){

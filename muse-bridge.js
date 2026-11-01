@@ -17,7 +17,7 @@
       return true;
     }
     if(message?.type==='MUSEFLOW_JOB_STATUS'){
-      const job=museJobs.get(message.requestId);sendResponse(job?{ok:true,state:job.result?'done':'running',progress:job.progress||'',...(job.result?{result:job.result}:{})}:{ok:false,state:'missing',error:'Không còn mã tác vụ trong tab Muse; không tự gửi lại prompt.'});return false;
+      activity?.wake?.();const job=museJobs.get(message.requestId);sendResponse(job?{ok:true,state:job.result?'done':'running',progress:job.progress||'',...(job.result?{result:job.result}:{})}:{ok:false,state:'missing',error:'Không còn mã tác vụ trong tab Muse; không tự gửi lại prompt.'});return false;
     }
     if(message?.type==='MUSEFLOW_JOB_ACK'){if(museJobs.get(message.requestId)?.result)museJobs.delete(message.requestId);sendResponse({ok:true});return false;}
     if(message?.type==='MUSEFLOW_JOB_START'){
@@ -43,7 +43,7 @@
   });
 
   function findComposer() {
-    const candidates=[...document.querySelectorAll('textarea')].filter(el=>(visible(el)||activity&&activeGenerations.size&&readable(el))&&!el.disabled);
+    const candidates=[...document.querySelectorAll('textarea')].filter(el=>(visible(el)||activity&&readable(el))&&!el.disabled);
     return candidates.find(el=>/message|消息/i.test(el.getAttribute('placeholder')||''))||candidates[0]||null;
   }
 
@@ -76,11 +76,16 @@
     const block=WorkflowComposer.serviceState();if(block)return {ok:false,sendProtocol:1,block,composer:false,signedIn:false,busy:false};
     await waitHydrated(5000);
     const composer=findComposer();
-    const ready=Boolean(composer&&visible(composer)&&!composer.disabled&&!composer.readOnly);
+    const ready=Boolean(composer&&readable(composer)&&!composer.disabled&&!composer.readOnly);
     const loginRequired=Boolean(document.querySelector('input[type="password"],button[type="submit"]'))&&/sign in|log in|登录/i.test(document.body?.innerText||'');
-    return {ok:true,sendProtocol:1,jobProtocol:1,bridgeProtocol:1,resultProtocol:2,textProtocol:1,videoReferenceProtocol:1,backgroundProtocol:activity?1:0,bridgeVersion:window.__museFlowBridgeVersion,signedIn:ready&&!loginRequired,busy:activeGenerations.size>0||[...document.querySelectorAll('[data-testid="hatch-composer-stop-button"],button[aria-label*="Stop" i]')].some(readable),title:document.title,composer:ready,loginRequired,url:location.href};
+    return {ok:true,sendProtocol:1,jobProtocol:1,bridgeProtocol:1,resultProtocol:2,textProtocol:1,videoReferenceProtocol:1,backgroundProtocol:activity?(activity.version||1):0,visibility:document.visibilityState,focused:document.hasFocus(),mediaMode:composerMode(),bridgeVersion:window.__museFlowBridgeVersion,signedIn:ready&&!loginRequired,busy:activeGenerations.size>0||[...document.querySelectorAll('[data-testid="hatch-composer-stop-button"],button[aria-label*="Stop" i]')].some(readable),title:document.title,composer:ready,loginRequired,url:location.href};
   }
 
+  function composerMode(){
+    const scope=composerScope(findComposer());if(!scope)return 'unknown';
+    const values=[...scope.querySelectorAll('[role="tab"][aria-selected="true"],[role="radio"][aria-checked="true"],button[aria-pressed="true"],select option:checked')].filter(readable).flatMap(el=>[el.getAttribute('aria-label'),el.getAttribute('data-testid'),el.textContent].filter(Boolean).map(v=>v.trim()));
+    const video=values.some(v=>/^(?:video|tạo video|generate video)(?:$|\s)/i.test(v)),image=values.some(v=>/^(?:image|images|ảnh|tạo ảnh|generate image)(?:$|\s)/i.test(v));return video&&!image?'video':image&&!video?'image':'unknown';
+  }
   async function waitHydrated(timeout,signal) {
     const end=Date.now()+timeout;
     while(Date.now()<end){
@@ -164,6 +169,10 @@
     if(!String(prompt||'').trim())throw new Error('Prompt is empty.');
     if(!['text','image','video'].includes(mediaType))throw Error('Muse không hỗ trợ loại kết quả này.');
 
+    await waitHydrated(15000,signal);
+    const assertMode=()=>{const mode=composerMode();if(mediaType!=='text'&&mode!=='unknown'&&mode!==mediaType){const error=Error('Tab Muse đang chọn chế độ '+(mode==='video'?'Video':'Ảnh')+', còn bước này cần '+(mediaType==='image'?'ảnh tĩnh':'video')+'. Chuyển chế độ trong ô chat, cập nhật tab rồi chạy lại. Chưa gửi yêu cầu tạo mới.');error.code='MUSE_MODE_MISMATCH';throw error;}};assertMode();
+    if(mediaType!=='text')prompt=[mediaType==='image'?'LOẠI KẾT QUẢ BẮT BUỘC: tạo một ẢNH TĨNH (image), không tạo video hoặc ảnh động.':'LOẠI KẾT QUẢ BẮT BUỘC: tạo một VIDEO có thể phát/tải về.',rules,prompt].filter(Boolean).join('\n\n');
+    if(document.hidden)report(requestId,'Muse: tab đang ở nền. App tiếp tục gửi và theo dõi dữ liệu của lượt này.');
     const receiptTag=mediaType==='text'?'WF-TEXT-'+crypto.randomUUID():'';
     if(mediaType==='text')textStates.set(requestId,{early:false,manual:''});
     if(mediaType==='text')prompt=[`Mã lượt: ${receiptTag}. Không nhắc lại mã trong câu trả lời.`,rules,prompt].filter(Boolean).join('\n\n');
@@ -202,7 +211,7 @@
     // Only unlock it when a new user receipt containing THIS prompt precedes the media.
     const followsReceipt=item=>[...document.querySelectorAll(userSelector)].some(el=>{
       const text=(el.innerText||el.textContent||'').trim(),normalized=text.replace(/\s+/g,' ');
-      return visible(el)&&text!==userSnapshot.get(el)&&normalized.includes(promptText)&&!el.contains(item.el)&&Boolean(el.compareDocumentPosition(item.el)&Node.DOCUMENT_POSITION_FOLLOWING);
+      return readable(el)&&text!==userSnapshot.get(el)&&normalized.includes(promptText)&&!el.contains(item.el)&&Boolean(el.compareDocumentPosition(item.el)&Node.DOCUMENT_POSITION_FOLLOWING);
     });
     const normalize=text=>String(text||'').replace(/\s+/g,' ').trim();
     const promptReceipts=()=>{
@@ -274,6 +283,7 @@
         oldReceipts=new Set(promptReceipts());
       }while(permit.expiresAt<=Date.now());
       if(!submitted){
+        assertMode();
         if(sendButton){sendButton.click();report(requestId,'Muse: đã bấm Gửi, đang xác nhận…');}
         else{const input=findComposer();input.focus();for(const type of ['keydown','keyup'])input.dispatchEvent(new KeyboardEvent(type,{key:'Enter',code:'Enter',keyCode:13,which:13,bubbles:true,cancelable:true}));report(requestId,'Muse: đã yêu cầu gửi bằng Enter, đang xác nhận…');}
         submitted=true;await WorkflowComposer.sent(request);
@@ -315,7 +325,7 @@
       lastScan.decodedImages=matching.filter(item=>item.width>0&&item.height>0).length;
       if(Date.now()-lastProgress>=5000){lastProgress=Date.now();report(requestId,matching.length?`Muse: đã thấy ${mediaType==='video'?'video':'ảnh'} mới, đang chờ dữ liệu sẵn sàng…`:`Muse: đã gửi một lần; đang đối chiếu ${mediaType==='video'?'video':'ảnh'} với tin nhắn vừa gửi. Không gửi lại prompt.`);}
       const wrongMedia=fresh.find(a=>mediaType==='image'?a.isVideo:!a.isVideo);
-      if(wrongMedia&&mediaType!=='video'){if(!wrongMediaSince)wrongMediaSince=Date.now();if(Date.now()-wrongMediaSince>=1800){const expected=mediaType==='image'?'image':'video',actual=mediaType==='image'?'video':'image';const error=new Error(`Muse returned a ${actual} for a Generate ${expected==='image'?'Image':'Video'} node. Switch the Muse composer to ${expected} generation, then retry.`);error.code='MEDIA_TYPE_MISMATCH';throw error;}}
+      if(wrongMedia&&mediaType!=='video'&&!matching.some(a=>a.width>=128&&a.height>=128)){if(!wrongMediaSince)wrongMediaSince=Date.now();if(Date.now()-wrongMediaSince>=6000){const error=new Error('Bước này cần ảnh tĩnh nhưng Muse trả về video. Video được giữ trên tab Muse; app không dùng ảnh bìa video làm kết quả ảnh. Chuyển Muse sang Tạo ảnh và kiểm tra kết quả cũ trước khi chạy lại.');error.code='MEDIA_TYPE_MISMATCH';throw error;}}
       else wrongMediaSince=0;
       const [ratioW,ratioH]=String(size||'1:1').split(':').map(Number),expectedRatio=ratioW>0&&ratioH>0?ratioW/ratioH:1;
       const measured=matching.filter(a=>a.width>0&&a.height>0&&(mediaType!=='image'||a.width>=128&&a.height>=128)).sort((a,b)=>{
@@ -328,7 +338,7 @@
       else if(best&&!firstWrongRatioAt)firstWrongRatioAt=Date.now();
       const result=(best&&(bestRatioError<=.09||Date.now()-firstWrongRatioAt>=3500)?best:null)||(mediaType==='video'?matching.find(item=>item.videoUrl&&(!item.width||!item.height)):null);
       if(result){
-        const responding=[...document.querySelectorAll('[data-testid="hatch-composer-stop-button"],button[aria-label*="Stop" i],button[aria-label*="停止"]')].some(visible);
+        const responding=[...document.querySelectorAll('[data-testid="hatch-composer-stop-button"],button[aria-label*="Stop" i],button[aria-label*="停止"]')].some(readable);
         lastScan.responding=responding;
         if(lastCandidate!==result.src){lastCandidate=result.src;candidateSince=Date.now();}
         if(responding||Date.now()-candidateSince<1500){await waitForAttachmentChange(Math.min(500,deadline-Date.now()),signal);continue;}
@@ -365,7 +375,7 @@
       await waitForAttachmentChange(Math.min(500,deadline-Date.now()),signal);
     }
     throwIfAborted();
-    throw new Error(`Timed out waiting for a new Muse ${mediaType} attachment. Prompt was submitted once; it was not resubmitted.`);
+    throw new Error(document.hidden?'Tab Muse đang ở nền và chưa đưa tệp kết quả mới vào giao diện trong thời gian chờ. Mở tab kiểm tra kết quả của lượt vừa gửi; app không tự gửi lại prompt.':`Chưa nhận được tệp ${mediaType==='image'?'ảnh':'video'} mới từ Muse trong thời gian chờ. Prompt chỉ được gửi một lần; kiểm tra tab trước khi chạy lại.`);
   }
 
   async function attachReferences(references,signal,allowVideo=false,request){

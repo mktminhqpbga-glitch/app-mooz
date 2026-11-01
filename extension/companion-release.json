@@ -1,5 +1,5 @@
 {
-  "version": "1.5.1",
+  "version": "1.6.0",
   "protocol": 1,
-  "notes": "Tách bước mở WebSocket, vào phòng relay và xác thực MooZ; kiểm tra HTTPS/WSS riêng và sao chép chẩn đoán không chứa mã/khóa. Giữ giao thức 1, dùng với MooZ 0.54.0."
+  "notes": "Nhận kết quả Muse ở tab nền qua lượt ngắn và kiểm tra chế độ Ảnh/Video trước khi gửi. Tải lại tab AI sau khi cập nhật. Giữ giao thức 1; dùng với MooZ 0.55.0."
 }

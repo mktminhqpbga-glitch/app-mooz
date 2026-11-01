@@ -5,7 +5,18 @@ const {run:runMuse}=require('../muse-jobs.js');
 class BatchAI {
  constructor({client,ai,relay,onProgress=()=>{}}) {Object.assign(this,{client,ai,relay,onProgress});this.running=new Map();this.lastSend=new Map();}
  report(requestId,text){for(const [workerId,entry]of this.running)if(entry.requestId===requestId){this.onProgress({type:'batch.progress',workerId,text:String(text).slice(0,500)});break;}}
- async tabs(){return (await this.client.tabs({all:true})).filter(t=>t.transport!=='api');}
+ async tabs({check=false}={}){const tabs=(await this.client.tabs({all:true})).filter(t=>t.transport!=='api');if(!check)return tabs;return Promise.all(tabs.map(async tab=>{
+   const checkedAt=Date.now();try{
+    const muse=tab.provider==='muse',files=['ai-activity.js','composer-controls.js',muse?'muse-bridge.js':'ai-bridge.js'];
+    if(tab.transport==='chrome')await this.relay.request('tabs.script',{id:tab.id,files});else await this.ai.script(tab.id,files,null,null);
+    const message={type:muse?'MUSEFLOW_CHECK_SESSION':'WORKFLOW_AI_CHECK'},r=tab.transport==='chrome'?await this.relay.request('tabs.message',{id:tab.id,message}):await this.ai.message(tab.id,message,null);
+    const compatible=r?.sendProtocol===1&&(muse?r.jobProtocol===1&&r.resultProtocol===2&&r.textProtocol===1&&r.backgroundProtocol>=2:r.resultProtocol===3);
+    const ready=!!(r?.ok!==false&&compatible&&r?.composer&&r.signedIn&&!r.busy&&!r.block&&!r.blocked),health=ready?'ready':r?.block||r?.blocked?'blocked':r?.busy?'busy':!compatible?'upgrade':r?.loginRequired||!r?.signedIn?'login':'check';
+    const reason=ready?'Đã kiểm tra ô chat · sẵn sàng':r?.error||r?.block?.message||(health==='busy'?'Tab đang xử lý tác vụ khác.':health==='upgrade'?'Cập nhật extension và tải lại tab AI.':health==='login'?'Mở cuộc trò chuyện và đăng nhập AI.':'Chưa tìm thấy ô chat sẵn sàng.');
+    return {...tab,ready,health,reason,checkedAt,visibility:r?.visibility||'unknown',mediaMode:r?.mediaMode||'unknown'};
+   }catch(e){return {...tab,ready:false,health:'error',reason:String(e.message||e).slice(0,500),checkedAt};}
+  }));}
+ async focus(workerId){const t=(await this.tabs()).find(t=>t.transport+':'+t.id===workerId);if(!t)throw Error('Tab đã đóng. Cập nhật danh sách.');return t.transport==='chrome'?this.relay.request('tabs.focus',{id:t.id}):this.ai.focus(t.id);}
  async generate(data){
   const key=data?.workerId;
   if(typeof key!=='string'||this.running.has(key))throw Error('Tab đang được dùng; chờ tác vụ hiện tại kết thúc.');
@@ -23,7 +34,7 @@ class BatchAI {
    const check=await message({type:muse?'MUSEFLOW_CHECK_SESSION':'WORKFLOW_AI_CHECK'});
 if(check?.sendUpgrade||check?.blocked)throw Error(check.error);   if(check?.busy)throw Error('Tab đang xử lý một việc khác. Chờ hoàn tất rồi chạy tiếp.');
    if(!check?.composer||!check?.signedIn)throw Error('Mở tab, đăng nhập AI và vào cuộc trò chuyện trước.');
-   if(muse?(check.jobProtocol!==1||check.resultProtocol!==2||data.mediaType==='text'&&check.textProtocol!==1):check.resultProtocol!==3)throw Error('Cập nhật tiện ích rồi tải lại tab AI.');
+   if(muse?(check.jobProtocol!==1||check.resultProtocol!==2||!(check.backgroundProtocol>=2)||data.mediaType==='text'&&check.textProtocol!==1):check.resultProtocol!==3)throw Error('Cập nhật tiện ích rồi tải lại tab AI.');
    const signal=controller.signal,delay=Math.max(0,5000-(Date.now()-(this.lastSend.get(key)||0)));
    if(delay)await new Promise((resolve,reject)=>{const cancel=()=>{clearTimeout(timer);reject(Error('Đã dừng.'));},timer=setTimeout(()=>{signal.removeEventListener('abort',cancel);resolve();},delay);signal.addEventListener('abort',cancel,{once:true});if(signal.aborted)cancel();});
    if(signal.aborted)throw Error('Đã dừng.');
@@ -43,7 +54,7 @@ if(check?.sendUpgrade||check?.blocked)throw Error(check.error);   if(check?.busy
     if(url.length>140*1024*1024)throw Error('Kết quả vượt giới hạn 100 MB.');
     return {dataUrl:url};
    }finally{signal.removeEventListener('abort',stop);if(stopRequest)await stopRequest;}
-  }finally{this.running.delete(key);}
+  }finally{this.running.delete(key);this.onProgress({type:'batch.workerIdle',workerId:key});}
  }
  stop(workerId){this.running.get(workerId)?.controller.abort();}
  close(){for(const entry of this.running.values())entry.controller.abort();}
