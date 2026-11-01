@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: [package.json]
+    paths: [package.json, extension/Workflow-Connect.zip, .github/workflows/windows-desktop.yml]
 
 permissions:
   contents: read

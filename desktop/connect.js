@@ -11,7 +11,7 @@ void update();void chrome.runtime.sendMessage({type:'DESKTOP_CHECK_UPDATE'}).the
 
 uri.addEventListener('input',()=>{actionError='';});
 document.querySelector('#copyDiagnostic').onclick=async()=>{
- const button=document.querySelector('#copyDiagnostic');button.disabled=true;
+ const button=document.querySelector('#copyDiagnostic');button.disabled=true;document.querySelector('#copyStatus').textContent='Đang sao chép chẩn đoán…';
  try{
   const state=await chrome.runtime.sendMessage({type:'DESKTOP_STATUS'});if(!state?.ok)throw Error('Chưa đọc được trạng thái bộ nối.');
   const report=JSON.stringify(WorkflowRemoteDiagnostics.connectionReport(state),null,2);
