@@ -8,10 +8,10 @@
   <title>MooZ Agent — Không gian làm việc</title>
   <link rel="stylesheet" href="home.css">
   <link rel="stylesheet" href="update-ui.css">
-<link rel="stylesheet" href="appearance.css"><link rel="stylesheet" href="studio-polish.css"><link rel="stylesheet" href="usability.css"><link rel="stylesheet" href="theme.css"></head>
+<link rel="stylesheet" href="appearance.css"><link rel="stylesheet" href="studio-polish.css"><link rel="stylesheet" href="usability.css"><link rel="stylesheet" href="theme.css"><link rel="stylesheet" href="design-system.css"></head>
 <body data-app-surface="library">
   <aside class="sidebar">
-    <a class="brand" href="home.html" aria-label="Workflow, trang chủ"><img class="brand-mark" src="../icons/mooz-mark.svg" alt=""><span>MooZ Agent<small>CREATIVE WORKSPACE</small></span></a>
+    <a class="brand" href="home.html" aria-label="MooZ Agent, trang chủ"><img class="brand-mark" src="../icons/mooz-mark.svg" alt=""><span>MooZ Agent<small>KHÔNG GIAN SÁNG TẠO</small></span></a>
     <p class="nav-label">KHÔNG GIAN LÀM VIỆC</p>
     <nav aria-label="Thư viện dự án">
       <button class="nav-button selected" id="allProjects" aria-current="page"><span>▦</span>Tất cả dự án</button>
@@ -19,17 +19,18 @@
     </nav>
     <section class="ai-app-catalog" aria-labelledby="aiAppsHeading">
       <h2 id="aiAppsHeading">ỨNG DỤNG</h2>
-      <button id="aiAppsAgent" class="app-button" type="button"><span class="app-icon">✦</span><span class="app-label"><strong>MooZ Agent</strong><small>Mục tiêu → kế hoạch → thành phẩm</small></span></button><button id="aiAppsWorkflow" class="app-button" type="button" title="Workflow Studio"><span class="app-icon" aria-hidden="true">▦</span><span class="app-label"><strong>Workflow Studio</strong><small>Canvas · ảnh · video</small></span></button><button id="aiAppsHubPosting" class="app-button" type="button" title="Đăng bài"><span class="app-icon" aria-hidden="true">↗</span><span class="app-label"><strong>Trung tâm & Đăng bài</strong><small>Content · lịch · thương hiệu · Page</small></span><span class="app-arrow" aria-hidden="true">↗</span></button>
-      <button id="aiAppsBatch" class="app-button" type="button"><span class="app-icon" aria-hidden="true">▷</span><span class="app-label"><strong>Video hàng loạt</strong><small>Sản phẩm · nhiều tab AI · hậu kỳ</small></span><span class="app-arrow" aria-hidden="true">↗</span></button>
+      <button id="aiAppsAgent" class="app-button" type="button"><span class="app-icon">✦</span><span class="app-label"><strong>MooZ Agent</strong><small>Lập kế hoạch · tạo thành phẩm</small></span></button><button id="aiAppsWorkflow" class="app-button" type="button" title="Canvas tạo ảnh và video"><span class="app-icon" aria-hidden="true">▦</span><span class="app-label"><strong>Canvas sáng tạo</strong><small>Canvas · ảnh · video</small></span></button><button id="aiAppsHubPosting" class="app-button" type="button" title="Đăng bài"><span class="app-icon" aria-hidden="true">↗</span><span class="app-label"><strong>Đăng bài & lịch</strong><small>Bài viết · lịch · thương hiệu</small></span><span class="app-arrow" aria-hidden="true">↗</span></button>
+      <button id="aiAppsBatch" class="app-button" type="button"><span class="app-icon" aria-hidden="true">▷</span><span class="app-label"><strong>Video hàng loạt</strong><small>Sản phẩm · video · hậu kỳ</small></span><span class="app-arrow" aria-hidden="true">↗</span></button>
       <button id="aiAppsAffiliate" class="app-button" type="button"><span class="app-icon affiliate" aria-hidden="true">↗</span><span class="app-label"><strong>Affiliate Shopee</strong><small>Link · kịch bản · workflow video</small></span><span class="app-arrow" aria-hidden="true">↗</span></button>
-      <button id="aiAppsVoice" class="app-button" type="button" title="Lồng tiếng trong canvas bằng OpenAI API; ứng dụng riêng chờ tích hợp"><span class="app-icon voice" aria-hidden="true">♫</span><span class="app-label"><strong>Lồng tiếng AI</strong><small>Trong canvas · OpenAI API</small></span></button>
-      <p class="app-catalog-note">Các công cụ sáng tạo sẽ được bổ sung tại đây.</p>
+
+      <p class="app-catalog-note">Tạo nội dung, hoàn thiện và quản lý đăng bài trong cùng không gian.</p>
     </section>
+    <section class="ai-app-catalog canvas-tools-catalog"><h2>CÔNG CỤ TRONG DỰ ÁN</h2>      <button id="aiAppsVoice" class="app-button" type="button" title="Tạo lời đọc trong dự án bằng OpenAI API"><span class="app-icon voice" aria-hidden="true">♫</span><span class="app-label"><strong>Lồng tiếng trong canvas</strong><small>Trong canvas · OpenAI API</small></span></button></section>
     <div class="sidebar-bottom"><span class="local-dot"></span><div>Lưu trên máy của bạn<small>Không tự tải dự án lên đám mây</small></div></div>
   </aside>
 
   <main>
-    <header class="topbar"><span>Không gian làm việc</span><span class="desktop-badge">VƯỜN Ý TƯỞNG · DESKTOP</span></header>
+    <header class="topbar"><span>Không gian làm việc</span><span class="desktop-badge">MOOZ AGENT</span></header>
     <section class="workspace-heading">
       <div><p class="eyebrow">KHÔNG GIAN SÁNG TẠO CỦA BẠN</p><h1>Không gian làm việc</h1><p class="subtitle">Tiếp tục dự án hoặc bắt đầu một workflow mới.</p></div>
       <button id="newProject" class="primary"><span aria-hidden="true">＋</span> Dự án mới</button>
@@ -46,7 +47,7 @@
     </details>
 
     <section class="project-library" aria-labelledby="libraryHeading">
-      <div class="library-toolbar"><div><h2 id="libraryHeading">Tất cả dự án</h2><span id="projectCount" class="count"></span></div><label class="search"><span aria-hidden="true">⌕</span><input id="searchProjects" type="search" placeholder="Tìm dự án…" aria-label="Tìm dự án theo tên"></label></div>
+      <div class="library-toolbar"><div><h2 id="libraryHeading">Tất cả dự án</h2><span id="projectCount" class="count">…</span></div><label class="search"><span aria-hidden="true">⌕</span><input id="searchProjects" type="search" placeholder="Tìm dự án…" aria-label="Tìm dự án theo tên"></label></div>
       <p id="libraryStatus" class="status" role="status" aria-live="polite">Đang mở thư viện…</p>
       <div id="deleteNotice" class="delete-notice" hidden><span id="deleteNoticeText" role="status"></span><button id="undoDelete" class="secondary" type="button">Hoàn tác</button></div>
       <div id="projectGrid" class="project-grid"></div>
@@ -67,7 +68,7 @@
     <h2 id="deleteTitle">Xóa dự án?</h2><p id="deleteDescription"></p><p>Dự án sẽ được chuyển khỏi thư viện. Dữ liệu vẫn được giữ trên máy; bạn có thể bấm Hoàn tác sau khi xóa.</p><p id="deleteError" class="form-error" role="alert"></p><div class="dialog-actions"><button id="cancelDelete" class="secondary" type="button" autofocus>Hủy</button><button id="confirmDelete" class="primary danger" type="button">Xóa dự án</button></div>
   </dialog>
   <dialog id="chromeDialog">
-    <h2>Kết nối các tab AI trong Chrome</h2><p>Cài tiện ích đồng hành của Workflow trong Chrome, mở tiện ích rồi dán mã kết nối dưới đây. Giữ app và các tab AI mở khi chạy.</p><label class="field" for="chromePairing">Mã kết nối phiên này<input id="chromePairing" type="password" readonly autocomplete="off" spellcheck="false"></label><p>Mã này cấp quyền thao tác các tab AI qua tiện ích đồng hành. Chỉ dán vào tiện ích Workflow trên máy của bạn.</p><p id="chromeStatus" class="form-error" role="status"></p><div class="dialog-actions"><button id="revealChrome" class="secondary" type="button" aria-pressed="false">Hiện mã</button><button id="closeChrome" class="secondary">Đóng</button><button id="copyChrome" class="primary">Sao chép mã</button></div>
+    <h2>Kết nối các tab AI trong Chrome</h2><p>Cài tiện ích MooZ Connect trong Chrome, mở tiện ích rồi dán mã kết nối dưới đây. Giữ app và các tab AI mở khi chạy.</p><label class="field" for="chromePairing">Mã kết nối phiên này<input id="chromePairing" type="password" readonly autocomplete="off" spellcheck="false"></label><p>Mã này cấp quyền thao tác các tab AI qua tiện ích đồng hành. Chỉ dán vào tiện ích MooZ Connect trên máy của bạn.</p><p id="chromeStatus" class="form-error" role="status"></p><div class="dialog-actions"><button id="revealChrome" class="secondary" type="button" aria-pressed="false">Hiện mã</button><button id="closeChrome" class="secondary">Đóng</button><button id="copyChrome" class="primary">Sao chép mã</button></div>
   </dialog>
   <script src="update-ui.js"></script>
   <script src="home.js"></script>

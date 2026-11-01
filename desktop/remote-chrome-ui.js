@@ -11,7 +11,7 @@
  <header><div><small>KẾT NỐI HAI MÁY</small><h2 id="remoteChromeTitle">Chrome ở máy khác</h2></div><button id="remoteChromeClose" type="button">Đóng</button></header>
  <section>
   <h3>Relay Internet <span class="remote-tag">Không cần tên miền riêng</span></h3>
-  <p>Máy này và Chrome cùng kết nối ra máy chủ relay. Máy Chrome chỉ cần Workflow Connect <strong>1.3.0 trở lên</strong>.</p>
+  <p>Máy này và Chrome cùng kết nối ra máy chủ relay. Máy Chrome chỉ cần MooZ Connect <strong>đi kèm app</strong>.</p>
   <ol class="remote-steps"><li><strong>1. Triển khai:</strong> bấm Triển khai trên Render, chọn gói Free và đợi dịch vụ Live.</li><li><strong>2. Kết nối app:</strong> lấy địa chỉ dịch vụ và RELAY_ADMIN_KEY từ mục Environment của Render, nhập bên dưới rồi bấm Kết nối relay.</li><li><strong>3. Ghép Chrome:</strong> tạo & sao chép mã, dán vào extension trên máy kia.</li></ol>
   <label>Địa chỉ dịch vụ relay<input id="remoteRelayURL" type="url" placeholder="https://mooz-relay-xxxx.onrender.com" autocomplete="off" spellcheck="false"></label>
   <label>RELAY_ADMIN_KEY · chỉ nhập tại app của bạn<input id="remoteRelayKey" type="password" autocomplete="off" spellcheck="false" placeholder="Khóa quản trị từ Environment của Render"></label>
@@ -20,7 +20,7 @@
   <p class="remote-help">App chỉ giữ khóa quản trị trong phiên hiện tại. Nội dung/tệp được mã hóa ở hai đầu trước khi đi qua relay. Render Free có hạn mức băng thông/giờ chạy và có thể cần khoảng một phút để mở lại; xem Usage trong Render. Cần kiểm tra máy Chrome được phép truy cập địa chỉ này.</p>
  </section>
  <details id="remoteChromeCloudflareOptions"><summary>Cloudflare Quick Tunnel · cách thay thế</summary><section>
-  <p>MooZ điều phối và xuất video trên máy này. Máy còn lại chỉ cần Chrome, Workflow Connect 1.2.0 trở lên và các tab AI đã đăng nhập.</p>
+  <p>MooZ điều phối và xuất video trên máy này. Máy còn lại chỉ cần Chrome, MooZ Connect 1.2.0 trở lên và các tab AI đã đăng nhập.</p>
   <h3>Cloudflare Tunnel <span class="remote-tag">Không cần Tailscale</span></h3>
   <ol class="remote-steps">
    <li><strong>1. Trên máy MooZ:</strong> bấm Tải cloudflared một lần. App chọn đúng bản cho máy và kiểm tra SHA256 từ nguồn phát hành chính thức. Không cần Homebrew hay quyền quản trị.</li>

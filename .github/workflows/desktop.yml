@@ -69,8 +69,8 @@ jobs:
         run: |
           version="${{ steps.metadata.outputs.version }}"
           for arch in arm64 x64; do
-            test -s "dist/Workflow-$version-mac-$arch.dmg"
-            test -s "dist/Workflow-$version-mac-$arch.zip"
+            test -s "dist/MooZ-Agent-$version-mac-$arch.dmg"
+            test -s "dist/MooZ-Agent-$version-mac-$arch.zip"
           done
           test -s dist/latest-mac.yml
           node <<'NODE'
@@ -79,7 +79,7 @@ jobs:
           const info=yaml.load(fs.readFileSync('dist/latest-mac.yml','utf8'));
           if(info.version!==version)throw Error('Update metadata version mismatch');
           for(const arch of ['arm64','x64']){
-            const name=`Workflow-${version}-mac-${arch}.zip`;
+            const name=`MooZ-Agent-${version}-mac-${arch}.zip`;
             const entry=info.files.find(file=>file.url===name);
             if(!entry)throw Error('Missing update metadata for '+arch);
             const hash=crypto.createHash('sha512').update(fs.readFileSync('dist/'+name)).digest('base64');
@@ -91,7 +91,7 @@ jobs:
       - name: Tải app Mac M1-M2-M3-M4 tại artifact này
         uses: actions/upload-artifact@v4
         with:
-          name: Workflow-Mac-AppleSilicon-DMG
+          name: MooZ-Mac-AppleSilicon-DMG
           path: dist/*-mac-arm64.dmg
           compression-level: 0
           if-no-files-found: error
@@ -99,7 +99,7 @@ jobs:
       - name: Tải app Mac Intel tại artifact này
         uses: actions/upload-artifact@v4
         with:
-          name: Workflow-Mac-Intel-DMG
+          name: MooZ-Mac-Intel-DMG
           path: dist/*-mac-x64.dmg
           compression-level: 0
           if-no-files-found: error
@@ -107,7 +107,7 @@ jobs:
       - name: Upload ZIP packages and update metadata
         uses: actions/upload-artifact@v4
         with:
-          name: Workflow-update-files
+          name: MooZ-update-files
           path: |
             dist/*.zip
             dist/*.blockmap
@@ -120,9 +120,9 @@ jobs:
         run: |
           cat >> "$GITHUB_STEP_SUMMARY" <<'SUMMARY'
           ## App Mac đã được đóng gói
-          - Mac M1/M2/M3/M4: tải **Workflow-Mac-AppleSilicon-DMG**.
-          - Mac Intel: tải **Workflow-Mac-Intel-DMG**.
-          - Giải nén artifact, mở DMG, kéo **Workflow.app** vào **Applications**.
+          - Mac M1/M2/M3/M4: tải **MooZ-Mac-AppleSilicon-DMG**.
+          - Mac Intel: tải **MooZ-Mac-Intel-DMG**.
+          - Giải nén artifact, mở DMG, kéo **MooZ Agent.app** vào **Applications**.
           - Đây là bản **chưa ký Apple**, không yêu cầu chứng chỉ để build.
           - Mã mới phải được commit/push lên nhánh đã chọn trước khi bấm Run workflow.
           - Muốn app nhận biết bản mới: tăng version, tạo draft release, kiểm tra rồi Publish release. Run workflow đơn thuần chưa phát hành cập nhật.
@@ -148,7 +148,7 @@ jobs:
       - name: Download packages from this run
         uses: actions/download-artifact@v4
         with:
-          pattern: Workflow-*
+          pattern: MooZ-*
           merge-multiple: true
           path: release-files
       - name: Refuse an existing version tag
@@ -167,4 +167,4 @@ jobs:
 
           Bản unsigned chỉ kiểm tra và dẫn tới trang tải, không tự cài. Không phát hành bản unsigned vào kênh đang phân phối tự cài cho người dùng bản signed; dùng quy trình signed release khi đã có Developer ID.
           NOTES
-          gh release create "v$APP_VERSION" release-files/*.dmg release-files/*.zip release-files/*.blockmap release-files/latest-mac.yml release-files/SHA256SUMS.txt --target "$SOURCE_SHA" --draft --title "Workflow v$APP_VERSION" --notes-file /tmp/unsigned-release-notes.md
+          gh release create "v$APP_VERSION" release-files/*.dmg release-files/*.zip release-files/*.blockmap release-files/latest-mac.yml release-files/SHA256SUMS.txt --target "$SOURCE_SHA" --draft --title "MooZ Agent v$APP_VERSION" --notes-file /tmp/unsigned-release-notes.md

@@ -10,7 +10,7 @@ const path = require('node:path');
   assert.equal(process.platform, 'win32', 'This check must run on a real Windows runner.');
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'mooz-win-package-'));
   const review = process.env.MOOZ_UI_AUDIT_DIR || path.join(root, 'review');
-  const exe = path.resolve('dist/win-unpacked/Workflow.exe');
+  const exe = path.resolve('dist/win-unpacked/MooZ Agent.exe');
   const version = require('../package.json').version;
   const env = {...process.env};
   delete env.ELECTRON_RUN_AS_NODE;
@@ -45,7 +45,17 @@ const path = require('node:path');
       testHook: typeof globalThis.workflowTest
     }));
     assert.deepEqual(info, {packaged: true, version, platform: 'win32', arch: 'x64', testHook: 'undefined'});
+    assert.equal(await application.evaluate(({app}) => app.getName()), 'MooZ Agent');
+    const guideOpen = await home.locator('#homeGuide').evaluate(node => node.open);
+    for (let attempt = 0; attempt < 3; attempt++) {
+      await home.click('#connectChrome');
+      await home.waitForSelector('#chromeDialog[open]');
+      await home.click('#closeChrome');
+      assert.equal(await home.locator('#homeGuide').evaluate(node => node.open), guideOpen);
+    }
     await home.click('#connectionsOpen');
+    await home.waitForFunction(() => document.querySelector('#connectionsVersion').textContent.includes('1.8.0'));
+    assert.equal(await home.locator('#extensionManualGuide').getAttribute('open'), '');
     for (const name of ['Mở Grok', 'Mở Google Flow / Veo']) {
       const button = home.getByRole('button', {name, exact: true});
       await button.scrollIntoViewIfNeeded();
@@ -65,6 +75,8 @@ const path = require('node:path');
     assert.equal(await affiliate.locator('#refreshShopeeTabs').isVisible(), true);
     assert.equal(await affiliate.locator('#create').isDisabled(), true, 'Chrome capture needs a connected, explicitly selected product tab.');
     await affiliate.selectOption('#sourceMode', 'public');
+    assert.equal(await affiliate.locator('#create').isDisabled(), true, 'Public capture needs a product link.');
+    await affiliate.fill('#productLink', 'https://shopee.vn/product/123/456');
     assert.equal(await affiliate.locator('#create').isDisabled(), false);
     await affiliate.screenshot({path: path.join(review, 'windows-shopee-source.png')});
     await affiliate.close();
@@ -73,6 +85,7 @@ const path = require('node:path');
     await home.evaluate(id => workflowHome.openProject(id), project.id);
     const canvas = await next;
     await canvas.waitForSelector('#canvas');
+    assert.doesNotMatch(await canvas.locator('#handTool').getAttribute('title'), /⌘/);
     await canvas.click('#addNodeMenuBtn');
     await canvas.fill('#nodeSearch', 'generateVideo');
     await canvas.locator('[data-add=generateVideo]').click();

@@ -1,15 +1,15 @@
 {
-  "name": "workflow-museflow",
-  "version": "0.57.0",
+  "name": "mooz-agent",
+  "version": "0.58.0",
   "private": true,
-  "description": "Ứng dụng desktop tạo workflow AI với dự án cục bộ và cửa sổ AI tích hợp.",
+  "description": "MooZ Agent · Không gian tạo nội dung, video và quản lý đăng bài.",
   "license": "GPL-2.0-or-later",
   "author": "Workflow contributors",
   "main": "desktop/main.cjs",
   "scripts": {
     "start": "electron .",
     "test": "node --test tests/*.test.mjs tests/desktop-*.test.cjs",
-    "test:desktop": "node tests/desktop-smoke.cjs && node tests/desktop-layout-smoke.cjs && node tests/desktop-posting-smoke.cjs && node tests/desktop-workspace-smoke.cjs && node tests/desktop-ai-results-smoke.cjs && node tests/desktop-affiliate-smoke.cjs && node tests/desktop-ai-tools-smoke.cjs && node tests/desktop-ux-smoke.cjs && node tests/desktop-canvas-tools-smoke.cjs && node tests/desktop-muse-publishing-smoke.cjs && node tests/desktop-video-aggregate-smoke.cjs && node tests/desktop-studio-refresh-smoke.cjs && node tests/desktop-workflow-audit-smoke.cjs && node tests/desktop-user-review-smoke.cjs && node tests/desktop-diagnostics-smoke.cjs && node tests/desktop-layout-review-smoke.cjs && node tests/desktop-extra-tools-smoke.cjs && node tests/desktop-theme-smoke.cjs && node tests/muse-mode-smoke.cjs && node tests/desktop-batch-smoke.cjs && node tests/desktop-ai-dispatch-smoke.cjs && node tests/desktop-agent-smoke.cjs && node tests/desktop-remote-chrome-smoke.cjs && node tests/desktop-outbound-relay-smoke.cjs && node tests/desktop-web-ai-smoke.cjs && node tests/desktop-script-splitter-smoke.cjs && node tests/desktop-shopee-chrome-smoke.cjs",
+    "test:desktop": "node tests/desktop-smoke.cjs && node tests/desktop-layout-smoke.cjs && node tests/desktop-posting-smoke.cjs && node tests/desktop-workspace-smoke.cjs && node tests/desktop-ai-results-smoke.cjs && node tests/desktop-affiliate-smoke.cjs && node tests/desktop-ai-tools-smoke.cjs && node tests/desktop-ux-smoke.cjs && node tests/desktop-canvas-tools-smoke.cjs && node tests/desktop-muse-publishing-smoke.cjs && node tests/desktop-video-aggregate-smoke.cjs && node tests/desktop-studio-refresh-smoke.cjs && node tests/desktop-workflow-audit-smoke.cjs && node tests/desktop-user-review-smoke.cjs && node tests/desktop-diagnostics-smoke.cjs && node tests/desktop-layout-review-smoke.cjs && node tests/desktop-extra-tools-smoke.cjs && node tests/desktop-theme-smoke.cjs && node tests/desktop-product-review-smoke.cjs && node tests/muse-mode-smoke.cjs && node tests/desktop-batch-smoke.cjs && node tests/desktop-ai-dispatch-smoke.cjs && node tests/desktop-agent-smoke.cjs && node tests/desktop-remote-chrome-smoke.cjs && node tests/desktop-outbound-relay-smoke.cjs && node tests/desktop-web-ai-smoke.cjs && node tests/desktop-script-splitter-smoke.cjs && node tests/desktop-shopee-chrome-smoke.cjs",
     "test:browser": "node tests/browser-smoke.cjs",
     "test:reliability": "node tests/core-reliability-smoke.cjs",
     "package:extension": "python3 tools/package.py",
@@ -20,7 +20,8 @@
     "version:app": "node tools/set-version.cjs",
     "test:remote": "node tests/desktop-remote-chrome-smoke.cjs",
     "setup:remote-tests": "playwright install chromium",
-    "test:relay": "node tests/desktop-outbound-relay-smoke.cjs"
+    "test:relay": "node tests/desktop-outbound-relay-smoke.cjs",
+    "build:icons": "node tools/build-icons.cjs"
   },
   "engines": {
     "node": ">=22.12.0"
@@ -32,7 +33,7 @@
   },
   "build": {
     "appId": "com.museflow.workflow",
-    "productName": "Workflow",
+    "productName": "MooZ Agent",
     "asar": true,
     "directories": {
       "output": "dist"
@@ -74,7 +75,7 @@
         "nsis"
       ]
     },
-    "artifactName": "Workflow-${version}-${os}-${arch}.${ext}",
+    "artifactName": "MooZ-Agent-${version}-${os}-${arch}.${ext}",
     "publish": [
       {
         "provider": "github",
@@ -88,7 +89,8 @@
         "from": "desktop/app-update.yml",
         "to": "app-update.yml"
       }
-    ]
+    ],
+    "icon": "icons/mooz-icon.png"
   },
   "dependencies": {
     "electron-updater": "6.8.9",
@@ -96,5 +98,6 @@
     "parse5": "^8.0.0",
     "proxy-from-env": "1.1.0",
     "ws": "8.22.0"
-  }
+  },
+  "productName": "MooZ Agent"
 }

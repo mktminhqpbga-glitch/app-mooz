@@ -11,14 +11,14 @@ async function isDeveloperIDSigned(bundle,run=promisify(execFile)){
   catch{return false;}
 }
 async function latestPublicRelease(fetcher){
-  const response=await fetcher(LATEST,{headers:{Accept:'application/vnd.github+json','User-Agent':'Workflow-Desktop'},redirect:'error',signal:AbortSignal.timeout(20000)});
+  const response=await fetcher(LATEST,{headers:{Accept:'application/vnd.github+json','User-Agent':'MooZ-Agent'},redirect:'error',signal:AbortSignal.timeout(20000)});
   if(response.status===404)return null;
   if(!response.ok)throw Error('Release check failed');
   const text=await response.text();if(Buffer.byteLength(text)>1024*1024)throw Error('Release metadata too large');
   const release=JSON.parse(text);if(release.draft||release.prerelease)return null;
   const version=stableVersion(release.tag_name);if(!version)throw Error('Invalid stable release');
   // A source-only GitHub release cannot update the desktop application.
-  if(!Array.isArray(release.assets)||!release.assets.some(asset=>/^Workflow-.*-mac-(?:arm64|x64)\.zip$/.test(asset.name||'')))return null;
+  if(!Array.isArray(release.assets)||!release.assets.some(asset=>/^(?:MooZ-Agent|Workflow)-.*-mac-(?:arm64|x64)\.zip$/.test(asset.name||'')))return null;
   return {version};
 }
 class UpdateService extends EventEmitter{
@@ -26,7 +26,7 @@ class UpdateService extends EventEmitter{
     super();this.engine=engine;this.fetchRelease=fetchRelease;this.prepareInstall=prepareInstall;this.onInstallStart=onInstallStart;this.onInstallFailed=onInstallFailed;
     this.schedule=schedule;this.repeat=repeat;this.clearSchedule=clearSchedule;this.clearRepeat=clearRepeat;this.timers=[];this.pending=null;this.downloading=null;
     const mode=!packaged||platform!=='darwin'?'unavailable':signed&&engine?'native':'manual';
-    this.value={state:mode==='unavailable'?'disabled':'idle',mode,currentVersion:version,latestVersion:null,progress:null,message:mode==='unavailable'?'Cập nhật ứng dụng dùng trong bản cài macOS.':mode==='manual'?'Bản thử chưa ký: app tự kiểm tra bản mới; tải và cài qua trang phát hành.':'App tự kiểm tra và tải bản mới trong nền. Bạn quyết định khi nào cài.'};
+    this.value={state:mode==='unavailable'?'disabled':'idle',mode,currentVersion:version,latestVersion:null,progress:null,message:mode==='unavailable'?'Chưa có cập nhật tự động trong phiên bản này. Xem bản cài mới tại kênh phát hành của MooZ.':mode==='manual'?'App kiểm tra bản mới; bạn tải và cài thủ công qua kênh phát hành.':'App tự kiểm tra và tải bản mới trong nền. Bạn quyết định khi nào cài.'};
     this.handlers=[];
     if(mode==='native')this.configureEngine();
   }

@@ -17,7 +17,7 @@ const path=require('node:path');
   async function clipboardMatches(expected){for(let i=0;i<60;i++){if(await application.evaluate(async({clipboard},value)=>(await clipboard.readText())===value,expected))return true;await new Promise(resolve=>setTimeout(resolve,40));}return false;}
 
 
-  await home.click('#desktopUpdateButton');await home.waitForSelector('#desktopUpdateDialog[open]');assert.match(await home.locator('#desktopUpdateStatus').innerText(),/bản cài macOS/);await application.evaluate(()=>globalThis.workflowTest.updater.set({mode:'native',state:'downloading',latestVersion:'0.32.0',progress:{percent:42},message:'Đang tải bản cập nhật trong nền…'}));
+  await home.click('#desktopUpdateButton');await home.waitForSelector('#desktopUpdateDialog[open]');assert.match(await home.locator('#desktopUpdateStatus').innerText(),/Chưa có cập nhật tự động/);await application.evaluate(()=>globalThis.workflowTest.updater.set({mode:'native',state:'downloading',latestVersion:'0.32.0',progress:{percent:42},message:'Đang tải bản cập nhật trong nền…'}));
   await home.waitForFunction(()=>document.querySelector('#desktopUpdateDialog progress').value===42);assert.equal(await home.locator('#desktopCheckUpdate').isDisabled(),true);
   await application.evaluate(()=>globalThis.workflowTest.updater.set({state:'downloaded',progress:null,message:'Bản mới đã tải xong.'}));await home.waitForSelector('#desktopInstallUpdate:visible');
   await application.evaluate(()=>globalThis.workflowTest.updater.set({mode:'unavailable',state:'disabled',latestVersion:null,message:'Cập nhật ứng dụng dùng trong bản cài macOS.'}));

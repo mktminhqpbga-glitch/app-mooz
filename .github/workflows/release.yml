@@ -61,8 +61,8 @@ jobs:
       - name: Verify automatic update metadata exists
         run: |
           test -s dist/latest-mac.yml
-          test -s "dist/Workflow-${RELEASE_TAG#v}-mac-arm64.zip"
-          test -s "dist/Workflow-${RELEASE_TAG#v}-mac-x64.zip"
+          test -s "dist/MooZ-Agent-${RELEASE_TAG#v}-mac-arm64.zip"
+          test -s "dist/MooZ-Agent-${RELEASE_TAG#v}-mac-x64.zip"
       - name: Create a draft release with update files
         run: |
           cat > /tmp/workflow-release-notes.md <<'NOTES'
@@ -70,4 +70,4 @@ jobs:
 
           Review and test the packages before publishing this draft. Only a published stable release is offered to installed apps. Keep the ZIP, blockmap and latest-mac.yml files together so compatible clients can download only changed blocks.
           NOTES
-          gh release create "$RELEASE_TAG" dist/*.dmg dist/*.zip dist/*.blockmap dist/latest-mac.yml --draft --verify-tag --title "Workflow $RELEASE_TAG" --notes-file /tmp/workflow-release-notes.md
+          gh release create "$RELEASE_TAG" dist/*.dmg dist/*.zip dist/*.blockmap dist/latest-mac.yml --draft --verify-tag --title "MooZ Agent $RELEASE_TAG" --notes-file /tmp/workflow-release-notes.md

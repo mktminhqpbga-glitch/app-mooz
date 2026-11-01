@@ -1,0 +1,43 @@
+/* Shared visual contract for Library, Canvas, Publishing, Affiliate and Batch. */
+:root{--space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-5:24px;--space-6:32px;--control-radius:9px;--card-radius:14px;--dialog-radius:18px;--control-height:36px}
+:root[data-ui-theme]{--bg:var(--mooz-bg);--panel:var(--mooz-panel);--surface:var(--mooz-panel);--raised:var(--mooz-raised);--line:var(--mooz-line);--border:var(--mooz-line);--ink:var(--mooz-ink);--text:var(--mooz-ink);--muted:var(--mooz-muted);--accent:var(--mooz-link);--soft:var(--mooz-soft);--red:var(--mooz-danger);--warn:var(--mooz-warning);--blue:var(--mooz-link)}
+body[data-app-surface] :is(button,input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=color]),select){border-radius:var(--control-radius);min-height:var(--control-height);box-sizing:border-box}
+body[data-app-surface] :is(button,input,select,textarea){font:inherit}body[data-app-surface] button{font-size:13px;line-height:1.4;cursor:pointer}body[data-app-surface] :is(button,input,textarea,select):disabled{cursor:not-allowed}
+body[data-app-surface] :is(.project-card,.post-card,.hub-account-card,.worker-card,.stat,.product-row,.product-inspector,.panel,.node){border-radius:var(--card-radius)}
+body[data-app-surface] :is(dialog,.modal){border-radius:var(--dialog-radius);max-height:calc(100dvh - 32px);overscroll-behavior:contain}body[data-app-surface] dialog:not([open]){display:none}
+body[data-app-surface] :is(.eyebrow,.nav-label,.nav-caption,.studio-nav-caption){font-size:11px;font-weight:650;letter-spacing:.08em}body[data-app-surface] :is(.muted,.note,.subtitle,.callout){line-height:1.65}
+body[data-app-surface=batch] .shell{background:var(--mooz-bg)}body[data-app-surface=batch] :is(.workspace,.page,#main){background:var(--mooz-bg);color:var(--mooz-bg-ink)}
+body[data-app-surface=batch] :is(.worker-card,.stat,.product-inspector,.product-table,.batch-banner,.batch-readiness,.workflow-settings,.settings-card,.asset-card,dialog){background:var(--mooz-panel);border-color:var(--mooz-line);color:var(--mooz-panel-ink)}
+body[data-app-surface=batch] .queue-cards .product-row{background:var(--mooz-node);border-color:var(--mooz-line);color:var(--mooz-node-ink)}body[data-app-surface=batch] .queue-cards .product-row.selected{background:var(--mooz-soft);border-color:var(--mooz-link)}
+body[data-app-surface=batch] .filters button.active{background:var(--mooz-soft);color:var(--mooz-link);border-color:var(--mooz-line)}body[data-app-surface=batch] .badge.done{background:var(--mooz-success-soft);color:var(--mooz-success)}
+body[data-app-surface=batch] .workflow-step{background:var(--mooz-panel);border-color:var(--mooz-line);color:var(--mooz-ink)}body[data-app-surface=batch] .workflow-step.selected{background:var(--mooz-soft);border-color:var(--mooz-link)}
+body[data-app-surface=batch] #toast{background:var(--mooz-raised);color:var(--mooz-raised-ink);border:1px solid var(--mooz-line)}body[data-app-surface=batch] #toast.error{background:var(--mooz-danger-soft);color:var(--mooz-danger)}
+.field-help{font-size:12px;line-height:1.6;color:var(--mooz-muted);margin:8px 0 14px}.setup-state{padding:12px 14px;border:1px solid var(--mooz-line);border-radius:var(--control-radius);background:var(--mooz-raised);font-size:13px;line-height:1.6}
+.app-loading{color:var(--mooz-muted);font-size:13px}.version-label{font:11px/1.5 ui-monospace,monospace;color:var(--mooz-muted)}
+#workspaceDestinations{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:15px 0}#workspaceDestinations button{padding:12px;text-align:left}#windowList button{width:100%;text-align:left;margin:5px 0}
+.canvas-empty-state{position:absolute;z-index:3;left:50%;top:45%;transform:translate(-50%,-50%);width:min(440px,calc(100% - 48px));padding:28px;text-align:center;background:var(--mooz-panel);color:var(--mooz-panel-ink);border:1px solid var(--mooz-line);border-radius:var(--dialog-radius);box-shadow:0 16px 50px #0002}.canvas-empty-state h2{font-size:22px;margin:8px 0 12px}.canvas-empty-state p{font-size:13px;line-height:1.7;color:var(--mooz-panel-muted)}.canvas-empty-state>div{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}.canvas-empty-state[hidden]{display:none}
+.ai-ready-summary{font-size:12px;color:var(--mooz-muted);padding:5px 0;margin:0}.studio-health-summary{grid-column:1/-1;margin:0}
+:root[data-ui-theme] body[data-app-surface] #aiHealth button[data-state=ready]{color:var(--mooz-success);border-color:color-mix(in srgb,var(--mooz-success) 45%,var(--mooz-line))}
+:root[data-ui-theme] body[data-app-surface] #aiHealth button[data-state=error]{color:var(--mooz-danger)}:root[data-ui-theme] body[data-app-surface] #aiHealth button:is([data-state=busy],[data-state=checking]){color:var(--mooz-warning)}
+:root[data-ui-theme] body[data-app-surface] #aiHealth button:is([data-state=missing],[data-state=offline]){color:var(--mooz-muted)}
+body[data-app-surface] #canvasTools button{min-height:30px}.canvas-tools .tool-label{font-size:11px;margin-left:5px}#canvasTools #zoomLevel{font-variant-numeric:tabular-nums}
+body[data-app-surface] .setup-guide{padding:12px;border:1px solid var(--mooz-line);border-radius:var(--control-radius)}body[data-app-surface] .setup-guide>summary{cursor:pointer;font-weight:600}
+@media(max-width:760px){#workspaceDestinations{grid-template-columns:1fr}.canvas-empty-state{padding:20px}.canvas-empty-state h2{font-size:19px}.canvas-tools .tool-label{display:none}body[data-app-surface] :is(.topbar,.top-actions){flex-wrap:wrap;gap:7px}body[data-app-surface=batch] .top-actions .preview-badge{display:none}}
+#aiHealth .ai-ready-summary{flex:1 0 100%;font-size:11px;line-height:1.45;margin:1px 0 0;color:var(--mooz-muted)}
+#canvasTools [data-tool-label]::after{content:attr(data-tool-label);font-size:11px;margin-left:5px}
+body[data-app-surface] #canvasTools{flex-wrap:wrap;max-width:100%}
+@media(max-width:760px){#canvasTools [data-tool-label]::after{content:none}}
+body[data-app-surface] .product-reference button{width:28px;height:28px;min-height:28px;min-width:28px;padding:0;border-radius:50%}
+body[data-app-surface] .node-header button{min-height:26px;min-width:26px;height:26px;border-radius:6px;padding:3px}
+/* Selected navigation and filters must remain distinct from normal buttons. */
+:root[data-ui-theme] body[data-app-surface=batch] #mainNav button{background:transparent;color:var(--mooz-panel-muted);border:1px solid transparent}
+:root[data-ui-theme] body[data-app-surface=batch] #mainNav button.active{background:var(--mooz-soft);color:var(--mooz-link);border-color:var(--mooz-line)}
+:root[data-ui-theme] body[data-app-surface=batch] .filters button{background:transparent;color:var(--mooz-muted);border-color:transparent}
+:root[data-ui-theme] body[data-app-surface=batch] .filters button.active{background:var(--mooz-soft);color:var(--mooz-link);border-color:var(--mooz-line)}
+:root[data-ui-theme] body[data-app-surface] .project-open{background:transparent;color:var(--mooz-node-ink)}
+:root[data-ui-theme] body[data-app-surface] .project-open:hover{background:var(--mooz-soft);color:var(--mooz-node-ink)}
+body[data-app-surface=library] .sidebar .brand>span{white-space:nowrap;font-size:19px;min-width:0}body[data-app-surface=library] .sidebar .brand small{white-space:normal;font-size:9px;line-height:1.6}
+.batch-first-use{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;min-height:200px;padding:24px;text-align:center}.batch-first-use>strong{font-size:17px;color:var(--mooz-ink)}.batch-first-use>p{font-size:13px;line-height:1.6;max-width:320px;margin:0 0 5px}
+body[data-app-surface=canvas]:not(.studio-layout) :is(.toolbar-tools,.toolbar-actions){visibility:hidden}
+
+body[data-app-surface] .brand-mark{flex:none;width:36px;height:36px;object-fit:contain;background:transparent;box-shadow:none}

@@ -4,18 +4,18 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <script src="desktop/theme-colors.js"></script><script src="desktop/theme-init.js"></script>
-  <title>MooZ Agent 0.57.0</title>
+  <title>MooZ Agent 0.58.0</title>
   <link rel="icon" type="image/png" sizes="128x128" href="icons/icon128.png" />
   <link rel="stylesheet" href="styles.css" />
   <link rel="stylesheet" href="studio.css" />
   <link rel="stylesheet" href="desktop/update-ui.css">
-<link rel="stylesheet" href="desktop/appearance.css"><link rel="stylesheet" href="desktop/studio-polish.css"><link rel="stylesheet" href="desktop/usability.css"><link rel="stylesheet" href="desktop/theme.css"><link rel="stylesheet" href="agent-ui.css"><link rel="stylesheet" href="script-splitter.css"></head>
+<link rel="stylesheet" href="desktop/appearance.css"><link rel="stylesheet" href="desktop/studio-polish.css"><link rel="stylesheet" href="desktop/usability.css"><link rel="stylesheet" href="desktop/theme.css"><link rel="stylesheet" href="desktop/design-system.css"><link rel="stylesheet" href="agent-ui.css"><link rel="stylesheet" href="script-splitter.css"></head>
 <body data-app-surface="canvas">
   <header class="toolbar">
-    <div class="brand"><img class="brand-logo" src="icons/mooz-mark.svg" alt="" /><strong class="brand-name">MooZ Agent</strong><span class="brand-version">0.57.0</span></div>
+    <div class="brand"><img class="brand-logo" src="icons/mooz-mark.svg" alt="" /><strong class="brand-name">MooZ Agent</strong><span class="brand-version">0.58.0</span></div>
     <div class="toolbar-tools" aria-label="Tạo node cho workflow">
       <button id="creativeToolsBtn" type="button">Trợ lý sáng tạo</button><button id="referenceBoardBtn" type="button">Ảnh tham chiếu chung</button><button id="mediaLibraryBtn" type="button">⇩ Tải media</button><button id="promptLibraryBtn" type="button">Kho prompt</button>
-      <button id="batchManagerBtn" type="button">Hàng đợi · Kho ảnh</button><button id="flowStudioBtn" type="button">Tạo hàng loạt</button><button id="batchImagesBtn" type="button">＋ Tạo ảnh hàng loạt</button><button id="scriptImportBtn" type="button">＋ Script → Nodes</button>
+      <button id="batchManagerBtn" type="button">Hàng đợi · Kho ảnh</button><button id="flowStudioBtn" type="button">Tạo hàng loạt</button><button id="batchImagesBtn" type="button">＋ Tạo ảnh hàng loạt</button><button id="scriptImportBtn" type="button">＋ Kịch bản → Node</button>
       <button id="storyDashboardBtn" type="button">Bảng điều khiển kịch bản</button>
       <button id="videoTrimBtn" type="button">Cắt video</button><button id="videoRotateBtn" type="button">Xoay / lật video</button><button id="videoColorBtn" type="button">Chỉnh màu video</button><button id="audioExtractBtn" type="button">Tách âm thanh</button>
       <button id="canvasDiagramBtn" type="button">Gửi sơ đồ</button><button id="duplicateCanvasBtn" type="button">Nhân bản canvas</button>
@@ -25,13 +25,13 @@
       <button id="addNodeMenuBtn" type="button" aria-haspopup="true" aria-expanded="false">＋ Thêm node</button>
     </div>
     <div class="toolbar-actions">
-      <button id="saveBtn">Save</button>
-      <button id="workflowExportBtn" type="button" title="Lưu workflow as a reusable JSON file">Lưu workflow</button>
-      <button id="workflowImportBtn" type="button" title="Import a saved MuseFlow workflow">Nhập workflow</button>
+      <button id="saveBtn">Lưu</button>
+      <button id="workflowExportBtn" type="button" title="Lưu workflow thành tệp JSON để dùng lại">Lưu workflow</button>
+      <button id="workflowImportBtn" type="button" title="Nhập workflow đã lưu">Nhập workflow</button>
       <input id="workflowFileInput" type="file" accept=".json,application/json" hidden />
       <button id="packageUpdateBtn">Cập nhật extension</button><button id="dataUpdateBtn">Cập nhật dữ liệu</button><button id="settingsBtn">Kết nối AI</button>
       <button id="resetBtn" class="danger">Dọn canvas</button>
-      <button id="runBtn" class="primary" title="Run every node in the workflow in dependency order">▶ Chạy workflow</button><button id="runOptionsBtn" type="button" title="Chọn một số node để chạy">Chọn node</button>
+      <button id="runBtn" class="primary" title="Chạy các node theo thứ tự phụ thuộc">▶ Chạy workflow</button><button id="runOptionsBtn" type="button" title="Chọn một số node để chạy">Chọn node</button>
     </div>
   </header>
 
@@ -40,32 +40,33 @@
   <div class="statusbar">
     <div id="aiHealth" aria-label="Trạng thái AI"></div><button id="checkAllAIBtn" type="button" title="Kiểm tra kết nối AI" aria-label="Kiểm tra kết nối AI">↻</button><span id="museStatus" hidden>● Đang kiểm tra Muse.ai…</span>
     <span id="backendStatus">Kết nối nhiều AI</span>
-    <span id="updateNotice" class="update-notice hidden" role="status"><span id="updateNoticeText"></span><a id="updateDownloadLink" href="https://github.com/mktminhqpbga-glitch/app-mooz/archive/refs/heads/main.zip" target="_blank" rel="noopener noreferrer">Download update</a><button id="dismissUpdateBtn" type="button" aria-label="Dismiss update notice">×</button></span>
+    <span id="updateNotice" class="update-notice hidden" role="status"><span id="updateNoticeText"></span><a id="updateDownloadLink" href="https://github.com/mktminhqpbga-glitch/app-mooz/archive/refs/heads/main.zip" target="_blank" rel="noopener noreferrer">Tải bản cập nhật</a><button id="dismissUpdateBtn" type="button" aria-label="Dismiss update notice">×</button></span>
     <span id="runStatus"></span>
   </div>
 
   <main id="viewport">
     <svg id="edges"></svg>
     <div id="canvas"></div>
+    <section id="canvasEmptyState" class="canvas-empty-state" hidden aria-labelledby="canvasEmptyTitle"><p class="eyebrow">CANVAS CỦA BẠN</p><h2 id="canvasEmptyTitle">Bắt đầu bằng một ý tưởng</h2><p>Thêm node, nối các bước rồi chọn tab AI để chạy. Bạn cũng có thể mở luồng mẫu và thay nội dung của mình.</p><div><button id="emptyCanvasAdd" class="primary" type="button">Thêm node đầu tiên</button><button id="emptyCanvasTemplate" type="button">Dùng luồng mẫu</button></div><p>Luồng mẫu chưa gửi yêu cầu AI.</p></section>
     <div id="canvasTools" class="canvas-tools" aria-label="Điều khiển khung vẽ">
-      <button id="handTool" type="button" title="H: bật/tắt kéo nền · Tắt để kéo chọn nhiều node · D: nhân bản nhóm · ⌘C/⌘V trên Mac · Mũi tên: dịch nhóm · G: vẽ nhóm">✋</button>
-      <button id="groupTool" type="button" title="Vẽ vùng nhóm (G)">▱</button>
-      <button id="zoomOut" type="button" title="Thu nhỏ khung vẽ">−</button>
+      <button id="handTool" aria-label="Kéo nền" data-tool-label="Kéo nền" type="button" title="H: bật/tắt kéo nền · Tắt để kéo chọn nhiều node · D: nhân bản nhóm · Sao chép/dán bằng phím tắt của máy bạn · Mũi tên: dịch nhóm · G: vẽ nhóm">✋</button>
+      <button id="groupTool" aria-label="Tạo nhóm" data-tool-label="Tạo nhóm" type="button" title="Vẽ vùng nhóm (G)">▱</button>
+      <button id="zoomOut" aria-label="Thu nhỏ" data-tool-label="Thu nhỏ" type="button" title="Thu nhỏ khung vẽ">−</button>
       <span id="zoomLevel">100%</span>
-      <button id="zoomIn" type="button" title="Phóng to khung vẽ">＋</button>
+      <button id="zoomIn" aria-label="Phóng to" data-tool-label="Phóng to" type="button" title="Phóng to khung vẽ">＋</button>
       <button id="nodeDensity" type="button" aria-pressed="false" title="Chuyển cách hiển thị node">Gọn</button>
       <button id="fitCanvas" type="button" title="Vừa tất cả node">Vừa màn hình</button>
     </div>
     <aside id="canvasMinimap" class="canvas-minimap" hidden aria-label="Bản đồ khung vẽ"><span>Bản đồ · kéo để di chuyển</span><svg id="canvasMinimapSvg" viewBox="0 0 180 110" role="img" aria-label="Vị trí các node và vùng đang xem"></svg></aside>
   </main>
   <section id="timelineDock" class="timeline-dock collapsed" aria-label="Dòng thời gian video">
-    <div class="timeline-dock-header"><div class="timeline-heading"><strong>Dòng thời gian</strong><span id="timelineClipCount">0 clips</span><small>Kéo clip để sắp xếp cảnh</small></div><div class="timeline-dock-actions"><button id="timelineImportAllBtn" type="button" title="Add every Generate Video node to the timeline">＋ Thêm tất cả</button><div class="timeline-output-picker"><button id="timelineAddVideoBtn" type="button" title="Add a video output">＋ Ảnh/video</button><div id="timelineOutputMenu" class="timeline-output-menu hidden"></div></div><button id="timelinePlayBtn" type="button" title="Preview sequence">▶ Xem trước</button><select id="timelineExportFormat" title="Choose export format"><option value="webm">WebM</option><option value="mp4">MP4 (H.264)</option></select><button id="timelineExportBtn" type="button" title="Export the full stitched timeline video">⇩ Xuất tất cả</button><button id="timelineExportSingleBtn" type="button" title="Xuất mỗi cảnh thành một video riêng theo định dạng đã chọn">⇩ Xuất từng clip</button><button id="timelineExportStopBtn" class="timeline-export-stop hidden" type="button" title="Stop timeline export">■ Dừng</button></div><button id="timelineToggleBtn" type="button" aria-expanded="false" title="Show timeline">▲</button></div>
+    <div class="timeline-dock-header"><div class="timeline-heading"><strong>Dòng thời gian</strong><span id="timelineClipCount">Đang mở…</span><small>Kéo clip để sắp xếp cảnh</small></div><div class="timeline-dock-actions"><button id="timelineImportAllBtn" type="button" title="Thêm tất cả video đã tạo vào dòng thời gian">＋ Thêm tất cả</button><div class="timeline-output-picker"><button id="timelineAddVideoBtn" type="button" title="Thêm ảnh hoặc video đầu ra">＋ Ảnh/video</button><div id="timelineOutputMenu" class="timeline-output-menu hidden"></div></div><button id="timelinePlayBtn" type="button" title="Xem trước các cảnh">▶ Xem trước</button><select id="timelineExportFormat" title="Chọn định dạng xuất"><option value="webm">WebM</option><option value="mp4">MP4 (H.264)</option></select><button id="timelineExportBtn" type="button" title="Xuất video đã ghép đầy đủ">⇩ Xuất tất cả</button><button id="timelineExportSingleBtn" type="button" title="Xuất mỗi cảnh thành một video riêng theo định dạng đã chọn">⇩ Xuất từng clip</button><button id="timelineExportStopBtn" class="timeline-export-stop hidden" type="button" title="Dừng xuất video">■ Dừng</button></div><button id="timelineToggleBtn" type="button" aria-expanded="false" title="Hiện dòng thời gian">▲</button></div>
     <div id="timelineDropZone" class="timeline-drop-zone">Thêm ảnh/video · kéo để sắp xếp · đặt thời lượng mỗi cảnh</div>
     <div class="timeline-dock-content"><div id="timelineTrack" class="timeline-dock-track"></div></div>
   </section>
 
   <aside id="timelinePreviewPanel" class="timeline-preview-panel hidden" aria-label="Timeline video preview">
-    <header><strong>Xem trước dòng thời gian</strong><button id="closeTimelinePreview" type="button" aria-label="Close preview">×</button></header>
+    <header><strong>Xem trước dòng thời gian</strong><button id="closeTimelinePreview" type="button" aria-label="Đóng xem trước">×</button></header>
     <div class="timeline-preview-stage"><img id="timelineStill" hidden alt="Ảnh trên dòng thời gian" /><video id="timelinePlayer" class="is-active" controls playsinline preload="auto"></video><video id="timelinePlayerNext" playsinline preload="auto"></video></div>
     <div class="timeline-preview-caption">Phát từng cảnh</div>
   </aside>
@@ -73,35 +74,35 @@
   <div id="canvasMenu" class="canvas-menu hidden" role="menu">
     <div class="menu-caption">Thêm node</div>
     <button data-context-action="add:prompt" role="menuitem">＋ Prompt</button>
-    <button data-context-action="add:negativePrompt" role="menuitem">＋ Negative Prompt</button>
-    <button data-context-action="add:text" role="menuitem">＋ Text note</button>
-    <button data-context-action="add:textAppend" role="menuitem">＋ Text Append</button>
+    <button data-context-action="add:negativePrompt" role="menuitem">＋ Loại trừ</button>
+    <button data-context-action="add:text" role="menuitem">＋ Ghi chú</button>
+    <button data-context-action="add:textAppend" role="menuitem">＋ Thêm văn bản</button>
     <button data-context-action="add:textConcat" role="menuitem">＋ Gộp văn bản</button>
     <button data-context-action="add:imageInput" role="menuitem">＋ Ảnh đầu vào</button>
     <button data-context-action="add:references" role="menuitem">＋ Ảnh tham chiếu</button>
     <button data-context-action="add:generateImage" role="menuitem">＋ Tạo ảnh</button>
     <button data-context-action="add:generateVideo" role="menuitem">＋ Tạo video</button>
     <button data-context-action="add:timeline" role="menuitem">＋ Dòng thời gian</button>
-    <button data-context-action="add:imageResize" role="menuitem">＋ Image Resize</button>
+    <button data-context-action="add:imageResize" role="menuitem">＋ Đổi kích thước ảnh</button>
     <button data-context-action="add:preview" role="menuitem">＋ Xem trước</button>
     <div class="menu-divider"></div>
     <button data-context-action="save" role="menuitem">Lưu workflow</button>
-    <button data-context-action="run" role="menuitem">▶ Run workflow</button>
+    <button data-context-action="run" role="menuitem">▶ Chạy workflow</button>
     <button data-context-action="arrange" role="menuitem">Sắp xếp node</button>
     <div class="menu-divider"></div>
-    <button data-context-action="delete-selected" role="menuitem">Delete selected node</button>
-    <button data-context-action="disconnect-all" role="menuitem">Remove all connections</button>
+    <button data-context-action="delete-selected" role="menuitem">Xóa node đang chọn</button>
+    <button data-context-action="disconnect-all" role="menuitem">Gỡ tất cả dây nối</button>
   </div>
 
   <div id="settingsModal" class="modal-backdrop hidden">
     <section class="modal">
       <h2>Kết nối AI</h2><p>Dùng tab AI đã đăng nhập không cần API key. Mỗi node có bộ chọn AI riêng. Màu xanh: ô chat sẵn sàng; đỏ: kiểm tra thất bại; xám: chưa có tab/khóa.</p><p>Mở cuộc trò chuyện muốn dùng trong một tab, rồi chọn đúng tab. Workflow không tự chuyển sang cuộc trò chuyện khác.</p><div id="aiChatTargets"></div><button id="refreshChatTabsBtn" type="button">Làm mới danh sách chat</button><div id="aiConnections"></div><button id="refreshAIBtn" type="button">Kiểm tra kết nối</button><p>API key chỉ giữ trong phiên trình duyệt, không đưa vào workflow xuất ra. Đóng trình duyệt cần nhập lại. Yêu cầu API có thể phát sinh phí.</p><div id="apiSettings"></div>
-      <p>MuseFlow uses your signed-in Muse.ai browser tab directly. Keep the Muse chat tab open while a workflow runs.</p>
+      <p>MooZ Agent dùng tab Muse đã đăng nhập của bạn. Giữ tab đó mở trong lúc chạy.</p>
       <div class="muse-support-controls"><button id="diagnoseMuseBtn" type="button">Chẩn đoán Muse</button><button id="bindMuseSendBtn" type="button">Chọn nút Gửi trên Muse</button><p>Bấm Dừng workflow trước khi chọn nút. Sau đó bấm mũi tên Gửi trên tab Muse để ghi nhớ; lần chọn không gửi bản nháp. Chỉ cần chọn một lần nếu giao diện chưa đổi.</p><p id="museSupportStatus" role="status" aria-live="polite"></p><details id="museSupportDetails"><summary>Báo cáo hỗ trợ</summary><textarea id="museSupportReport" readonly aria-label="Báo cáo chẩn đoán Muse"></textarea><button id="copyMuseReportBtn" type="button">Sao chép báo cáo</button></details></div>
-      <div class="connection-check"><button id="testMuseBtn" type="button">Check Muse session</button><span id="connectionStatus" role="status"></span></div>
+      <div class="connection-check"><button id="testMuseBtn" type="button">Kiểm tra phiên Muse</button><span id="connectionStatus" role="status"></span></div>
       <div class="modal-actions">
         <button id="closeSettingsBtn">Hủy</button>
-        <button id="saveSettingsBtn" class="primary">Save</button>
+        <button id="saveSettingsBtn" class="primary">Lưu</button>
       </div>
     </section>
   </div>
@@ -134,14 +135,14 @@
 
   <div id="scriptModal" class="modal-backdrop hidden">
     <section class="modal script-modal" role="dialog" aria-modal="true" aria-labelledby="scriptModalTitle">
-      <h2 id="scriptModalTitle">Build nodes from a scene script</h2>
-      <p>Paste a scene script using the Grumbo &amp; Snowy form. MuseFlow reads each scene’s opening/ending frames, timed actions, image/video prompts, audio, shared locks and negative prompt, then connects the scene nodes and orders videos on the Timeline.</p>
-      <p class="script-template-hint">Download the strict template to fill in yourself or give to an AI. Keep the headings and field order unchanged.</p>
+      <h2 id="scriptModalTitle">Tạo node từ kịch bản</h2>
+      <p>Dán kịch bản theo mẫu. MooZ Agent đọc từng cảnh, prompt ảnh/video, lời thoại và yêu cầu chung để tạo các node, nối dây và sắp thứ tự cảnh trên dòng thời gian.</p>
+      <p class="script-template-hint">Tải mẫu để tự điền hoặc gửi cho AI viết. Giữ nguyên tiêu đề và thứ tự các trường.</p>
       <label for="scriptAIPrompt">Nội dung muốn AI viết</label><textarea id="scriptAIPrompt" placeholder="Ví dụ: Viết 6 cảnh về một chú mèo khám phá thành phố, mỗi cảnh 10 giây"></textarea><select id="scriptAIProvider"><option value="gemini">Gemini · tab</option><option value="muse">Muse.ai · tab</option><option value="chatgpt">ChatGPT · tab</option><option value="google">Google · API</option><option value="openai">OpenAI · API</option></select><button id="scriptAIButton" type="button">Tạo kịch bản bằng AI</button><p id="scriptAIStatus" role="status" aria-live="polite"></p><div class="batch-options"><label>Tạo loại node<select id="scriptOutputMode"><option value="all">Ảnh và video</option><option value="images">Chỉ ảnh</option><option value="videos">Chỉ video</option></select></label><label>AI cho node ảnh<select id="scriptImageProvider"><option value="muse">Muse.ai · tab</option><option value="gemini">Gemini · tab</option><option value="chatgpt">ChatGPT · tab</option><option value="google">Google · API</option><option value="openai">OpenAI · API</option></select></label></div><label for="scriptInput">Kịch bản</label>
       <textarea id="scriptInput" placeholder="CẢNH 1 (0:00 đến 0:10): Scene title&#10;Khung đầu: ...&#10;Khung cuối: ...&#10;Diễn biến: 1. 0-2s: ...&#10;Prompt ảnh khung đầu: ...&#10;Prompt video: ...&#10;Audio: ..."></textarea>
       <div id="scriptImportStatus" role="status"></div>
       <div class="modal-actions">
-        <a id="downloadScriptTemplate" class="script-template-download" href="templates/museflow-scene-script-template-vi.txt" download="MuseFlow_Scene_Script_Template_VI.txt">⇩ Download strict template</a>
+        <a id="downloadScriptTemplate" class="script-template-download" href="templates/museflow-scene-script-template-vi.txt" download="MooZ-Mau-kich-ban.txt">⇩ Tải mẫu kịch bản</a>
         <button id="cancelScriptImport" type="button">Hủy</button>
         <button id="buildScriptNodes" type="button" class="primary">Create scene nodes</button>
       </div>

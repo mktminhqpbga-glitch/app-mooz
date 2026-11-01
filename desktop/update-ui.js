@@ -5,7 +5,7 @@
     const parent=document.getElementById('toolbar-panel-create')||document.querySelector('.topbar');if(!parent)return;
     const launch=document.createElement('button');launch.id='desktopUpdateButton';launch.type='button';launch.className='workflow-update-launch';launch.textContent='Cập nhật';
     const dialog=document.createElement('dialog');dialog.className='workflow-update-dialog';dialog.id='desktopUpdateDialog';
-    const heading=document.createElement('h2');heading.textContent='Cập nhật Workflow';
+    const heading=document.createElement('h2');heading.textContent='Cập nhật MooZ Agent';
     const version=document.createElement('p'),message=document.createElement('p');message.setAttribute('role','status');message.setAttribute('aria-live','polite');message.id='desktopUpdateStatus';
     const progress=document.createElement('progress');progress.max=100;progress.hidden=true;progress.setAttribute('aria-label','Tiến độ tải cập nhật');
     const note=document.createElement('p');note.className='workflow-update-note';note.textContent='Dự án nằm trên máy và được lưu trước khi cài. App không tự cài khi bạn thoát. Tải phần thay đổi được dùng khi có dữ liệu phù hợp; lần đầu hoặc khi cần có thể tải gói đầy đủ.';

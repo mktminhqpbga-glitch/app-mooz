@@ -82,7 +82,7 @@
     style.textContent = '.desktop-bar{display:flex;gap:10px;align-items:center;padding:8px 16px;background:#171b26;border-bottom:1px solid #333b4e;color:#d9e1f2;font:12px system-ui}.desktop-bar strong{margin-right:auto}.desktop-bar button{background:#252e43;border:1px solid #45516d;color:inherit;border-radius:6px;padding:5px 10px;cursor:pointer}.desktop-save[data-state="error"]{color:#ff9c9c}';
     document.head.append(style);
     const bar = document.createElement('nav'); bar.className = 'desktop-bar'; bar.setAttribute('aria-label', 'Ứng dụng desktop');
-    const title = document.createElement('strong'); title.textContent = 'Workflow Desktop';
+    const title = document.createElement('strong'); title.textContent = 'MooZ Agent';
     const status = document.createElement('span'); status.className = 'desktop-save'; status.textContent = 'Dữ liệu cục bộ';
     const projects = document.createElement('button'); projects.textContent = '← Thư viện'; projects.onclick = () => void call('home.open');
     const connect=document.createElement('button');connect.id='desktopConnectChrome';connect.className='studio-connect';connect.textContent='Kết nối Chrome';
@@ -107,7 +107,7 @@
       button.id='desktopOpen-'+id;const more=document.getElementById('toolbar-panel-create');(more||bar).append(button);
     }
     document.body.prepend(bar);
-    try {const info = await call('project.info'); title.textContent = info.name;} catch(error) {status.textContent = error.message;}
+    try {const info = await call('project.info'); title.textContent = info.name+' · MooZ Agent';} catch(error) {status.textContent = error.message;}
     for (const id of ['packageUpdateBtn', 'dataUpdateBtn']) {const button = document.getElementById(id); if (button) button.hidden = true;}
     host.onEvent(value => {if (value.type === 'storage') {status.textContent = value.state === 'saved' ? 'Đã lưu · ' + new Date().toLocaleTimeString('vi-VN') : value.state === 'saving' ? 'Đang lưu…' : 'Lưu lỗi: ' + value.error; status.dataset.state = value.state;}});
   });

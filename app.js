@@ -9,6 +9,7 @@
   const backendStatus = $('#backendStatus');
   const museStatus = $('#museStatus');
   const appVersion = chrome.runtime.getManifest().version;
+  let workflowSaveBlocked=true;
 
   function compareVersions(a,b){const left=String(a).split('.').map(Number),right=String(b).split('.').map(Number);for(let i=0;i<Math.max(left.length,right.length);i++){const delta=(left[i]||0)-(right[i]||0);if(delta)return delta;}return 0;}
   async function checkForAppUpdate(){if(window.workflowDesktop)return;try{const response=await fetch(`https://raw.githubusercontent.com/mktminhqpbga-glitch/app-mooz/main/manifest.json?check=${Date.now()}`,{cache:'no-store'});if(!response.ok)return;const latest=await response.json();if(!latest.version||compareVersions(latest.version,appVersion)<=0)return;const dismissed=(await chrome.storage.local.get('museflowDismissedUpdateVersion')).museflowDismissedUpdateVersion;if(dismissed===latest.version)return;$('#updateNoticeText').textContent=`Có phiên bản Workflow ${latest.version}`;$('#updateNotice').classList.remove('hidden');$('#dismissUpdateBtn').onclick=async()=>{await chrome.storage.local.set({museflowDismissedUpdateVersion:latest.version});$('#updateNotice').classList.add('hidden');};}catch{/* Update checks are best-effort and must not interrupt workflow use. */}}
@@ -113,7 +114,7 @@
       const status=jobs.some(job=>job.phase==='busy')?'busy':jobs.length?'check':known.status;
       const text=({ready:'Đã kết nối',busy:'Đang chạy',error:'Lỗi kết nối',missing:'Chưa mở tab',offline:'Chưa nối Chrome',check:'Cần kiểm tra',checking:'Đang kiểm tra'})[status];
       const button=document.createElement('button');button.type='button';button.className='ai-health-chip';button.dataset.provider=id;button.dataset.state=status;button.textContent='● '+providerName(id)+' · '+(!providerHealth.has(id)&&status==='check'?'Chưa kiểm tra':text);button.title=providerName(id)+' · '+text+(known.detail?' · '+known.detail:'');button.setAttribute('aria-label',providerName(id)+' · '+text);button.onclick=()=>void refreshProviderHealth(id,true);host.append(button);
-    }
+    }    const summary=document.createElement('span');summary.id='aiReadinessSummary';summary.className='ai-ready-summary';summary.setAttribute('role','status');const ready=[...providerHealth.values()].filter(h=>h.status==='ready').length,running=[...providerJobs.values()].some(j=>j.phase==='busy');summary.textContent=running?'AI đang xử lý tác vụ. Kết quả sẽ được nhận về đúng node.':healthChecks.size?'Đang kiểm tra trạng thái các tab AI…':ready?'Sẵn sàng · '+ready+' AI đã kiểm tra. Chọn đúng tab trong node trước khi chạy.':'Chưa có AI sẵn sàng. Kết nối Chrome hoặc mở và đăng nhập tab AI để bắt đầu.';host.append(summary);
   }
   async function refreshProviderHealth(provider,force=false){
     if(healthChecks.has(provider))return;
@@ -129,7 +130,7 @@
       const result=await chrome.tabs.sendMessage(tab.id,{type:provider==='muse'?'MUSEFLOW_CHECK_SESSION':'WORKFLOW_AI_CHECK'});
       assertCurrentBridge(provider==='muse'?'MUSEFLOW_CHECK_SESSION':'WORKFLOW_AI_CHECK',result);
       if(result?.busy)setProviderHealth(provider,'busy','Tab AI đang xử lý');else if(result?.ok&&result.composer&&result.signedIn!==false)setProviderHealth(provider,'ready',tab.title||'Ô chat sẵn sàng');else setProviderHealth(provider,'check','Mở chat/đăng nhập hoặc tải lại tab');
-    }catch(error){const disconnected=/chưa kết nối|chưa.*tiện ích|đã ngắt|mất kết nối/i.test(error.message);setProviderHealth(provider,disconnected?'offline':'error',error.message);}finally{healthChecks.delete(provider);}
+    }catch(error){const disconnected=/chưa kết nối|chưa.*tiện ích|đã ngắt|mất kết nối/i.test(error.message);setProviderHealth(provider,disconnected?'offline':'error',error.message);}finally{healthChecks.delete(provider);renderHealth();}
   }
   function refreshHealth(force=false){return Promise.allSettled(['muse','gemini','chatgpt','grok','flow',...Object.keys(WorkflowAI.providers).filter(id=>!WorkflowAI.providers[id].urls&&(aiKeys[id]||state.nodes.some(n=>n.data.provider===id)))].map(id=>refreshProviderHealth(id,force)));}
 
@@ -830,7 +831,7 @@
   }
 
   function undoLastChange(){
-    if(state.isRunning){setRunStatus('Stop the running workflow before undoing edits.','warn');return;}
+    if(state.isRunning){setRunStatus('Dừng workflow trước khi hoàn tác.','warn');return;}
     const previous=undoStack.pop();
     if(!previous){setRunStatus('Nothing to undo.','warn');return;}
     if(previous.preserveRuntime){const runtimeById=new Map(state.nodes.map(node=>[node.id,{type:node.type,data:node.data||{}}]));
@@ -1000,7 +1001,7 @@
       state.connectingFrom=pending.from;connect(choice.targetId,choice.targetPort);selectNode(choice.targetId,{add:true});setRunStatus(`Connected to ${choice.label}.`,'ok');return;
     }
     const before=new Set(state.nodes.map(node=>node.id));addNode(choice.type,pending.x-135,pending.y-80);
-    const target=state.nodes.find(node=>!before.has(node.id))||state.nodes.find(node=>node.type===choice.type&&node.data?.dockOnly===false&&choice.type==='timeline');if(!target||target.type!==choice.type){setRunStatus('Could not create the selected node.','error');return;}
+    const target=state.nodes.find(node=>!before.has(node.id))||state.nodes.find(node=>node.type===choice.type&&node.data?.dockOnly===false&&choice.type==='timeline');if(!target||target.type!==choice.type){setRunStatus('Không tạo được node đã chọn.','error');return;}
     state.connectingFrom=pending.from;connect(target.id,choice.targetPort);selectNode(target.id);setRunStatus(`${nodeDefs[target.type].title} created and connected to ${choice.label.split(' · ').at(-1)}.`,'ok');
   }
 
@@ -1102,7 +1103,7 @@
   }
   function buildSceneNodesFromScript(){
     const status=$('#scriptImportStatus'),mode=$('#scriptOutputMode').value,scenes=parseSceneScript($('#scriptInput').value).map(scene=>({...scene,hasImagePrompt:mode==='videos'?false:scene.hasImagePrompt,hasVideoPrompt:mode==='images'?false:scene.hasVideoPrompt})).filter(scene=>scene.hasImagePrompt||scene.hasVideoPrompt);
-    if(!scenes.length){status.className='error';status.textContent='No scenes found. Use headings like “CẢNH 1 (0:00–0:07): Title” or “Scene 1 (0:00–0:05): Title”, then add Prompt ảnh or Prompt video.';return;}
+    if(!scenes.length){status.className='error';status.textContent='Chưa tìm thấy cảnh. Dùng tiêu đề “CẢNH 1 (0:00–0:07): Tên cảnh”, rồi thêm Prompt ảnh hoặc Prompt video.';return;}
     createUndoSnapshot('Create nodes from script');const baseY=Math.max(40,...state.nodes.filter(node=>!node.data?.dockOnly).map(node=>node.y+Math.max(360,document.querySelector(`.node[data-id="${CSS.escape(node.id)}"]`)?.offsetHeight||0)+260)),createdVideos=[];let made=0;
     scenes.forEach((scene,index)=>{
       const column=index%4,row=Math.floor(index/4),x=80+column*650,y=baseY+row*1100,label=`Scene ${scene.number}${scene.title?`: ${scene.title}`:''}`;
@@ -1342,7 +1343,7 @@
 
     if (n.type === 'preview') {
       if (n.data.asset?.url) { if(['video','audio'].includes(n.data.asset.kind)){const video=document.createElement(n.data.asset.kind==='audio'?'audio':'video');video.controls=true;video.src=n.data.asset.url;body.appendChild(video);}else{const a=document.createElement('a');a.href=n.data.asset.url;a.target='_blank';const img=document.createElement('img');img.src=n.data.asset.url;a.appendChild(img);body.appendChild(a);} }
-      else { const empty=document.createElement('div'); empty.className='empty preview-empty'; empty.textContent='Run workflow'; body.appendChild(empty); }
+      else { const empty=document.createElement('div'); empty.className='empty preview-empty'; empty.textContent='Chạy workflow'; body.appendChild(empty); }
     }
 
     if(n.type==='imageCollection')renderImageCollection(n,body);
@@ -1390,7 +1391,7 @@
     const actions=document.createElement('div');actions.className='node-generation-actions';
     const button=document.createElement('button');button.type='button';button.className='node-run-button primary';
     if(node.data.status==='queued'&&autoPlan?.ids.has(node.id)){button.textContent='Đợi đầu vào';button.disabled=true;}else if(node.data.status==='running'){
-      button.classList.add('stop');button.textContent='■ Stop';button.disabled=false;button.title='Stop this generation';button.dataset.stopGeneration=node.id;button.onclick=event=>{event.stopPropagation();stopGeneration(node.id);};
+      button.classList.add('stop');button.textContent='■ Dừng';button.disabled=false;button.title='Dừng tác vụ này';button.dataset.stopGeneration=node.id;button.onclick=event=>{event.stopPropagation();stopGeneration(node.id);};
     }else{
       button.textContent=`▶ Run ${node.type==='generateVideo'?'Video':node.type==='generateText'?'Văn bản':'Ảnh'}`;button.disabled=false;
       button.onclick=event=>{event.stopPropagation();runSingleNode(node.id);};
@@ -1530,7 +1531,7 @@
   function importAllVideosToTimeline(){
     const timelineBefore=state.nodes.find(item=>item.type==='timeline'),orderBefore=timelineBefore?.data?.clipOrder||[],existing=new Set(orderBefore),all=state.nodes.filter(item=>item.type==='generateVideo');
     const additions=all.filter(video=>!existing.has(video.id));
-    if(!additions.length){setRunStatus(all.length?'All Generate Video nodes are already on the timeline.':'No Generate Video nodes to import.','warn');return;}
+    if(!additions.length){setRunStatus(all.length?'Tất cả video đã có trên dòng thời gian.':'Chưa có video hoàn tất để thêm.','warn');return;}
     createUndoSnapshot('Import videos to Timeline');const timeline=timelineBefore||ensureDockTimeline(),order=timeline.data.clipOrder,addIds=new Set(additions.map(video=>video.id));
     order.push(...topoOrder().filter(id=>addIds.has(id)));
     syncTimelineDock();render();saveState();if($('#timelineDock').classList.contains('collapsed'))toggleTimeline();
@@ -1547,7 +1548,7 @@
     const lane=document.createElement('div');lane.className='timeline-lane';if(!clips.length){const empty=document.createElement('div');empty.className='dock-empty';empty.textContent='Thêm ảnh/video, kéo để sắp xếp thứ tự phát';lane.appendChild(empty);}
     clips.forEach((clip,index)=>{const duration=Number(node.data.durations?.[clip.id]||clip.data.duration||5),item=document.createElement('div');item.className=`dock-clip${duration<4?' compact':''}`;item.style.width=`${duration*pixelsPerSecond}px`;item.style.minWidth=`${duration*pixelsPerSecond}px`;item.style.maxWidth=`${duration*pixelsPerSecond}px`;item.draggable=true;item.dataset.clip=clip.id;item.ondragstart=event=>{event.dataTransfer.setData('application/x-museflow-video-node',clip.id);event.dataTransfer.effectAllowed='move';};item.ondragover=event=>event.preventDefault();item.ondrop=event=>{event.preventDefault();const moving=event.dataTransfer.getData('application/x-museflow-video-node'),from=node.data.clipOrder.indexOf(moving),to=node.data.clipOrder.indexOf(clip.id);if(from>=0&&to>=0&&from!==to){createUndoSnapshot('Reorder Timeline clips');node.data.clipOrder.splice(from,1);node.data.clipOrder.splice(to,0,moving);syncTimelineDock();render();saveState();}else if(moving&&timelineMedia(nodeById(moving)))addTimelineClip(node,moving);};
       const thumb=document.createElement('div');thumb.className='dock-clip-thumb';if(clip.data.asset?.url){if(clip.data.asset.kind==='image'){const image=document.createElement('img');image.src=clip.data.asset.url;thumb.appendChild(image);}else{const video=document.createElement('video');video.src=clip.data.asset.url;video.muted=true;video.preload='metadata';thumb.appendChild(video);}}else thumb.textContent='▶';
-      const details=document.createElement('div');details.className='dock-clip-details';const title=document.createElement('span');title.textContent=`${String(index+1).padStart(2,'0')} · ${clip.data.asset?.name||(timelineImage(clip)?'Ảnh ':'Video ')+(index+1)}`;title.title=title.textContent;const length=document.createElement('label');length.textContent='Duration';const input=document.createElement('input');input.type='number';input.min='1';input.max='60';input.value=String(duration);input.onchange=()=>{node.data.durations=node.data.durations||{};node.data.durations[clip.id]=Math.max(1,Math.min(60,Number(input.value)||5));syncTimelineDock();render();saveState();};length.appendChild(input);details.append(title,length);const remove=document.createElement('button');remove.type='button';remove.textContent='×';remove.title='Remove clip';remove.onclick=()=>{createUndoSnapshot('Remove Timeline clip');node.data.clipOrder=node.data.clipOrder.filter(id=>id!==clip.id);syncTimelineDock();render();saveState();};item.append(thumb,details,remove);lane.appendChild(item);});track.appendChild(lane);
+      const details=document.createElement('div');details.className='dock-clip-details';const title=document.createElement('span');title.textContent=`${String(index+1).padStart(2,'0')} · ${clip.data.asset?.name||(timelineImage(clip)?'Ảnh ':'Video ')+(index+1)}`;title.title=title.textContent;const length=document.createElement('label');length.textContent='Thời lượng';const input=document.createElement('input');input.type='number';input.min='1';input.max='60';input.value=String(duration);input.onchange=()=>{node.data.durations=node.data.durations||{};node.data.durations[clip.id]=Math.max(1,Math.min(60,Number(input.value)||5));syncTimelineDock();render();saveState();};length.appendChild(input);details.append(title,length);const remove=document.createElement('button');remove.type='button';remove.textContent='×';remove.title='Gỡ cảnh';remove.onclick=()=>{createUndoSnapshot('Remove Timeline clip');node.data.clipOrder=node.data.clipOrder.filter(id=>id!==clip.id);syncTimelineDock();render();saveState();};item.append(thumb,details,remove);lane.appendChild(item);});track.appendChild(lane);
     dock.ondragover=event=>{if(event.dataTransfer.types.includes('application/x-museflow-video-node')){event.preventDefault();dock.classList.add('drag-over');if(dock.classList.contains('collapsed'))toggleTimeline();}};dock.ondragleave=event=>{if(!dock.contains(event.relatedTarget))dock.classList.remove('drag-over');};dock.ondrop=event=>{event.preventDefault();dock.classList.remove('drag-over');const id=event.dataTransfer.getData('application/x-museflow-video-node');if(id)addTimelineClip(node,id);};
   }
 
@@ -1635,7 +1636,7 @@
       button.textContent=`Đang mã hóa ${format.toUpperCase()}…`;setRunStatus('FFmpeg đang ghép và mã hóa dòng thời gian trên máy…','warn');const exitCode=await ffmpeg.exec(args,-1,{signal});if(exitCode!==0)throw new Error(logs.slice(-5).map(item=>item.trim()).filter(Boolean).join(' ')||`FFmpeg exited with code ${exitCode}.`);
       }
       throwIfStopped();const output=await ffmpeg.readFile(outputPath,'binary',{signal});if(!(output instanceof Uint8Array)||!output.length)throw new Error('FFmpeg không tạo được video đầu ra.');
-      if(state.timelineExportUrl)URL.revokeObjectURL(state.timelineExportUrl);state.timelineExportUrl=URL.createObjectURL(new Blob([output],{type:format==='mp4'?'video/mp4':'video/webm'}));const player=$('#timelinePlayer'),nextPlayer=$('#timelinePlayerNext');closeTimelinePreview();$('#timelinePreviewPanel').classList.remove('hidden');nextPlayer.pause();nextPlayer.classList.remove('is-active','is-fading');nextPlayer.controls=false;player.src=state.timelineExportUrl;player.controls=true;player.classList.remove('is-fading');player.classList.add('is-active');const link=document.createElement('a');link.href=state.timelineExportUrl;link.download=filename||`MuseFlow-Timeline-${new Date().toISOString().replace(/[:.]/g,'-')}.${format}`;link.click();setRunStatus(`Đã xuất ${clips.length} cảnh thành ${format.toUpperCase()}.`,'ok');return true;
+      if(state.timelineExportUrl)URL.revokeObjectURL(state.timelineExportUrl);state.timelineExportUrl=URL.createObjectURL(new Blob([output],{type:format==='mp4'?'video/mp4':'video/webm'}));const player=$('#timelinePlayer'),nextPlayer=$('#timelinePlayerNext');closeTimelinePreview();$('#timelinePreviewPanel').classList.remove('hidden');nextPlayer.pause();nextPlayer.classList.remove('is-active','is-fading');nextPlayer.controls=false;player.src=state.timelineExportUrl;player.controls=true;player.classList.remove('is-fading');player.classList.add('is-active');const link=document.createElement('a');link.href=state.timelineExportUrl;link.download=filename||`MooZ-Video-${new Date().toISOString().replace(/[:.]/g,'-')}.${format}`;link.click();setRunStatus(`Đã xuất ${clips.length} cảnh thành ${format.toUpperCase()}.`,'ok');return true;
     }catch(error){if(error?.name==='AbortError'||signal.aborted)setRunStatus('Timeline export stopped.','warn');else setRunStatus(`Timeline export failed: ${error?.message||String(error)}`,'error');}
     finally{ffmpeg.off('log',onLog);ffmpeg.off('progress',onProgress);ffmpeg.terminate();state.timelineFFmpeg=null;state.timelineExportAbortController=null;state.timelineExporting=false;button.disabled=false;formatSelect.disabled=false;button.textContent='⇩ Xuất tất cả';singleButton.disabled=false;stopButton.classList.add('hidden');}
   }
@@ -1659,7 +1660,7 @@
       const waitForData=()=>new Promise((resolve,reject)=>{if(exportSignal.aborted){reject(new DOMException('Timeline export stopped.','AbortError'));return;}if(video.readyState>=2){resolve();return;}let timer=setTimeout(()=>{cleanup();reject(new Error('Video decoding timed out.'));},20000);const ready=()=>{cleanup();resolve();},failed=()=>{cleanup();reject(new Error('The video file could not be decoded.'));},cancel=()=>{cleanup();reject(new DOMException('Timeline export stopped.','AbortError'));},cleanup=()=>{clearTimeout(timer);video.removeEventListener('loadeddata',ready);video.removeEventListener('error',failed);exportSignal.removeEventListener('abort',cancel);};video.addEventListener('loadeddata',ready,{once:true});video.addEventListener('error',failed,{once:true});exportSignal.addEventListener('abort',cancel,{once:true});});
       video.src=sourceUrls[0];video.load();await waitForData();
       const originalWidth=video.videoWidth||1280,originalHeight=video.videoHeight||720,scale=Math.min(1,1280/Math.max(originalWidth,originalHeight)),canvas=document.createElement('canvas');canvas.width=Math.max(2,Math.floor(originalWidth*scale/2)*2);canvas.height=Math.max(2,Math.floor(originalHeight*scale/2)*2);
-      const context=canvas.getContext('2d',{alpha:false});if(!context)throw new Error('Could not create the video export canvas.');
+      const context=canvas.getContext('2d',{alpha:false});if(!context)throw new Error('Không tạo được vùng xử lý để xuất video.');
       const exportFps=20;const drawFrame=()=>{if(!video||!context)return;if(video.readyState>=2&&video.videoWidth>0){const fit=Math.min(canvas.width/video.videoWidth,canvas.height/video.videoHeight),width=video.videoWidth*fit,height=video.videoHeight*fit;context.fillStyle='#000';context.fillRect(0,0,canvas.width,canvas.height);context.drawImage(video,(canvas.width-width)/2,(canvas.height-height)/2,width,height);}frameTimer=setTimeout(drawFrame,1000/exportFps);};drawFrame();
       canvasStream=canvas.captureStream(exportFps);
       if(audioContext&&audioDestination){try{audioSource=audioContext.createMediaElementSource(video);audioSource.connect(audioDestination);const audioTrack=audioDestination.stream.getAudioTracks()[0];if(audioTrack)canvasStream.addTrack(audioTrack);await audioResumePromise;if(audioContext.state!=='running')await audioContext.resume();}catch{audioContext.close().catch(()=>{});audioContext=null;audioDestination=null;audioSource=null;}}
@@ -1680,7 +1681,7 @@
       const actualMime=(output.type||recorder.mimeType||recorderMimeType||'video/webm').toLowerCase(),extension=actualMime.includes('mp4')?'mp4':'webm';if(requestedFormat==='mp4'&&extension!=='mp4')throw new Error('The browser did not produce an MP4 file. Choose WebM or use a browser with MP4 MediaRecorder support.');
       if(state.timelineExportUrl)URL.revokeObjectURL(state.timelineExportUrl);state.timelineExportUrl=URL.createObjectURL(output);
       const player=$('#timelinePlayer'),nextPlayer=$('#timelinePlayerNext');closeTimelinePreview();$('#timelinePreviewPanel').classList.remove('hidden');nextPlayer.pause();nextPlayer.classList.remove('is-active','is-fading');nextPlayer.controls=false;player.src=state.timelineExportUrl;player.controls=true;player.classList.remove('is-fading');player.classList.add('is-active');
-      const link=document.createElement('a');link.href=state.timelineExportUrl;link.download=`MuseFlow-Timeline-${new Date().toISOString().replace(/[:.]/g,'-')}.${extension}`;link.click();setRunStatus(`Stitched timeline exported as ${extension.toUpperCase()}.`,'ok');
+      const link=document.createElement('a');link.href=state.timelineExportUrl;link.download=`MooZ-Video-${new Date().toISOString().replace(/[:.]/g,'-')}.${extension}`;link.click();setRunStatus(`Stitched timeline exported as ${extension.toUpperCase()}.`,'ok');
     }catch(error){if(error?.name==='AbortError')setRunStatus('Timeline export stopped.','warn');else setRunStatus(`Timeline export failed: ${error?.message||String(error)}`,'error');}
     finally{if(frameRequest)cancelAnimationFrame(frameRequest);clearTimeout(frameTimer);if(recorder?.state==='recording'||recorder?.state==='paused'){recorder.stop();try{await recordingPromise;}catch{}}video?.pause();video?.remove();canvasStream?.getTracks().forEach(track=>track.stop());await audioContext?.close().catch(()=>{});sourceUrls.forEach(url=>URL.revokeObjectURL(url));state.timelineExporting=false;state.timelineExportAbortController=null;button.disabled=false;formatSelect.disabled=false;button.textContent='⇩ Xuất tất cả';$('#timelineExportSingleBtn').disabled=false;stopButton.classList.add('hidden');}
   }
@@ -1734,6 +1735,7 @@
     for(const node of state.nodes){const data=node.data||(node.data={});if(!data.componentId||used.has(data.componentId)){const prefix=['imageInput','generateImage','imageResize'].includes(node.type)?'IMG':node.type==='videoInput'||node.type==='generateVideo'?'VID':'NODE';do{data.componentId=prefix+'-'+crypto.randomUUID().slice(0,8).toUpperCase();}while(used.has(data.componentId));}used.add(data.componentId);}
   }
   function render() {
+    const empty=$('#canvasEmptyState');if(empty)empty.hidden=workflowSaveBlocked||state.nodes.some(n=>!n.data?.dockOnly)||state.notes.length>0||state.groups.length>0;
     document.body.classList.toggle('compact-nodes',!!state.settings.compactNodes);$('#nodeDensity').setAttribute('aria-pressed',String(!!state.settings.compactNodes));$('#nodeDensity').textContent=state.settings.compactNodes?'Đầy đủ':'Gọn';
     ensureComponentIds();syncSharedReferenceBoards();
     syncPreviewOutputs();canvas.innerHTML='';state.groups.forEach(group=>canvas.appendChild(renderCanvasGroup(group)));state.notes.forEach(note=>canvas.appendChild(renderCanvasNote(note)));state.nodes.filter(n=>!n.data?.dockOnly).forEach(n => canvas.appendChild(renderNode(n)));applyCanvasTransform();requestAnimationFrame(drawEdges);syncTimelineDock();updateChatUsageLabels();WorkflowWorkspaceTools.refresh();scheduleAutoSave();
@@ -1752,7 +1754,7 @@
   function renderCanvasGroup(group){
     const frame=document.createElement('div');frame.className='canvas-group';frame.dataset.groupId=group.id;frame.style.left=`${group.x}px`;frame.style.top=`${group.y}px`;frame.style.width=`${group.width}px`;frame.style.height=`${group.height}px`;
     const label=document.createElement('span');label.className='canvas-group-label';label.textContent=group.name||'Group';
-    const remove=document.createElement('button');remove.type='button';remove.className='canvas-group-delete';remove.textContent='×';remove.title='Delete group region';remove.setAttribute('aria-label','Delete group region');remove.onclick=event=>{event.stopPropagation();createUndoSnapshot('Delete group region');state.groups=state.groups.filter(item=>item.id!==group.id);render();saveState();};
+    const remove=document.createElement('button');remove.type='button';remove.className='canvas-group-delete';remove.textContent='×';remove.title='Xóa vùng nhóm';remove.setAttribute('aria-label','Xóa vùng nhóm');remove.onclick=event=>{event.stopPropagation();createUndoSnapshot('Xóa vùng nhóm');state.groups=state.groups.filter(item=>item.id!==group.id);render();saveState();};
     const first=nodeById(group.nodeIds[0]);if(first){setupDrag(label,first,frame);const drag=label.onmousedown;label.title='Kéo để di chuyển cả nhóm';label.onmousedown=event=>{if(state.handMode||state.spaceDown)return;state.selectedNodeIds=group.nodeIds.filter(id=>nodeById(id));state.selectedNodeId=first.id;document.querySelectorAll('.node').forEach(el=>el.classList.toggle('selected',state.selectedNodeIds.includes(el.dataset.id)));drag(event);};}
     frame.append(label,remove);return frame;
   }
@@ -1797,13 +1799,13 @@
 
   function openCanvasMenu(e){
     const nodeEl=e.target.closest('.node');e.preventDefault();e.stopPropagation();
-    if(!nodeEl){const rect=$('#viewport').getBoundingClientRect(),menu=$('#canvasMenu');state.contextPoint={x:(e.clientX-rect.left-state.panX)/state.zoom,y:(e.clientY-rect.top-state.panY)/state.zoom};menu.innerHTML='';delete menu.dataset.nodeId;const title=document.createElement('div');title.className='menu-caption';title.textContent='Canvas';menu.appendChild(title);[...Object.entries({...WorkflowStudio.definitions,...WorkflowStory.definitions}).filter(([type])=>type!=='videoAssembly').map(([type,def])=>['＋ '+def.title,'add:'+type]),['＋ Yêu cầu','add:prompt'],['＋ Ghi chú','add:text'],['＋ Loại trừ','add:negativePrompt'],['＋ Video đầu vào','add:videoInput'],['＋ Tạo văn bản','add:generateText'],['＋ Ảnh đầu vào','add:imageInput'],['＋ Ảnh tham chiếu','add:references'],['＋ Tạo ảnh','add:generateImage'],['＋ Tạo video','add:generateVideo'],['＋ Dòng thời gian','add:timeline'],['＋ Xem trước','add:preview'],['Xuất workflow','save'],['▶ Run workflow','run'],['Sắp xếp node','arrange'],['Xóa node đã chọn','delete-selected'],['Gỡ mọi kết nối','disconnect-all']].forEach(([label,action])=>{const button=document.createElement('button');button.type='button';button.textContent=label;button.dataset.contextAction=action;menu.appendChild(button);});menu.classList.remove('hidden');menu.style.left=`${Math.min(e.clientX,innerWidth-230)}px`;menu.style.top=Math.max(8,Math.min(e.clientY,innerHeight-menu.getBoundingClientRect().height-8))+'px';return;}
+    if(!nodeEl){const rect=$('#viewport').getBoundingClientRect(),menu=$('#canvasMenu');state.contextPoint={x:(e.clientX-rect.left-state.panX)/state.zoom,y:(e.clientY-rect.top-state.panY)/state.zoom};menu.innerHTML='';delete menu.dataset.nodeId;const title=document.createElement('div');title.className='menu-caption';title.textContent='Canvas';menu.appendChild(title);[...Object.entries({...WorkflowStudio.definitions,...WorkflowStory.definitions}).filter(([type])=>type!=='videoAssembly').map(([type,def])=>['＋ '+def.title,'add:'+type]),['＋ Yêu cầu','add:prompt'],['＋ Ghi chú','add:text'],['＋ Loại trừ','add:negativePrompt'],['＋ Video đầu vào','add:videoInput'],['＋ Tạo văn bản','add:generateText'],['＋ Ảnh đầu vào','add:imageInput'],['＋ Ảnh tham chiếu','add:references'],['＋ Tạo ảnh','add:generateImage'],['＋ Tạo video','add:generateVideo'],['＋ Dòng thời gian','add:timeline'],['＋ Xem trước','add:preview'],['Xuất workflow','save'],['▶ Chạy workflow','run'],['Sắp xếp node','arrange'],['Xóa node đã chọn','delete-selected'],['Gỡ mọi kết nối','disconnect-all']].forEach(([label,action])=>{const button=document.createElement('button');button.type='button';button.textContent=label;button.dataset.contextAction=action;menu.appendChild(button);});menu.classList.remove('hidden');menu.style.left=`${Math.min(e.clientX,innerWidth-230)}px`;menu.style.top=Math.max(8,Math.min(e.clientY,innerHeight-menu.getBoundingClientRect().height-8))+'px';return;}
     e.stopPropagation();const node=nodeById(nodeEl.dataset.id);if(!node)return;state.selectedNodeId=node.id;
     const menu=$('#canvasMenu');menu.innerHTML='';menu.dataset.nodeId=node.id;
     const title=document.createElement('div');title.className='menu-caption';title.textContent=['generateImage','generateVideo','generateText'].includes(node.type)?generationNodeTitle(node):(node.data.customName||nodeDefs[node.type].title);menu.appendChild(title);
     const addAction=(label,action)=>{const button=document.createElement('button');button.type='button';button.textContent=label;button.dataset.contextAction=action;menu.appendChild(button);};
     addAction('Đổi tên node…','node-rename');
-    if(['generateImage','generateVideo','generateText'].includes(node.type))addAction(node.data.status==='running'?`■ Stop ${node.type==='generateVideo'?'Video':node.type==='generateText'?'Văn bản':'Ảnh'}`:`▶ Run ${node.type==='generateVideo'?'Video':node.type==='generateText'?'Văn bản':'Ảnh'}`,'node-run');
+    if(['generateImage','generateVideo','generateText'].includes(node.type))addAction(node.data.status==='running'?`■ Dừng ${node.type==='generateVideo'?'Video':node.type==='generateText'?'Văn bản':'Ảnh'}`:`▶ Run ${node.type==='generateVideo'?'Video':node.type==='generateText'?'Văn bản':'Ảnh'}`,'node-run');
     if(node.type==='generateVideo')addAction('↻ Chạy lại · bám sát yêu cầu','node-again');
     if(node.type==='timeline')addAction('▶ Xem trước chuỗi cảnh','node-preview');
     if((nodeDefs[node.type]?.outputs||[]).some(port=>port.type==='text'))addAction('Tạo node gộp văn bản','node-create-text-merge');
@@ -1868,7 +1870,7 @@
     if(action==='add:text'){addTextNote(pos.x,pos.y);return;}
     if(action.startsWith('add:')){addNode(action.slice(4),pos.x,pos.y);return;}
     if(action==='save'){saveState();return;}if(action==='run'){executeWorkflow();return;}if(action==='arrange'){arrangeNodes();return;}
-    if(action==='delete-selected'){if(state.selectedNodeIds.length)removeSelectedNodes();else if(state.selectedNodeId)removeNode(state.selectedNodeId);else setRunStatus('Select one or more nodes first.','warn');return;}
+    if(action==='delete-selected'){if(state.selectedNodeIds.length)removeSelectedNodes();else if(state.selectedNodeId)removeNode(state.selectedNodeId);else setRunStatus('Chọn một hoặc nhiều node trước.','warn');return;}
     if(action==='disconnect-all'){if(state.edges.length){createUndoSnapshot('Gỡ mọi kết nối');state.edges=[];state.connectingFrom=null;render();saveState();setRunStatus('All connections removed.','ok');}}
   }
 
@@ -1962,7 +1964,7 @@
   async function museTabMessage(message, preferredTabId, signal) {
     if(signal?.aborted)throw new DOMException('Generation stopped by user.','AbortError');
     const tabs=await chrome.tabs.query({url:['https://muse.ai/*','https://*.muse.ai/*']});
-    if(!tabs.length)throw new Error('Open Muse.ai and sign in, then retry.');
+    if(!tabs.length)throw new Error('Mở Muse, đăng nhập rồi thử lại.');
     const preferred=preferredTabId??preferredMuseTabId;
     if(preferred){const index=tabs.findIndex(tab=>tab.id===preferred);if(index>0)tabs.unshift(tabs.splice(index,1)[0]);}
     let lastError='';
@@ -1976,7 +1978,7 @@
         const response=await sendMuseTabMessage(tab.id,message,signal);preferredMuseTabId=tab.id;return response;
       }catch(error){if(error?.name==='AbortError')throw error;lastError=error?.message||String(error);}
     }
-    throw new Error(`Muse tab found, but MuseFlow could not attach its page bridge: ${lastError||'unknown browser error'}. Check Muse site access in the browser extension settings, then retry.`);
+    throw new Error(`Đã tìm thấy tab Muse nhưng chưa kết nối được bộ nhận tác vụ: ${lastError||'lỗi trình duyệt chưa xác định'}. Kiểm tra quyền truy cập Muse của tiện ích rồi thử lại.`);
   }
 
   function sendMuseTabMessage(tabId,message,signal){
@@ -2046,7 +2048,7 @@
       if(node.data.status==='idle')node.data.error='Previous run was interrupted; ready to retry.';
     }
     const abortController=new AbortController(),run={id:uid('run'),controller:abortController,activeNodeId:targetId,targetId,requestId:null,startSequence:sinceSequence};activeRuns.set(run.id,run);const pendingTarget=nodeById(targetId);if(pendingTarget){pendingTarget.data.status='running';pendingTarget.data.progress='Đang chuẩn bị nhánh…';}syncRuns();
-    setRunStatus(targetId?(again?'Regenerating video with stronger prompt adherence…':'Running selected generation node…'):'Running workflow...','warn');
+    setRunStatus(targetId?(again?'Đang tạo lại video theo yêu cầu đã chốt…':'Đang chạy node đã chọn…'):'Đang chạy workflow…','warn');
     try{
       if(targetId&&['generateText','generateImage','generateVideo'].includes(nodeById(targetId)?.type)&&!getIncoming(targetId,'prompt').some(edge=>requiredNodeOrder(edge.source).some(id=>nodeById(id)?.type==='generateText')))validateTargetPrompt(targetId);
       const selectedGenerations=generationOrder?new Set(generationOrder):null;
@@ -2165,7 +2167,7 @@
       const failed=nodeById(run.activeNodeId);
       if(failed?.data.status==='running'){failed.data.status='error';failed.data.error=err?.message||String(err);render();}
       const message=err?.message||String(err);
-      setRunStatus(/failed to fetch/i.test(message)?`Muse connection failed. Reload MuseFlow ${appVersion}, then check the Muse session.`:`MuseFlow ${appVersion} · ${message}`,'error');
+      setRunStatus(/failed to fetch/i.test(message)?`Kết nối Muse chưa thành công. Reload MooZ Agent ${appVersion}, sau đó kiểm tra lại phiên đăng nhập Muse.`:`MooZ Agent ${appVersion} · ${message}`,'error');
       clearTimeout(autoSaveTimer);void queueWorkflowSave().catch(saveError=>{if(!state.isRunning)setRunStatus(`${runStatus.textContent} · Auto-save failed: ${saveError?.message||String(saveError)}`,'error');});
     }
     finally{const pending=nodeById(targetId);if(pending?.data.status==='running'&&!nodeClaims.has(targetId)){pending.data.status=abortController.signal.aborted?'stopped':'error';pending.data.error=run.error||'Lượt chạy đã dừng.';}activeRuns.delete(run.id);syncRuns();if(activeRuns.size)setRunStatus(`${activeRuns.size} nhánh vẫn đang chạy…`,'warn');render();}
@@ -2196,7 +2198,7 @@
       const results=await Promise.allSettled(tasks.values()),failed=results.filter(result=>result.status==='rejected').length;
       await queueWorkflowSave();autoPlan=null;syncRuns();render();
       const warnings=ids.filter(id=>nodeById(id)?.type==='qualityCheck'&&nodeById(id).data.status==='error').length;
-      setRunStatus(plan.controller.signal.aborted?'Đã dừng Run All.':failed?`Run All: ${results.length-failed}/${results.length} node hoàn tất; ${failed} lỗi/đầu vào chưa đạt.`:warnings?`Run All xong; ${warnings} tệp chưa đạt kiểm tra.`:'Run All hoàn tất.',failed||warnings?'warn':'ok');
+      setRunStatus(plan.controller.signal.aborted?'Đã dừng toàn bộ workflow.':failed?`Toàn bộ workflow: ${results.length-failed}/${results.length} node hoàn tất; ${failed} lỗi/đầu vào chưa đạt.`:warnings?`Đã chạy xong; ${warnings} tệp chưa đạt kiểm tra.`:'Đã chạy xong các nhánh.',failed||warnings?'warn':'ok');
     }catch(error){autoPlan=null;syncRuns();setRunStatus(error.message,'error');}
   }
   function executeWorkflow(){return runAutomatic();}
@@ -2229,7 +2231,7 @@
 
   function clampDimension(value){return Math.max(1,Math.min(4096,Math.round(Number(value)||1)));}
 
-  function loadImage(url){return new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>resolve(image);image.onerror=()=>reject(new Error('Could not load the connected image for resizing.'));image.src=url;});}
+  function loadImage(url){return new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>resolve(image);image.onerror=()=>reject(new Error('Không đọc được ảnh đầu vào để đổi kích thước.'));image.src=url;});}
 
   function drawResized(image,canvas,data={}){
     const width=clampDimension(data.width||1024),height=clampDimension(data.height||1024);canvas.width=width;canvas.height=height;
@@ -2266,19 +2268,19 @@
   }
 
   let mediaDbPromise;
-  function mediaDb(){if(!mediaDbPromise)mediaDbPromise=new Promise((resolve,reject)=>{const request=indexedDB.open('museflow-media',1);request.onupgradeneeded=()=>request.result.createObjectStore('assets');request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error||new Error('Could not open local media storage.'));}).catch(error=>{mediaDbPromise=null;throw error;});return mediaDbPromise;}
-  async function putMedia(key,blob){const db=await mediaDb();return new Promise((resolve,reject)=>{const tx=db.transaction('assets','readwrite');tx.objectStore('assets').put(blob,key);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error('Could not save a media file locally.'));tx.onabort=()=>reject(tx.error||new Error('Media storage transaction was cancelled.'));});}
-  async function getMedia(key){const db=await mediaDb();return new Promise((resolve,reject)=>{const request=db.transaction('assets','readonly').objectStore('assets').get(key);request.onsuccess=()=>resolve(request.result||null);request.onerror=()=>reject(request.error||new Error('Could not read a saved media file.'));});}
+  function mediaDb(){if(!mediaDbPromise)mediaDbPromise=new Promise((resolve,reject)=>{const request=indexedDB.open('museflow-media',1);request.onupgradeneeded=()=>request.result.createObjectStore('assets');request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error||new Error('Không mở được kho media trên máy.'));}).catch(error=>{mediaDbPromise=null;throw error;});return mediaDbPromise;}
+  async function putMedia(key,blob){const db=await mediaDb();return new Promise((resolve,reject)=>{const tx=db.transaction('assets','readwrite');tx.objectStore('assets').put(blob,key);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error('Không lưu được tệp media trên máy.'));tx.onabort=()=>reject(tx.error||new Error('Đã hủy lưu tệp media.'));});}
+  async function getMedia(key){const db=await mediaDb();return new Promise((resolve,reject)=>{const request=db.transaction('assets','readonly').objectStore('assets').get(key);request.onsuccess=()=>resolve(request.result||null);request.onerror=()=>reject(request.error||new Error('Không đọc được tệp media đã lưu.'));});}
   const idbMediaPrefix='museflow-idb:';
   async function dehydrateMediaUrl(url,key){if(!url||url.startsWith(idbMediaPrefix)||!(/^(?:data:|blob:)/i).test(url))return url;const response=await fetch(url);const blob=await response.blob();if(!blob.size)throw new Error('A saved image or video is empty.');await putMedia(key,blob);return idbMediaPrefix+encodeURIComponent(key);}
-  let autoSaveTimer=0,workflowSaveQueue=Promise.resolve(),workflowSaveBlocked=true;
+  let autoSaveTimer=0,workflowSaveQueue=Promise.resolve();
   async function saveWorkflowSnapshot(){const snapshot=structuredClone({nodes:state.nodes,edges:state.edges,groups:state.groups,notes:state.notes,settings:state.settings});for(const node of snapshot.nodes){const data=node.data||{};if(data.localDataUrl)data.localDataUrl=await dehydrateMediaUrl(data.localDataUrl,`input:${node.id}`);for(const image of data.referenceImages||[])image.url=await dehydrateMediaUrl(image.url,`reference:${node.id}:${image.id}`);for(const field of ['asset','endFrame','lockedAsset']){const media=data[field];if(media?.url)media.url=await dehydrateMediaUrl(media.url,`${field}:${field==='lockedAsset'?node.id:media.id||node.id}`);}}await chrome.storage.local.set({museflow:snapshot});}
   function queueWorkflowSave({allowRecoveryWrite=false}={}){workflowSaveQueue=workflowSaveQueue.catch(()=>{}).then(async()=>{if(workflowSaveBlocked&&!allowRecoveryWrite)throw new Error('Bản lưu trước đang được bảo vệ sau lỗi tải dữ liệu. Tải lại để thử khôi phục, hoặc bấm Lưu để xác nhận thay thế bằng canvas hiện tại.');await saveWorkflowSnapshot();if(allowRecoveryWrite)workflowSaveBlocked=false;});return workflowSaveQueue;}
   function scheduleAutoSave(){clearTimeout(autoSaveTimer);autoSaveTimer=setTimeout(()=>{queueWorkflowSave().catch(error=>{if(runStatus.className!=='error')setRunStatus(`Auto-save failed: ${error?.message||String(error)}`,'error');});},650);}
   async function hydrateMediaUrl(url,cache){if(!url?.startsWith(idbMediaPrefix))return url;const key=decodeURIComponent(url.slice(idbMediaPrefix.length));if(!cache.has(key)){const blob=await getMedia(key);if(!blob)throw new Error('Không tìm thấy tệp media đã lưu: '+key);cache.set(key,URL.createObjectURL(blob));}return cache.get(key);}
   async function hydrateWorkflowMedia(){const cache=new Map(),changes=[];try{for(const node of state.nodes){const data=node.data||{};if(data.localDataUrl)changes.push([data,'localDataUrl',await hydrateMediaUrl(data.localDataUrl,cache)]);for(const image of data.referenceImages||[])changes.push([image,'url',await hydrateMediaUrl(image.url,cache)]);for(const field of ['asset','endFrame','lockedAsset'])if(data[field]?.url)changes.push([data[field],'url',await hydrateMediaUrl(data[field].url,cache)]);}for(const [target,key,value] of changes)target[key]=value;}catch(error){for(const url of cache.values())URL.revokeObjectURL(url);throw error;}}
-  async function saveState(){clearTimeout(autoSaveTimer);if(workflowSaveBlocked&&!window.confirm('Không tải được đầy đủ bản lưu trước. Lưu canvas hiện tại sẽ thay thế bản đó. Bạn có chắc muốn tiếp tục?'))return;try{await queueWorkflowSave({allowRecoveryWrite:true});setRunStatus('Đã lưu.','ok');}catch(error){setRunStatus(`Could not save workflow: ${error?.message||String(error)}`,'error');}}
-  function blobAsDataUrl(blob){return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result||''));reader.onerror=()=>reject(reader.error||new Error('Could not package workflow media.'));reader.readAsDataURL(blob);});}
+  async function saveState(){clearTimeout(autoSaveTimer);if(workflowSaveBlocked&&!window.confirm('Không tải được đầy đủ bản lưu trước. Lưu canvas hiện tại sẽ thay thế bản đó. Bạn có chắc muốn tiếp tục?'))return;try{await queueWorkflowSave({allowRecoveryWrite:true});setRunStatus('Đã lưu.','ok');}catch(error){setRunStatus(`Không lưu được workflow: ${error?.message||String(error)}`,'error');}}
+  function blobAsDataUrl(blob){return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result||''));reader.onerror=()=>reject(reader.error||new Error('Không đóng gói được media của workflow.'));reader.readAsDataURL(blob);});}
   async function snapshotCanvasCopy(){
     await workflowReady;if(state.isRunning||state.timelineExporting||WorkflowChat.busy()||MooZAgentRuntime.busy())throw Error('Chờ hoặc dừng tác vụ đang chạy trước khi nhân bản canvas.');if(workflowSaveBlocked)throw Error('Khôi phục bản lưu trước khi nhân bản canvas.');
     await WorkflowChat.flush();clearTimeout(autoSaveTimer);await queueWorkflowSave();
@@ -2314,16 +2316,16 @@
       };
       for(const node of workflow.nodes){const data=node.data||{};if(data.localDataUrl)data.localDataUrl=await packageUrl(data.localDataUrl);for(const image of data.referenceImages||[])image.url=await packageUrl(image.url);for(const field of ['asset','endFrame','lockedAsset'])if(data[field]?.url)data[field].url=await packageUrl(data[field].url);}
       const file={format:'26flow-workflow',version:1,appVersion,exportedAt:new Date().toISOString(),workflow};
-      const blob=new Blob([JSON.stringify(file)],{type:'application/json'}),url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=`26MuseFlow-Workflow-${new Date().toISOString().replace(/[:.]/g,'-')}.json`;link.click();setTimeout(()=>URL.revokeObjectURL(url),5000);
-      setRunStatus(externalMedia?`Workflow saved; ${externalMedia} media URL(s) could not be embedded and may require the original Muse session.`:'Workflow saved with media included.','ok');
-    }catch(error){setRunStatus(`Could not save workflow file: ${error?.message||String(error)}`,'error');}
+      const blob=new Blob([JSON.stringify(file)],{type:'application/json'}),url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=`MooZ-Canvas-${new Date().toISOString().replace(/[:.]/g,'-')}.json`;link.click();setTimeout(()=>URL.revokeObjectURL(url),5000);
+      setRunStatus(externalMedia?`Workflow saved; ${externalMedia} media URL(s) could not be embedded and may require the original Muse session.`:'Đã lưu workflow cùng media.','ok');
+    }catch(error){setRunStatus(`Không xuất được tệp workflow: ${error?.message||String(error)}`,'error');}
     finally{button.disabled=false;}
   }
   async function importWorkflowFile(file){
-    if(!file)return;if(state.isRunning){setRunStatus('Stop the running workflow before importing another one.','warn');return;}
+    if(!file)return;if(state.isRunning){setRunStatus('Dừng workflow trước khi nhập bản khác.','warn');return;}
     let parsed,workflow;
-    try{parsed=JSON.parse(await file.text());workflow=parsed?.format==='26flow-workflow'?parsed.workflow:parsed;if(!workflow||!Array.isArray(workflow.nodes)||!Array.isArray(workflow.edges))throw new Error('This file does not contain a valid MuseFlow workflow.');}
-    catch(error){setRunStatus(`Could not import workflow: ${error?.message||String(error)}`,'error');return;}
+    try{parsed=JSON.parse(await file.text());workflow=parsed?.format==='26flow-workflow'?parsed.workflow:parsed;if(!workflow||!Array.isArray(workflow.nodes)||!Array.isArray(workflow.edges))throw new Error('Tệp này không chứa workflow MooZ hợp lệ.');}
+    catch(error){setRunStatus(`Không nhập được workflow: ${error?.message||String(error)}`,'error');return;}
     if(!window.confirm('Nhập workflow này sẽ thay khung vẽ hiện tại. Bạn muốn tiếp tục?'))return;
     createUndoSnapshot('Import workflow',{preserveRuntime:false});
     const previous={nodes:state.nodes,edges:state.edges,groups:state.groups,notes:state.notes,settings:state.settings,fitToViewport,view:{zoom:state.zoom,panX:state.panX,panY:state.panY}};
@@ -2331,7 +2333,7 @@
       state.nodes=workflow.nodes;for(const n of state.nodes)if(n?.type==='scriptSplit'&&n.data){WorkflowScriptSplitter.invalidate(n.data);delete n.data.approvedConfig;delete n.data.splitRulesNodeId;}state.edges=workflow.edges;state.groups=Array.isArray(workflow.groups)?workflow.groups:[];state.notes=Array.isArray(workflow.notes)?workflow.notes:[];state.settings=workflow.settings&&typeof workflow.settings==='object'?workflow.settings:{};
       await hydrateWorkflowMedia();normalizeSavedGraph();state.selectedNodeIds=[];state.selectedNodeId=null;state.selectedEdgeIds=[];syncSettingsUI();render();fitCanvas();await queueWorkflowSave({allowRecoveryWrite:true});
       setRunStatus(`Workflow imported: ${file.name}`,'ok');
-    }catch(error){state.nodes=previous.nodes;state.edges=previous.edges;state.groups=previous.groups||[];state.notes=previous.notes||[];state.settings=previous.settings;Object.assign(state,previous.view);fitToViewport=previous.fitToViewport;render();setRunStatus(`Could not import workflow: ${error?.message||String(error)}`,'error');}
+    }catch(error){state.nodes=previous.nodes;state.edges=previous.edges;state.groups=previous.groups||[];state.notes=previous.notes||[];state.settings=previous.settings;Object.assign(state,previous.view);fitToViewport=previous.fitToViewport;render();setRunStatus(`Không nhập được workflow: ${error?.message||String(error)}`,'error');}
   }
   async function loadState(){
     await studioTemplatesReady;let loaded=false,fresh=false;
@@ -2404,7 +2406,7 @@
 
   $('#arrangeNodesBtn').onclick=()=>arrangeNodes();$('#arrangeLooseBtn').onclick=()=>arrangeNodes({looseOnly:true});
   $('#duplicateSelectionBtn').onclick=()=>{try{pasteNodeBundle(selectedNodeBundle());}catch(error){setRunStatus(error.message,'warn');}};
-  $('#runBtn').onclick=onWorkflowRunButtonClick;$('#runOptionsBtn').onclick=openRunOrderModal; $('#saveBtn').onclick=saveState; $('#resetBtn').onclick=resetState;
+  $('#emptyCanvasAdd').onclick=()=>addNode('prompt');$('#emptyCanvasTemplate').onclick=()=>void resetState();$('#runBtn').onclick=onWorkflowRunButtonClick;$('#runOptionsBtn').onclick=openRunOrderModal; $('#saveBtn').onclick=saveState; $('#resetBtn').onclick=resetState;
   $('#workflowExportBtn').onclick=exportWorkflowFile;
   $('#workflowImportBtn').onclick=()=>$('#workflowFileInput').click();
   $('#workflowFileInput').onchange=event=>{const file=event.target.files?.[0];event.target.value='';if(file)void importWorkflowFile(file);};

@@ -1,4 +1,8 @@
-# Workflow · MuseFlow 0.57.0
+# MooZ Agent 0.58.0
+
+**0.58.0 · Hoàn thiện giao diện toàn app:** thống nhất màu, nút, khoảng cách và tên MooZ Agent trên năm không gian; hỗ trợ cửa sổ nhỏ 640 px, chỉ dẫn khi chưa kết nối, thao tác soạn bài rõ ràng và hướng dẫn cài tiện ích đúng trạng thái phát hành. Đi kèm **MooZ Connect 1.8.0**. [Đối chiếu từng góp ý, kiểm thử và phần còn cần cấu hình trước khi bán](docs/PRODUCT-REVIEW-058.md).
+
+**0.57.0 · Công cụ canvas và nhiều Chrome:** nhân bản dự án, xuất sơ đồ bằng văn bản, màu từng bề mặt, quản lý nhiều thiết bị Chrome và bảng sản phẩm hàng loạt gọn hơn.
 
 **0.56.1 · Nhận kết quả Muse mỗi 10 giây:** app kiểm tra tác vụ đang chờ, tự nhận tệp ảnh/video/văn bản về khi có kết quả; giữ đúng mã lượt, không gửi lại prompt. Tiện ích giữ **1.7.0**. [Cách hoạt động](docs/MUSE-BACKGROUND-056.md#nhận-kết-quả-mỗi-10-giây--0561).
 
@@ -32,7 +36,7 @@ Bản 0.47.0 thêm **Video hàng loạt** tại thư viện dự án: cập nh�
 
 [Bắt đầu trong 5 phút](docs/QUICKSTART.md) · [Xử lý góp ý người dùng 28/10](docs/USER-REVIEW-2026-10-28.md) · [Thiết kế MooZ Agent](designs/MOOZ-AGENT-PLAN.md)
 
-**Tiện ích đi kèm:** `extension/Workflow-Connect.zip` chứa **Workflow Connect 1.7.0**, giữ giao thức cùng máy; kết nối từ xa cần app **0.49.0 trở lên**. ZIP đã được đóng gói kèm từ 0.42.0; `extension/manifest.json` là bộ cập nhật dữ liệu cũ, không phải manifest của ZIP đồng hành này. App và tiện ích có phiên bản riêng, kiểm tra tương thích theo giao thức. Chỉ nâng app không đồng nghĩa phải cài lại tiện ích; khi app báo không tương thích, tải ZIP trong **Cài đặt & kết nối AI**, thay thư mục tiện ích, bấm **Tải lại** trong `chrome://extensions`, tải lại các tab AI và kết nối lại bằng mã phiên.
+**Tiện ích đi kèm:** `extension/Workflow-Connect.zip` chứa **MooZ Connect 1.8.0**, dùng manifest gốc `manifest.json`; app và tiện ích có số phiên bản riêng. Tên tệp ZIP nội bộ được giữ để tương thích với kênh tải cũ; khi tải trong app, tên là `MooZ-Connect.zip`. Trong **Cài đặt & kết nối AI**, app hiển thị phiên bản thực và hướng dẫn cài ZIP khi chưa cấu hình trang Chrome Web Store. Sau khi cập nhật tiện ích, bấm **Tải lại** trong `chrome://extensions`, tải lại các tab AI rồi kết nối lại bằng mã mới. Không cần nâng tiện ích chỉ vì phiên bản app thay đổi nếu giao thức vẫn tương thích.
 
 **0.45.3 · Thêm công cụ làm việc:** bốn node cục bộ Cắt video, Xoay/lật video, Chỉnh màu video, Tách âm thanh MP3; ba nút Tìm node, Chọn node lỗi và Xem vùng đang chọn. Có lối thêm nhanh bên trái, trong picker và từ dây Video. [Cách dùng và kiểm tra](docs/LOCAL-TOOLS.md).
 

@@ -28,11 +28,14 @@ const {FacebookLogin}=require('./facebook-login.cjs');
 const {AffiliateService}=require('./affiliate-service.cjs');
 const {checkedURL:affiliateURL}=require('./affiliate-source.cjs');
 const {UpdateService,isDeveloperIDSigned,latestPublicRelease}=require('./updater.cjs');
+const {NAME:PRODUCT_NAME,dataDirectory,distribution}=require('./product.cjs');
+const distributionConfig=distribution(require('./distribution.json'));
 const version=require('../package.json').version;
 const root=path.resolve(__dirname,'..');
 protocol.registerSchemesAsPrivileged([{scheme:'workflow',privileges:{standard:true,secure:true,supportFetchAPI:true,corsEnabled:true,stream:true}}]);
 const testMode=process.env.WORKFLOW_DESKTOP_TEST==='1'&&!app.isPackaged;
 if(testMode){if(!process.env.WORKFLOW_TEST_DATA)throw Error('Missing test data directory');app.setPath('userData',path.resolve(process.env.WORKFLOW_TEST_DATA));}
+if(!testMode&&!process.argv.some(arg=>arg.startsWith('--user-data-dir'))){const directory=dataDirectory(app.getPath('appData'),app.getPath('userData'));require('node:fs').mkdirSync(directory,{recursive:true,mode:0o700});app.setPath('userData',directory);app.setPath('sessionData',directory);}else if(testMode)app.setPath('sessionData',app.getPath('userData'));app.setName(PRODUCT_NAME);
 if(!app.requestSingleInstanceLock())app.exit(0);
 app.on('second-instance',()=>{if(home&&!home.isDestroyed()){home.show();home.focus();}});
 let remoteChrome,agent,diagnostics,aiConnections,uiPreferences,store,home,ai,relay,updater,downloads,posting,postingAI,postingOAuth,brands,chats,facebookPages,facebookLogin,postingWindow,affiliate,affiliateWindow,batchWindow,batchAI,aiDispatch,chromeEverConnected=false;
@@ -66,18 +69,18 @@ function appearanceURL(base){const value=uiPreferences.get(),url=new URL(base);u
 function appearanceBackground(){const value=uiPreferences.get();return palette(value.theme==='system'?(require('electron').nativeTheme.shouldUseDarkColors?'dark':'light'):value.theme,value.accent,value.colors).bg;}
 async function openPosting(){
  if(postingWindow&&!postingWindow.isDestroyed()){postingWindow.show();postingWindow.focus();return;}
- postingWindow=new BrowserWindow({width:1400,height:930,minWidth:900,minHeight:680,title:'Đăng bài & điều hành · MooZ Agent',backgroundColor:appearanceBackground(),webPreferences:{preload:path.join(__dirname,'preload.cjs'),additionalArguments:['--workflow-version='+version],backgroundThrottling:false,contextIsolation:true,sandbox:true,nodeIntegration:false,webSecurity:true}});protect(postingWindow);postingWindow.on('closed',()=>{postingOAuth?.cancel();facebookLogin?.cancel();facebookPages?.clear();postingWindow=null;});await setupSession(session.defaultSession);await postingWindow.loadURL(appearanceURL('workflow://app/desktop/posting.html'));
+ postingWindow=new BrowserWindow({icon:path.join(root,'icons/mooz-icon.png'),width:1400,height:930,minWidth:640,minHeight:520,title:'Đăng bài & điều hành · MooZ Agent',backgroundColor:appearanceBackground(),webPreferences:{preload:path.join(__dirname,'preload.cjs'),additionalArguments:['--workflow-version='+version],backgroundThrottling:false,contextIsolation:true,sandbox:true,nodeIntegration:false,webSecurity:true}});protect(postingWindow);postingWindow.on('closed',()=>{postingOAuth?.cancel();facebookLogin?.cancel();facebookPages?.clear();postingWindow=null;});await setupSession(session.defaultSession);await postingWindow.loadURL(appearanceURL('workflow://app/desktop/posting.html'));
 }
 async function openHome(){
   if(home&&!home.isDestroyed()){home.show();home.focus();return;}
   await setupSession(session.defaultSession);
-  home=new BrowserWindow({width:1200,height:830,minWidth:860,minHeight:650,backgroundColor:appearanceBackground(),title:'MooZ Agent',webPreferences:{preload:path.join(__dirname,'preload.cjs'),additionalArguments:['--workflow-version='+version],backgroundThrottling:false,contextIsolation:true,sandbox:true,nodeIntegration:false,webSecurity:true}});
+  home=new BrowserWindow({icon:path.join(root,'icons/mooz-icon.png'),width:1200,height:830,minWidth:640,minHeight:520,backgroundColor:appearanceBackground(),title:'MooZ Agent',webPreferences:{preload:path.join(__dirname,'preload.cjs'),additionalArguments:['--workflow-version='+version],backgroundThrottling:false,contextIsolation:true,sandbox:true,nodeIntegration:false,webSecurity:true}});
   protect(home);home.on('closed',()=>{home=null;});await home.loadURL(appearanceURL('workflow://app/desktop/home.html'));
 }
 async function openBatch(){
  if(batchWindow&&!batchWindow.isDestroyed()){batchWindow.show();batchWindow.focus();return;}
  await setupSession(session.defaultSession);
- batchWindow=new BrowserWindow({width:1500,height:960,minWidth:900,minHeight:650,title:'Video hàng loạt · MooZ Agent',backgroundColor:appearanceBackground(),webPreferences:{preload:path.join(__dirname,'preload.cjs'),additionalArguments:['--workflow-version='+version],backgroundThrottling:false,contextIsolation:true,sandbox:true,nodeIntegration:false,webSecurity:true}});
+ batchWindow=new BrowserWindow({icon:path.join(root,'icons/mooz-icon.png'),width:1500,height:960,minWidth:640,minHeight:520,title:'Video hàng loạt · MooZ Agent',backgroundColor:appearanceBackground(),webPreferences:{preload:path.join(__dirname,'preload.cjs'),additionalArguments:['--workflow-version='+version],backgroundThrottling:false,contextIsolation:true,sandbox:true,nodeIntegration:false,webSecurity:true}});
  const win=batchWindow;protect(win);
  win.on('close',event=>{if(quitApproved||win.batchCloseAllowed)return;event.preventDefault();if(win.batchClosing)return;win.batchClosing=true;void win.webContents.executeJavaScript('!!(window.MooZBatch?.busy()||window.MooZBatch?.state.running)').then(busy=>{if(win.isDestroyed())return;if(busy)win.hide();else{win.batchCloseAllowed=true;win.close();}}).catch(()=>win.hide()).finally(()=>{win.batchClosing=false;});});
  win.on('closed',()=>{batchAI.close();batchWindow=null;});
@@ -87,7 +90,7 @@ async function openBatch(){
 async function openAffiliate(){
  if(affiliateWindow&&!affiliateWindow.isDestroyed()){affiliateWindow.show();affiliateWindow.focus();return;}
  await setupSession(session.defaultSession);
- affiliateWindow=new BrowserWindow({width:1420,height:950,minWidth:1000,minHeight:700,title:'Affiliate Shopee · MooZ Agent',backgroundColor:appearanceBackground(),webPreferences:{preload:path.join(__dirname,'preload.cjs'),additionalArguments:['--workflow-version='+version],backgroundThrottling:false,contextIsolation:true,sandbox:true,nodeIntegration:false,webSecurity:true}});
+ affiliateWindow=new BrowserWindow({icon:path.join(root,'icons/mooz-icon.png'),width:1420,height:950,minWidth:640,minHeight:520,title:'Affiliate Shopee · MooZ Agent',backgroundColor:appearanceBackground(),webPreferences:{preload:path.join(__dirname,'preload.cjs'),additionalArguments:['--workflow-version='+version],backgroundThrottling:false,contextIsolation:true,sandbox:true,nodeIntegration:false,webSecurity:true}});
  protect(affiliateWindow);affiliateWindow.on('closed',()=>{affiliateWindow=null;});await affiliateWindow.loadURL(appearanceURL('workflow://app/desktop/affiliate.html'));
 }
 async function openProject(id){
@@ -98,7 +101,7 @@ async function openProject(id){
   await store.readStorage(id); // Refuse corrupt project rather than replacing it with a blank one.
   const existing=canvases.get(id);if(existing&&!existing.isDestroyed()){existing.show();existing.focus();return info;}
   const ses=session.fromPartition('persist:workflow-project-'+id);await setupSession(ses);
-  const win=new BrowserWindow({width:1500,height:960,minWidth:1000,minHeight:700,title:info.name,backgroundColor:appearanceBackground(),webPreferences:{session:ses,preload:path.join(__dirname,'preload.cjs'),additionalArguments:['--workflow-version='+version],backgroundThrottling:false,contextIsolation:true,sandbox:true,nodeIntegration:false,webSecurity:true}});
+  const win=new BrowserWindow({icon:path.join(root,'icons/mooz-icon.png'),width:1500,height:960,minWidth:640,minHeight:520,title:info.name+' · MooZ Agent',backgroundColor:appearanceBackground(),webPreferences:{session:ses,preload:path.join(__dirname,'preload.cjs'),additionalArguments:['--workflow-version='+version],backgroundThrottling:false,contextIsolation:true,sandbox:true,nodeIntegration:false,webSecurity:true}});
   win.projectId=id;canvases.set(id,win);sessionData.set(id,{});protect(win);
   win.prepareToClose=async({requireSaved=false}={})=>{
     if(win.isDestroyed()||win.workflowCloseAllowed)return true;
@@ -186,8 +189,8 @@ async function handleWorkflowCall(event,method,data={}){
    if(method==='affiliate.tabs')return postingAI.tabs();
    if(method==='affiliate.openAI')return ai.open(data.provider||'chatgpt');
    if(['affiliate.shopeeTabs','affiliate.shopeeOpen','affiliate.create'].includes(method)&&(method!=='affiliate.create'||data.sourceMode==='chrome')){
-    if(!relay.isConnected)throw Error('Kết nối Chrome bằng Workflow Connect trước. Mở Cài đặt & kết nối AI để lấy mã.');
-    const v=(relay.companion?.version||'0.0.0').split('.').map(Number);if(v[0]<1||v[0]===1&&v[1]<5)throw Error('Cập nhật Workflow Connect 1.5.0 để lấy dữ liệu Shopee từ Chrome.');
+    if(!relay.isConnected)throw Error('Kết nối Chrome bằng MooZ Connect trước. Mở Cài đặt & kết nối AI để lấy mã.');
+    const v=(relay.companion?.version||'0.0.0').split('.').map(Number);if(v[0]<1||v[0]===1&&v[1]<5)throw Error('Cập nhật tiện ích MooZ Connect đi kèm app để lấy dữ liệu Shopee.');
    }
    if(method==='affiliate.shopeeTabs')return relay.request('shopee.tabs');
    if(method==='affiliate.shopeeOpen')return relay.request('shopee.open',{url:data.url?affiliateURL(data.url):'https://shopee.vn/'});
@@ -305,6 +308,8 @@ async function handleWorkflowCall(event,method,data={}){
   if(method==='remoteChrome.reset')return remoteChrome.reset();
   if(method==='remoteChrome.guide'){await shell.openExternal('https://tailscale.com/download');return;}
   if(method==='remoteChrome.admin'){await shell.openExternal('https://login.tailscale.com/admin/dns');return;}
+  if(method==='product.status')return {name:PRODUCT_NAME,version,companionVersion:require('../manifest.json').version,...distributionConfig};
+  if(method==='product.extensionStore'){if(!distributionConfig.chromeWebStoreURL)throw Error('Chưa phát hành tiện ích trên Chrome Web Store. Dùng bản cài thủ công đi kèm.');await shell.openExternal(distributionConfig.chromeWebStoreURL);return;}
   if(method==='projects.list')return store.list();
   if(method==='canvas.diagramCopy'){
    if(!id)throw Error('Mở canvas trước khi sao chép sơ đồ.');
@@ -336,10 +341,14 @@ async function handleWorkflowCall(event,method,data={}){
   if(method==='aiConnections.save'||method==='aiConnections.remove'){const result=await (method.endsWith('save')?aiConnections.save(data):aiConnections.remove(data.id));notify({type:'aiConnections'});return result;}
   if(method==='aiConnections.ask'){const key=event.sender.id+':custom:'+data.requestId;if(typeof data.requestId!=='string'||data.requestId.length>100||requests.has(key))throw Error('Mã yêu cầu AI không hợp lệ.');const controller=new AbortController(),cancel=()=>controller.abort();event.sender.once('destroyed',cancel);requests.set(key,controller);try{return await aiConnections.ask(data.id,data.request,controller.signal);}finally{requests.delete(key);event.sender.removeListener('destroyed',cancel);}}
   if(method==='aiConnections.cancel'){requests.get(event.sender.id+':custom:'+data.requestId)?.abort();return;}
-  if(method==='extension.download')return downloads.download(win,{url:'data:application/octet-stream;base64,'+(await require('node:fs/promises').readFile(path.join(root,'extension/Workflow-Connect.zip'))).toString('base64'),filename:'Workflow-Connect.zip',saveAs:false});
+  if(method==='extension.download')return downloads.download(win,{url:'data:application/octet-stream;base64,'+(await require('node:fs/promises').readFile(path.join(root,'extension/Workflow-Connect.zip'))).toString('base64'),filename:'MooZ-Connect.zip',saveAs:false});
   if(method==='appearance.get')return uiPreferences.get();
   if(method==='appearance.save'){const value=await uiPreferences.save(data);notify({type:'appearance',value});return value;}
   if(method==='windows.list')return [...(home&&!home.isDestroyed()?[{key:'home',name:'Thư viện dự án',win:home}]:[]),...(postingWindow&&!postingWindow.isDestroyed()?[{key:'posting',name:'Đăng bài / Điều hành',win:postingWindow}]:[]),...(batchWindow&&!batchWindow.isDestroyed()?[{key:'batch',name:'Video hàng loạt',win:batchWindow}]:[]),...(affiliateWindow&&!affiliateWindow.isDestroyed()?[{key:'affiliate',name:'Affiliate Shopee',win:affiliateWindow}]:[]),...[...canvases].filter(([,w])=>!w.isDestroyed()).map(([key,w])=>({key,name:w.getTitle(),win:w}))].map(w=>({key:w.key,name:w.name,active:w.win===win}));
+  if(method==='windows.status'){
+   const list=await handleWorkflowCall(event,'windows.list');
+   return Promise.all(list.map(async item=>{let busy=false;const target=item.key==='batch'?batchWindow:canvases.get(item.key);if(target){let timer;try{busy=await Promise.race([target.webContents.executeJavaScript(item.key==='batch'?'!!window.MooZBatch?.busy()':'!!window.WorkflowDesktopLifecycle?.busy()'),new Promise(resolve=>{timer=setTimeout(()=>resolve(null),1500);})]);}catch{busy=null;}finally{clearTimeout(timer);}}else if(item.key==='posting')busy=!!posting?.busy();else if(item.key==='affiliate')busy=!!affiliate?.working;return {...item,busy};}));
+  }
   if(method==='windows.focus'){const target=data.key==='home'?home:data.key==='posting'?postingWindow:data.key==='affiliate'?affiliateWindow:data.key==='batch'?batchWindow:canvases.get(data.key);if(!target||target.isDestroyed())throw Error('Cửa sổ đã đóng.');target.show();if(target.isMinimized())target.restore();target.focus();return;}
   if(method==='home.open'){await openHome();return;}
   if(!id)throw Error('Project context required.');

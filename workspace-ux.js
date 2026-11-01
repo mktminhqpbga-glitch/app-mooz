@@ -1,5 +1,6 @@
 /* Canvas navigation/status helpers, deliberately independent of graph execution. */
 (()=>{
+ const platform=window.workflowDesktop?.platform||navigator.userAgentData?.platform||navigator.platform,isMac=/darwin|mac/i.test(platform),command=isMac?'⌘':'Ctrl+';
  const $=id=>document.getElementById(id),sidebar=document.querySelector('.studio-sidebar'),header=document.querySelector('.compact-toolbar');
  const toggle=document.createElement('button');toggle.id='studioSidebarToggle';toggle.type='button';toggle.textContent='☰';toggle.setAttribute('aria-label','Mở công cụ');toggle.setAttribute('aria-expanded','false');toggle.setAttribute('aria-controls','toolbar-panel-create');header.prepend(toggle);
  const shade=document.createElement('button');shade.id='studioRailBackdrop';shade.type='button';shade.setAttribute('aria-label','Đóng công cụ');shade.hidden=true;document.body.append(shade);
@@ -27,7 +28,8 @@
  function highlight(){const buttons=[...$('commandResults').querySelectorAll('button:not(:disabled)')];buttons.forEach((b,i)=>b.classList.toggle('command-selected',i===commandIndex));buttons[commandIndex]?.scrollIntoView({block:'nearest'});}
  function openCommands(){if(document.querySelector('dialog[open],.modal-backdrop:not(.hidden)'))return;$('commandSearch').value='';renderCommands();palette.showModal();$('commandSearch').focus();}
  $('commandSearch').oninput=renderCommands;$('commandSearch').onkeydown=e=>{const buttons=[...$('commandResults').querySelectorAll('button:not(:disabled)')];if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();commandIndex=Math.max(0,Math.min(buttons.length-1,commandIndex+(e.key==='ArrowDown'?1:-1)));highlight();}if(e.key==='Enter'){e.preventDefault();buttons[commandIndex]?.click();}};$('commandClose').onclick=()=>palette.close();palette.addEventListener('keydown',event=>{if(event.key==='Escape'){event.preventDefault();event.stopPropagation();palette.close();}});
- const commands=document.createElement('button');commands.id='commandPaletteOpen';commands.type='button';commands.textContent='⌘K';commands.setAttribute('aria-label','Tìm lệnh và thêm node');commands.title='Tìm lệnh và thêm node · ⌘K / Ctrl+K';document.querySelector('.studio-tool-search').append(commands);commands.onclick=openCommands;
+ const commands=document.createElement('button');commands.id='commandPaletteOpen';commands.type='button';commands.textContent=command+'K';commands.setAttribute('aria-label','Tìm lệnh và thêm node');commands.title='Tìm lệnh và thêm node · '+command+'K';document.querySelector('.studio-tool-search').append(commands);commands.onclick=openCommands;
  document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&!e.altKey&&e.key.toLowerCase()==='k'){if(!palette.open&&document.querySelector('dialog[open],.modal-backdrop:not(.hidden)'))return;e.preventDefault();if(palette.open)palette.close();else openCommands();}},true);
+ $('handTool').title='H: kéo nền · '+command+'C / '+command+'V: sao chép và dán · D: nhân bản nhóm · G: tạo nhóm';
  for(const [id,words]of Object.entries(aliases)){const button=$(id);if(button)button.title=[button.title,words].filter(Boolean).join(' · ');}
 })();

@@ -1,5 +1,5 @@
 {
-  "version": "1.7.0",
+  "version": "1.8.0",
   "protocol": 1,
-  "notes": "Tự chọn và xác nhận chế độ ảnh/video trong Muse; giữ tab Muse hoạt động ở cửa sổ riêng phía sau, không tự giành màn hình. Cần tải lại tab Muse sau khi cập nhật. Giao thức kết nối 1; MooZ 0.56.0."
+  "notes": "MooZ Connect: thống nhất tên, hướng dẫn ghép và trợ giúp bằng tiếng Việt. Tương thích giao thức 1, hỗ trợ MooZ Agent 0.58.0 và các bản trước dùng cùng giao thức."
 }

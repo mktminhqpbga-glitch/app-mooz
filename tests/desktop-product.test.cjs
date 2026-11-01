@@ -1,0 +1,9 @@
+'use strict';
+const {test}=require('node:test'),assert=require('node:assert/strict'),path=require('node:path');
+const {NAME,dataDirectory,distribution}=require('../desktop/product.cjs');
+test('MooZ display identity keeps existing project directories and installer upgrade identity',()=>{
+ const root=path.resolve('/tmp/mooz-app-data'),initial=path.join(root,'MooZ Agent'),old=path.join(root,'Workflow');assert.equal(NAME,'MooZ Agent');assert.equal(dataDirectory(root,initial,p=>p===path.join(old,'projects')),old);assert.equal(dataDirectory(root,initial,p=>p===path.join(initial,'projects')),initial);assert.equal(dataDirectory(root,initial,()=>false),path.join(root,'workflow-museflow'));const pkg=require('../package.json');assert.equal(pkg.build.appId,'com.museflow.workflow');assert.equal(pkg.build.productName,NAME);assert.equal(pkg.productName,NAME);assert.match(pkg.build.artifactName,/^MooZ-Agent-/);
+});
+test('distribution has no invented Store/OAuth service and accepts only explicit official configuration',()=>{
+ const empty=distribution();assert.equal(empty.chromeWebStoreURL,null);assert.equal(empty.metaOAuthURL,null);const store='https://chromewebstore.google.com/detail/mooz-connect/'+'a'.repeat(32);assert.equal(distribution({chromeWebStoreURL:store}).chromeWebStoreURL,store);assert.equal(distribution({metaOAuthURL:'https://login.example.test/'}).metaOAuthURL,'https://login.example.test/');for(const url of ['https://chromewebstore.google.com.evil/detail/mooz/'+'a'.repeat(32),'http://chromewebstore.google.com/detail/mooz/'+'a'.repeat(32),store+'?token=private'])assert.throws(()=>distribution({chromeWebStoreURL:url}));for(const url of ['http://login.example.test/','https://user:secret@login.example.test/','https://login.example.test/?token=x'])assert.throws(()=>distribution({metaOAuthURL:url}));
+});

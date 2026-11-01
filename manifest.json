@@ -3,22 +3,24 @@
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'none'; connect-src 'self' https: wss: ws://127.0.0.1:*"
   },
-  "name": "Workflow Connect",
-  "version": "1.7.0",
+  "name": "MooZ Connect",
+  "version": "1.8.0",
   "description": "Kết nối AI và lấy thông tin, ảnh sản phẩm từ tab Shopee đã mở trong Chrome cho MooZ.",
   "action": {
-    "default_title": "Kết nối Workflow",
+    "default_title": "Kết nối MooZ Agent",
     "default_icon": {
-      "16": "icons/icon16.png",
-      "32": "icons/icon32.png"
+      "16": "icons/mooz-16.png",
+      "32": "icons/mooz-32.png",
+      "48": "icons/mooz-48.png",
+      "128": "icons/mooz-128.png"
     },
     "default_popup": "desktop/connect.html"
   },
   "icons": {
-    "16": "icons/icon16.png",
-    "32": "icons/icon32.png",
-    "48": "icons/icon48.png",
-    "128": "icons/icon128.png"
+    "16": "icons/mooz-16.png",
+    "32": "icons/mooz-32.png",
+    "48": "icons/mooz-48.png",
+    "128": "icons/mooz-128.png"
   },
   "background": {
     "service_worker": "background.js"
