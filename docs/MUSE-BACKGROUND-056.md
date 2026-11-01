@@ -41,3 +41,13 @@ Các nhà cung cấp tab khác cũng không còn bị tự kích hoạt tab/cử
 Cửa sổ riêng giữ tab được chọn, nhưng **không thể bảo đảm chạy nếu nền tảng Muse tạm ngưng cả máy ảo/Chrome, máy ngủ, mất mạng hoặc website tự dừng khi cửa sổ không có tiêu điểm**. Bộ nối không giả mạo `document.hidden`, không gắn debugger và không thay chính sách xác minh của dịch vụ. Nếu gặp tình huống đó trên máy ảo thực tế, cần kiểm tra cùng Muse hoặc dùng API do nhà cung cấp hỗ trợ.
 
 Kiểm thử gồm Chrome/extension thật và hai kết nối WSS qua relay TLS cục bộ: cửa sổ Muse được tạo không có tiêu điểm, tab/phiên được giữ, tải ảnh với layout rect rỗng, tự đổi về Image sau khi tải ảnh làm chọn lại Video, nhận ảnh mới và từ chối video sai loại mà không gửi lại. Trang AI là fixture, không phải tài khoản hay máy ảo Muse của người dùng. Fixture visibility dùng giá trị nền vì Playwright mặc định ép focus/visibility cho trang được điều khiển; mã sản phẩm không thay đổi các giá trị này.
+
+## Nhận kết quả mỗi 10 giây · 0.56.1
+
+MooZ 0.56.1 kiểm tra trạng thái ngay sau khi giao tác vụ, sau đó cứ 10 giây hỏi lại đúng mã tác vụ Muse đang chờ. Mỗi tab vẫn theo dõi DOM và được đánh thức ở nền như trước; nhịp 10 giây là nhịp app hỏi và nhận kết quả qua kết nối hiện có.
+
+Khi có kết quả, bộ nối trả ảnh/video/văn bản đã đối chiếu với lượt vừa gửi. App nhận tệp và tiếp tục node hoặc bước hàng loạt. Thời gian sao chép tệp phụ thuộc kích thước và đường truyền. Không mở thêm lượt tạo AI, không tự đổi tab, không tự quét và nhập toàn bộ lịch sử chat.
+
+Trạng thái đang chạy có dòng **App tự kiểm tra kết quả mỗi 10 giây**. Bấm Dừng hủy cả khoảng chờ kiểm tra kế tiếp. Đến hạn chờ tác vụ hoặc mất kết nối kéo dài, app báo lỗi thay vì tiếp tục hỏi vô hạn hoặc tự gửi lại prompt. Chrome/máy ảo phải còn hoạt động để trả lời.
+
+Cài app 0.56.1; Workflow Connect vẫn là **1.7.0**, không cần thay tiện ích nếu đã dùng đúng bản này.
