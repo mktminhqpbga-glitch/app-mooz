@@ -29,11 +29,11 @@ const path = require('node:path');
     return home;
   }
   async function close() {
-    if(!application)return;const current=application;application=null;
+    if(!application)return;const current=application;let child;try{child=current.process();}catch{}application=null;
     console.log('Windows QA: exit application');
     await Promise.race([current.evaluate(({app})=>app.exit(0)).catch(()=>{}),new Promise(resolve=>setTimeout(resolve,5000))]);
     await Promise.race([current.close().catch(()=>{}),new Promise(resolve=>setTimeout(resolve,5000))]);
-    const child=current.process();if(child.exitCode===null){require('node:child_process').spawnSync('taskkill',['/PID',String(child.pid),'/T','/F'],{stdio:'ignore'});}
+    if(child&&child.exitCode===null){require('node:child_process').spawnSync('taskkill',['/PID',String(child.pid),'/T','/F'],{stdio:'ignore'});}
     console.log('Windows QA: application exited');
   }
   try {
