@@ -1,4 +1,6 @@
-# MooZ Agent 0.58.0
+# MooZ Agent 0.59.0
+
+**0.59.0 · Khung tạo video và hàng chờ mới:** nhập văn bản/ảnh bên trái, chọn AI, tỷ lệ và thời lượng phía dưới; hàng chờ, xem kết quả và lịch sử bên phải. Mỗi dòng có thể tạo một video riêng; dọn mục đã xong vẫn giữ tệp và lịch sử. [Cách dùng và kiểm chứng](docs/BATCH-COMPOSER-059.md). Tiện ích giữ **MooZ Connect 1.8.0**.
 
 **0.58.0 · Hoàn thiện giao diện toàn app:** thống nhất màu, nút, khoảng cách và tên MooZ Agent trên năm không gian; hỗ trợ cửa sổ nhỏ 640 px, chỉ dẫn khi chưa kết nối, thao tác soạn bài rõ ràng và hướng dẫn cài tiện ích đúng trạng thái phát hành. Đi kèm **MooZ Connect 1.8.0**. [Đối chiếu từng góp ý, kiểm thử và phần còn cần cấu hình trước khi bán](docs/PRODUCT-REVIEW-058.md).
 
