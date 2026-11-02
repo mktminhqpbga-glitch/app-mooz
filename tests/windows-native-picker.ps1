@@ -1,4 +1,4 @@
-param([int]$AppProcessId,[string]$FilePath,[string]$Screenshot,[switch]$Cancel)
+param([int]$AppProcessId,[long]$AppWindowHandle,[string]$FilePath,[string]$Screenshot,[switch]$Cancel)
 $ErrorActionPreference = 'Stop'
 # Enumerate actual native HWNDs, avoiding a blocking accessibility-tree walk in Chromium.
 Add-Type -TypeDefinition @'
@@ -21,8 +21,8 @@ public static class MooZNativePicker {
   [DllImport("user32.dll",CharSet=CharSet.Unicode)] static extern IntPtr SendMessageTimeout(IntPtr h,uint m,IntPtr w,string text,uint flags,uint timeout,out IntPtr result);
   [DllImport("user32.dll")] static extern bool PostMessage(IntPtr h,uint m,IntPtr w,IntPtr l);
   static string Class(IntPtr h){var s=new StringBuilder(256);GetClassName(h,s,s.Capacity);return s.ToString();}
-  static bool Owned(IntPtr h,uint pid){for(int n=0;n<12&&h!=IntPtr.Zero;n++){uint p;GetWindowThreadProcessId(h,out p);if(p==pid)return true;h=GetWindow(h,4);}return false;}
-  public static IntPtr Find(uint pid){IntPtr result=IntPtr.Zero;EnumWindows((h,p)=>{if(IsWindowVisible(h)&&Class(h)=="#32770"&&Owned(h,pid)){result=h;return false;}return true;},IntPtr.Zero);return result;}
+  static bool Owned(IntPtr h,uint pid,IntPtr appWindow){for(int n=0;n<12&&h!=IntPtr.Zero;n++){uint p;GetWindowThreadProcessId(h,out p);if(p==pid||h==appWindow)return true;h=GetWindow(h,4);}return false;}
+  public static IntPtr Find(uint pid,IntPtr appWindow){IntPtr result=IntPtr.Zero;EnumWindows((h,p)=>{if(IsWindowVisible(h)&&Class(h)=="#32770"&&Owned(h,pid,appWindow)){result=h;return false;}return true;},IntPtr.Zero);return result;}
   public static string[] Dump(){var rows=new List<string>();EnumWindows((h,p)=>{uint pid;GetWindowThreadProcessId(h,out pid);var text=new StringBuilder(512);GetWindowText(h,text,text.Capacity);if(IsWindowVisible(h))rows.Add(pid+" | "+Class(h)+" | "+text);return true;},IntPtr.Zero);return rows.ToArray();}
   public static void Select(IntPtr dialog,string file,bool cancel){
     if(!cancel){IntPtr combo=GetDlgItem(dialog,1148),edit=IntPtr.Zero;
@@ -38,7 +38,7 @@ public static class MooZNativePicker {
 '@
 $dialog=[IntPtr]::Zero
 $timer=[Diagnostics.Stopwatch]::StartNew()
-while($timer.ElapsedMilliseconds -lt 15000){$dialog=[MooZNativePicker]::Find($AppProcessId);if($dialog -ne [IntPtr]::Zero){break};Start-Sleep -Milliseconds 150}
+while($timer.ElapsedMilliseconds -lt 15000){$dialog=[MooZNativePicker]::Find($AppProcessId,[IntPtr]$AppWindowHandle);if($dialog -ne [IntPtr]::Zero){break};Start-Sleep -Milliseconds 150}
 if($Screenshot){
  Add-Type -AssemblyName System.Windows.Forms
  Add-Type -AssemblyName System.Drawing
