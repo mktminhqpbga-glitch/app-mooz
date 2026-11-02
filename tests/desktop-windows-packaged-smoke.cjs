@@ -25,13 +25,16 @@ const path = require('node:path');
       timeout: 60000
     });
     const home = await application.firstWindow();
-    await home.waitForSelector('#newProject', {timeout: 60000});
+    home.setDefaultTimeout(25000);await home.waitForSelector('#newProject', {timeout: 60000});console.log('Windows QA: library ready');
     return home;
   }
   async function close() {
-    await application?.evaluate(({app}) => app.exit(0)).catch(() => {});
-    await application?.close().catch(() => {});
-    application = null;
+    if(!application)return;const current=application;application=null;
+    console.log('Windows QA: exit application');
+    await Promise.race([current.evaluate(({app})=>app.exit(0)).catch(()=>{}),new Promise(resolve=>setTimeout(resolve,5000))]);
+    await Promise.race([current.close().catch(()=>{}),new Promise(resolve=>setTimeout(resolve,5000))]);
+    const child=current.process();if(child.exitCode===null){require('node:child_process').spawnSync('taskkill',['/PID',String(child.pid),'/T','/F'],{stdio:'ignore'});}
+    console.log('Windows QA: application exited');
   }
   try {
     await fs.mkdir(review, {recursive: true});
@@ -53,7 +56,7 @@ const path = require('node:path');
       await home.click('#closeChrome');
       assert.equal(await home.locator('#homeGuide').evaluate(node => node.open), guideOpen);
     }
-    await home.click('#connectionsOpen');
+    console.log('Windows QA: settings');await home.click('#connectionsOpen');
     await home.waitForFunction(() => document.querySelector('#connectionsVersion').textContent.includes('1.8.1'));
     assert.equal(await home.locator('#extensionManualGuide').getAttribute('open'), '');
     for (const name of ['Mở Grok', 'Mở Google Flow / Veo']) {
@@ -66,7 +69,7 @@ const path = require('node:path');
     await home.click('#connectionsClose');
     const remote = await home.evaluate(() => workflowDesktop.call('remoteChrome.status'));
     assert.equal(remote.enabled, false, 'Public connections must not start during installation.');
-    const affiliateOpened = application.waitForEvent('window');
+    console.log('Windows QA: affiliate');const affiliateOpened = application.waitForEvent('window');
     await home.click('#aiAppsAffiliate');
     const affiliate = await affiliateOpened;
     await affiliate.waitForSelector('#sourceMode');
@@ -79,8 +82,8 @@ const path = require('node:path');
     await affiliate.fill('#productLink', 'https://shopee.vn/product/123/456');
     assert.equal(await affiliate.locator('#create').isDisabled(), false);
     await affiliate.screenshot({path: path.join(review, 'windows-shopee-source.png')});
-    const affiliateClosed=affiliate.waitForEvent('close');await home.evaluate(()=>workflowDesktop.call('workspace.close',{key:'affiliate'}));await affiliateClosed;
-    const batchOpened = application.waitForEvent('window');
+    console.log('Windows QA: close affiliate tab');const affiliateClosed=affiliate.waitForEvent('close');await home.evaluate(()=>workflowDesktop.call('workspace.close',{key:'affiliate'}));await affiliateClosed;
+    console.log('Windows QA: batch');const batchOpened = application.waitForEvent('window');
     await home.click('#aiAppsBatch');
     const batch = await batchOpened;
     await batch.waitForFunction(() => window.MooZBatch);
@@ -90,8 +93,8 @@ const path = require('node:path');
     assert.equal(await batch.locator('#composerSubmit').isEnabled(), true);
     assert.equal(await batch.locator('#taskHistory').isVisible(), true);
     await batch.screenshot({path: path.join(review, 'windows-batch-composer.png')});
-    const batchClosed=batch.waitForEvent('close');await home.evaluate(()=>workflowDesktop.call('workspace.close',{key:'batch'}));await batchClosed;
-    const project = await home.evaluate(() => workflowHome.createProject('Windows packaged QA'));
+    console.log('Windows QA: close batch tab');const batchClosed=batch.waitForEvent('close');await home.evaluate(()=>workflowDesktop.call('workspace.close',{key:'batch'}));await batchClosed;
+    console.log('Windows QA: project');const project = await home.evaluate(() => workflowHome.createProject('Windows packaged QA'));
     const next = application.waitForEvent('window');
     await home.evaluate(id => workflowHome.openProject(id), project.id);
     const canvas = await next;
@@ -114,7 +117,7 @@ const path = require('node:path');
     await canvas.locator('#scriptSplitDrawer header button').click();
     await canvas.evaluate(() => WorkflowDesktopLifecycle.flush());
     await canvas.screenshot({path: path.join(review, 'windows-canvas.png')});
-    await close();
+    console.log('Windows QA: restart');await close();
     home = await launch();
     const projects = await home.evaluate(() => workflowHome.listProjects());
     assert.ok(projects.some(p => p.id === project.id && p.name === 'Windows packaged QA'));
@@ -130,4 +133,6 @@ const path = require('node:path');
     await close();
     await fs.rm(root, {recursive: true, force: true});
   }
-})().catch(error => { console.error(error); process.exitCode = 1; });
+// Dispose the test driver even if its detached view channels retain handles.
+// The success path is reached only after every assertion, restart and report.
+})().then(()=>process.exit(0),error=>{console.error(error);process.exit(1);});
