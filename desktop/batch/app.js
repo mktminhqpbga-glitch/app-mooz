@@ -101,7 +101,7 @@ async function submitComposer(){if(composerSubmitting||queueStarting)return;cons
   for(const [i,prompt]of prompts.entries()){addJob([],prompt.replace(/\s+/g,' ').slice(0,80));const j=state.jobs.at(-1);Object.assign(j,{inputMode:'text',note:prompt,draftPlan:plans[i]});targets.push(j.id);}c.text='';
  }else{
   const drafts=composerImageTargets();if(!drafts.length)throw Error('Chọn sản phẩm bản nháp trước.');
-  const plan=M.copy(state.workflow);Object.assign(plan,{ratio:c.ratio,duration:c.duration});for(const step of plan.steps)if(step.type==='video'){step.provider=c.provider;delete step.workerId;}M.validate(plan,state.workers,{requireTabs:false});
+  const plan=M.copy(state.workflow);Object.assign(plan,{ratio:c.ratio,duration:c.duration});for(const step of plan.steps)if(step.type==='video'&&step.provider!==c.provider){step.provider=c.provider;delete step.workerId;}M.validate(plan,state.workers,{requireTabs:false});
   for(const j of drafts){if(!j.images.length||j.images.some(id=>!asset(id)?.blob))throw Error(productLabel(j)+': thêm ảnh còn trong kho trước khi chạy.');}
   for(const j of drafts){j.draftPlan=M.copy(plan);if(c.note.trim())j.note=c.note.trim();targets.push(j.id);}
  }

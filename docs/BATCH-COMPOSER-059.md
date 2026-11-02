@@ -6,7 +6,7 @@ Bố cục tham khảo ảnh mẫu người dùng: khung nhập lớn bên trái
 
 - **Văn bản:** nhập mỗi dòng một yêu cầu, hoặc chọn gộp toàn bộ thành một video. Chọn Muse, Grok hoặc Google Flow/Veo, tỷ lệ và thời lượng yêu cầu. Bấm **Xếp hàng & chạy**. Mỗi yêu cầu tạo một tác vụ riêng, tạo video rồi lưu thành phẩm qua bộ xử lý cục bộ. Nếu thiếu tab đã chọn/sẵn sàng, tác vụ giữ trạng thái chờ với lý do thật.
 - **Ảnh tham chiếu:** thêm ảnh sản phẩm như trước; mỗi ảnh thành một sản phẩm hoặc gom ảnh cho một sản phẩm. Mở **Chỉnh sửa/Chi tiết** để sửa tên, ảnh và yêu cầu riêng trong khung trái. Gỡ ảnh chỉ gỡ liên kết của sản phẩm, không xóa tệp dùng chung. Đóng chi tiết để quay lại ô nhập.
-- Tại chế độ ảnh, các sản phẩm bản nháp được chọn sẽ dùng luồng đã lưu; nếu chưa chọn bản nháp ảnh nào, áp dụng cho tất cả bản nháp ảnh. AI trong thanh dưới chỉ chọn AI cho bước tạo video. Các bước đọc ảnh/viết kịch bản/tạo ảnh vẫn theo **Luồng xử lý**. Tỷ lệ/thời lượng/yêu cầu bổ sung được chốt vào từng tác vụ sắp chạy.
+- Tại chế độ ảnh, các sản phẩm bản nháp được chọn sẽ dùng luồng đã lưu; nếu chưa chọn bản nháp ảnh nào, áp dụng cho tất cả bản nháp ảnh. AI trong thanh dưới chỉ chọn AI cho bước tạo video. Các bước đọc ảnh/viết kịch bản/tạo ảnh vẫn theo **Luồng xử lý**. Nếu nhà cung cấp video không đổi, tab đã chỉ định trong luồng vẫn được giữ; đổi nhà cung cấp mới bỏ liên kết tab cũ. Tỷ lệ/thời lượng/yêu cầu bổ sung được chốt vào từng tác vụ sắp chạy.
 - Thay tùy chọn không thay dữ liệu/luồng của tác vụ đã xếp hàng. Văn bản chưa gửi được lưu trên máy, không tự gửi khi mở lại app.
 
 ## Theo dõi
