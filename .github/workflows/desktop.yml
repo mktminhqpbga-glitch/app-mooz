@@ -3,6 +3,11 @@ name: Đóng gói / Cập nhật app Mac
 on:
   workflow_dispatch:
     inputs:
+      quick_package:
+        description: Đóng gói nhanh, bỏ qua bộ kiểm thử không liên quan
+        required: false
+        default: false
+        type: boolean
       create_draft_release:
         description: Tạo thêm bản nháp trong Releases sau khi đóng gói (mỗi version chỉ dùng một lần)
         required: false
@@ -47,10 +52,13 @@ jobs:
       - name: Prepare Electron runtime
         run: npm run setup:desktop
       - name: Run unit tests
+        if: inputs.quick_package != true
         run: npm test
       - name: Prepare Chromium for two-machine remote transport tests
+        if: inputs.quick_package != true
         run: npm run setup:remote-tests
       - name: Verify desktop integration and canvas layout in Electron
+        if: inputs.quick_package != true
         env:
           MOOZ_UI_AUDIT_DIR: ${{ runner.temp }}/mooz-ui-review
           MOOZ_THEME_REVIEW_DIR: ${{ runner.temp }}/mooz-ui-review/colors
