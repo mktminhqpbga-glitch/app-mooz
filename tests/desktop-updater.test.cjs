@@ -65,3 +65,8 @@ test('unsigned clients keep polling even after an earlier update was found',asyn
  let count=0;const service=new UpdateService({version:'0.31.0',packaged:true,platform:'darwin',fetchRelease:async()=>({version:++count===1?'0.32.0':'0.33.0'})});
  assert.equal((await service.check()).latestVersion,'0.32.0');assert.equal((await service.check()).latestVersion,'0.33.0');assert.equal(count,2);
 });
+
+test('packaged Windows exposes a clear manual installer channel without pretending to poll or auto-install',async()=>{
+ let checks=0,scheduled=0;const updater=new UpdateService({version:'0.61.1',packaged:true,platform:'win32',fetchRelease:async()=>{checks++;},schedule:()=>{scheduled++;},repeat:()=>{scheduled++;}});updater.start();
+ assert.equal(updater.status().mode,'manual');assert.equal(updater.status().manualWindows,true);assert.match((await updater.check()).message,/Windows cập nhật thủ công/);assert.match(updater.releaseURL(),/actions\/workflows\/windows-desktop.yml/);assert.equal(checks,0);assert.equal(scheduled,0);await assert.rejects(updater.install(),/chưa sẵn sàng/);
+});

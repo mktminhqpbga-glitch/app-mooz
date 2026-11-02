@@ -12,13 +12,13 @@
     const actions=document.createElement('div');actions.className='workflow-update-actions';
     const close=document.createElement('button');close.textContent='Đóng';close.onclick=()=>dialog.close();
     const check=document.createElement('button');check.textContent='Kiểm tra bản mới';check.id='desktopCheckUpdate';
-    const releases=document.createElement('button');releases.textContent='Trang phát hành';releases.onclick=()=>void host.call('updates.release').catch(showError);
+    const releases=document.createElement('button');releases.id='desktopUpdateChannel';releases.textContent='Trang phát hành';releases.onclick=()=>void host.call('updates.release').catch(showError);
     const install=document.createElement('button');install.textContent='Cài và khởi động lại';install.id='desktopInstallUpdate';install.hidden=true;
     actions.append(close,releases,check,install);dialog.append(heading,version,message,progress,note,actions);document.body.append(dialog);parent.append(launch);
     function showError(){message.textContent='Chưa thực hiện được thao tác cập nhật. Vui lòng thử lại.';}
     function render(state){
       version.textContent='Phiên bản hiện tại: '+state.currentVersion+(state.latestVersion?' · Bản mới: '+state.latestVersion:'');
-      message.textContent=state.message;
+      message.textContent=state.message;check.hidden=state.manualWindows===true;releases.textContent=state.manualWindows?'Tải bản cài Windows':'Trang phát hành';note.textContent=state.manualWindows?'Cách cập nhật: đăng nhập GitHub nếu được yêu cầu → chọn lượt thành công mới nhất → Artifacts → MooZ-App-Windows-x64 → giải nén → thoát MooZ và chạy file .exe. Cài đè vào cùng vị trí; dự án và media trên máy được giữ. Artifact có hạn lưu; nếu link hết hạn, chọn lượt mới hoặc liên hệ nhà cung cấp.':state.mode==='manual'?'Tải bản Mac mới từ kênh phát hành, thoát app rồi thay app trong Applications. Dự án và thiết lập trên máy được giữ.':'Dự án được lưu trước khi cài. App không tự cài khi bạn thoát.';
       check.disabled=state.mode==='unavailable'||['checking','available','downloading','downloaded','installing'].includes(state.state)&&state.mode==='native';
       if(state.mode==='manual')check.disabled=state.state==='checking';
       install.hidden=state.state!=='downloaded';install.disabled=state.state==='installing';

@@ -10,7 +10,8 @@ const path = require('node:path');
   assert.equal(process.platform, 'win32', 'This check must run on a real Windows runner.');
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'mooz-win-package-'));
   const review = process.env.MOOZ_UI_AUDIT_DIR || path.join(root, 'review');
-  const exe = path.resolve('dist/win-unpacked/MooZ Agent.exe');
+  const exe = process.env.MOOZ_INSTALLED_EXE||path.resolve('dist/win-unpacked/MooZ Agent.exe');
+  const userData=process.env.MOOZ_WINDOWS_USER_DATA||path.join(root,'data');
   const version = require('../package.json').version;
   const env = {...process.env};
   delete env.ELECTRON_RUN_AS_NODE;
@@ -20,7 +21,7 @@ const path = require('node:path');
   async function launch() {
     application = await electron.launch({
       executablePath: exe,
-      args: ['--disable-gpu', '--user-data-dir=' + path.join(root, 'data')],
+      args: ['--disable-gpu', '--user-data-dir=' + userData],
       env,
       timeout: 60000
     });
@@ -49,6 +50,8 @@ const path = require('node:path');
     }));
     assert.deepEqual(info, {packaged: true, version, platform: 'win32', arch: 'x64', testHook: 'undefined'});
     assert.equal(await application.evaluate(({app}) => app.getName()), 'MooZ Agent');
+    if(process.env.MOOZ_WINDOWS_UPGRADE_PROJECT){const projects=await home.evaluate(()=>workflowHome.listProjects());assert.ok(projects.some(p=>p.id===process.env.MOOZ_WINDOWS_UPGRADE_PROJECT));assert.equal(await home.locator('html').getAttribute('data-ui-theme'),'violet');}
+    await home.click('#desktopUpdateButton');assert.match(await home.locator('#desktopUpdateStatus').innerText(),/Windows cập nhật thủ công/);assert.equal(await home.locator('#desktopUpdateChannel').innerText(),'Tải bản cài Windows');await home.screenshot({path:path.join(review,'windows-manual-update.png')});await home.locator('#desktopUpdateDialog button').filter({hasText:'Đóng'}).click();
     const guideOpen = await home.locator('#homeGuide').evaluate(node => node.open);
     for (let attempt = 0; attempt < 3; attempt++) {
       await home.click('#connectChrome');
@@ -93,6 +96,13 @@ const path = require('node:path');
     assert.equal(await batch.locator('#composerSubmit').isEnabled(), true);
     assert.equal(await batch.locator('#taskHistory').isVisible(), true);
     await batch.screenshot({path: path.join(review, 'windows-batch-composer.png')});
+    if(process.env.MOOZ_WINDOWS_NATIVE_PICKER==='1'){
+      const {promisify}=require('node:util'),exec=promisify(require('node:child_process').execFile),file=path.join(root,'ảnh-sản-phẩm.png'),bytes=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j7ZkAAAAASUVORK5CYII=','base64');await fs.writeFile(file,bytes);
+      await batch.click('[data-composer-mode=images]');await batch.click('#addProducts');
+      async function pick(cancel){const selecting=exec('powershell.exe',['-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',path.join(__dirname,'windows-native-picker.ps1'),'-AppProcessId',String(application.process().pid),'-FilePath',file,'-Screenshot',path.join(review,cancel?'windows-picker-cancel.png':'windows-native-file-picker.png'),...(cancel?['-Cancel']:[])],{timeout:25000});await Promise.all([batch.locator('#productFiles').evaluate(input=>input.click()),selecting]);}
+      await pick(true);assert.equal(await batch.evaluate(()=>MooZBatch.state.jobs.length),0,'Cancel must not import anything');await pick(false);await batch.waitForFunction(()=>MooZBatch.state.jobs.length===1);const imported=await batch.evaluate(async()=>{const a=MooZBatch.assets.find(a=>a.origin==='upload');return {name:a.name,bytes:[...new Uint8Array(await a.blob.arrayBuffer())]};});assert.equal(imported.name,path.basename(file));assert.deepEqual(Buffer.from(imported.bytes),bytes);if(await batch.locator('#productDialog').evaluate(d=>d.open))await batch.locator('[data-close=productDialog]').last().click();await batch.screenshot({path:path.join(review,'windows-native-import-result.png')});
+    }
+
     console.log('Windows QA: close batch tab');const batchClosed=batch.waitForEvent('close');await home.evaluate(()=>workflowDesktop.call('workspace.close',{key:'batch'}));await batchClosed;
     console.log('Windows QA: project');const project = await home.evaluate(() => workflowHome.createProject('Windows packaged QA'));
     const next = application.waitForEvent('window');
@@ -115,7 +125,7 @@ const path = require('node:path');
     assert.match(await canvas.locator('#scriptSplitApproval').innerText(), /đã xác nhận/);
     await canvas.screenshot({path: path.join(review, 'windows-script-split.png')});
     await canvas.locator('#scriptSplitDrawer header button').click();
-    await canvas.evaluate(() => WorkflowDesktopLifecycle.flush());
+    await canvas.keyboard.press('Control+s');await canvas.waitForFunction(()=>document.querySelector('#runStatus')?.textContent==='Đã lưu.');await canvas.evaluate(() => WorkflowDesktopLifecycle.flush());
     await canvas.screenshot({path: path.join(review, 'windows-canvas.png')});
     console.log('Windows QA: restart');await close();
     home = await launch();
@@ -126,7 +136,7 @@ const path = require('node:path');
       projectSurvivesRestart: true,
       grokAndFlowOptions: true,
       remoteOffByDefault: true,
-      liveAIRequests: 0
+      nativeFilePicker:process.env.MOOZ_WINDOWS_NATIVE_PICKER==='1',keyboardSave:true,installedExecutable:!!process.env.MOOZ_INSTALLED_EXE,liveAIRequests: 0
     }, null, 2));
     console.log('PASS actual packaged Windows app: correct version/x64, no test hooks, project create/restart, Grok/Flow controls, remote off by default. No live AI request.');
   } finally {

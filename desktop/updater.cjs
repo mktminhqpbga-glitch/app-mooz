@@ -3,6 +3,7 @@ const {EventEmitter}=require('node:events');
 const {execFile}=require('node:child_process');
 const {promisify}=require('node:util');
 const RELEASES='https://github.com/mktminhqpbga-glitch/app-mooz/releases';
+const WINDOWS_BUILDS='https://github.com/mktminhqpbga-glitch/app-mooz/actions/workflows/windows-desktop.yml?query=branch%3Amain+is%3Asuccess';
 const LATEST='https://api.github.com/repos/mktminhqpbga-glitch/app-mooz/releases/latest';
 function stableVersion(value){const match=/^v?((?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))$/.exec(String(value||''));return match?match[1]:null;}
 function newer(candidate,current){const a=stableVersion(candidate),b=stableVersion(current);if(!a||!b)return false;const left=a.split('.').map(Number),right=b.split('.').map(Number);for(let i=0;i<3;i++){if(left[i]!==right[i])return left[i]>right[i];}return false;}
@@ -25,8 +26,8 @@ class UpdateService extends EventEmitter{
   constructor({version,packaged=false,platform=process.platform,signed=false,engine=null,fetchRelease,prepareInstall=async()=>false,onInstallStart=()=>{},onInstallFailed=()=>{},schedule=setTimeout,repeat=setInterval,clearSchedule=clearTimeout,clearRepeat=clearInterval}={}){
     super();this.engine=engine;this.fetchRelease=fetchRelease;this.prepareInstall=prepareInstall;this.onInstallStart=onInstallStart;this.onInstallFailed=onInstallFailed;
     this.schedule=schedule;this.repeat=repeat;this.clearSchedule=clearSchedule;this.clearRepeat=clearRepeat;this.timers=[];this.pending=null;this.downloading=null;
-    const mode=!packaged||platform!=='darwin'?'unavailable':signed&&engine?'native':'manual';
-    this.value={state:mode==='unavailable'?'disabled':'idle',mode,currentVersion:version,latestVersion:null,progress:null,message:mode==='unavailable'?'Chưa có cập nhật tự động trong phiên bản này. Xem bản cài mới tại kênh phát hành của MooZ.':mode==='manual'?'App kiểm tra bản mới; bạn tải và cài thủ công qua kênh phát hành.':'App tự kiểm tra và tải bản mới trong nền. Bạn quyết định khi nào cài.'};
+    this.manualWindows=packaged&&platform==='win32';const mode=!packaged||!['darwin','win32'].includes(platform)?'unavailable':platform==='darwin'&&signed&&engine?'native':'manual';
+    this.value={state:mode==='unavailable'?'disabled':'idle',mode,currentVersion:version,latestVersion:null,progress:null,manualWindows:this.manualWindows,message:this.manualWindows?'Windows cập nhật thủ công: mở kênh tải Windows, chọn lượt đóng gói thành công mới nhất và tải MooZ-App-Windows-x64 trong Artifacts. Giải nén, thoát app rồi chạy file cài .exe để cập nhật.':mode==='unavailable'?'Chưa có cập nhật tự động trong phiên bản này. Xem bản cài mới tại kênh phát hành của MooZ.':mode==='manual'?'App kiểm tra bản mới; bạn tải và cài thủ công qua kênh phát hành.':'App tự kiểm tra và tải bản mới trong nền. Bạn quyết định khi nào cài.'};
     this.handlers=[];
     if(mode==='native')this.configureEngine();
   }
@@ -50,9 +51,9 @@ class UpdateService extends EventEmitter{
     on('error',()=>{const kind=this.value.state==='installing'?'install':this.value.state==='downloading'?'download':'check';if(kind==='install')this.onInstallFailed();this.fail(kind);});
   }
   fail(kind){return this.set({state:'error',progress:null,message:kind==='install'?'Chưa cài được cập nhật. Dự án đã lưu vẫn được giữ; hãy thử lại hoặc mở trang phát hành.':kind==='download'?'Chưa tải được cập nhật. Kiểm tra mạng hoặc dung lượng đĩa rồi thử lại.':'Chưa kiểm tra được cập nhật. Kiểm tra mạng rồi thử lại.'});}
-  start(){if(this.value.mode==='unavailable'||this.timers.length)return;const first=this.schedule(()=>void this.check().catch(()=>{}),30000);first.unref?.();const interval=this.repeat(()=>void this.check().catch(()=>{}),6*60*60*1000);interval.unref?.();this.timers=[first,interval];}
+  start(){if(this.value.mode==='unavailable'||this.manualWindows||this.timers.length)return;const first=this.schedule(()=>void this.check().catch(()=>{}),30000);first.unref?.();const interval=this.repeat(()=>void this.check().catch(()=>{}),6*60*60*1000);interval.unref?.();this.timers=[first,interval];}
   check(){
-    if(this.value.mode==='unavailable')return Promise.resolve(this.status());
+    if(this.value.mode==='unavailable'||this.manualWindows)return Promise.resolve(this.status());
     if(this.pending)return this.pending;
     if(['downloading','downloaded','installing'].includes(this.value.state)||(this.value.mode==='native'&&this.value.state==='available'))return Promise.resolve(this.status());
     this.set({state:'checking',progress:null,message:'Đang kiểm tra phiên bản mới…'});
@@ -78,7 +79,7 @@ class UpdateService extends EventEmitter{
       this.onInstallStart();this.engine.quitAndInstall(false,true);return this.status();
     }catch{this.onInstallFailed();return this.fail('install');}
   }
-  releaseURL(){return this.value.latestVersion?RELEASES+'/tag/v'+this.value.latestVersion:RELEASES;}
+  releaseURL(){if(this.manualWindows)return WINDOWS_BUILDS;return this.value.latestVersion?RELEASES+'/tag/v'+this.value.latestVersion:RELEASES;}
   stop(){this.clearSchedule(this.timers[0]);this.clearRepeat(this.timers[1]);this.timers=[];for(const [name,handler]of this.handlers)this.engine?.removeListener(name,handler);this.handlers=[];}
 }
 module.exports={UpdateService,isDeveloperIDSigned,latestPublicRelease,stableVersion,newer};

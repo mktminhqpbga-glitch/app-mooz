@@ -14,6 +14,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   build-win:
@@ -42,16 +43,33 @@ jobs:
         if: inputs.quick_package != true
         run: node --test tests/muse-jobs.test.mjs tests/canvas-diagram.test.mjs tests/desktop-theme.test.cjs tests/desktop-diagnostics.test.cjs tests/desktop-product.test.cjs tests/providers.test.mjs tests/script-splitter.test.mjs tests/desktop-ai-sites.test.cjs tests/desktop-batch.test.cjs tests/desktop-batch-composer.test.cjs tests/desktop-activity.test.cjs tests/desktop-muse-background.test.cjs tests/desktop-relay.test.cjs tests/desktop-chrome-devices.test.cjs tests/desktop-outbound-relay.test.cjs tests/desktop-shopee-chrome.test.cjs tests/desktop-facebook-recovery.test.cjs tests/desktop-remote-diagnostics.test.cjs tests/desktop-ai-connections.test.cjs
 
+      - name: Validate optional signing configuration
+        env:
+          CSC_LINK: ${{ secrets.WINDOWS_CERTIFICATE_P12 }}
+          CSC_KEY_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+        shell: pwsh
+        run: |
+          if ([bool]$env:CSC_LINK -xor [bool]$env:CSC_KEY_PASSWORD) { throw 'Configure both WINDOWS_CERTIFICATE_P12 and WINDOWS_CERTIFICATE_PASSWORD, or neither for an explicitly unsigned build' }
+
       - name: Build Windows installer without publishing
+        env:
+          CSC_LINK: ${{ secrets.WINDOWS_CERTIFICATE_P12 }}
+          CSC_KEY_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
         run: npm exec electron-builder -- --win --x64 --publish never
 
-      - name: Open the actual packaged Windows app
-        if: inputs.quick_package != true
+      - name: Download an older actual installer for upgrade verification
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node tools/download-windows-baseline.cjs
+
+      - name: Install, upgrade, open and uninstall the actual Windows installer
         env:
           MOOZ_UI_AUDIT_DIR: ${{ runner.temp }}/mooz-windows-review
-        run: node tests/desktop-windows-packaged-smoke.cjs
+        run: node tests/desktop-windows-installer-smoke.cjs
 
       - name: Verify installer and record checksum
+        env:
+          MOOZ_REQUIRE_SIGNED: ${{ secrets.WINDOWS_CERTIFICATE_P12 != '' }}
         shell: pwsh
         run: |
           $packages = @(Get-ChildItem dist -File -Filter *.exe)
@@ -65,10 +83,19 @@ jobs:
               throw 'Installer is not a Windows executable'
             }
           } finally { $stream.Dispose() }
+          $signature = Get-AuthenticodeSignature $file.FullName
+          if ($env:MOOZ_REQUIRE_SIGNED -eq 'true' -and $signature.Status -ne 'Valid') { throw 'Configured signing did not produce a valid Authenticode signature' }
           $hash = (Get-FileHash $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
           "$hash  $($file.Name)" | Set-Content dist/SHA256SUMS-Windows.txt -Encoding utf8NoBOM
           $version = node -p "require('./package.json').version"
-          "MooZ $version Windows x64`nSource: $env:GITHUB_SHA`nInstaller: $($file.Name)`nUnsigned build; no release was published." | Set-Content dist/Windows-build-info.txt -Encoding utf8NoBOM
+          "MooZ $version Windows x64`nSource: $env:GITHUB_SHA`nInstaller: $($file.Name)`nSignature: $($signature.Status); no release was published." | Set-Content dist/Windows-build-info.txt -Encoding utf8NoBOM
+
+      - name: Include corresponding source and license notices
+        shell: pwsh
+        run: |
+          $version = node -p "require('./package.json').version"
+          git archive --format=zip --prefix="MooZ-Agent-$version-source/" --output="dist/MooZ-Agent-$version-source.zip" HEAD
+          Copy-Item LICENSE,THIRD_PARTY_NOTICES.md dist/
 
       - name: Upload Windows installer
         uses: actions/upload-artifact@v4
@@ -78,6 +105,9 @@ jobs:
             dist/*.exe
             dist/SHA256SUMS-Windows.txt
             dist/Windows-build-info.txt
+            dist/*-source.zip
+            dist/LICENSE
+            dist/THIRD_PARTY_NOTICES.md
           compression-level: 0
           if-no-files-found: error
           retention-days: 30

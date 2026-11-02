@@ -129,6 +129,19 @@ jobs:
           compression-level: 0
           if-no-files-found: error
           retention-days: 30
+      - name: Package corresponding source and license notices
+        run: |
+          version="${{ steps.metadata.outputs.version }}"
+          mkdir -p source-package
+          git archive --format=zip --prefix="MooZ-Agent-$version-source/" --output="source-package/MooZ-Agent-$version-source.zip" HEAD
+          cp LICENSE THIRD_PARTY_NOTICES.md source-package/
+      - name: Upload corresponding source
+        uses: actions/upload-artifact@v4
+        with:
+          name: MooZ-Corresponding-Source
+          path: source-package/
+          if-no-files-found: error
+          retention-days: 30
       - name: Hướng dẫn tải và cập nhật
         run: |
           cat >> "$GITHUB_STEP_SUMMARY" <<'SUMMARY'
