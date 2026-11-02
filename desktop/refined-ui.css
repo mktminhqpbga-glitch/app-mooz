@@ -1,0 +1,240 @@
+/* Shared UI 0.61: one typography/spacing contract, across every workspace. */
+:root{--ui-text:14px;--ui-control:13px;--ui-small:12px;--ui-heading:16px;--ui-radius:12px}
+:root[data-ui-size=large]{--ui-text:16px;--ui-control:15px;--ui-small:14px;--ui-heading:18px}
+body[data-app-surface]{font-family:Arial,"Helvetica Neue",system-ui,sans-serif;font-size:var(--ui-text);line-height:1.5;-webkit-font-smoothing:antialiased}
+body[data-app-surface] :is(button,input,select,textarea,summary,label){font-family:inherit;letter-spacing:normal}
+body[data-app-surface] :is(h1,h2,h3,h4,strong,b){font-family:inherit;font-weight:600;letter-spacing:-.015em}
+body[data-app-surface] h1{font-size:26px;line-height:1.25;margin:4px 0 8px}
+body[data-app-surface] h2{font-size:18px;line-height:1.35}
+body[data-app-surface] h3{font-size:15px;line-height:1.4}
+body[data-app-surface] :is(p,li){line-height:1.6}
+body[data-app-surface] :is(button,input,select){font-size:var(--ui-control);min-height:36px;border-radius:8px}
+body[data-app-surface] button{padding:7px 12px;line-height:1.4;box-shadow:none;transition:background-color .12s,border-color .12s}
+body[data-app-surface] button.primary{font-weight:600}
+body[data-app-surface] :is(input,select,textarea){padding:8px 10px;font-size:var(--ui-control)}
+body[data-app-surface] textarea{line-height:1.65;border-radius:8px}
+body[data-app-surface] :is(input[type=checkbox],input[type=radio]){min-height:0;flex:none;width:16px;height:16px}
+body[data-app-surface] :is(button,input,select,textarea,summary):focus-visible{outline:2px solid var(--mooz-link);outline-offset:3px}
+body[data-app-surface] :is(.eyebrow,.nav-caption,.studio-nav-caption,.nav-label){font-size:10px;font-weight:600;letter-spacing:.8px;line-height:1.4;white-space:nowrap}
+body[data-app-surface] :is(.muted,.field-help,.note,.subtitle){font-size:var(--ui-small);line-height:1.6}
+body[data-app-surface] :is(.panel,.settings-card,.project-card,.post-card,.render-queue,.task-history,.composer-panel,.product-inspector,.hub-card,.scene){border-radius:var(--ui-radius);box-shadow:none}
+body[data-app-surface] :is(dialog,.modal){border-radius:14px;max-height:calc(100dvh - 48px);padding:22px;box-shadow:0 20px 70px #0003}
+body[data-app-surface] dialog>header{margin:0 0 18px;gap:16px;align-items:center}
+body[data-app-surface] dialog>header :is(h2,h3){margin:0;font-size:19px}
+body[data-app-surface] .dialog-actions,body[data-app-surface] .appearance-actions{gap:8px;flex-wrap:wrap}
+body[data-app-surface] .brand small{font-size:9px!important;letter-spacing:.7px;line-height:1.5;white-space:nowrap}
+.workspace-tabs .workspace-tab{max-width:230px}.workspace-tabs .workspace-tab button[role=tab]{font-size:12px!important;min-height:34px;min-width:95px}.workspace-tabs .workspace-tab-close{font-size:18px!important;min-width:28px}.workspace-appmark small{font-size:11px}
+/* Library: compact, predictable cards and a quieter header. */
+body[data-app-surface=library] main{padding-inline:28px}
+body[data-app-surface=library] .workspace-heading{padding:24px 0 20px;gap:20px}
+body[data-app-surface=library] .workspace-heading h1{font-size:27px}
+body[data-app-surface=library] .getting-started{box-shadow:none}
+body[data-app-surface=library] #homeGuide:not([open]){padding:12px 16px;margin-bottom:18px}
+body[data-app-surface=library] #homeGuide:not([open]) .start-title p{display:none}
+body[data-app-surface=library] .project-library{margin-top:18px}
+body[data-app-surface=library] .project-grid{gap:16px}
+body[data-app-surface=library] .project-art{height:88px}
+body[data-app-surface=library] .project-info{padding:14px 16px}
+body[data-app-surface=library] .project-info h3{font-size:15px;margin-bottom:6px}
+body[data-app-surface=library] .project-actions{padding:9px 12px;gap:6px;flex-wrap:wrap}
+body[data-app-surface=library] .project-actions button{font-size:12px;padding:6px 8px;white-space:nowrap;min-height:32px;flex:1}
+/* Canvas: readable controls, no pale navigation text, consistent node fields. */
+body[data-app-surface=canvas] .studio-quick-actions button{color:var(--mooz-ink)!important;font-size:13px;min-height:36px;padding:7px 10px}
+body[data-app-surface=canvas] .studio-sidebar{gap:12px}
+body[data-app-surface=canvas] .studio-tool-list button{min-height:34px;font-size:13px}
+body[data-app-surface=canvas] .studio-tool-list h2{font-size:11px;margin:15px 7px 7px}
+body[data-app-surface=canvas] .node-body :is(input,select,textarea,button){font-family:inherit;font-size:12px}
+body[data-app-surface=canvas] .node-header .node-title{font-size:13px;font-weight:600}
+body[data-app-surface=canvas] .node-body textarea{padding:9px;line-height:1.6}
+body[data-app-surface=canvas] .node-header button{min-height:26px}
+body[data-app-surface=canvas] .toolbar.compact-toolbar{padding:10px 16px;gap:10px;min-height:78px}
+body[data-app-surface=canvas] .studio-health{gap:6px}
+body[data-app-surface=canvas] .studio-primary-actions{gap:8px}
+body[data-app-surface=canvas] .canvas-navigation button{min-height:32px}
+body[data-app-surface=canvas] .workflow-chat-panel label{font-size:12px;line-height:1.6}
+/* Posting: three real cards per row; primary actions stay short and horizontal. */
+body[data-app-surface=posting]{grid-template-columns:208px minmax(0,1fr)}
+body[data-app-surface=posting] main{padding:26px 26px 48px}
+body[data-app-surface=posting] .posting-sidebar{padding:22px 14px;gap:12px;overflow-y:auto}
+body[data-app-surface=posting] .posting-sidebar>strong{font-size:20px}
+body[data-app-surface=posting] .posting-sidebar>strong>span{font-size:9px;letter-spacing:.7px;white-space:nowrap}
+body[data-app-surface=posting] .posting-sidebar nav button{font-size:13px;min-height:36px;padding:8px 10px}
+body[data-app-surface=posting] #hubNav [data-view=posts]{display:none}
+body[data-app-surface=posting] .posting-sidebar>p{margin:12px 8px 0}
+body[data-app-surface=posting] main>header{margin-bottom:18px;gap:16px}
+body[data-app-surface=posting] .queue-toolbar{margin-top:20px;gap:8px;flex-wrap:wrap}
+body[data-app-surface=posting] #postingHealth{padding:10px 12px;border:1px solid var(--mooz-line);border-radius:8px;background:var(--mooz-raised);color:var(--mooz-muted);font-size:12px}
+body[data-app-surface=posting] .posting-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;align-items:start}
+body[data-app-surface=posting] .post-card>header{padding:13px 14px;gap:8px;min-height:66px}
+body[data-app-surface=posting] .post-card h3{font-size:14px;line-height:1.45}
+body[data-app-surface=posting] .post-card header small{font-size:11px}
+body[data-app-surface=posting] .post-badge{font-size:11px;padding:4px 7px}
+body[data-app-surface=posting] .post-media{height:158px;min-height:158px;background:#10171f}
+body[data-app-surface=posting] .post-media :is(img,video){object-fit:contain;width:100%;height:100%;max-height:158px}
+body[data-app-surface=posting] .post-form{padding:13px 14px;gap:12px}
+body[data-app-surface=posting] .post-form>textarea{height:108px;min-height:108px;font-size:13px;line-height:1.6}
+body[data-app-surface=posting] .post-card-settings,body[data-app-surface=posting] .post-extra-actions{padding:10px 0;border-top:1px solid var(--mooz-line);font-size:12px;min-width:0}
+.post-card-settings>summary,.post-extra-actions>summary{font-size:12px;color:var(--mooz-muted);cursor:pointer}
+.post-card-settings>label,.post-card-settings>div,.post-card-settings>p{margin-top:10px}
+body[data-app-surface=posting] .post-actions{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+body[data-app-surface=posting] .post-actions button{width:100%;min-width:0;min-height:36px;height:auto;flex:none!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px;padding:8px}
+body[data-app-surface=posting] .post-actions button:only-child{grid-column:1/-1}
+body[data-app-surface=posting] .post-secondary-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
+body[data-app-surface=posting] .post-secondary-actions button{width:auto;flex:1 1 100px!important;min-width:0;min-height:34px;white-space:normal;line-height:1.4;padding:7px 9px;font-size:12px}
+body[data-app-surface=posting] .post-note{font-size:12px;line-height:1.6;margin:0}
+body[data-app-surface=posting] .hub-stat{padding:16px}
+body[data-app-surface=posting] .hub-hero{padding:20px;margin-bottom:18px}
+body[data-app-surface=posting] .hub-calendar-controls{background:var(--mooz-bg)}
+body[data-app-surface=posting] #hubFacebookDialog{padding:0}
+/* Affiliate: clear stages, compact form and persistent source action. */
+body[data-app-surface=affiliate] .top{min-height:64px;height:auto;padding:14px 24px;gap:12px}
+body[data-app-surface=affiliate] .layout{grid-template-columns:300px minmax(0,1fr)}
+body[data-app-surface=affiliate] .intake{padding:22px 18px}
+body[data-app-surface=affiliate] .intake h1{font-size:25px;margin:12px 0}
+body[data-app-surface=affiliate] .intake form{gap:12px;margin-top:18px}
+body[data-app-surface=affiliate] .workspace{padding:24px 28px}
+body[data-app-surface=affiliate] .workspace-title{margin-bottom:18px}
+body[data-app-surface=affiliate] .affiliate-steps{gap:14px}
+body[data-app-surface=affiliate] .affiliate-steps span{font-size:12px;padding:4px 0}
+body[data-app-surface=affiliate] .scene-grid{gap:14px}
+body[data-app-surface=affiliate] .panel,body[data-app-surface=affiliate] .scene{padding:18px}
+body[data-app-surface=affiliate] .scene .narration{font-size:14px;line-height:1.7}
+/* Batch: a single scrolling page, rather than nested clipped mini workspaces. */
+body[data-app-surface=batch] .topbar{min-height:62px;height:auto;padding:12px 22px;gap:10px}
+body[data-app-surface=batch] .top-actions{gap:7px;flex-wrap:wrap}
+body[data-app-surface=batch] .production-page{padding:24px;max-width:1800px;margin:auto}
+body[data-app-surface=batch] .production-heading{margin-bottom:18px}
+body[data-app-surface=batch] .production-heading h1{font-size:26px}
+body[data-app-surface=batch] .batch-project-toolbar{gap:9px;margin-bottom:20px;align-items:end}
+body[data-app-surface=batch] .batch-project-toolbar>label{max-width:360px;font-size:12px;gap:6px}
+body[data-app-surface=batch] .batch-project-stats>div{padding:8px 12px;min-width:84px}
+body[data-app-surface=batch] .batch-project-stats strong{font-size:21px}
+body[data-app-surface=batch] .batch-project-stats span{font-size:11px}
+body[data-app-surface=batch] .production-studio{grid-template-columns:minmax(0,1fr) 390px;gap:20px;height:auto!important;align-items:start}
+body[data-app-surface=batch] .composer-panel{height:auto!important;min-height:620px;overflow:visible;display:flex;flex-direction:column}
+body[data-app-surface=batch] .composer-connection{margin:16px 16px 0;padding:10px 12px;min-height:44px;font-size:12px;border-radius:9px}
+body[data-app-surface=batch] .composer-tabs{padding:14px 16px 10px;gap:7px}
+body[data-app-surface=batch] .composer-tabs button{font-size:13px;min-height:36px;padding:8px 10px;border-radius:8px}
+body[data-app-surface=batch] #composerContent{min-height:0;flex:1;display:block;overflow:visible!important}
+body[data-app-surface=batch] .composer-input{display:block;padding:10px 18px 16px}
+body[data-app-surface=batch] #batchPrompts{min-height:350px!important;height:auto!important;resize:vertical;font-size:16px;line-height:1.85;padding:8px 0}
+body[data-app-surface=batch] .reference-composer{overflow:visible!important;padding:12px 18px 18px}
+body[data-app-surface=batch] .composer-section-title{margin-bottom:14px;gap:12px;align-items:center}
+body[data-app-surface=batch] .composer-section-title h2{font-size:16px;margin-bottom:4px}
+body[data-app-surface=batch] .composer-section-title p{font-size:12px}
+body[data-app-surface=batch] .composer-products{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;max-height:none;overflow:visible;padding:0}
+body[data-app-surface=batch] .composer-product{padding:10px;border-radius:9px;min-width:0}
+body[data-app-surface=batch] .composer-product label{gap:8px;align-items:center}
+body[data-app-surface=batch] .composer-product img{width:46px;height:58px;object-fit:contain}
+body[data-app-surface=batch] .composer-product strong{font-size:12px;font-weight:600;line-height:1.5}
+body[data-app-surface=batch] .composer-product small{font-size:11px}
+body[data-app-surface=batch] .composer-product>button{min-height:30px;margin-top:8px;font-size:12px;padding:5px 8px}
+body[data-app-surface=batch] .composer-note{font-size:12px;margin-top:18px}
+body[data-app-surface=batch] .composer-note textarea{min-height:80px;font-size:13px;padding:10px;line-height:1.6}
+body[data-app-surface=batch] .composer-footer{margin-top:auto;padding:16px 18px;border-top:1px solid var(--mooz-line)}
+body[data-app-surface=batch] .composer-options{gap:9px;align-items:end}
+body[data-app-surface=batch] .composer-options>label{font-size:12px;gap:6px;max-width:none;flex:1 1 125px}
+body[data-app-surface=batch] .composer-options select{font-size:13px;min-height:38px}
+body[data-app-surface=batch] .composer-ratios{height:38px;align-items:center}
+body[data-app-surface=batch] .composer-ratios button{font-size:12px!important;min-height:30px!important;padding:5px 8px}
+body[data-app-surface=batch] .composer-submit-row{gap:12px;margin-top:16px;align-items:center}
+body[data-app-surface=batch] .composer-submit-row p{font-size:12px;line-height:1.6;max-width:420px}
+body[data-app-surface=batch] .composer-submit-row .composer-send{min-height:42px;padding:10px 14px;font-size:13px;white-space:nowrap}
+body[data-app-surface=batch] .composer-duration-note{font-size:11px;line-height:1.6;margin-top:10px}
+body[data-app-surface=batch] .render-sidebar{height:auto!important;min-height:0;gap:16px;display:flex;flex-direction:column}
+body[data-app-surface=batch] .render-queue{overflow:visible;display:block;min-height:0}
+body[data-app-surface=batch] .render-queue-header{padding:18px;border-bottom:1px solid var(--mooz-line)}
+body[data-app-surface=batch] .render-queue-header>div:first-child{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+body[data-app-surface=batch] .render-queue-header h2{font-size:19px;margin:0;letter-spacing:-.3px}
+body[data-app-surface=batch] .render-queue-header p{font-size:12px;margin:0}
+body[data-app-surface=batch] .render-queue-actions{gap:8px;margin-top:16px}
+body[data-app-surface=batch] .render-queue-actions button{min-height:36px;white-space:nowrap;font-size:12px!important;padding:8px 10px;border-radius:8px}
+body[data-app-surface=batch] #compactToggle{border-color:var(--mooz-link);color:var(--mooz-link)}
+.render-queue-note{padding:12px 18px;background:color-mix(in srgb,var(--mooz-warning) 9%,var(--mooz-panel));border-bottom:1px solid var(--mooz-line);font-size:12px;color:var(--mooz-warning)}
+.render-queue-note summary{cursor:pointer;font-size:12px;font-weight:500}.render-queue-note p{margin:8px 0 0;font-size:12px;line-height:1.7;color:inherit}
+body[data-app-surface=batch] .queue-filter-panel{margin:0;padding:10px 18px;border:0;border-bottom:1px solid var(--mooz-line)}
+body[data-app-surface=batch] .queue-filter-panel summary{font-size:12px}
+body[data-app-surface=batch] .queue-workspace{padding:0;overflow:visible!important;min-height:0;display:block}
+body[data-app-surface=batch] .product-table{background:transparent;overflow:visible;border:0}
+body[data-app-surface=batch] .table-head{padding:10px 18px;min-height:0;border:0}
+body[data-app-surface=batch] #jobRows{max-height:none!important;overflow:visible!important;display:block;padding:0}
+body[data-app-surface=batch] .render-task{display:block!important;position:relative;margin:0!important;padding:16px 18px!important;border:0!important;border-bottom:1px solid var(--mooz-line)!important;border-radius:0!important;background:transparent!important;box-shadow:none;min-height:0!important}
+.render-task-head{display:flex;align-items:center;gap:9px;margin:0 0 12px;min-width:0}
+body[data-app-surface=batch] .render-task-head>.task-toggle{flex:1;min-width:0;max-width:none;gap:8px;text-align:left}
+body[data-app-surface=batch] .render-task .task-toggle>span{white-space:nowrap;text-overflow:ellipsis;overflow:hidden;font-size:13px;line-height:1.5;overflow-wrap:normal;font-weight:600}
+body[data-app-surface=batch] .render-task .task-toggle svg{width:14px;height:14px}
+.render-task-head .job-step-title{flex:none;margin:0;display:block;font-size:13px;color:var(--mooz-link)}
+.render-task-progress{display:flex;gap:12px;align-items:center;padding-left:25px}
+.render-task-progress>.progress-track{flex:1;height:5px;margin:0;min-width:0;border-radius:5px}
+.render-task-progress .badge{font-size:11px;padding:4px 8px;line-height:1.4;border-radius:20px;white-space:nowrap;flex:none}
+.render-task-body{padding:14px 0 0 25px}.task-collapsed .render-task-body{display:none!important}
+body[data-app-surface=batch] .render-task .task-stage{margin:0 0 12px;font-size:12px;line-height:1.6;white-space:normal;overflow-wrap:anywhere;color:var(--mooz-muted)}
+body[data-app-surface=batch] .render-task .task-error{color:var(--mooz-danger)}
+body[data-app-surface=batch] .render-task .task-inline-result{display:block;margin:0 0 12px}
+body[data-app-surface=batch] .render-task .task-inline-result :is(video,img){display:block;width:180px;max-width:100%;height:110px;max-height:none;object-fit:contain;border-radius:8px;background:#10171f}
+.task-metadata{margin:0 0 12px;display:grid;gap:7px;font-size:12px}.task-metadata>div{display:flex;gap:8px;flex-wrap:wrap}.task-metadata dt{color:var(--mooz-muted)}.task-metadata dd{margin:0;color:var(--mooz-ink);font-weight:500}
+body[data-app-surface=batch] .render-task .product-row-actions{display:flex;justify-content:flex-start;gap:7px;flex-wrap:wrap}
+body[data-app-surface=batch] .render-task .product-row-actions button{font-size:12px!important;min-height:34px!important;padding:7px 9px!important;width:auto;white-space:nowrap;flex:0 1 auto}
+body[data-app-surface=batch] .render-task .row-remove{color:var(--mooz-danger)}
+body[data-app-surface=batch] .selection-actions{padding:12px 18px;gap:7px;flex-wrap:wrap;position:static}
+body[data-app-surface=batch] .selection-actions button{font-size:12px;min-height:32px;padding:6px 8px;white-space:nowrap}
+body[data-app-surface=batch] .queue-run-footer{padding:14px 18px;border-top:1px solid var(--mooz-line)}
+body[data-app-surface=batch] .queue-run-footer button{min-height:38px}
+body[data-app-surface=batch] .task-history{max-height:none!important;overflow:visible}
+body[data-app-surface=batch] .task-history>summary{padding:16px 18px;gap:10px;font-size:13px;min-height:54px}
+body[data-app-surface=batch] #taskHistoryRows{max-height:none!important;overflow:visible}
+body[data-app-surface=batch] #taskHistoryRows>button{padding:12px 18px;font-size:12px;min-height:50px}
+.queue-pages,.composer-pages{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px;color:var(--mooz-muted);padding:12px 18px}.composer-pages{padding:12px 0 0}.queue-pages button,.composer-pages button{min-height:30px!important;padding:5px 9px!important;font-size:12px!important}
+body[data-app-surface=batch] .batch-progress-dialog{width:min(860px,calc(100vw - 40px));max-height:calc(100dvh - 60px);overflow:auto;padding:22px}
+body[data-app-surface=batch] .batch-progress-dialog .production-progress{display:block!important;max-height:none;overflow:visible}
+body[data-app-surface=batch] .batch-progress-dialog .worker-grid{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+body[data-app-surface=batch] .batch-progress-dialog .stats{display:flex!important;gap:12px;flex-wrap:wrap}
+body[data-app-surface=batch] dialog.product-inspector[open]{display:block!important;position:fixed;inset:0;width:min(580px,calc(100vw - 40px));height:fit-content;max-height:calc(100dvh - 60px);overflow:auto;padding:0;z-index:auto}
+body[data-app-surface=batch] dialog.product-inspector::backdrop{background:#09101988}
+body[data-app-surface=batch] .inspector-title{padding:20px;border-bottom:1px solid var(--mooz-line)}
+body[data-app-surface=batch] .inspector-close{display:inline-flex!important;top:14px;right:14px;width:32px;height:32px}
+body[data-app-surface=batch] .inspector-body{padding:18px 20px;max-height:none;overflow:visible}
+body[data-app-surface=batch] .inspector-footer{padding:14px 20px;position:sticky;bottom:0;background:var(--mooz-panel)}
+body[data-app-surface=batch] .workflow-canvas,body[data-app-surface=batch] .workflow-settings{max-height:none!important;overflow:visible!important}
+body[data-app-surface=batch] .workflow-step{padding:12px 14px}
+body[data-app-surface=batch] .asset-grid{gap:14px}
+body[data-app-surface=batch] .asset-card .asset-preview{height:160px!important;min-height:160px}
+body[data-app-surface=batch] .asset-card .asset-info{min-height:64px;padding:11px 12px}
+body[data-app-surface=batch] .asset-card .asset-actions{padding:9px 11px;gap:7px}
+body[data-app-surface=batch] .editor-preview{min-height:280px}
+body[data-app-surface=batch] .editor-settings{gap:14px}
+@media(min-width:1180px){body[data-app-surface=library] .project-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:1300px){body[data-app-surface=batch] .production-studio{grid-template-columns:minmax(0,1fr) 340px;gap:16px}body[data-app-surface=batch] .composer-products{grid-template-columns:repeat(2,minmax(0,1fr))}body[data-app-surface=batch] .composer-tabs{gap:6px}body[data-app-surface=batch] .composer-tabs button{font-size:12px;padding:7px 8px}}
+@media(max-width:1179px){body[data-app-surface=posting] .posting-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:1050px){body[data-app-surface=batch] .production-studio{grid-template-columns:1fr}body[data-app-surface=batch] .composer-panel{min-height:560px}body[data-app-surface=batch] .render-sidebar{display:grid;grid-template-columns:1fr 1fr;align-items:start}body[data-app-surface=batch] .composer-products{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:820px){body[data-app-surface=posting]{grid-template-columns:66px minmax(0,1fr)}body[data-app-surface=posting] .posting-sidebar{padding:20px 8px;align-items:center;gap:10px}body[data-app-surface=posting] .posting-sidebar>strong,body[data-app-surface=posting] .posting-sidebar>p,body[data-app-surface=posting] .sidebar-note{display:none}body[data-app-surface=posting] .posting-sidebar nav{width:100%}body[data-app-surface=posting] .posting-sidebar nav button{font-size:0;justify-content:center;width:44px;height:40px;padding:0}body[data-app-surface=posting] .posting-sidebar nav button:before{content:attr(data-nav-icon);font-size:19px}body[data-app-surface=posting] .posting-sidebar nav button b{display:none}body[data-app-surface=posting] .posting-sidebar>:is(#appearanceOpen,#windowSwitcherOpen,#connectionsOpen,#diagnosticsOpen){font-size:0;min-width:40px;width:40px;padding:0}body[data-app-surface=posting] .posting-sidebar>:is(#appearanceOpen,#windowSwitcherOpen,#connectionsOpen,#diagnosticsOpen):before{content:attr(data-nav-icon);font-size:18px}body[data-app-surface=posting] main{padding:20px 16px}body[data-app-surface=affiliate] .layout{grid-template-columns:1fr;overflow:auto;display:block}body[data-app-surface=affiliate] .intake{overflow:visible;border-right:0;border-bottom:1px solid var(--mooz-line)}body[data-app-surface=affiliate] .workspace{overflow:visible;padding:20px}body[data-app-surface=batch] .production-page{padding:20px 16px}body[data-app-surface=batch] .render-sidebar{display:flex}body[data-app-surface=batch] .composer-products{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:700px){body[data-app-surface=posting] .posting-grid{grid-template-columns:1fr}body[data-app-surface=posting] main>header{align-items:flex-start;flex-direction:column;gap:12px}body[data-app-surface=posting] main>header>div:last-child{display:flex;gap:6px;flex-wrap:wrap}body[data-app-surface=batch] .composer-options>label{flex:1 1 120px}body[data-app-surface=batch] .composer-submit-row{align-items:stretch;flex-direction:column}body[data-app-surface=batch] .composer-submit-row .composer-send{width:100%}body[data-app-surface=batch] .production-heading{align-items:flex-start}body[data-app-surface=batch] .batch-project-stats{width:100%;flex-basis:100%}body[data-app-surface=batch] .composer-tabs button{flex:1 1 42%;font-size:12px}body[data-app-surface=batch] .composer-product label{flex-wrap:wrap}body[data-app-surface=canvas] .studio-primary-actions button{font-size:12px;padding:6px 9px}}
+@media(max-height:700px){body[data-app-surface=library] .workspace-heading{padding:12px 0}body[data-app-surface=library] .topbar{height:52px;min-height:52px;padding-block:8px}body[data-app-surface=library] .project-art{height:64px}body[data-app-surface=library] .project-info{padding:10px 13px}body[data-app-surface=library] .project-library{margin-top:12px}}
+@media(prefers-reduced-motion:reduce){body[data-app-surface] *{transition:none!important;scroll-behavior:auto!important}}
+
+/* The retained workspace strip scrolls horizontally only. */
+#workspaceTabList{box-sizing:border-box;height:42px;padding-top:4px;overflow-y:hidden;align-items:stretch}
+body[data-app-surface=canvas] .studio-sidebar-bottom{gap:7px}
+body[data-app-surface=batch] .render-task-head>.task-toggle{justify-content:flex-start!important;padding:3px 0;background:transparent;border-color:transparent}
+body[data-app-surface=batch] .production-studio .table-head::after{content:'Chọn tác vụ trong trang này'}
+body[data-app-surface=batch] .inspector-title{display:block!important;position:relative;padding:20px 58px 18px 20px}
+body[data-app-surface=batch] .inspector-title>small{display:block;font-size:11px;letter-spacing:.6px;margin-bottom:7px}
+body[data-app-surface=batch] .inspector-title>h3{display:block;font-size:19px;margin:0 0 8px;overflow-wrap:anywhere}
+body[data-app-surface=batch] .inspector-title>.badge{display:inline-flex;font-size:11px}
+body[data-app-surface=batch] .inspector-title>.inspector-close{position:absolute;right:14px;top:16px;float:none}
+body[data-app-surface=batch] .batch-progress-dialog .batch-banner h3{font-size:16px;line-height:1.5}
+body[data-app-surface=batch] .batch-progress-dialog .stats{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:16px}
+body[data-app-surface=batch] .batch-progress-dialog .stats>span{padding:12px;border:1px solid var(--mooz-line);border-radius:8px;font-size:13px;display:flex;gap:9px;align-items:center}
+body[data-app-surface=batch] .batch-progress-dialog .stats b{font-size:20px}
+body[data-app-surface=batch] .batch-progress-dialog .stats small{grid-column:1/-1;font-size:12px}
+@media(max-width:820px){
+ body[data-app-surface=posting] .posting-sidebar nav button{font-size:0!important;overflow:hidden;flex:none}
+ body[data-app-surface=posting] .posting-brand{padding:0 0 8px;justify-content:center;width:100%}
+ body[data-app-surface=posting] .posting-brand strong{display:none}
+ body[data-app-surface=posting] .posting-brand img{display:block;width:32px;height:32px}
+ body[data-app-surface=posting] #postingHome{font-size:0!important;min-height:38px;width:42px;padding:0;flex:none}
+ body[data-app-surface=posting] #postingHome::before{content:'←';font-size:19px}
+ body[data-app-surface=posting] .posting-sidebar>:is(#appearanceOpen,#windowSwitcherOpen,#connectionsOpen,#diagnosticsOpen){font-size:0!important;flex:none}
+}
+@media(max-width:700px){body[data-app-surface=posting] main>header{flex-direction:row;flex-wrap:wrap;gap:8px}body[data-app-surface=posting] main>header>div:first-child{flex-basis:100%;margin-bottom:6px}}
+@media(max-width:820px){body[data-app-surface=posting] .posting-sidebar{padding-inline:6px;overflow-x:hidden;scrollbar-width:thin}body[data-app-surface=posting] .posting-sidebar button{min-width:0!important;max-width:100%}body[data-app-surface=posting] .posting-sidebar nav button{width:38px;max-width:100%}}

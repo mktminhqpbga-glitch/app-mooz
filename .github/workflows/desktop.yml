@@ -63,6 +63,11 @@ jobs:
           MOOZ_UI_AUDIT_DIR: ${{ runner.temp }}/mooz-ui-review
           MOOZ_THEME_REVIEW_DIR: ${{ runner.temp }}/mooz-ui-review/colors
         run: npm run test:desktop
+      - name: Kiểm tra riêng giao diện mới trong bản đóng gói nhanh
+        if: inputs.quick_package == true
+        env:
+          MOOZ_UI_AUDIT_DIR: ${{ runner.temp }}/mooz-ui-review
+        run: node tests/desktop-ui-refresh-smoke.cjs
       - name: Lưu ảnh và số đo kiểm tra giao diện
         if: always()
         uses: actions/upload-artifact@v4
