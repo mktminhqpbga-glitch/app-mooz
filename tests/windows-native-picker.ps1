@@ -4,12 +4,11 @@ Add-Type -AssemblyName UIAutomationClient
 Add-Type -AssemblyName UIAutomationTypes
 $dialog = $null
 for ($attempt = 0; $attempt -lt 60; $attempt++) {
-  $all = [System.Windows.Automation.AutomationElement]::RootElement.FindAll([System.Windows.Automation.TreeScope]::Children,[System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::ClassNameProperty,'#32770'))
+  $all = [System.Windows.Automation.AutomationElement]::RootElement.FindAll([System.Windows.Automation.TreeScope]::Descendants,[System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::ClassNameProperty,'#32770'))
   foreach ($candidate in $all) { if ($candidate.Current.ProcessId -eq $AppProcessId) { $dialog = $candidate; break } }
   if ($null -ne $dialog) { break }
   Start-Sleep -Milliseconds 250
 }
-if ($null -eq $dialog) { throw 'The actual native Windows file picker was not found for the owned application.' }
 if ($Screenshot) {
   Add-Type -AssemblyName System.Windows.Forms
   Add-Type -AssemblyName System.Drawing
@@ -17,6 +16,11 @@ if ($Screenshot) {
   $bitmap = [System.Drawing.Bitmap]::new($bounds.Width,$bounds.Height)
   $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
   try { $graphics.CopyFromScreen($bounds.Location,[System.Drawing.Point]::Empty,$bounds.Size);$bitmap.Save($Screenshot,[System.Drawing.Imaging.ImageFormat]::Png) } finally { $graphics.Dispose();$bitmap.Dispose() }
+}
+if ($null -eq $dialog) {
+  $windows=[System.Windows.Automation.AutomationElement]::RootElement.FindAll([System.Windows.Automation.TreeScope]::Children,[System.Windows.Automation.Condition]::TrueCondition)
+  $windows | ForEach-Object { [PSCustomObject]@{name=$_.Current.Name;class=$_.Current.ClassName;pid=$_.Current.ProcessId} } | ConvertTo-Json -Compress | Write-Output
+  throw 'The actual native Windows file picker was not found for the owned application.'
 }
 if (!$Cancel) {
   $edits = $dialog.FindAll([System.Windows.Automation.TreeScope]::Descendants,[System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::ControlTypeProperty,[System.Windows.Automation.ControlType]::Edit))
