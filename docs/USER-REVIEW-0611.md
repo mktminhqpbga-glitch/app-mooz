@@ -12,7 +12,7 @@ Các sửa của 0.61.0 được giữ: một cửa sổ với các tab, font/b�
 
 ## Kiểm chứng Windows
 
-Workflow Windows chạy kiểm tra từ file cài NSIS .exe trên Windows runner: tìm một bản cài cũ còn tải được, cài vào thư mục kiểm thử riêng, tạo dự án/lưu theme, nâng cấp lên bản mới, mở executable đã cài, kiểm tra phím Ctrl+S, chọn và hủy ảnh bằng hộp thoại Windows thật (UI Automation, không setInputFiles), so byte ảnh đã nhập, kiểm tra shortcut và gỡ cài đặt. Hồ sơ riêng phải còn sau khi gỡ, rồi bộ kiểm thử mới xóa dữ liệu kiểm thử của nó. Báo cáo windows-installer-lifecycle.json chỉ sinh sau khi tất cả kiểm tra đạt; xem artifact MooZ-Windows-review. Đây là Windows CI, không thay kiểm chứng trên máy khách/SmartScreen hoặc với tài khoản AI/Facebook/Shopee thật.
+Workflow Windows chạy kiểm tra từ file cài NSIS .exe trên Windows runner: tìm một bản cài cũ còn tải được, cài vào thư mục kiểm thử riêng, tạo dự án/lưu theme, nâng cấp lên bản mới, mở executable đã cài, kiểm tra phím Ctrl+S, chọn và hủy ảnh bằng hộp thoại Windows thật (thao tác Win32 trên hộp thoại hệ điều hành, không setInputFiles), so byte ảnh đã nhập, kiểm tra shortcut và gỡ cài đặt. Hồ sơ riêng phải còn sau khi gỡ, rồi bộ kiểm thử mới xóa dữ liệu kiểm thử của nó. Báo cáo windows-installer-lifecycle.json chỉ sinh sau khi tất cả kiểm tra đạt; xem artifact MooZ-Windows-review. Đây là Windows CI, không thay kiểm chứng trên máy khách/SmartScreen hoặc với tài khoản AI/Facebook/Shopee thật.
 
 ## Các thông tin thương mại còn cần nhà cung cấp
 
