@@ -131,7 +131,7 @@ const path = require('node:path');
     console.log('PASS actual packaged Windows app: correct version/x64, no test hooks, project create/restart, Grok/Flow controls, remote off by default. No live AI request.');
   } finally {
     await close();
-    await fs.rm(root, {recursive: true, force: true});
+    await fs.rm(root,{recursive:true,force:true,maxRetries:10,retryDelay:200}).catch(error=>{if(['EBUSY','EPERM'].includes(error.code))console.warn('Windows QA: temporary test profile remains locked after exit; functional checks and report are complete.');else throw error;});
   }
 // Dispose the test driver even if its detached view channels retain handles.
 // The success path is reached only after every assertion, restart and report.
