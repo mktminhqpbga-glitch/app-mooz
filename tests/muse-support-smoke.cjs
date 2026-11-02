@@ -1,5 +1,5 @@
 const {chromium}=require('playwright');const assert=require('node:assert/strict');const path=require('node:path');
-(async()=>{const browser=await chromium.launch({executablePath:'/usr/bin/chromium',headless:true,args:['--no-sandbox']});try{
+(async()=>{const browser=await chromium.launch({executablePath:process.env.WORKFLOW_CHROMIUM||undefined,headless:true,args:['--no-sandbox']});try{
  const page=await browser.newPage();await page.route('https://muse.ai/**',r=>r.fulfill({contentType:'text/html',body:'<main><section><p>history</p><button>Header</button></section><form><textarea>PRIVATE PROMPT</textarea><button type="button" id="unknown"><svg width="20" height="20"><path d="M1 3L8 1L7 8Z"/></svg></button><button type="button" aria-label="Upload file">+</button></form></main>'}));await page.goto('https://muse.ai/chat');await page.evaluate(()=>{window.sent=0;window.saved={};window.chrome={storage:{local:{set:async value=>Object.assign(saved,value)}}};document.querySelector('#unknown').onclick=()=>sent++;});
  for(const file of ['composer-controls.js','muse-support.js'])await page.addScriptTag({path:path.resolve(__dirname,'../'+file)});
  await page.evaluate(()=>{const video=document.createElement('video');video.src='https://private.invalid/PRIVATE_VIDEO.mp4?token=SECRET_TOKEN';document.querySelector('section').append(video);});

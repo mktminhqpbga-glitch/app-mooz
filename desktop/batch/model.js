@@ -50,11 +50,12 @@
   for(const j of data.jobs){if(j.state==='running'){j.state='error';j.error='Phiên chạy bị gián đoạn. Kiểm tra kết quả trong tab AI trước khi bấm chạy tiếp để tránh tạo trùng.';j.active=null;}else if(j.active)j.active=null;}
   const enqueue=(ids,w)=>{const jobs=data.jobs.filter(j=>ids.includes(j.id)&&j.state==='draft');if(!jobs.length)return 0;
    for(const j of jobs){const plan=j.draftPlan||w;validate(plan,data.workers,{requireTabs:false});if(j.inputMode==='text'){if(typeof j.note!=='string'||!j.note.trim()||j.note.length>4000||plan.scenes!==1||plan.steps.some(s=>!['video','assemble'].includes(s.type)))throw Error(j.name+': yêu cầu văn bản chưa hợp lệ.');}else if(!j.images?.length||j.images.length>8)throw Error(j.name+': cần từ 1 đến 8 ảnh tham chiếu.');}
-   for(const j of jobs){const plan=j.draftPlan||w;Object.assign(j,{plan:{...copy(plan),sceneContract:1},inputSnapshot:copy(j.images||[]),nameSnapshot:j.name,noteSnapshot:j.note,state:'queued',step:0,progress:0,error:'',active:null,attempts:{},completed:[],outputs:{},resultId:null});event(j,'Đã chốt luồng v'+plan.version+' và đầu vào riêng. Chưa gửi AI.');}return jobs.length;};
+   for(const j of jobs){const plan=j.draftPlan||w;Object.assign(j,{plan:{...copy(plan),sceneContract:1},inputSnapshot:copy(j.images||[]),referenceVideoSnapshot:copy(j.referenceVideoIds||[]),nameSnapshot:j.name,noteSnapshot:j.note,state:'queued',step:0,progress:0,error:'',active:null,attempts:{},completed:[],outputs:{},resultId:null});event(j,'Đã chốt luồng v'+plan.version+' và đầu vào riêng. Chưa gửi AI.');}return jobs.length;};
   const setImages=(id,images)=>{const j=data.jobs.find(j=>j.id===id);if(!j||j.state!=='draft'||leases.has(id))throw Error('Rút sản phẩm về nháp trước khi sửa ảnh đã chốt.');if(!Array.isArray(images)||images.length>8||images.some(x=>typeof x!=='string'||!x))throw Error('Mỗi sản phẩm tối đa 8 ảnh hợp lệ.');const before=j.images;j.images=[...new Set(images)];try{persist();}catch(e){j.images=before;throw e;}onEvent(j,'Đã cập nhật ảnh riêng của sản phẩm.');};
   const unqueue=id=>{const j=data.jobs.find(j=>j.id===id);if(!j||j.state!=='queued'||leases.has(id)||j.completed?.length||Object.values(j.attempts||{}).some(n=>n>0))throw Error('Chỉ rút về nháp khi sản phẩm chưa gửi bước AI nào. Dừng tác vụ trước khi kiểm tra.');Object.assign(j,{state:'draft',plan:null,inputSnapshot:null,step:0,progress:0,active:null,error:'',outputs:{},resultId:null});if(j.inputMode!=='text')delete j.draftPlan;event(j,'Đã rút về nháp. Có thể sửa ảnh/yêu cầu rồi chốt luồng mới.');};
   const retry=id=>{const j=data.jobs.find(j=>j.id===id);if(!j||!['error','stopped'].includes(j.state))return;if(leases.has(j.id))throw Error('Đang chờ tab xác nhận dừng.');j.state='queued';j.error='';event(j,'Tiếp tục từ cảnh/bước chưa hoàn tất; giữ kết quả đã lưu.');};
   const stop=id=>{const j=data.jobs.find(j=>j.id===id);if(!j||!['queued','running'].includes(j.state))return;j.state='stopped';if(j.active)cancel(j.active.workerId);event(j,'Đã yêu cầu dừng. Tab chỉ được nhận việc mới khi yêu cầu cũ kết thúc.','warning');};
+  const remove=id=>{const j=data.jobs.find(j=>j.id===id);if(!j)return false;stop(id);data.jobs=data.jobs.filter(item=>item.id!==id);persist();onEvent(j,'Đã xóa thẻ; tệp đã lưu vẫn ở Kho media.');return true;};
   function tick(){
    if(!data.running)return;
    const busy=new Set([...leases.values()].map(l=>l.worker.id));let ai=[...leases.values()].filter(l=>l.worker.provider!=='local').length;
@@ -65,7 +66,7 @@
    }
    if(!leases.size&&!data.jobs.some(j=>j.state==='queued'))data.running=false;
   }
-  return {enqueue,setImages,unqueue,retry,stop,tick,waitingReason:j=>waitingReason(j,data),validate:()=>validate(data.workflow,data.workers),get busy(){return leases.size>0;}};
+  return {enqueue,setImages,unqueue,retry,stop,remove,tick,waitingReason:j=>waitingReason(j,data),validate:()=>validate(data.workflow,data.workers),get busy(){return leases.size>0;}};
  }
  const api={copy,capabilities,labels,descriptions,scriptInstructions,parseScenes,waitingReason,defaultWorkers,defaultWorkflow,validate,refreshWorkers,create};if(typeof module!=='undefined')module.exports=api;else root.MooZBatchModel=api;
 })(globalThis);

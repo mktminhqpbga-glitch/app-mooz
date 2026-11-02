@@ -14,6 +14,6 @@
   const [text]=prompts(prompt,false);
   return {id:'text-video',name:'Văn bản → Video',version:1,ratio,duration,scenes:1,steps:[{id:'video',type:'video',name:'Tạo video',provider,prompt:text},{id:'assemble',type:'assemble',name:'Lưu thành phẩm',provider:'local',prompt:''}]};
  }
- function draft(value={}){return {mode:value.mode==='images'?'images':'text',text:String(value.text||''),note:String(value.note||''),eachLine:value.eachLine!==false,provider:providers[value.provider]?value.provider:'muse',ratio:['9:16','16:9','1:1'].includes(value.ratio)?value.ratio:'9:16',duration:[5,10,15,30,40].includes(value.duration)?value.duration:null};}
+ function draft(value={}){return {mode:['images','frames','extend'].includes(value.mode)?value.mode:'text',firstFrame:typeof value.firstFrame==='string'?value.firstFrame:'',lastFrame:typeof value.lastFrame==='string'?value.lastFrame:'',sourceVideo:typeof value.sourceVideo==='string'?value.sourceVideo:'',text:String(value.text||''),note:String(value.note||''),eachLine:value.eachLine!==false,provider:providers[value.provider]?value.provider:'muse',ratio:['9:16','16:9','1:1'].includes(value.ratio)?value.ratio:'9:16',duration:[5,10,15,30,40].includes(value.duration)?value.duration:null};}
  const api={providers,prompts,textPlan,draft};if(typeof module!=='undefined')module.exports=api;else root.MooZBatchComposer=api;
 })(globalThis);

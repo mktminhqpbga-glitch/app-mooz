@@ -1,6 +1,6 @@
 /* Muse DOM fixtures: no authenticated account or AI generation. */
 const {chromium}=require('playwright'),assert=require('node:assert/strict'),path=require('node:path');
-(async()=>{const browser=await chromium.launch({executablePath:'/usr/bin/chromium',headless:true,args:['--no-sandbox']});try{
+(async()=>{const browser=await chromium.launch({executablePath:process.env.WORKFLOW_CHROMIUM||undefined,headless:true,args:['--no-sandbox']});try{
  async function fixture(mode){
   const page=await browser.newPage();await page.route('https://muse.ai/**',r=>r.fulfill({contentType:'text/html',body:'<main><section id="thread"><div data-message-author-role="assistant">Old answer</div></section><form><textarea placeholder="Message"></textarea><input type="file" accept="image/*,video/*"><button type="button" aria-label="Send">Send</button></form></main>'}));await page.goto('https://muse.ai/chat/current');await page.clock.install();
   await page.evaluate(mode=>{window.listeners=[];window.sent=0;window.result=null;window.chrome={runtime:{id:'test',sendMessage:async()=>{},onMessage:{addListener:f=>listeners.push(f)}}};window.call=r=>new Promise(resolve=>{for(const f of listeners)f(r,{id:'test'},resolve);});

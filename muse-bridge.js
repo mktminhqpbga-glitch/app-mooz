@@ -27,13 +27,13 @@
       for(const [key,job] of museJobs)if(job.result&&Date.now()-(job.finishedAt||job.createdAt)>1200000)museJobs.delete(key);
       const completed=[...museJobs].filter(([,job])=>job.result);while(completed.length>=3)museJobs.delete(completed.shift()[0]);
       const controller=new AbortController(),job={createdAt:Date.now(),result:null};museJobs.set(id,job);activeGenerations.set(id,controller);activity?.start(id);
-      generate(message,controller.signal).then(result=>{job.result={...result,conversationUrl:location.href};job.finishedAt=Date.now();},error=>{job.finishedAt=Date.now();job.result={ok:false,code:error.code||'MUSE_ERROR',error:error.message||String(error),block:error.block};}).finally(()=>{activeGenerations.delete(id);textStates.delete(id);activity?.finish(id);});
+      generate(message,controller.signal).then(result=>{job.result={...result,requestId:id,...(result.ok&&message.mediaType==='video'?{videoResultProtocol:1}:{}),conversationUrl:location.href};job.finishedAt=Date.now();},error=>{job.finishedAt=Date.now();job.result={ok:false,code:error.code||'MUSE_ERROR',error:error.message||String(error),block:error.block};}).finally(()=>{activeGenerations.delete(id);textStates.delete(id);activity?.finish(id);});
       sendResponse({ok:true,accepted:true,requestId:id});return false;
     }
     if (message?.type === 'MUSEFLOW_GENERATE') {
       if(activeGenerations.size){sendResponse({ok:false,error:'Muse đang xử lý yêu cầu khác.'});return false;}
       const controller=new AbortController();activeGenerations.set(message.requestId,controller);activity?.start(message.requestId);
-      generate(message,controller.signal).then(result=>sendResponse({...result,conversationUrl:location.href}), error => sendResponse({ ok: false, code:error.code||'MUSE_ERROR', error: error.message || String(error),block:error.block })).finally(()=>{activeGenerations.delete(message.requestId);textStates.delete(message.requestId);activity?.finish(message.requestId);});
+      generate(message,controller.signal).then(result=>sendResponse({...result,requestId:message.requestId,...(result.ok&&message.mediaType==='video'?{videoResultProtocol:1}:{}),conversationUrl:location.href}), error => sendResponse({ ok: false, code:error.code||'MUSE_ERROR', error: error.message || String(error),block:error.block })).finally(()=>{activeGenerations.delete(message.requestId);textStates.delete(message.requestId);activity?.finish(message.requestId);});
       return true;
     }
     if(message?.type==='MUSEFLOW_STOP_GENERATION'){
@@ -78,7 +78,7 @@
     const composer=findComposer();
     const ready=Boolean(composer&&readable(composer)&&!composer.disabled&&!composer.readOnly);
     const loginRequired=Boolean(document.querySelector('input[type="password"],button[type="submit"]'))&&/sign in|log in|登录/i.test(document.body?.innerText||'');
-    return {ok:true,sendProtocol:1,jobProtocol:1,bridgeProtocol:1,resultProtocol:2,textProtocol:1,modeProtocol:1,videoReferenceProtocol:1,backgroundProtocol:activity?(activity.version||1):0,visibility:document.visibilityState,focused:document.hasFocus(),mediaMode:composerMode(),bridgeVersion:window.__museFlowBridgeVersion,signedIn:ready&&!loginRequired,busy:activeGenerations.size>0||[...document.querySelectorAll('[data-testid="hatch-composer-stop-button"],button[aria-label*="Stop" i]')].some(readable),title:document.title,composer:ready,loginRequired,url:location.href};
+    return {ok:true,sendProtocol:1,jobProtocol:1,bridgeProtocol:1,resultProtocol:2,videoResultProtocol:1,textProtocol:1,modeProtocol:1,videoReferenceProtocol:1,backgroundProtocol:activity?(activity.version||1):0,visibility:document.visibilityState,focused:document.hasFocus(),mediaMode:composerMode(),bridgeVersion:window.__museFlowBridgeVersion,signedIn:ready&&!loginRequired,busy:activeGenerations.size>0||[...document.querySelectorAll('[data-testid="hatch-composer-stop-button"],button[aria-label*="Stop" i]')].some(readable),title:document.title,composer:ready,loginRequired,url:location.href};
   }
 
   function modeName(value){
@@ -206,9 +206,9 @@
     await ensureComposerMode(mediaType,signal,requestId,request);
     if(mediaType!=='text')prompt=[mediaType==='image'?'LOẠI KẾT QUẢ BẮT BUỘC: tạo một ẢNH TĨNH (image), không tạo video hoặc ảnh động.':'LOẠI KẾT QUẢ BẮT BUỘC: tạo một VIDEO có thể phát/tải về.',rules,prompt].filter(Boolean).join('\n\n');
     if(document.hidden)report(requestId,'Muse: tab đang ở nền. App tiếp tục gửi và theo dõi dữ liệu của lượt này.');
-    const receiptTag=mediaType==='text'?'WF-TEXT-'+crypto.randomUUID():'';
+    const receiptTag='WF-'+mediaType.toUpperCase()+'-'+crypto.randomUUID();
     if(mediaType==='text')textStates.set(requestId,{early:false,manual:''});
-    if(mediaType==='text')prompt=[`Mã lượt: ${receiptTag}. Không nhắc lại mã trong câu trả lời.`,rules,prompt].filter(Boolean).join('\n\n');
+    prompt=[`Mã lượt: ${receiptTag}. Không nhắc lại mã trong câu trả lời.`,mediaType==='text'?rules:'',prompt].filter(Boolean).join('\n\n');
     try{const saved=await chrome.storage?.local?.get('workflowMuseSendTarget');WorkflowComposer.setPreferred(saved?.workflowMuseSendTarget);}catch{WorkflowComposer.setPreferred(null);}
     await waitHydrated(15000,signal);
     throwIfAborted();
@@ -280,6 +280,9 @@
       const editor=findComposer();let root=receipt.closest('main,[role="main"]');if(!root){root=receipt.parentElement;while(root&&!root.contains(editor))root=root.parentElement;}
       return root&&root.contains(el)&&!el.contains(receipt)&&Boolean(receipt.compareDocumentPosition(el)&Node.DOCUMENT_POSITION_FOLLOWING)&&editor&&(knownAssistant||Boolean(el.compareDocumentPosition(editor)&Node.DOCUMENT_POSITION_FOLLOWING));
     };
+    const nextUserTurn=()=>{const current=newReceipts().at(-1);if(!current)return null;return [...document.querySelectorAll(userSelector)].find(user=>user!==current&&!user.contains(current)&&!current.contains(user)&&readable(user)&&normalize(user.textContent)&&Boolean(current.compareDocumentPosition(user)&Node.DOCUMENT_POSITION_FOLLOWING));};
+    let assignedConversation=initialConversation,conversationAssigned=false,pendingConversation='';const assertCurrentConversation=()=>{const current=location.origin+location.pathname;if(current===assignedConversation)return;if(!conversationAssigned&&['/','/chat','/chat/','/chat/new'].includes(new URL(initialConversation).pathname)&&(!pendingConversation||pendingConversation===current)){pendingConversation=current;if(newReceipts().length){assignedConversation=current;conversationAssigned=true;}return;}const error=Error('Cuộc trò chuyện Muse đã đổi. Không lấy video/ảnh từ chat khác; kiểm tra lượt vừa gửi trước khi thử lại.');error.code='MUSE_CHAT_CHANGED';throw error;};
+    const assertCurrentTurn=()=>{if(nextUserTurn()){const error=Error('Muse đã có tin nhắn mới sau yêu cầu của node. App không lấy kết quả của lượt khác và không gửi lại prompt.');error.code='MUSE_TURN_CHANGED';throw error;}};
     const beforeSendCount=bubbleCount(),previousTexts=new Set(priorBubbleTexts.values());
     const sendActivity=()=>!!findComposer()&&!findComposer().value.trim()&&(bubbleCount()>beforeSendCount||newReceipts().length>0||attachments().some(item=>!baseline.has(item.src))||assistantMessageElements().some(el=>{const text=(el.innerText||el.textContent||'').replace(/\s+/g,' ').trim();return text&&!previousTexts.has(text);})||[...document.querySelectorAll('[data-testid="hatch-composer-stop-button"],button[aria-label*="Stop" i],button[aria-label*="停止"]')].some(readable));
     report(requestId,'Muse: đã điền prompt, đang chờ nút Gửi…');
@@ -352,8 +355,8 @@
       throwIfAborted();
       const scanned=attachments(contextualReply);lastScan={kind:mediaType,candidates:scanned.length,baselineExcluded:scanned.filter(a=>baseline.has(a.src)).length,receipts:newReceipts().length};
       const conversationChanged=initialConversation!==location.origin+location.pathname;lastScan.conversationChanged=conversationChanged;
-      const requireCurrentTurn=mediaType==='image'||newReceipts().length>0;
-      const fresh=scanned.filter(a=>!baseline.has(a.src)&&(requireCurrentTurn?contextualReply(a.media,!!a.bubble):(!conversationChanged||followsReceipt(a))&&!priorBubbleTexts.has(a.bubble)));
+      assertCurrentConversation();assertCurrentTurn();
+      const fresh=scanned.filter(a=>!baseline.has(a.src)&&contextualReply(a.media,!!a.bubble));
       if(mediaType==='video')for(const item of fresh.filter(a=>a.isVideo&&!a.videoUrl&&!openedPlayers.has(a.src))){const play=[...item.el.querySelectorAll('button[aria-label],button[title],[role="button"][aria-label]')].find(button=>readable(button)&&/^(?:play|phát|播放)(?:\b|\s|$)/i.test(button.getAttribute('aria-label')||button.title||''));if(play){openedPlayers.add(item.src);play.click();report(requestId,'Muse: đã mở trình phát của kết quả mới, đang đọc đường dẫn video…');}}
       const matching=fresh.filter(a=>mediaType==='video'?a.isVideo:!a.isVideo);Object.assign(lastScan,{fresh:fresh.length,matching:matching.length});
       if(activity&&mediaType==='image')for(const item of matching){if(item.width&&item.height)continue;try{if(!imageCopies.has(item.src))imageCopies.set(item.src,activity.image(item.src,signal));const data=await imageCopies.get(item.src);item.width=data.width;item.height=data.height;}catch(error){if(signal?.aborted)throw error;lastScan.imageProbeError=error.name;imageCopies.delete(item.src);}}
@@ -447,11 +450,12 @@
       if(uploadButton){uploadButton.click();await delay(250,signal);input=findInput();}
     }
     if(!input)throw new Error('Muse không có ô tải tệp phù hợp với ảnh/video này. Prompt chưa được gửi.');
+    const uploadScope=()=>composerRoot?.isConnected&&composerRoot.contains(findComposer())?composerRoot:composerScope(findComposer());
     const previewSelector='img,video,[data-file-name],[role="img"],[data-testid*="attachment" i],[data-testid*="upload" i],[class*="attachment" i],[class*="upload" i]';
-    const previewElements=()=>[...composerScope(findComposer()).querySelectorAll(previewSelector)].filter(readable);
+    const previewElements=()=>[...uploadScope().querySelectorAll(previewSelector)].filter(el=>readable(el)&&!el.matches('input,button')&&!el.closest('[data-message-author-role]'));
     const previewKey=el=>{
       const src=el.matches('img,video')?(el.currentSrc||el.src||''):/url\(["']?(blob:|data:image\/|https?:)[^)]*\)/i.exec(getComputedStyle(el).backgroundImage)?.[0]||'';
-      return `${src}|${el.getAttribute('data-testid')||''}|${el.getAttribute('class')||''}|${el.getAttribute('aria-label')||''}|${el.getAttribute('title')||''}`;
+      return `${src}|${el.getAttribute('data-file-name')||''}|${el.getAttribute('data-testid')||''}|${el.getAttribute('class')||''}|${el.getAttribute('aria-label')||''}|${el.getAttribute('title')||''}|${el.childElementCount?'':el.textContent||''}`;
     };
     const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'files')?.set;
     if(!setter)throw new Error('Browser does not allow setting the Muse attachment input.');
@@ -463,12 +467,13 @@
       input.dispatchEvent(new Event('change',{bubbles:true,composed:true}));
       const started=Date.now(),deadline=started+90000;
 
-      const previewSeen=()=>previewElements().some(el=>{
-        const key=previewKey(el),src=el.matches('img')?(el.currentSrc||el.src||''):key.split('|',1)[0];
-        return !previousPreviews.has(key)&&Boolean(src);
-      });
-      while(Date.now()<deadline){WorkflowComposer.assertService(request);WorkflowComposer.assertUpload(composerScope(findComposer()));if(signal?.aborted)throw new DOMException('Generation stopped by user.','AbortError');if(previewSeen()&&!composerScope(findComposer()).querySelector('[role="progressbar"],[aria-busy="true"]')&&Date.now()-started>1500)return;await delay(160,signal);}
-      throw new Error(`Muse did not confirm ${batch.length} reference image${batch.length===1?'':'s'} in the chat composer (upload input accepts: ${input.accept||'any file'}); the prompt was not submitted.`);
+      const previewSeen=()=>{const media=new Set(),names=new Set();for(const el of previewElements()){
+        const key=previewKey(el),src=el.matches('img,video')?(el.currentSrc||el.src||''):key.split('|',1)[0];
+        const name=[el.getAttribute('data-file-name'),el.getAttribute('aria-label'),el.getAttribute('title'),el.childElementCount?'':el.textContent].filter(Boolean).join(' ');
+        if(previousPreviews.has(key))continue;if(src)media.add(src);for(const file of batch)if(name.includes(file.name))names.add(file.name);
+      }return media.size>=batch.length||names.size>=batch.length;};
+      while(Date.now()<deadline){WorkflowComposer.assertService(request);WorkflowComposer.assertUpload(uploadScope());if(signal?.aborted)throw new DOMException('Generation stopped by user.','AbortError');if(previewSeen()&&!uploadScope().querySelector('[role="progressbar"],[aria-busy="true"]')&&Date.now()-started>1500)return;await delay(160,signal);}
+      const error=Error(`Chưa xác nhận được ${batch.length} tệp tham chiếu trong ô chat Muse sau 90 giây. Prompt chưa được gửi. Mở đúng tab đã chọn, kiểm tra ảnh đính kèm và thông báo tải tệp; tải lại tab cùng MooZ Connect nếu cần. Kết quả cũ trong node chưa được thay thế.`);error.code='MUSE_UPLOAD_UNCONFIRMED';throw error;
     };
     if(files.length>1&&!input.multiple){
       for(const file of files)await uploadBatch([file]);

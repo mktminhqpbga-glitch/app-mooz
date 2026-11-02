@@ -17,7 +17,7 @@
    if(!status?.ok||status.state==='missing')throw Error(status?.error||'Tab Muse đã tải lại hoặc mất mã tác vụ. Không tự gửi lại prompt; có thể nhập video đã tạo từ Muse.');
    if(status.state==='running'&&interval===POLL_INTERVAL_MS)onProgress((status.progress||'Đang chờ Muse.')+' · App tự kiểm tra kết quả mỗi 10 giây.');else if(typeof status.progress==='string'&&status.progress)onProgress(status.progress);
    if(status.state==='done'){
-    const result=status.result;if(!result||typeof result.ok!=='boolean')throw Error('Kết quả tác vụ Muse không hợp lệ.');abort(signal);
+    const result=status.result;if(result?.requestId&&result.requestId!==id)throw Error('Mã kết quả Muse không khớp lượt đang chạy. Chưa dùng tệp này; kiểm tra tab Muse.');if(!result||typeof result.ok!=='boolean')throw Error('Kết quả tác vụ Muse không hợp lệ.');abort(signal);
     // A lost ACK is harmless: reading status is non-destructive.
     void Promise.resolve().then(()=>send({type:'MUSEFLOW_JOB_ACK',requestId:id})).catch(()=>{});return result;
    }

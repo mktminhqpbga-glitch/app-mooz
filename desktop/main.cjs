@@ -29,6 +29,8 @@ const {AffiliateService}=require('./affiliate-service.cjs');
 const {checkedURL:affiliateURL}=require('./affiliate-source.cjs');
 const {UpdateService,isDeveloperIDSigned,latestPublicRelease}=require('./updater.cjs');
 const {NAME:PRODUCT_NAME,dataDirectory,distribution}=require('./product.cjs');
+const {Workspace}=require('./workspace.cjs');
+const nativeOwner=win=>win?.owner||win;
 const distributionConfig=distribution(require('./distribution.json'));
 const version=require('../package.json').version;
 const root=path.resolve(__dirname,'..');
@@ -38,7 +40,7 @@ if(testMode){if(!process.env.WORKFLOW_TEST_DATA)throw Error('Missing test data d
 if(!testMode&&!process.argv.some(arg=>arg.startsWith('--user-data-dir'))){const directory=dataDirectory(app.getPath('appData'),app.getPath('userData'));require('node:fs').mkdirSync(directory,{recursive:true,mode:0o700});app.setPath('userData',directory);app.setPath('sessionData',directory);}else if(testMode)app.setPath('sessionData',app.getPath('userData'));app.setName(PRODUCT_NAME);
 if(!app.requestSingleInstanceLock())app.exit(0);
 app.on('second-instance',()=>{if(home&&!home.isDestroyed()){home.show();home.focus();}});
-let remoteChrome,agent,diagnostics,aiConnections,uiPreferences,store,home,ai,relay,updater,downloads,posting,postingAI,postingOAuth,brands,chats,facebookPages,facebookLogin,postingWindow,affiliate,affiliateWindow,batchWindow,batchAI,aiDispatch,chromeEverConnected=false;
+let workspace,remoteChrome,agent,diagnostics,aiConnections,uiPreferences,store,home,ai,relay,updater,downloads,posting,postingAI,postingOAuth,brands,chats,facebookPages,facebookLogin,postingWindow,affiliate,affiliateWindow,batchWindow,batchAI,aiDispatch,chromeEverConnected=false;
 const managedProjects=new Set();
 const canvases=new Map(),sessionData=new Map(),requests=new Map(),installedSessions=new WeakSet();
 const projectTransitions=new Set(),affiliateTransitions=new Set();
@@ -69,18 +71,19 @@ function appearanceURL(base){const value=uiPreferences.get(),url=new URL(base);u
 function appearanceBackground(){const value=uiPreferences.get();return palette(value.theme==='system'?(require('electron').nativeTheme.shouldUseDarkColors?'dark':'light'):value.theme,value.accent,value.colors).bg;}
 async function openPosting(){
  if(postingWindow&&!postingWindow.isDestroyed()){postingWindow.show();postingWindow.focus();return;}
- postingWindow=new BrowserWindow({icon:path.join(root,'icons/mooz-icon.png'),width:1400,height:930,minWidth:640,minHeight:520,title:'Đăng bài & điều hành · MooZ Agent',backgroundColor:appearanceBackground(),webPreferences:{preload:path.join(__dirname,'preload.cjs'),additionalArguments:['--workflow-version='+version],backgroundThrottling:false,contextIsolation:true,sandbox:true,nodeIntegration:false,webSecurity:true}});protect(postingWindow);postingWindow.on('closed',()=>{postingOAuth?.cancel();facebookLogin?.cancel();facebookPages?.clear();postingWindow=null;});await setupSession(session.defaultSession);await postingWindow.loadURL(appearanceURL('workflow://app/desktop/posting.html'));
+ if(!home||home.isDestroyed())await openHome();postingWindow=workspace.create('posting',{icon:path.join(root,'icons/mooz-icon.png'),width:1400,height:930,minWidth:640,minHeight:520,title:'Đăng bài & điều hành · MooZ Agent',backgroundColor:appearanceBackground(),webPreferences:{preload:path.join(__dirname,'preload.cjs'),additionalArguments:['--workflow-version='+version],backgroundThrottling:false,contextIsolation:true,sandbox:true,nodeIntegration:false,webSecurity:true}});protect(postingWindow);postingWindow.on('closed',()=>{postingOAuth?.cancel();facebookLogin?.cancel();facebookPages?.clear();postingWindow=null;});await setupSession(session.defaultSession);await postingWindow.loadURL(appearanceURL('workflow://app/desktop/posting.html'));
 }
 async function openHome(){
-  if(home&&!home.isDestroyed()){home.show();home.focus();return;}
+  if(home&&!home.isDestroyed()){workspace?.activate('home');home.show();home.focus();return;}
   await setupSession(session.defaultSession);
   home=new BrowserWindow({icon:path.join(root,'icons/mooz-icon.png'),width:1200,height:830,minWidth:640,minHeight:520,backgroundColor:appearanceBackground(),title:'MooZ Agent',webPreferences:{preload:path.join(__dirname,'preload.cjs'),additionalArguments:['--workflow-version='+version],backgroundThrottling:false,contextIsolation:true,sandbox:true,nodeIntegration:false,webSecurity:true}});
+  workspace=new Workspace(home,{version,appearance:()=>uiPreferences.get()});if(testMode&&globalThis.workflowTest)workflowTest.workspace=workspace;home.on('close',event=>{if(!quitApproved){event.preventDefault();app.quit();}});
   protect(home);home.on('closed',()=>{home=null;});await home.loadURL(appearanceURL('workflow://app/desktop/home.html'));
 }
 async function openBatch(){
  if(batchWindow&&!batchWindow.isDestroyed()){batchWindow.show();batchWindow.focus();return;}
  await setupSession(session.defaultSession);
- batchWindow=new BrowserWindow({icon:path.join(root,'icons/mooz-icon.png'),width:1500,height:960,minWidth:640,minHeight:520,title:'Video hàng loạt · MooZ Agent',backgroundColor:appearanceBackground(),webPreferences:{preload:path.join(__dirname,'preload.cjs'),additionalArguments:['--workflow-version='+version],backgroundThrottling:false,contextIsolation:true,sandbox:true,nodeIntegration:false,webSecurity:true}});
+ if(!home||home.isDestroyed())await openHome();batchWindow=workspace.create('batch',{icon:path.join(root,'icons/mooz-icon.png'),width:1500,height:960,minWidth:640,minHeight:520,title:'Video hàng loạt · MooZ Agent',backgroundColor:appearanceBackground(),webPreferences:{preload:path.join(__dirname,'preload.cjs'),additionalArguments:['--workflow-version='+version],backgroundThrottling:false,contextIsolation:true,sandbox:true,nodeIntegration:false,webSecurity:true}});
  const win=batchWindow;protect(win);
  win.on('close',event=>{if(quitApproved||win.batchCloseAllowed)return;event.preventDefault();if(win.batchClosing)return;win.batchClosing=true;void win.webContents.executeJavaScript('!!(window.MooZBatch?.busy()||window.MooZBatch?.state.running)').then(busy=>{if(win.isDestroyed())return;if(busy)win.hide();else{win.batchCloseAllowed=true;win.close();}}).catch(()=>win.hide()).finally(()=>{win.batchClosing=false;});});
  win.on('closed',()=>{batchAI.close();batchWindow=null;});
@@ -90,7 +93,7 @@ async function openBatch(){
 async function openAffiliate(){
  if(affiliateWindow&&!affiliateWindow.isDestroyed()){affiliateWindow.show();affiliateWindow.focus();return;}
  await setupSession(session.defaultSession);
- affiliateWindow=new BrowserWindow({icon:path.join(root,'icons/mooz-icon.png'),width:1420,height:950,minWidth:640,minHeight:520,title:'Affiliate Shopee · MooZ Agent',backgroundColor:appearanceBackground(),webPreferences:{preload:path.join(__dirname,'preload.cjs'),additionalArguments:['--workflow-version='+version],backgroundThrottling:false,contextIsolation:true,sandbox:true,nodeIntegration:false,webSecurity:true}});
+ if(!home||home.isDestroyed())await openHome();affiliateWindow=workspace.create('affiliate',{icon:path.join(root,'icons/mooz-icon.png'),width:1420,height:950,minWidth:640,minHeight:520,title:'Affiliate Shopee · MooZ Agent',backgroundColor:appearanceBackground(),webPreferences:{preload:path.join(__dirname,'preload.cjs'),additionalArguments:['--workflow-version='+version],backgroundThrottling:false,contextIsolation:true,sandbox:true,nodeIntegration:false,webSecurity:true}});
  protect(affiliateWindow);affiliateWindow.on('closed',()=>{affiliateWindow=null;});await affiliateWindow.loadURL(appearanceURL('workflow://app/desktop/affiliate.html'));
 }
 async function openProject(id){
@@ -101,19 +104,19 @@ async function openProject(id){
   await store.readStorage(id); // Refuse corrupt project rather than replacing it with a blank one.
   const existing=canvases.get(id);if(existing&&!existing.isDestroyed()){existing.show();existing.focus();return info;}
   const ses=session.fromPartition('persist:workflow-project-'+id);await setupSession(ses);
-  const win=new BrowserWindow({icon:path.join(root,'icons/mooz-icon.png'),width:1500,height:960,minWidth:640,minHeight:520,title:info.name+' · MooZ Agent',backgroundColor:appearanceBackground(),webPreferences:{session:ses,preload:path.join(__dirname,'preload.cjs'),additionalArguments:['--workflow-version='+version],backgroundThrottling:false,contextIsolation:true,sandbox:true,nodeIntegration:false,webSecurity:true}});
+  if(!home||home.isDestroyed())await openHome();const win=workspace.create(id,{icon:path.join(root,'icons/mooz-icon.png'),width:1500,height:960,minWidth:640,minHeight:520,title:info.name+' · MooZ Agent',backgroundColor:appearanceBackground(),webPreferences:{session:ses,preload:path.join(__dirname,'preload.cjs'),additionalArguments:['--workflow-version='+version],backgroundThrottling:false,contextIsolation:true,sandbox:true,nodeIntegration:false,webSecurity:true}});
   win.projectId=id;canvases.set(id,win);sessionData.set(id,{});protect(win);
   win.prepareToClose=async({requireSaved=false}={})=>{
     if(win.isDestroyed()||win.workflowCloseAllowed)return true;
     if(win.workflowClosing)return false;win.workflowClosing=true;
     try{
       const busy=await win.webContents.executeJavaScript('!!window.WorkflowDesktopLifecycle?.busy()');
-      if(busy){const answer=await dialog.showMessageBox(win,{type:'warning',buttons:['Ở lại','Lưu, dừng và đóng'],defaultId:0,cancelId:0,message:'Workflow đang chạy. Bạn muốn lưu, dừng tác vụ và đóng dự án?'});if(answer.response!==1)return false;}
+      if(busy){const answer=await dialog.showMessageBox(nativeOwner(win),{type:'warning',buttons:['Ở lại','Lưu, dừng và đóng'],defaultId:0,cancelId:0,message:'Workflow đang chạy. Bạn muốn lưu, dừng tác vụ và đóng dự án?'});if(answer.response!==1)return false;}
       await agent?.closeProject(id);await agent?.store.writes;
       await win.webContents.executeJavaScript('window.WorkflowDesktopLifecycle?.stop()');
       await win.webContents.executeJavaScript('window.WorkflowDesktopLifecycle?.flush()');
       win.workflowCloseAllowed=true;win.close();return true;
-    }catch(error){if(requireSaved){await dialog.showMessageBox(win,{type:'error',buttons:['Ở lại'],message:'Chưa lưu được dự án. Bản cập nhật chưa được cài; hãy sửa lỗi lưu rồi thử lại.'});return false;}const answer=await dialog.showMessageBox(win,{type:'error',buttons:['Ở lại','Đóng, bỏ thay đổi chưa lưu'],defaultId:0,cancelId:0,message:'Chưa lưu được dự án: '+error.message});if(answer.response===1){win.workflowCloseAllowed=true;win.destroy();return true;}return false;}
+    }catch(error){if(requireSaved){await dialog.showMessageBox(nativeOwner(win),{type:'error',buttons:['Ở lại'],message:'Chưa lưu được dự án. Bản cập nhật chưa được cài; hãy sửa lỗi lưu rồi thử lại.'});return false;}const answer=await dialog.showMessageBox(nativeOwner(win),{type:'error',buttons:['Ở lại','Đóng, bỏ thay đổi chưa lưu'],defaultId:0,cancelId:0,message:'Chưa lưu được dự án: '+error.message});if(answer.response===1){win.workflowCloseAllowed=true;win.destroy();return true;}return false;}
     finally{win.workflowClosing=false;}
   };
   win.on('close',event=>{if(!win.workflowCloseAllowed){event.preventDefault();void win.prepareToClose();}});
@@ -124,7 +127,7 @@ async function openProject(id){
 function context(event){
   const frame=event.senderFrame;if(!frame||frame!==event.sender.mainFrame)throw Error('Only the application window can request desktop actions.');
   const url=new URL(frame.url);if(url.protocol!=='workflow:'||url.host!=='app')throw Error('Untrusted caller.');
-  const win=BrowserWindow.fromWebContents(event.sender);if(!win)throw Error('Unknown window.');return {win,id:win.projectId,home:url.pathname==='/desktop/home.html',posting:win===postingWindow&&url.pathname==='/desktop/posting.html',batch:win===batchWindow&&url.pathname==='/desktop/batch/index.html',affiliate:win===affiliateWindow&&url.pathname==='/desktop/affiliate.html'};
+  const win=workspace?.lookup(event.sender)||BrowserWindow.fromWebContents(event.sender);if(!win)throw Error('Unknown window.');return {win,id:win.projectId,home:url.pathname==='/desktop/home.html',posting:win===postingWindow&&url.pathname==='/desktop/posting.html',batch:win===batchWindow&&url.pathname==='/desktop/batch/index.html',affiliate:win===affiliateWindow&&url.pathname==='/desktop/affiliate.html'};
 }
 function send(win,value){if(!win.isDestroyed())win.webContents.send('workflow:event',value);}
 async function fetchBounded(id,data){
@@ -344,12 +347,16 @@ async function handleWorkflowCall(event,method,data={}){
   if(method==='extension.download')return downloads.download(win,{url:'data:application/octet-stream;base64,'+(await require('node:fs/promises').readFile(path.join(root,'extension/Workflow-Connect.zip'))).toString('base64'),filename:'MooZ-Connect.zip',saveAs:false});
   if(method==='appearance.get')return uiPreferences.get();
   if(method==='appearance.save'){const value=await uiPreferences.save(data);notify({type:'appearance',value});return value;}
-  if(method==='windows.list')return [...(home&&!home.isDestroyed()?[{key:'home',name:'Thư viện dự án',win:home}]:[]),...(postingWindow&&!postingWindow.isDestroyed()?[{key:'posting',name:'Đăng bài / Điều hành',win:postingWindow}]:[]),...(batchWindow&&!batchWindow.isDestroyed()?[{key:'batch',name:'Video hàng loạt',win:batchWindow}]:[]),...(affiliateWindow&&!affiliateWindow.isDestroyed()?[{key:'affiliate',name:'Affiliate Shopee',win:affiliateWindow}]:[]),...[...canvases].filter(([,w])=>!w.isDestroyed()).map(([key,w])=>({key,name:w.getTitle(),win:w}))].map(w=>({key:w.key,name:w.name,active:w.win===win}));
+  if(method==='workspace.state')return workspace.snapshot();
+  if(method==='workspace.activate'){workspace.activate(data.key);return;}
+  if(method==='workspace.close'){const tab=workspace.tabs.get(data.key);if(tab)tab.close();return;}
+  if(method==='workspace.appearance'){await workspace.current().webContents.executeJavaScript('document.getElementById("appearanceOpen")?.click()');return;}
+  if(method==='windows.list')return [...(home&&!home.isDestroyed()?[{key:'home',name:'Thư viện dự án',win:home}]:[]),...(postingWindow&&!postingWindow.isDestroyed()?[{key:'posting',name:'Đăng bài / Điều hành',win:postingWindow}]:[]),...(batchWindow&&!batchWindow.isDestroyed()?[{key:'batch',name:'Video hàng loạt',win:batchWindow}]:[]),...(affiliateWindow&&!affiliateWindow.isDestroyed()?[{key:'affiliate',name:'Affiliate Shopee',win:affiliateWindow}]:[]),...[...canvases].filter(([,w])=>!w.isDestroyed()).map(([key,w])=>({key,name:w.getTitle(),win:w}))].map(w=>({key:w.key,name:w.name,active:(w.key==='home'?workspace.active==='home':workspace.active===w.key)}));
   if(method==='windows.status'){
    const list=await handleWorkflowCall(event,'windows.list');
    return Promise.all(list.map(async item=>{let busy=false;const target=item.key==='batch'?batchWindow:canvases.get(item.key);if(target){let timer;try{busy=await Promise.race([target.webContents.executeJavaScript(item.key==='batch'?'!!window.MooZBatch?.busy()':'!!window.WorkflowDesktopLifecycle?.busy()'),new Promise(resolve=>{timer=setTimeout(()=>resolve(null),1500);})]);}catch{busy=null;}finally{clearTimeout(timer);}}else if(item.key==='posting')busy=!!posting?.busy();else if(item.key==='affiliate')busy=!!affiliate?.working;return {...item,busy};}));
   }
-  if(method==='windows.focus'){const target=data.key==='home'?home:data.key==='posting'?postingWindow:data.key==='affiliate'?affiliateWindow:data.key==='batch'?batchWindow:canvases.get(data.key);if(!target||target.isDestroyed())throw Error('Cửa sổ đã đóng.');target.show();if(target.isMinimized())target.restore();target.focus();return;}
+  if(method==='windows.focus'){if(data.key==='home')workspace.activate('home');const target=data.key==='home'?home:data.key==='posting'?postingWindow:data.key==='affiliate'?affiliateWindow:data.key==='batch'?batchWindow:canvases.get(data.key);if(!target||target.isDestroyed())throw Error('Cửa sổ đã đóng.');target.show();if(target.isMinimized())target.restore();target.focus();return;}
   if(method==='home.open'){await openHome();return;}
   if(!id)throw Error('Project context required.');
   if(method.startsWith('agent.')){
@@ -398,10 +405,10 @@ async function handleWorkflowCall(event,method,data={}){
 ipcMain.handle('workflow:call',async(event,method,data={})=>{
  const ctx=context(event);
  try{return await handleWorkflowCall(event,method,data);}
- catch(error){if(diagnostics&&typeof method==='string'&&!method.startsWith('diagnostics.'))void diagnostics.record({source:'IPC '+method,surface:ctx.home?'library':ctx.posting?'posting':ctx.affiliate?'affiliate':'canvas',message:String(error.message||error)}).then(()=>notify({type:'diagnostics'})).catch(()=>{});throw error;}
+ catch(error){if(diagnostics&&typeof method==='string'&&!method.startsWith('diagnostics.'))void diagnostics.record({source:'IPC '+method,surface:ctx.home?'library':ctx.posting?'posting':ctx.affiliate?'affiliate':'canvas',message:String(error.message||error),issueKind:error.issueKind}).then(()=>notify({type:'diagnostics'})).catch(()=>{});throw error;}
 });
 app.whenReady().then(async()=>{
-  downloads=new Downloads({directory:()=>app.getPath('downloads'),windowFor:contents=>contents?BrowserWindow.fromWebContents(contents):null,dialog,notify:send,reveal:file=>shell.showItemInFolder(file)});
+  downloads=new Downloads({directory:()=>app.getPath('downloads'),windowFor:contents=>contents?(workspace?.lookup(contents)||BrowserWindow.fromWebContents(contents)):null,dialog:{showSaveDialog:(win,options)=>dialog.showSaveDialog(nativeOwner(win),options)},notify:send,reveal:file=>shell.showItemInFolder(file)});
   store=new ProjectStore(path.join(app.getPath('userData'),'projects'));
   uiPreferences=new UIPreferences(app.getPath('userData'));await uiPreferences.load();
   diagnostics=new Diagnostics(app.getPath('userData'),{version,secretValues:()=>[...(aiConnections?.keys?.values()||[]),...[...sessionData.values()].flatMap(v=>Object.values(v?.workflowApiKeys||{}))]});await diagnostics.init();
@@ -434,9 +441,9 @@ app.whenReady().then(async()=>{
   updater.on('status',status=>notify({type:'update',status}));updater.start();
   if(testMode)globalThis.workflowTest={remoteChrome,agent,diagnostics,aiConnections,store,ai,relay,updater,posting,postingAI,postingOAuth,brands,chats,facebookPages,facebookLogin,affiliate,batchAI,aiDispatch,openBatch,openProject,openHome,openPosting,openAffiliate};
   Menu.setApplicationMenu(Menu.buildFromTemplate([
-    ...(process.platform==='darwin'?[{role:'appMenu'}]:[]),
-    {label:'Dự án',submenu:[{label:'Thư viện dự án',accelerator:'CmdOrCtrl+Shift+P',click:()=>void openHome()},{role:'close'},{role:'quit'}]},
-    {role:'editMenu'},{label:'Hiển thị',submenu:[{role:'reload'},{role:'toggleDevTools'},{role:'resetZoom'},{role:'zoomIn'},{role:'zoomOut'}]},
+    ...(process.platform==='darwin'?[{label:PRODUCT_NAME,role:'appMenu'}]:[]),
+    {label:'Dự án',submenu:[{label:'Thư viện dự án',accelerator:'CmdOrCtrl+Shift+P',click:()=>void openHome()},{label:'Đóng tab hiện tại',accelerator:'CmdOrCtrl+W',click:()=>{const focused=BrowserWindow.getFocusedWindow();if(focused&&focused!==home)focused.close();else if(workspace?.active!=='home')workspace.current().close();else home?.close();}},{role:'quit',label:'Thoát MooZ Agent'}]},
+    {label:'Chỉnh sửa',submenu:[{role:'undo',label:'Hoàn tác'},{role:'redo',label:'Làm lại'},{type:'separator'},{role:'cut',label:'Cắt'},{role:'copy',label:'Sao chép'},{role:'paste',label:'Dán'},{role:'selectAll',label:'Chọn tất cả'}]},{label:'Hiển thị',submenu:[{label:'Tải lại tab',accelerator:'CmdOrCtrl+R',click:()=>workspace?.current().webContents.reload()},{label:'Công cụ kiểm tra',click:()=>workspace?.current().webContents.toggleDevTools()},{role:'resetZoom',label:'Cỡ gốc'},{role:'zoomIn',label:'Phóng to'},{role:'zoomOut',label:'Thu nhỏ'}]},
     {label:'AI',submenu:Object.entries(Object.fromEntries(Object.entries(require('../ai-sites.js').sites).map(([id,s])=>[id,s.name]))).map(([id,label])=>({label:'Mở '+label,click:()=>ai.open(id)}))}
   ]));
   await openHome();
@@ -448,6 +455,6 @@ app.on('window-all-closed',()=>{if(process.platform!=='darwin')app.quit();});
 let quitApproved=false,quitInProgress=false;
 app.on('before-quit',event=>{
   if(quitApproved)return;event.preventDefault();if(quitInProgress)return;quitInProgress=true;if(posting)posting.hold=true;
-  void(async()=>{try{await aiDispatch?.writes.catch(()=>{});await diagnostics?.writes.catch(()=>{});await brands?.writes.catch(()=>{});if(chats)await Promise.allSettled([...chats.writes.values()]);if(posting?.busy()){const answer=await dialog.showMessageBox({type:'warning',buttons:['Ở lại','Thoát ứng dụng'],defaultId:0,cancelId:0,message:'Đăng bài đang xử lý. Thoát có thể làm gián đoạn gửi bài; kiểm tra nền tảng trước khi thử lại.'});if(answer.response!==1)return;}for(const win of [...canvases.values()])if(!await win.prepareToClose())return;if(batchWindow&&!batchWindow.isDestroyed()){const busy=await batchWindow.webContents.executeJavaScript('!!window.MooZBatch?.busy()');if(busy){const answer=await dialog.showMessageBox(batchWindow,{type:'warning',buttons:['Ở lại','Lưu, dừng và thoát'],defaultId:0,cancelId:0,message:'Video hàng loạt đang chạy. Dừng và thoát? Kiểm tra tab AI trước khi chạy tiếp tác vụ bị gián đoạn.'});if(answer.response!==1)return;}await batchWindow.webContents.executeJavaScript('window.MooZBatch?.flushAndStop()');}batchAI?.close();await affiliate?.close();for(const key of new Set([...aiDispatch.records.values()].filter(r=>r.stage!=='done').map(r=>r.key)))await aiDispatch.disconnect(key);await aiDispatch.writes.catch(()=>{});await remoteChrome?.close();quitApproved=true;app.quit();}finally{quitInProgress=false;if(posting&&!quitApproved)posting.hold=false;}})();
+  void(async()=>{try{await aiDispatch?.writes.catch(()=>{});await diagnostics?.writes.catch(()=>{});await brands?.writes.catch(()=>{});if(chats)await Promise.allSettled([...chats.writes.values()]);if(posting?.busy()){const answer=await dialog.showMessageBox({type:'warning',buttons:['Ở lại','Thoát ứng dụng'],defaultId:0,cancelId:0,message:'Đăng bài đang xử lý. Thoát có thể làm gián đoạn gửi bài; kiểm tra nền tảng trước khi thử lại.'});if(answer.response!==1)return;}for(const win of [...canvases.values()])if(!await win.prepareToClose())return;if(batchWindow&&!batchWindow.isDestroyed()){const busy=await batchWindow.webContents.executeJavaScript('!!window.MooZBatch?.busy()');if(busy){const answer=await dialog.showMessageBox(nativeOwner(batchWindow),{type:'warning',buttons:['Ở lại','Lưu, dừng và thoát'],defaultId:0,cancelId:0,message:'Video hàng loạt đang chạy. Dừng và thoát? Kiểm tra tab AI trước khi chạy tiếp tác vụ bị gián đoạn.'});if(answer.response!==1)return;}await batchWindow.webContents.executeJavaScript('window.MooZBatch?.flushAndStop()');}batchAI?.close();await affiliate?.close();for(const key of new Set([...aiDispatch.records.values()].filter(r=>r.stage!=='done').map(r=>r.key)))await aiDispatch.disconnect(key);await aiDispatch.writes.catch(()=>{});await remoteChrome?.close();quitApproved=true;app.quit();}finally{quitInProgress=false;if(posting&&!quitApproved)posting.hold=false;}})();
 });
 app.on('will-quit',()=>{postingOAuth?.cancel();facebookLogin?.cancel();facebookPages?.clear();posting?.close();updater?.stop();void remoteChrome?.close();void relay?.close();for(const controller of requests.values())controller.abort();});

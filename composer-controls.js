@@ -75,7 +75,9 @@
   function scopeFor(editor){
     if(!editor)return null;
     const history='video,[data-testid^="hatch-chat-attachment-presentation-"],[data-message-id],[class*="assistant-message" i],[class*="assistant-bubble" i],[data-message-author-role],model-response,user-query,[class*="hatch-chat-groupable-bubble"],[class*="chat-user-bubble"]';
-    const form=editor.closest('form');if(form&&!form.querySelector(history))return form;
+    // A draft video/thumbnail is not a conversation message. In particular,
+    // adding an upload must not shrink the verified form to the editor's wrapper.
+    const form=editor.closest('form');if(form&&!form.querySelector('[data-message-id],[data-message-author-role],model-response,user-query,[class*="assistant-message" i],[class*="assistant-bubble" i],[class*="chat-user-bubble"]'))return form;
     let best=editor.parentElement;if(!best||best===document.body||best.tagName==='MAIN')return editor;
     for(let el=editor.parentElement;el&&el!==document.body&&el.tagName!=='MAIN';el=el.parentElement){if(el.querySelector(history))break;best=el;}
     return best;

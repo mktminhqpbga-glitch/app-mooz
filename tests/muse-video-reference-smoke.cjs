@@ -1,6 +1,6 @@
 /* Real Chromium DOM; Muse upload/generation are fixtures. */
 const {chromium}=require('playwright'),assert=require('node:assert/strict'),path=require('node:path'),fs=require('node:fs');
-(async()=>{const browser=await chromium.launch({executablePath:'/usr/bin/chromium',headless:true,args:['--no-sandbox']});try{
+(async()=>{const browser=await chromium.launch({executablePath:process.env.WORKFLOW_CHROMIUM||undefined,headless:true,args:['--no-sandbox']});try{
  for(const accepts of [true,false]){
   const page=await browser.newPage();await page.route('https://muse.ai/**',r=>r.fulfill({contentType:'text/html',body:`<main><section id="thread"></section><form><textarea placeholder="Message"></textarea><input type="file" accept="${accepts?'video/*,image/*':'image/*'}"><button type="button" aria-label="Send">Send</button></form></main>`}));await page.goto('https://muse.ai/chat/video-ref');await page.clock.install();
   await page.evaluate(expected=>{window.result=null;window.sent=0;window.uploaded=null;window.expected=expected;window.listeners=[];window.chrome={runtime:{id:'test',sendMessage:async()=>{},onMessage:{addListener:f=>listeners.push(f)}}};window.call=req=>new Promise(resolve=>{for(const f of listeners)f(req,{id:'test'},resolve);});document.querySelector('input').onchange=event=>{uploaded={type:event.target.files[0].type,size:event.target.files[0].size};const card=document.createElement('div');card.dataset.testid='upload-attachment';card.innerHTML='<video src="data:video/mp4;base64,AQID"></video>';document.querySelector('form').append(card);};

@@ -32,8 +32,8 @@ const path=require('node:path');
 
   await canvas.evaluate(()=>{window.webClipboardCalls=0;Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async()=>{window.webClipboardCalls++;throw Error('Web clipboard blocked');}}});});
   await canvas.click('#desktopConnectChrome');await canvas.waitForSelector('#canvasChromeDialog[open]');const canvasPair=await canvas.locator('#canvasChromePairing').inputValue();assert.match(canvasPair,/^workflow-connect:\/\/127\.0\.0\.1:/);await application.evaluate(({clipboard})=>clipboard.writeText('clipboard-test-sentinel'));await canvas.click('#canvasChromeCopy');await canvas.waitForFunction(()=>document.querySelector('#canvasChromeStatus').textContent.includes('Đã sao chép'));assert.ok(await clipboardMatches(canvasPair),'Canvas copy writes the exact pairing URI to native clipboard');assert.equal(await canvas.evaluate(()=>webClipboardCalls),0);
-  await canvas.click('#canvasChromeReveal');assert.equal(await canvas.locator('#canvasChromePairing').getAttribute('type'),'text');await application.evaluate(async({clipboard,BrowserWindow})=>{await clipboard.writeText('manual-copy-sentinel');BrowserWindow.getAllWindows().find(w=>w.projectId).webContents.copy();});assert.ok(await clipboardMatches(canvasPair),'Revealed readonly text supports native manual copy');await canvas.click('#canvasChromeClose');await canvas.waitForFunction(()=>document.querySelector('#canvasChromePairing').value==='');assert.ok((await canvas.locator('#canvasChromePairing').inputValue())==='');assert.equal(await canvas.locator('#canvasChromePairing').getAttribute('type'),'password');
-  await home.click('#newProject');await home.locator('#projectName').focus();await application.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows().find(w=>!w.projectId).webContents.paste());await home.waitForFunction(value=>document.querySelector('#projectName').value===value,canvasPair);assert.ok((await home.locator('#projectName').inputValue())===canvasPair,'Pairing code can be pasted into another app window');await home.click('#cancelName');
+  await canvas.click('#canvasChromeReveal');assert.equal(await canvas.locator('#canvasChromePairing').getAttribute('type'),'text');await application.evaluate(async({clipboard,BrowserWindow})=>{await clipboard.writeText('manual-copy-sentinel');(globalThis.workflowTest?.workspace?.windows()||BrowserWindow.getAllWindows()).find(w=>w.projectId).webContents.copy();});assert.ok(await clipboardMatches(canvasPair),'Revealed readonly text supports native manual copy');await canvas.click('#canvasChromeClose');await canvas.waitForFunction(()=>document.querySelector('#canvasChromePairing').value==='');assert.ok((await canvas.locator('#canvasChromePairing').inputValue())==='');assert.equal(await canvas.locator('#canvasChromePairing').getAttribute('type'),'password');
+  await home.click('#newProject');await home.locator('#projectName').focus();await application.evaluate(({BrowserWindow})=>(globalThis.workflowTest?.workspace?.windows()||BrowserWindow.getAllWindows()).find(w=>!w.projectId).webContents.paste());await home.waitForFunction(value=>document.querySelector('#projectName').value===value,canvasPair);assert.ok((await home.locator('#projectName').inputValue())===canvasPair,'Pairing code can be pasted into another app window');await home.click('#cancelName');
 
 
   assert.equal(await canvas.evaluate(()=>chrome.runtime.getManifest().version),require('../package.json').version);
@@ -72,9 +72,9 @@ const path=require('node:path');
   await canvas.evaluate(id=>chrome.scripting.executeScript({target:{tabId:id},files:['ai-activity.js','composer-controls.js','ai-bridge.js']}),tab.id);
   const check=await canvas.evaluate(id=>chrome.tabs.sendMessage(id,{type:'WORKFLOW_AI_CHECK'}),tab.id);assert.equal(check.composer,true);
   assert.equal(check.backgroundProtocol,1);
-  await application.evaluate(({BrowserWindow})=>{for(const win of BrowserWindow.getAllWindows()){if(win.webContents.getBackgroundThrottling()!==false)throw Error('Managed window still throttles background work');if(win.projectId||win.webContents.getURL().startsWith('https://chatgpt.com'))win.hide();}});
+  await application.evaluate(({BrowserWindow})=>{for(const win of (globalThis.workflowTest?.workspace?.windows()||BrowserWindow.getAllWindows())){if(win.webContents.getBackgroundThrottling()!==false)throw Error('Managed window still throttles background work');if(win.projectId||win.webContents.getURL().startsWith('https://chatgpt.com'))win.hide();}});
   const result=await canvas.evaluate(id=>chrome.tabs.sendMessage(id,{type:'WORKFLOW_AI_GENERATE',requestId:'desktop-smoke',mediaType:'text',prompt:'Describe the workflow',sendMode:'auto'}),tab.id);assert.equal(result.ok,true);assert.equal(result.text,'Desktop bridge verified');
-  await application.evaluate(({BrowserWindow})=>{for(const win of BrowserWindow.getAllWindows())if(win.projectId)win.show();});
+  await application.evaluate(({BrowserWindow})=>{for(const win of (globalThis.workflowTest?.workspace?.windows()||BrowserWindow.getAllWindows()))if(win.projectId)win.show();});
   // Exercise the authenticated Chrome relay through the real Electron IPC path.
   const {WebSocket}=require('ws');const {once}=require('node:events');
   const pair=await home.evaluate(()=>window.workflowHome.connectChrome());const pairURL=new URL(pair.url);
@@ -106,7 +106,7 @@ const path=require('node:path');
   await toolbarAction(canvas,'#addNodeMenuBtn');await canvas.click('[data-add="prompt"]');
   await canvas.locator('.node textarea').first().fill('Edit immediately before native close');
   const closing=canvas.waitForEvent('close');
-  await application.evaluate(async({BrowserWindow})=>{const win=BrowserWindow.getAllWindows().find(w=>w.projectId);win.close();});
+  await application.evaluate(async({BrowserWindow})=>{const win=(globalThis.workflowTest?.workspace?.windows()||BrowserWindow.getAllWindows()).find(w=>w.projectId);win.close();});
   await closing;
   const reopened=application.waitForEvent('window');await home.evaluate(id=>window.workflowHome.openProject(id),project.id);const restored=await reopened;await restored.waitForSelector('.node textarea');
   assert.equal(await restored.locator('.node textarea').first().inputValue(),'Edit immediately before native close');
@@ -114,7 +114,7 @@ const path=require('node:path');
   // An update must never accept the normal close-without-saving fallback.
   await application.evaluate(async({dialog,BrowserWindow})=>{
     const t=globalThis.workflowTest;const original=t.store.writeStorage,show=dialog.showMessageBox;
-    try{t.store.writeStorage=async()=>{throw Error('simulated disk failure');};dialog.showMessageBox=async()=>({response:0});const win=BrowserWindow.getAllWindows().find(w=>w.projectId);if(await win.prepareToClose({requireSaved:true}))throw Error('Update proceeded despite save failure');if(win.isDestroyed())throw Error('Project closed despite failed update save');}
+    try{t.store.writeStorage=async()=>{throw Error('simulated disk failure');};dialog.showMessageBox=async()=>({response:0});const win=(globalThis.workflowTest?.workspace?.windows()||BrowserWindow.getAllWindows()).find(w=>w.projectId);if(await win.prepareToClose({requireSaved:true}))throw Error('Update proceeded despite save failure');if(win.isDestroyed())throw Error('Project closed despite failed update save');}
     finally{t.store.writeStorage=original;dialog.showMessageBox=show;}
   });
   assert.deepEqual(errors,[]);

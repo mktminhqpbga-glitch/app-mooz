@@ -54,7 +54,7 @@ const path = require('node:path');
       assert.equal(await home.locator('#homeGuide').evaluate(node => node.open), guideOpen);
     }
     await home.click('#connectionsOpen');
-    await home.waitForFunction(() => document.querySelector('#connectionsVersion').textContent.includes('1.8.0'));
+    await home.waitForFunction(() => document.querySelector('#connectionsVersion').textContent.includes('1.8.1'));
     assert.equal(await home.locator('#extensionManualGuide').getAttribute('open'), '');
     for (const name of ['Mở Grok', 'Mở Google Flow / Veo']) {
       const button = home.getByRole('button', {name, exact: true});

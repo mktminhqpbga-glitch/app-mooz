@@ -3,7 +3,7 @@ const assert=require('node:assert/strict');
 const path=require('node:path');
 
 (async()=>{
-  const browser=await chromium.launch({executablePath:'/usr/bin/chromium',headless:true,args:['--no-sandbox']});
+  const browser=await chromium.launch({executablePath:process.env.WORKFLOW_CHROMIUM||undefined,headless:true,args:['--no-sandbox']});
   try{
     const page=await browser.newPage();
     await page.route('https://muse.ai/**',r=>r.fulfill({contentType:'text/html',body:'<main><section id="thread"><article id="old"><div data-message-author-role="user">Create the next portrait image</div><div data-message-author-role="assistant"><img id="previous-image"></div></article></section><form><textarea placeholder="Message"></textarea><button type="button" aria-label="Send">Send</button></form></main>'}));

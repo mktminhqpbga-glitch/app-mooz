@@ -13,13 +13,13 @@ const fs=require('node:fs/promises'),os=require('node:os'),path=require('node:pa
    t.postingAI.tabs=async()=>t.fixtureTabs;
    t.ai.script=async()=>{};
    t.ai.message=async(id,message)=>{
-    if(message.type==='MUSEFLOW_CHECK_SESSION')return {composer:true,signedIn:true,sendProtocol:1,jobProtocol:1,resultProtocol:2,textProtocol:1,modeProtocol:1,backgroundProtocol:2,visibility:'hidden'};
+    if(message.type==='MUSEFLOW_CHECK_SESSION')return {composer:true,signedIn:true,sendProtocol:1,jobProtocol:1,resultProtocol:2,videoResultProtocol:1,textProtocol:1,modeProtocol:1,backgroundProtocol:2,visibility:'hidden'};
     if(message.type==='MUSEFLOW_JOB_START'){t.fixtureMessages.push({id,...message});t.fixtureResults.set(message.requestId,message.mediaType==='text'?{ok:true,text:t.fixtureScript||'Kịch bản cho đúng sản phẩm.'}:{ok:true,url:message.mediaType==='image'?'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j7ZkAAAAASUVORK5CYII=':'data:video/mp4;base64,'+video});return {ok:true};}
     if(message.type==='MUSEFLOW_JOB_STATUS')return {ok:true,state:'done',result:t.fixtureResults.get(message.requestId)};
     return {ok:true};
    };
   },{video,root});
-  const promise=app.waitForEvent('window');await home.click('#aiAppsBatch');const page=await promise;page.setDefaultTimeout(60000);page.on('pageerror',e=>errors.push(e.message));await page.waitForFunction(()=>window.MooZBatch);
+  const promise=app.waitForEvent('window');await home.click('#aiAppsBatch');const page=await promise;page.setDefaultTimeout(60000);page.on('pageerror',e=>{errors.push(e.message);console.error(e.stack);});await page.waitForFunction(()=>window.MooZBatch);
   assert.equal(await page.evaluate(()=>MooZBatch.state.jobs.length),0);assert.equal(await page.evaluate(()=>MooZBatch.assets.length),0);assert.equal(await page.locator('text=PREVIEW · KHÔNG GỌI AI').count(),0);
   await page.click('#openPool');await page.click('#refreshTabs');assert.match(await page.locator('#tabsStatus').innerText(),/0 tab/);
   const tabs=n=>Array.from({length:n},(_,i)=>({id:100+i,transport:'native',provider:'muse',title:'Muse test '+(i+1),url:'https://muse.ai/chat/test-'+i}));
