@@ -1,4 +1,6 @@
-# MooZ Agent 0.61.4
+# MooZ Agent 0.61.5
+
+**0.61.5:** thêm **Ảnh nhân vật tham chiếu** tùy chọn trong Luồng & tab AI: tải ảnh hoặc chọn từ kho, bật/tắt và lưu cùng luồng. Ảnh nhân vật đi kèm ảnh sản phẩm/cảnh khi tạo ảnh/video; tác vụ đã xếp hàng giữ ảnh đã chốt. [Cách dùng và kiểm chứng](docs/USER-REVIEW-0615.md).
 
 **0.61.4:** thêm **Prompt chung** cạnh **Thêm bước** trong Luồng & tab AI; nhập yêu cầu áp dụng cho các cảnh video rồi **Lưu vào luồng**. Sửa form kết nối bị chặn bởi ô URL đã ẩn, panel Affiliate che điều khiển và dòng thương hiệu Batch bị cắt. [Các luồng đã kiểm tra](docs/USER-REVIEW-0614.md).
 

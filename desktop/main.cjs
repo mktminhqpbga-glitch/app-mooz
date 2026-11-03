@@ -179,7 +179,7 @@ async function handleWorkflowCall(event,method,data={}){
   if(method.startsWith('batch.')){
    if(!ctx.batch)throw Error('Mở Video hàng loạt trước.');
    if(method==='batch.tabs')return batchAI.tabs({check:true});
-   if(method==='batch.pickImages')return batchImages.pick(nativeOwner(win));
+   if(method==='batch.pickImages')return batchImages.pick(nativeOwner(win),{purpose:data.purpose==='character'?'character':'product'});
    if(method==='batch.focus')return batchAI.focus(data.workerId);
    if(method==='batch.generate')return batchAI.generate(data);
    if(method==='batch.stop'){batchAI.stop(data.workerId);return;}

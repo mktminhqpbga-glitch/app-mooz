@@ -73,6 +73,7 @@ jobs:
           node tests/desktop-product-import-smoke.cjs
           node tests/desktop-interaction-audit-smoke.cjs
           node tests/desktop-batch-common-prompt-smoke.cjs
+          node tests/desktop-batch-character-reference-smoke.cjs
       - name: Lưu ảnh và số đo kiểm tra giao diện
         if: always()
         uses: actions/upload-artifact@v4

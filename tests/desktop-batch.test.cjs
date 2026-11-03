@@ -1,6 +1,17 @@
 const {test}=require('node:test'),assert=require('node:assert/strict');
 const M=require('../desktop/batch/model.js'),{BatchAI}=require('../desktop/batch-ai.cjs');
 const flush=()=>new Promise(resolve=>setImmediate(resolve));
+test('optional character reference is validated, bounded and copied per queued product',()=>{
+ const data=setup(2),w=data.workflow;w.characterReferenceEnabled=true;
+ assert.throws(()=>M.validate(w,data.workers,{requireTabs:false}),/Chọn ảnh nhân vật/);
+ w.characterReferenceId='person-A';data.jobs[0].images=Array.from({length:8},(_,i)=>'image-'+i);
+ const engine=M.create(data);assert.throws(()=>engine.enqueue(['p0','p1'],w),/tối đa 7 ảnh/);assert.ok(data.jobs.every(j=>j.state==='draft'),'Failed preflight never partially queues products');
+ data.jobs[0].images.pop();assert.equal(engine.enqueue(['p0'],w),1);w.characterReferenceId='person-B';w.characterReferenceEnabled=false;
+ assert.equal(data.jobs[0].plan.characterReferenceId,'person-A');assert.equal(data.jobs[0].plan.characterReferenceEnabled,true);
+ data.jobs[1].images=Array.from({length:8},(_,i)=>'other-'+i);assert.equal(engine.enqueue(['p1'],w),1);assert.equal(data.jobs[1].plan.characterReferenceEnabled,false);
+ const missing=setup(1);missing.workflow.characterReferenceEnabled=true;missing.workflow.characterReferenceId='removed';
+ const guarded=M.create(missing,{validateInput:()=>{throw Error('Ảnh nhân vật không còn trong kho');}});assert.throws(()=>guarded.enqueue(['p0'],missing.workflow),/không còn trong kho/);assert.equal(missing.jobs[0].state,'draft');
+});
 const tabs=n=>Array.from({length:n},(_,i)=>({id:i+1,title:'Muse '+i,transport:'chrome',provider:'muse',url:'https://muse.ai/chat/'+i}));
 const setup=n=>({jobs:Array.from({length:n},(_,i)=>({id:'p'+i,name:'Product '+i,images:['image-'+i],note:'',state:'draft',logs:[]})),workers:M.refreshWorkers([],tabs(4)).map(w=>({...w,selected:true})),workflow:{...M.defaultWorkflow(),scenes:1,steps:[{id:'video',type:'video',provider:'muse',name:'Video'},{id:'assemble',type:'assemble',provider:'local',name:'Ghép'}]},maxConcurrent:4,running:false});
 test('Actual refreshed tabs have stable transport-qualified IDs, new tabs opt in, missing selections offline',()=>{let workers=M.refreshWorkers([],tabs(4));assert.equal(workers.filter(w=>w.selected).length,1);workers[0].selected=true;workers[0].customName='My tab';workers=M.refreshWorkers(workers,tabs(7).slice(1));assert.equal(workers.find(w=>w.id==='chrome:1').online,false);assert.equal(workers.find(w=>w.id==='chrome:1').selected,true);assert.equal(workers.find(w=>w.id==='chrome:7').selected,false);workers=M.refreshWorkers(workers,tabs(1));assert.equal(workers.find(w=>w.id==='chrome:1').name,'My tab');});
