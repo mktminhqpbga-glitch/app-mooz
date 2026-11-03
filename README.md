@@ -1,4 +1,6 @@
-# MooZ Agent 0.61.5
+# MooZ Agent 0.62.0
+
+**0.62.0 · Canvas cho luồng A → Z:** thêm/bớt/kéo node, nối dây theo loại dữ liệu, đánh dấu đầu vào bắt buộc/tùy chọn, lưu/nhân bản nhiều mẫu luồng và tự tạo form khi chạy. Tác vụ giữ riêng graph và đầu vào đã chốt; kết quả có thể là ảnh, video, văn bản hoặc âm thanh. [Cách dùng và kiểm chứng](docs/USER-REVIEW-0620.md).
 
 **0.61.5:** thêm **Ảnh nhân vật tham chiếu** tùy chọn trong Luồng & tab AI: tải ảnh hoặc chọn từ kho, bật/tắt và lưu cùng luồng. Ảnh nhân vật đi kèm ảnh sản phẩm/cảnh khi tạo ảnh/video; tác vụ đã xếp hàng giữ ảnh đã chốt. [Cách dùng và kiểm chứng](docs/USER-REVIEW-0615.md).
 

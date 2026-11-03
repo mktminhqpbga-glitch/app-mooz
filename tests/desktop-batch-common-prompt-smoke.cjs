@@ -34,7 +34,7 @@ const fs=require('node:fs/promises'),path=require('node:path'),os=require('node:
   p.setDefaultTimeout(30000);p.on('pageerror',e=>errors.push(e.message));
   await p.waitForFunction(()=>window.MooZBatch);
   await p.click('#openPool');await p.click('#refreshTabs');await p.locator('[data-worker-select]').check();await p.locator('[data-close=poolDialog]').last().click();
-  await p.click('#editWorkflow');
+  await p.click('#editWorkflow');if(await p.locator('[data-flow-legacy]').isVisible())await p.click('[data-flow-legacy]');
   await p.click('#removeStep'); // Remove product analysis; retain strict scene script.
   await p.click('[data-step="1"]');await p.click('#removeStep'); // Remove optional generated images.
   await p.fill('#workflowScenes','2');await p.locator('#workflowScenes').blur();
@@ -56,7 +56,7 @@ const fs=require('node:fs/promises'),path=require('node:path'),os=require('node:
   await importProduct('Product-A.png','#cc3322');await p.click('#composerSubmit');
   await app.evaluate(()=>new Promise((resolve,reject)=>{const started=Date.now(),timer=setInterval(()=>{if(workflowTest.commonCalls.some(c=>c.mediaType==='video')){clearInterval(timer);resolve();}else if(Date.now()-started>60000){clearInterval(timer);reject(Error('No video request'));}},50);}));
   const firstId=await p.evaluate(()=>MooZBatch.state.jobs[0].id);
-  await p.click('#editWorkflow');await p.click('#workflowCommonPrompt');
+  await p.click('#editWorkflow');if(await p.locator('[data-flow-legacy]').isVisible())await p.click('[data-flow-legacy]');await p.click('#workflowCommonPrompt');
   await p.fill('#commonPromptValue','COMMON_B: Góc quay cố định.');await p.selectOption('#commonPromptMode','replace');
   await p.locator('#commonPromptForm [type=submit]').click();
   assert.match(await p.evaluate(()=>MooZBatch.state.jobs[0].plan.commonVideoPrompt),/COMMON_A/,'Running product retains its own saved prompt');
@@ -76,7 +76,7 @@ const fs=require('node:fs/promises'),path=require('node:path'),os=require('node:
   assert.ok(videos.every(c=>c.referenceImages.length===1));
   assert.equal(videos[0].referenceImages[0],videos[1].referenceImages[0]);
   assert.notEqual(videos[0].referenceImages[0],videos[2].referenceImages[0],'Different products retain distinct reference images');
-  await p.click('#editWorkflow');await p.click('#workflowCommonPrompt');
+  await p.click('#editWorkflow');if(await p.locator('[data-flow-legacy]').isVisible())await p.click('[data-flow-legacy]');await p.click('#workflowCommonPrompt');
   await p.screenshot({path:path.join(review,'common-video-prompt.png')});
   await p.fill('#commonPromptValue','');await p.locator('#commonPromptForm [type=submit]').click();
   assert.equal(await p.evaluate(()=>MooZBatch.state.workflow.commonVideoPrompt),'');

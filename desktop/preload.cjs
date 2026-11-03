@@ -2,7 +2,7 @@ const {contextBridge, ipcRenderer} = require('electron');
 const call = (method, data) => ipcRenderer.invoke('workflow:call', method, data).catch(error=>{error.message=String(error.message||error).replace(/^Error invoking remote method '[^']+': (?:[A-Za-z]*Error: )?/, '');throw error;});
 contextBridge.exposeInMainWorld('workflowDesktop', {
   platform: process.platform,
-  version: process.argv.find(arg => arg.startsWith('--workflow-version='))?.slice('--workflow-version='.length) || '0.61.5',
+  version: process.argv.find(arg => arg.startsWith('--workflow-version='))?.slice('--workflow-version='.length) || '0.62.0',
   call,
   onEvent(callback) {
     const listener = (_event, value) => callback(value);

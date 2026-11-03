@@ -27,7 +27,7 @@ const fs=require('node:fs/promises'),os=require('node:os'),path=require('node:pa
   for(const checkbox of await page.locator('[data-worker-select]').all())await checkbox.check();
   await app.evaluate((_,tabs)=>globalThis.workflowTest.fixtureTabs=tabs,tabs(5));await page.click('#refreshTabs');assert.equal(await page.locator('[data-worker-select]').count(),5);assert.equal(await page.locator('[data-worker-select]:checked').count(),4);
   await page.locator('[data-close=poolDialog]').last().click();
-  await page.click('#editWorkflow');
+  await page.click('#editWorkflow');if(await page.locator('[data-flow-legacy]').isVisible())await page.click('[data-flow-legacy]');
   // Remove vision, text and image for this video/assembly fixture. UI uses actual edited workflow.
   for(let i=0;i<3;i++)await page.click('#removeStep');
   await page.fill('#workflowScenes','1');await page.locator('#workflowScenes').blur();await page.selectOption('#workflowDuration','');await page.click('#workflowSave');
@@ -65,7 +65,7 @@ const fs=require('node:fs/promises'),os=require('node:os'),path=require('node:pa
   for(const [width,height]of [[1024,768],[1500,960]]){await page.setViewportSize({width,height});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);}
   // A malformed AI script stops before image/video dispatch. Repair its saved
   // JSON in the inspector, then produce each scene without resending the text.
-  await page.click('#editWorkflow');await page.selectOption('#addStepType','text');await page.click('#addStep');await page.click('[data-move="-1"][data-index="1"]');await page.selectOption('#addStepType','image');await page.click('#addStep');await page.click('[data-move="-1"][data-index="2"]');await page.fill('#workflowScenes','2');await page.locator('#workflowScenes').blur();await page.selectOption('#workflowRatio','1:1');await page.click('#workflowSave');
+  await page.click('#editWorkflow');if(await page.locator('[data-flow-legacy]').isVisible())await page.click('[data-flow-legacy]');await page.selectOption('#addStepType','text');await page.click('#addStep');await page.click('[data-move="-1"][data-index="1"]');await page.selectOption('#addStepType','image');await page.click('#addStep');await page.click('[data-move="-1"][data-index="2"]');await page.fill('#workflowScenes','2');await page.locator('#workflowScenes').blur();await page.selectOption('#workflowRatio','1:1');await page.click('#workflowSave');
   await page.click('[data-view=production]');await page.click('#addProducts');await page.click('#productFromLibrary');await page.locator('[data-pick]').first().click();await page.click('#runBatch');await page.waitForFunction(()=>MooZBatch.state.jobs.at(-1).state==='error');
   assert.equal((await app.evaluate(()=>workflowTest.fixtureMessages)).length,14,'Malformed script must stop media dispatch');
   const target=await page.evaluate(()=>MooZBatch.state.jobs.at(-1).id);await page.locator('[data-job="'+target+'"]').click();await page.waitForSelector('#batchScriptRepair');assert.equal(await page.inputValue('#batchScriptRepair'),'Kịch bản cho đúng sản phẩm.');
