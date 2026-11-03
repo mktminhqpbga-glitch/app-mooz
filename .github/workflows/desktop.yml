@@ -70,6 +70,7 @@ jobs:
         run: |
           node --test tests/desktop-flow-graph.test.cjs tests/desktop-flow-media.test.cjs
           node tests/desktop-flow-canvas-smoke.cjs
+          node tests/desktop-media-order-smoke.cjs
           node tests/desktop-studio-system-smoke.cjs
           node tests/desktop-layout-review-smoke.cjs
           node tests/desktop-theme-smoke.cjs

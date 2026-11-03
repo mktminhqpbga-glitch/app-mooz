@@ -1,4 +1,6 @@
-# MooZ Agent 0.63.0
+# MooZ Agent 0.63.1
+
+**0.63.1 · Kho media mới → cũ:** ghi thời gian thêm tệp và hiển thị mới nhất trước trong kho tải lên, kho kết quả và hộp chọn media. Tìm kiếm, lọc, đổi tên và mở lại app giữ thứ tự. Tệp cũ chưa có mốc thêm dùng ngày sửa tệp nếu có; blob cũ không còn thông tin thời gian không thể khôi phục chính xác thứ tự lịch sử.
 
 **0.63.0 · Giao diện MooZ Studio:** cài [UI UX Pro Max](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) vào repo và áp dụng thiết kế Minimal Swiss cho cả năm màn. Font Inter đi kèm app để dùng offline, nút và điều hướng SVG thống nhất, giữ màu/theme tùy chọn. Canvas thêm chọn node, nối qua danh sách, nút di chuyển, tọa độ và phím mũi tên. [Cách dùng và kiểm chứng](docs/USER-REVIEW-0630.md).
 
