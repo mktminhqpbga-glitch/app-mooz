@@ -1,0 +1,7 @@
+{
+  "repository": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+  "commit": "713eef51b04efc98d6fa565323b495f7c9c89fd4",
+  "installer": "ui-ux-pro-max-cli 2.5.0 built from the repository",
+  "command": "node /workspace/ui-ux-pro-max-skill/cli/dist/index.js init --ai codex",
+  "scope": "project-local; development guidance, not an app runtime dependency"
+}

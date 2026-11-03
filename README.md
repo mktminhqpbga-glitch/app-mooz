@@ -1,4 +1,6 @@
-# MooZ Agent 0.62.0
+# MooZ Agent 0.63.0
+
+**0.63.0 · Giao diện MooZ Studio:** cài [UI UX Pro Max](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) vào repo và áp dụng thiết kế Minimal Swiss cho cả năm màn. Font Inter đi kèm app để dùng offline, nút và điều hướng SVG thống nhất, giữ màu/theme tùy chọn. Canvas thêm chọn node, nối qua danh sách, nút di chuyển, tọa độ và phím mũi tên. [Cách dùng và kiểm chứng](docs/USER-REVIEW-0630.md).
 
 **0.62.0 · Canvas cho luồng A → Z:** thêm/bớt/kéo node, nối dây theo loại dữ liệu, đánh dấu đầu vào bắt buộc/tùy chọn, lưu/nhân bản nhiều mẫu luồng và tự tạo form khi chạy. Tác vụ giữ riêng graph và đầu vào đã chốt; kết quả có thể là ảnh, video, văn bản hoặc âm thanh. [Cách dùng và kiểm chứng](docs/USER-REVIEW-0620.md).
 

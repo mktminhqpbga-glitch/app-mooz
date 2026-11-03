@@ -27,7 +27,7 @@ concurrency:
 jobs:
   macos-build:
     name: Build DMG + ZIP cho Mac M-series và Intel
-    runs-on: macos-latest
+    runs-on: macos-15-intel
     timeout-minutes: 45
     outputs:
       version: ${{ steps.metadata.outputs.version }}
@@ -70,6 +70,9 @@ jobs:
         run: |
           node --test tests/desktop-flow-graph.test.cjs tests/desktop-flow-media.test.cjs
           node tests/desktop-flow-canvas-smoke.cjs
+          node tests/desktop-studio-system-smoke.cjs
+          node tests/desktop-layout-review-smoke.cjs
+          node tests/desktop-theme-smoke.cjs
           node tests/desktop-ui-refresh-smoke.cjs
           node tests/desktop-batch-live-tabs-smoke.cjs
           node tests/desktop-product-import-smoke.cjs

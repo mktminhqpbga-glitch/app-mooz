@@ -33,3 +33,18 @@ The local media helper installs yt-dlp separately through pip; its code and bina
 ## Affiliate product HTML parser
 
 The desktop app uses parse5 8.0.0 (MIT) and entities 6.0.1 (BSD-2-Clause). Full notices: [parse5](licenses/parse5-MIT.txt), [entities](licenses/entities-BSD-2-Clause.txt). These dependencies parse public product metadata; no Shopee code or authenticated API is bundled.
+
+## Inter
+
+`vendor/fonts/InterVariable.woff2` is the unmodified Inter variable font from
+https://github.com/rsms/inter, licensed under the SIL Open Font License 1.1.
+Copyright and full license: `vendor/fonts/LICENSE-Inter.txt`. The font is bundled
+locally for the desktop interface; it does not require a network font request.
+
+## UI UX Pro Max (development skill)
+
+The project-local `.agents/skills/` tooling was installed from
+https://github.com/nextlevelbuilder/ui-ux-pro-max-skill at commit
+`713eef51b04efc98d6fa565323b495f7c9c89fd4`, using its Codex installer.
+MIT copyright and license: `.agents/skills/LICENSE-ui-ux-pro-max.txt`.
+This is design/development guidance and is not included in the Electron runtime.

@@ -18,6 +18,12 @@ const path = require('node:path');
   delete env.WORKFLOW_DESKTOP_TEST;
   delete env.WORKFLOW_TEST_DATA;
   let application;
+  const localFontSurfaces=[];
+  async function verifyDesign(page,name){
+    const loaded=await page.evaluate(async()=>{await document.fonts.load('15px "MooZ Inter"');await document.fonts.ready;return getComputedStyle(document.body).fontFamily.includes('MooZ Inter')&&[...document.fonts].some(f=>f.family==='MooZ Inter'&&f.status==='loaded');});
+    assert.equal(loaded,true,name+': bundled Inter font must load in the installed app');
+    if(!localFontSurfaces.includes(name))localFontSurfaces.push(name);
+  }
   async function launch() {
     application = await electron.launch({
       executablePath: exe,
@@ -26,7 +32,7 @@ const path = require('node:path');
       timeout: 60000
     });
     const home = await application.firstWindow();
-    home.setDefaultTimeout(25000);await home.waitForSelector('#newProject', {timeout: 60000});console.log('Windows QA: library ready');
+    home.setDefaultTimeout(25000);await home.waitForSelector('#newProject', {timeout: 60000});console.log('Windows QA: library ready');await verifyDesign(home,'library');
     return home;
   }
   async function close() {
@@ -75,7 +81,7 @@ const path = require('node:path');
     console.log('Windows QA: affiliate');const affiliateOpened = application.waitForEvent('window');
     await home.click('#aiAppsAffiliate');
     const affiliate = await affiliateOpened;
-    await affiliate.waitForSelector('#sourceMode');
+    await affiliate.waitForSelector('#sourceMode');await verifyDesign(affiliate,'affiliate');
     assert.equal(await affiliate.inputValue('#sourceMode'), 'chrome');
     assert.equal(await affiliate.locator('#openShopee').isVisible(), true);
     assert.equal(await affiliate.locator('#refreshShopeeTabs').isVisible(), true);
@@ -89,7 +95,7 @@ const path = require('node:path');
     console.log('Windows QA: batch');const batchOpened = application.waitForEvent('window');
     await home.click('#aiAppsBatch');
     const batch = await batchOpened;
-    await batch.waitForFunction(() => window.MooZBatch);
+    await batch.waitForFunction(() => window.MooZBatch);await verifyDesign(batch,'batch');
     await batch.fill('#batchPrompts', 'Bản nháp trên Windows, chưa gửi AI.');
     await batch.selectOption('#composerDuration', '10');
     await batch.click('[data-composer-ratio="16:9"]');
@@ -103,7 +109,8 @@ const path = require('node:path');
       const owner=await application.evaluate(({BrowserWindow})=>{const handle=BrowserWindow.getAllWindows()[0].getNativeWindowHandle();return {pid:process.pid,hwnd:(handle.length>=8?handle.readBigUInt64LE(0):BigInt(handle.readUInt32LE(0))).toString()};});console.log('Windows QA native owner',owner);async function pick(cancel,target='#productDrop'){const selecting=exec('powershell.exe',['-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',path.join(__dirname,'windows-native-picker.ps1'),'-AppProcessId',String(owner.pid),'-AppWindowHandle',owner.hwnd,'-FilePath',file,'-Screenshot',path.join(review,target.includes('data-flow-upload')?'windows-native-flow-media-picker.png':target==='#characterReferenceUpload'?'windows-native-character-picker.png':cancel?'windows-picker-cancel.png':'windows-native-file-picker.png'),...(cancel?['-Cancel']:[])],{timeout:25000,windowsHide:true});const session=await batch.context().newCDPSession(batch);await session.send('Page.setInterceptFileChooserDialog',{enabled:false});try{await Promise.all([batch.locator(target).click(),selecting]);}finally{await session.detach();}}
       await pick(true);assert.equal(await batch.evaluate(()=>MooZBatch.state.jobs.length),0,'Cancel must not import anything');await pick(false);await batch.waitForFunction(()=>MooZBatch.state.jobs.length===1);const imported=await batch.evaluate(async()=>{const a=MooZBatch.assets.find(a=>a.origin==='upload');return {name:a.name,bytes:[...new Uint8Array(await a.blob.arrayBuffer())]};});assert.equal(imported.name,path.basename(file));assert.deepEqual(Buffer.from(imported.bytes),bytes);if(await batch.locator('#productDialog').evaluate(d=>d.open))await batch.locator('[data-close=productDialog]').last().click();await batch.screenshot({path:path.join(review,'windows-native-import-result.png')});
       await batch.click('[data-view=workflow]');if(await batch.locator('[data-flow-legacy]').isVisible())await batch.click('[data-flow-legacy]');await batch.click('#workflowCharacterReference');assert.equal(await batch.locator('#characterReferenceEnabled').isChecked(),false);await pick(false,'#characterReferenceUpload');await batch.waitForFunction(()=>document.querySelector('#characterReferencePreview img')?.naturalWidth>0&&!document.querySelector('#characterReferenceUpload').disabled);await batch.screenshot({path:path.join(review,'windows-character-reference.png')});await batch.click('#characterReferenceSave');assert.equal(await batch.evaluate(()=>MooZBatch.state.workflow.characterReferenceEnabled),true);assert.equal(await batch.evaluate(()=>MooZBatch.state.jobs.length),1,'Character import must not create an extra product');
-      await batch.click('#openCanvasFlows');await batch.waitForSelector('#flowViewport');await batch.click('#flowNew');await batch.fill('#flowNewName','Luồng thử trên Windows');await batch.selectOption('#flowNewPreset','video');await batch.locator('#flowTemplateDialog [type=submit]').click();await batch.click('#flowRun');
+      await batch.click('#openCanvasFlows');await batch.waitForSelector('#flowViewport');await batch.click('#flowNew');await batch.fill('#flowNewName','Luồng thử trên Windows');await batch.selectOption('#flowNewPreset','video');await batch.locator('#flowTemplateDialog [type=submit]').click();
+      const nodeId=await batch.locator('#flowNodeSelect').inputValue(),beforeX=Number(await batch.inputValue('#flowNodeX'));await batch.click('[data-flow-move=right]');assert.equal(Number(await batch.inputValue('#flowNodeX')),beforeX+16);await batch.locator('[data-flow-node="'+nodeId+'"]').focus();await batch.keyboard.press('ArrowRight');assert.equal(Number(await batch.inputValue('#flowNodeX')),beforeX+32);await batch.click('#flowSave');await batch.screenshot({path:path.join(review,'windows-studio-canvas.png')});await batch.click('#flowRun');
       const flowInputs=await batch.evaluate(()=>{const s=MooZBatch.state,f=s.flowTemplates.find(f=>f.id===s.flowTemplateId);return f.nodes.filter(n=>n.kind==='input').map(n=>({id:n.id,type:n.dataType}));});const promptInput=flowInputs.find(n=>n.type==='text'),characterInput=flowInputs.find(n=>n.type==='image');
       await batch.click('#flowRunQueue');assert.match(await batch.locator('#flow-error-'+promptInput.id).innerText(),/bắt buộc/);assert.equal(await batch.evaluate(()=>MooZBatch.state.jobs.length),1);
       await batch.fill('[data-flow-value="'+promptInput.id+'"]','Bản nháp luồng Windows, chưa gửi AI.');await batch.fill('#flowTaskName','Windows canvas QA');await pick(false,'[data-flow-upload="'+characterInput.id+'"]');await batch.waitForFunction(()=>document.querySelector('#flowRunDialog .flow-input-files img')?.naturalWidth>0);await batch.screenshot({path:path.join(review,'windows-flow-run-inputs.png')});await batch.click('#flowRunQueue');
@@ -117,7 +124,7 @@ const path = require('node:path');
     const next = application.waitForEvent('window');
     await home.evaluate(id => workflowHome.openProject(id), project.id);
     const canvas = await next;
-    await canvas.waitForSelector('#canvas');
+    await canvas.waitForSelector('#canvas');await verifyDesign(canvas,'canvas');
     assert.doesNotMatch(await canvas.locator('#handTool').getAttribute('title'), /⌘/);
     await canvas.click('#addNodeMenuBtn');
     await canvas.fill('#nodeSearch', 'generateVideo');
@@ -145,6 +152,8 @@ const path = require('node:path');
     await fs.writeFile(path.join(review, 'windows-package.json'), JSON.stringify({
       ...info,
       projectSurvivesRestart: true,
+      localFontSurfaces,
+      canvasMovementControls: process.env.MOOZ_WINDOWS_NATIVE_PICKER==='1',
       commonVideoPrompt: true,
       flowCanvas: process.env.MOOZ_WINDOWS_NATIVE_PICKER==='1',
       nativeCharacterReference: process.env.MOOZ_WINDOWS_NATIVE_PICKER==='1',

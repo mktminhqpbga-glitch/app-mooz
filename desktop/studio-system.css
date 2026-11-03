@@ -1,0 +1,156 @@
+/* MooZ Studio · UI UX Pro Max / Minimal Swiss. Local fonts, semantic theme tokens. */
+@font-face{font-family:'MooZ Inter';src:url('../vendor/fonts/InterVariable.woff2') format('woff2');font-style:normal;font-weight:100 900;font-display:swap}
+:root[data-ui-theme]{--ds-font:'MooZ Inter',Arial,system-ui,sans-serif;--ds-radius:12px;--ds-space:8px;--ds-control:38px;--ds-motion:140ms;--ui-text:15px;--ui-control:13px;--ui-small:12px;--ui-heading:17px;--bg:var(--mooz-bg);--panel:var(--mooz-panel);--surface:var(--mooz-panel);--raised:var(--mooz-raised);--line:var(--mooz-line);--border:var(--mooz-line);--ink:var(--mooz-ink);--text:var(--mooz-ink);--muted:var(--mooz-muted);--accent:var(--mooz-link);--accent-bg:var(--mooz-accent);--on-accent:var(--mooz-accent-ink);--soft:var(--mooz-soft);--blue:var(--mooz-link);--red:var(--mooz-danger);--green:var(--mooz-success)}
+:root[data-ui-theme][data-ui-size=large]{--ui-text:17px;--ui-control:15px;--ui-small:14px;--ui-heading:19px;--ds-control:42px}
+:root[data-ui-theme] body[data-app-surface]{font-family:var(--ds-font);font-size:var(--ui-text);color:var(--mooz-bg-ink);line-height:1.55;font-optical-sizing:auto;text-rendering:optimizeLegibility}
+:root[data-ui-theme] body[data-app-surface] :is(button,input,select,textarea,summary,label){font-family:var(--ds-font);letter-spacing:normal}
+:root[data-ui-theme] body[data-app-surface] :is(h1,h2,h3,h4){font-family:var(--ds-font);font-weight:650;letter-spacing:-.025em;text-wrap:balance}
+:root[data-ui-theme] body[data-app-surface] h1{font-size:28px;line-height:1.25}
+:root[data-ui-theme] body[data-app-surface] h2{font-size:19px;line-height:1.4}
+:root[data-ui-theme] body[data-app-surface] h3{font-size:15px;line-height:1.5}
+:root[data-ui-theme] body[data-app-surface] :is(.eyebrow,.nav-caption,.studio-nav-caption,.nav-label){font-size:11px;line-height:1.5;letter-spacing:.075em;font-weight:600;white-space:normal}
+:root[data-ui-theme] body[data-app-surface] :is(.muted,.field-help,.note,.subtitle){font-size:var(--ui-small);line-height:1.65;color:var(--mooz-muted)}
+:root[data-ui-theme] body[data-app-surface] :is(button,.secondary){min-height:var(--ds-control);font-size:var(--ui-control);font-weight:500;border-radius:9px;padding:8px 12px;border-color:var(--mooz-line);background:var(--mooz-panel);color:var(--mooz-panel-ink);box-shadow:0 1px 2px #00000004;transition:background-color var(--ds-motion),border-color var(--ds-motion),box-shadow var(--ds-motion);cursor:pointer}
+:root[data-ui-theme] body[data-app-surface] button:hover:not(:disabled){background:var(--mooz-hover);border-color:var(--mooz-muted);color:var(--mooz-button-ink);filter:none}
+:root[data-ui-theme] body[data-app-surface] button:active:not(:disabled){box-shadow:inset 0 1px 3px #00000015}
+:root[data-ui-theme] body[data-app-surface] :is(button.primary,#runBtn,.node-run-button.primary){min-height:40px;background:var(--mooz-accent);border-color:var(--mooz-accent);color:var(--mooz-accent-ink);font-weight:650;box-shadow:0 1px 2px #00000012}
+:root[data-ui-theme] body[data-app-surface] :is(button.primary,#runBtn):hover:not(:disabled){background:var(--mooz-accent);color:var(--mooz-accent-ink);border-color:var(--mooz-accent);box-shadow:0 0 0 3px var(--mooz-soft)}
+:root[data-ui-theme] body[data-app-surface] :is(button.danger,.project-delete){color:var(--mooz-danger)}
+:root[data-ui-theme] body[data-app-surface] :is(input,select,textarea){min-height:var(--ds-control);font-size:var(--ui-control);padding:9px 11px;border:1px solid var(--mooz-line);border-radius:9px;background:var(--mooz-bg);color:var(--mooz-bg-ink);box-shadow:none}
+:root[data-ui-theme] body[data-app-surface] textarea{line-height:1.65;resize:vertical}
+:root[data-ui-theme] body[data-app-surface] :is(input[type=checkbox],input[type=radio]){width:16px;height:16px;min-height:0;padding:0;accent-color:var(--mooz-accent);flex:none}
+:root[data-ui-theme] body[data-app-surface] :is(button,input,select,textarea,a,summary,[tabindex]):focus-visible{outline:2px solid var(--mooz-focus);outline-offset:3px}
+:root[data-ui-theme] body[data-app-surface] :is(button:disabled,input:disabled,select:disabled,textarea:disabled){opacity:.5;cursor:not-allowed}
+:root[data-ui-theme] body[data-app-surface] :is(main,dialog,.modal,.inspector-body){scroll-padding-block:18px 92px}
+:root[data-ui-theme] body[data-app-surface] :is(.panel,.project-card,.post-card,.render-queue,.task-history,.composer-panel,.hub-card,.settings-card,.scene){background:var(--mooz-panel);border-color:var(--mooz-line);color:var(--mooz-panel-ink);border-radius:var(--ds-radius);box-shadow:0 2px 6px #00000004}
+:root[data-ui-theme] body[data-app-surface] :is(.sidebar,.posting-sidebar,.studio-sidebar){background:var(--mooz-panel);border-color:var(--mooz-line);box-shadow:none}
+:root[data-ui-theme] body[data-app-surface] :is(.sidebar nav button,.posting-sidebar nav button,.studio-quick-actions button,.app-button,.nav-button){position:relative;background:transparent;border-color:transparent;color:var(--mooz-panel-muted);box-shadow:none;justify-content:flex-start;gap:10px}
+:root[data-ui-theme] body[data-app-surface] :is(.sidebar nav button.active,.posting-sidebar nav button.selected,.posting-sidebar nav button.active,.nav-button.selected,.studio-quick-actions button[aria-current]){background:var(--mooz-soft);border-color:transparent;color:var(--mooz-link);font-weight:650;box-shadow:inset 3px 0 var(--mooz-link)}
+:root[data-ui-theme] body[data-app-surface] :is(.sidebar nav button,.posting-sidebar nav button,.studio-quick-actions button,.app-button,.nav-button):hover:not(:disabled){background:var(--mooz-soft);color:var(--mooz-link);border-color:transparent}
+.ds-nav-icon{width:18px;height:18px;min-width:18px;flex:none;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
+:root[data-ui-theme] body[data-app-surface] .posting-sidebar :is(nav button,#appearanceOpen,#windowSwitcherOpen,#connectionsOpen,#diagnosticsOpen)::before{content:none!important}
+.ds-symbol{display:none!important}
+:root[data-ui-theme] body[data-app-surface] :is(.brand small,.posting-brand strong span){letter-spacing:.045em;font-weight:500}
+:root[data-ui-theme] body[data-app-surface] :is(.topbar,.toolbar,.top,.desktop-bar,.statusbar){background:var(--mooz-panel);border-color:var(--mooz-line);box-shadow:none}
+:root[data-ui-theme] body[data-app-surface] dialog{padding:24px;border:1px solid var(--mooz-line);border-radius:16px;background:var(--mooz-panel);color:var(--mooz-panel-ink);box-shadow:0 22px 70px #00000035;max-height:calc(100dvh - 48px)}
+:root[data-ui-theme] body[data-app-surface] dialog::backdrop{background:#090d165e;backdrop-filter:blur(2px)}
+:root[data-ui-theme] body[data-app-surface] dialog :is(h2,h3){font-size:21px;line-height:1.35}
+:root[data-ui-theme] body[data-app-surface] :is(.dialog-footer,.dialog-actions,.appearance-actions){gap:10px;border-color:var(--mooz-line);background:var(--mooz-panel);flex-wrap:wrap}
+:root[data-ui-theme] body[data-app-surface] :is(dialog label,.appearance-grid label,.connections-dialog label){font-size:var(--ui-control);line-height:1.5}
+:root[data-ui-theme] body[data-app-surface] :is(.count,.badge,.post-badge,.project-date,.app-footer,time,progress){font-variant-numeric:tabular-nums}
+/* Library: quiet project previews and a clear primary creation action. */
+:root[data-ui-theme] body[data-app-surface=library] .workspace-heading{padding:24px 0;align-items:center}
+:root[data-ui-theme] body[data-app-surface=library] .project-grid{gap:18px}
+:root[data-ui-theme] body[data-app-surface=library] .project-art{height:78px;background:var(--mooz-raised);border-bottom:1px solid var(--mooz-line)}
+:root[data-ui-theme] body[data-app-surface=library] .project-info{padding:16px}
+:root[data-ui-theme] body[data-app-surface=library] .project-info h3{font-size:16px}
+:root[data-ui-theme] body[data-app-surface=library] .project-actions{padding:10px 12px;gap:8px}
+:root[data-ui-theme] body[data-app-surface=library] .project-actions button{font-size:12px;min-height:34px;padding:6px 9px}
+:root[data-ui-theme] body[data-app-surface=library] .getting-started{background:var(--mooz-panel);border:1px solid var(--mooz-line);border-radius:14px}
+:root[data-ui-theme] body[data-app-surface=library] .app-icon{border-radius:10px;box-shadow:none}
+/* The retained workspace strip stays one consistent height. */
+:root[data-ui-theme] body .workspace-tabs{font-family:var(--ds-font);background:var(--mooz-panel);gap:10px}
+:root[data-ui-theme] body .workspace-tabs .workspace-tab{border-radius:9px 9px 0 0}
+:root[data-ui-theme] body .workspace-tabs .workspace-tab.active{background:var(--mooz-bg);border-color:var(--mooz-line);box-shadow:inset 0 2px var(--mooz-link)}
+:root[data-ui-theme] body .workspace-tabs .workspace-tab button{font-family:var(--ds-font);box-shadow:none}
+/* Main canvas: surfaces and labels remain readable at working zoom. */
+:root[data-ui-theme] body[data-app-surface=canvas] .node{border-radius:12px;background:var(--mooz-node);border-color:var(--mooz-line);box-shadow:0 3px 12px #0000000c}
+:root[data-ui-theme] body[data-app-surface=canvas] .node-header{background:var(--mooz-header);color:var(--mooz-header-ink);border-bottom:1px solid var(--mooz-line);border-radius:11px 11px 0 0}
+:root[data-ui-theme] body[data-app-surface=canvas] .node-header .node-title{font-size:14px;line-height:1.45}
+:root[data-ui-theme] body[data-app-surface=canvas] .node-body{font-size:13px;line-height:1.55}
+:root[data-ui-theme] body[data-app-surface=canvas] .node-body :is(input,select,textarea,button){font-size:12px}
+:root[data-ui-theme] body[data-app-surface=canvas] .studio-quick-actions button{min-height:38px;font-size:13px}
+:root[data-ui-theme] body[data-app-surface=canvas] .studio-tool-list button{min-height:35px;font-size:13px}
+:root[data-ui-theme] body[data-app-surface=canvas] .canvas-navigation{border-color:var(--mooz-line);background:var(--mooz-panel);border-radius:10px;box-shadow:0 3px 12px #00000010}
+/* Production: editor/composer first, queue second, clearly separated action dock. */
+:root[data-ui-theme] body[data-app-surface=batch] .production-page{padding:26px 24px 126px}
+:root[data-ui-theme] body[data-app-surface=batch] .production-heading{gap:16px;align-items:flex-start;margin-bottom:22px}
+:root[data-ui-theme] body[data-app-surface=batch] .production-heading h1{margin:6px 0;font-size:28px}
+:root[data-ui-theme] body[data-app-surface=batch] .composer-panel{border-color:var(--mooz-line);padding:20px}
+:root[data-ui-theme] body[data-app-surface=batch] .composer-connection{padding:12px 14px;border-radius:10px;background:var(--mooz-raised);border-color:var(--mooz-line)}
+:root[data-ui-theme] body[data-app-surface=batch] .composer-tabs{gap:7px;padding:14px 0;margin-bottom:10px;border-bottom:1px solid var(--mooz-line)}
+:root[data-ui-theme] body[data-app-surface=batch] .composer-tabs button{min-height:36px;font-size:12px;padding:8px 10px;background:transparent;border-color:transparent;box-shadow:none}
+:root[data-ui-theme] body[data-app-surface=batch] .composer-tabs button[aria-pressed=true]{background:var(--mooz-soft);color:var(--mooz-link);border-color:var(--mooz-line);font-weight:650}
+:root[data-ui-theme] body[data-app-surface=batch] #batchPrompts{font-size:15px;line-height:1.8;min-height:240px;background:var(--mooz-bg);border-color:var(--mooz-line)}
+:root[data-ui-theme] body[data-app-surface=batch] .render-queue-header{padding:18px;border-bottom:1px solid var(--mooz-line)}
+:root[data-ui-theme] body[data-app-surface=batch] .render-queue-header h2{font-size:18px}
+:root[data-ui-theme] body[data-app-surface=batch] .render-queue-actions{gap:8px;margin-top:14px}
+:root[data-ui-theme] body[data-app-surface=batch] .render-queue-actions button{font-size:12px;min-height:36px}
+:root[data-ui-theme] body[data-app-surface=batch] .render-task{background:var(--mooz-panel);border-bottom-color:var(--mooz-line)}
+:root[data-ui-theme] body[data-app-surface=batch] .render-task-head{gap:10px}
+:root[data-ui-theme] body[data-app-surface=batch] .render-task-head .task-toggle{background:transparent;border:0;box-shadow:none;min-height:36px;font-weight:600}
+:root[data-ui-theme] body[data-app-surface=batch] .progress-track{height:5px;border-radius:20px;background:var(--mooz-raised)}
+:root[data-ui-theme] body[data-app-surface=batch] .production-action-dock{padding:14px 24px;background:var(--mooz-panel);border-color:var(--mooz-line);box-shadow:0 -4px 18px #00000006}
+:root[data-ui-theme] body[data-app-surface=batch] .production-action-dock #composerSubmit{min-height:42px;min-width:165px;border-radius:10px}
+:root[data-ui-theme] body[data-app-surface=batch] .asset-card{border-radius:12px;border-color:var(--mooz-line);background:var(--mooz-panel)}
+:root[data-ui-theme] body[data-app-surface=batch] .asset-preview{background:var(--mooz-raised)}
+:root[data-ui-theme] body[data-app-surface=batch] .asset-actions button{min-height:34px;font-size:12px}
+/* Flow canvas: visible node roles, larger pointer targets, quiet controls. */
+:root[data-ui-theme] body[data-app-surface=batch] .flow-editor{padding:24px}
+:root[data-ui-theme] body[data-app-surface=batch] .flow-heading h1{font-size:26px}
+:root[data-ui-theme] body[data-app-surface=batch] .flow-template-bar{padding:12px 0 18px;gap:10px}
+:root[data-ui-theme] body[data-app-surface=batch] .flow-tools{padding:10px;gap:7px;border-radius:12px;background:var(--mooz-panel)}
+:root[data-ui-theme] body[data-app-surface=batch] .flow-tools button{min-height:34px;font-size:12px;padding:6px 10px}
+:root[data-ui-theme] body[data-app-surface=batch] .flow-viewport{background-color:var(--mooz-bg);background-image:radial-gradient(var(--mooz-line) .8px,transparent .8px);background-size:22px 22px;border-color:var(--mooz-line);border-radius:14px;scroll-padding:20px}
+:root[data-ui-theme] body[data-app-surface=batch] .flow-node{--flow-role:var(--mooz-link);width:220px;border:1px solid var(--mooz-line);border-top:3px solid var(--flow-role);background:var(--mooz-node);color:var(--mooz-node-ink);box-shadow:0 3px 10px #0000000c;border-radius:12px}
+:root[data-ui-theme] body[data-app-surface=batch] .flow-node.process{--flow-role:var(--mooz-link)}
+:root[data-ui-theme] body[data-app-surface=batch] .flow-node.output{--flow-role:var(--mooz-success)}
+:root[data-ui-theme] body[data-app-surface=batch] .flow-node-handle{padding:13px 14px 9px;gap:6px}
+:root[data-ui-theme] body[data-app-surface=batch] .flow-node-handle>strong{font-size:15px;line-height:1.45;letter-spacing:-.015em}
+:root[data-ui-theme] body[data-app-surface=batch] .flow-node-handle>span{font-size:10px;color:var(--mooz-node-muted);letter-spacing:.07em}
+:root[data-ui-theme] body[data-app-surface=batch] .flow-node-summary{font-size:12px;line-height:1.5;color:var(--mooz-node-muted);padding:0 14px 10px}
+:root[data-ui-theme] body[data-app-surface=batch] .flow-node-ports{padding:4px 12px 12px}
+:root[data-ui-theme] body[data-app-surface=batch] .flow-port-row{height:32px;font-size:12px;color:var(--mooz-node-ink);padding-left:7px}
+:root[data-ui-theme] body[data-app-surface=batch] .flow-port{width:28px!important;min-width:28px!important;max-width:28px!important;height:28px!important;min-height:28px!important;max-height:28px!important;border:0!important;padding:0!important;background:transparent!important;box-shadow:none!important;border-radius:50%!important}
+:root[data-ui-theme] body[data-app-surface=batch] .flow-port::after{content:'';position:absolute;inset:7px;border:2px solid var(--flow-role);background:var(--mooz-node);border-radius:50%;pointer-events:none}
+:root[data-ui-theme] body[data-app-surface=batch] .flow-port:hover::after{background:var(--flow-role);box-shadow:0 0 0 4px var(--mooz-soft)}
+:root[data-ui-theme] body[data-app-surface=batch] .input-port{left:-27px;top:2px}
+:root[data-ui-theme] body[data-app-surface=batch] .output-port{right:-15px;top:54px}
+:root[data-ui-theme] body[data-app-surface=batch] .flow-wire{stroke:var(--mooz-link);stroke-width:2.3}
+:root[data-ui-theme] body[data-app-surface=batch] .flow-wire.optional{stroke-dasharray:7 5}
+:root[data-ui-theme] body[data-app-surface=batch] .flow-wire.selected{stroke-width:4;stroke:var(--mooz-success)}
+:root[data-ui-theme] body[data-app-surface=batch] .flow-properties{padding:18px;border-color:var(--mooz-line);border-radius:12px;background:var(--mooz-panel)}
+:root[data-ui-theme] body[data-app-surface=batch] .flow-properties :is(h2,label){font-size:13px}
+:root[data-ui-theme] body[data-app-surface=batch] .flow-properties h2{font-size:16px;padding-top:4px}
+.flow-node-chooser{display:grid;gap:8px;padding:16px 0 4px;font-size:12px}.flow-node-chooser select{width:100%}.flow-position-controls{margin:14px 0;padding:12px 0;border:0;border-top:1px solid var(--mooz-line);border-bottom:1px solid var(--mooz-line)}.flow-position-controls .flow-move-buttons{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}.flow-position-controls .flow-move-buttons button{min-width:0;padding:6px!important;min-height:36px}.flow-position-controls legend{font-size:12px;font-weight:600;padding:0 4px}.flow-position-controls .two-fields{margin-top:10px}.flow-position-controls label{margin-bottom:0!important}
+/* Publishing: compact three-column cards, calm preview and horizontal actions. */
+:root[data-ui-theme] body[data-app-surface=posting] main{padding:28px 26px 48px}
+:root[data-ui-theme] body[data-app-surface=posting] .posting-sidebar{padding:24px 14px;gap:12px}
+:root[data-ui-theme] body[data-app-surface=posting] .posting-sidebar nav button{min-height:38px;font-size:13px;padding:9px 11px}
+:root[data-ui-theme] body[data-app-surface=posting] .posting-grid{gap:18px;grid-template-columns:repeat(3,minmax(0,1fr))}
+:root[data-ui-theme] body[data-app-surface=posting] .post-card>header{min-height:70px;padding:15px 16px}
+:root[data-ui-theme] body[data-app-surface=posting] .post-card h3{font-size:15px}
+:root[data-ui-theme] body[data-app-surface=posting] .post-form{padding:15px 16px;gap:12px}
+:root[data-ui-theme] body[data-app-surface=posting] .post-form>textarea{font-size:14px;line-height:1.65;height:120px}
+:root[data-ui-theme] body[data-app-surface=posting] .post-actions button{min-height:38px;font-size:12px}
+:root[data-ui-theme] body[data-app-surface=posting] .post-card-settings, :root[data-ui-theme] body[data-app-surface=posting] .post-extra-actions{padding:11px 0}
+:root[data-ui-theme] body[data-app-surface=posting] :is(.hub-stat,.hub-hero){border-radius:12px;background:var(--mooz-panel);border-color:var(--mooz-line)}
+/* Affiliate: source, story and output are visually distinct, with a stable footer. */
+:root[data-ui-theme] body[data-app-surface=affiliate] .top{padding:16px 24px;gap:14px}
+:root[data-ui-theme] body[data-app-surface=affiliate] .intake h1{font-size:26px;line-height:1.25}
+:root[data-ui-theme] body[data-app-surface=affiliate] .affiliate-intake-scroll{padding:24px 20px}
+:root[data-ui-theme] body[data-app-surface=affiliate] .affiliate-source-actions{padding:14px 20px;background:var(--mooz-panel)}
+:root[data-ui-theme] body[data-app-surface=affiliate] .affiliate-steps{gap:10px}
+:root[data-ui-theme] body[data-app-surface=affiliate] .affiliate-steps span{padding:7px 10px;border-radius:8px;border:1px solid var(--mooz-line);background:var(--mooz-panel);font-size:12px}
+:root[data-ui-theme] body[data-app-surface=affiliate] .scene-grid{gap:16px}
+:root[data-ui-theme] body[data-app-surface=affiliate] .scene{padding:20px}
+:root[data-ui-theme] body[data-app-surface=affiliate] .scene .narration{font-size:15px;line-height:1.75}
+@media(max-width:1180px){:root[data-ui-theme] body[data-app-surface=posting] .posting-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:1050px){:root[data-ui-theme] body[data-app-surface=batch] #mainNav button{justify-content:center;padding-inline:8px}}
+@media(max-width:850px){:root[data-ui-theme] body[data-app-surface=batch] .flow-editor{padding:20px 14px}:root[data-ui-theme] body[data-app-surface=batch] .flow-properties{padding:16px}:root[data-ui-theme] body[data-app-surface=affiliate] .affiliate-source-actions{padding:14px 0;margin-inline:20px}}
+@media(max-width:820px){:root[data-ui-theme] body[data-app-surface=posting] .posting-sidebar nav button{justify-content:center;padding:8px;width:40px;gap:0}:root[data-ui-theme] body[data-app-surface=posting] .posting-sidebar :is(#appearanceOpen,#windowSwitcherOpen,#connectionsOpen,#diagnosticsOpen){gap:0;padding:8px;justify-content:center}:root[data-ui-theme] body[data-app-surface=affiliate] .top{padding:14px 18px}}
+@media(max-width:700px){:root[data-ui-theme] body[data-app-surface=posting] .posting-grid{grid-template-columns:1fr}:root[data-ui-theme] body[data-app-surface=batch] .production-page{padding:22px 16px 138px}:root[data-ui-theme] body[data-app-surface=batch] .composer-panel{padding:15px}:root[data-ui-theme] body[data-app-surface=batch] .production-action-dock{padding:12px 16px}:root[data-ui-theme] body[data-app-surface=batch] .production-action-dock #composerSubmit{min-width:140px}:root[data-ui-theme] body[data-app-surface=library] .workspace-heading h1{font-size:25px}}
+@media(pointer:coarse){:root[data-ui-theme] body[data-app-surface] :is(button,input,select){min-height:44px}:root[data-ui-theme] body[data-app-surface] .flow-port{min-height:28px!important}}
+@media(prefers-reduced-motion:reduce){:root[data-ui-theme] body[data-app-surface] *, :root[data-ui-theme] body[data-app-surface] *::before, :root[data-ui-theme] body[data-app-surface] *::after{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+@media(max-width:1050px){:root[data-ui-theme] body[data-app-surface=batch] #mainNav button{font-size:0}}
+@media(max-width:820px){:root[data-ui-theme] body[data-app-surface=posting] .posting-sidebar :is(nav button,#appearanceOpen,#windowSwitcherOpen,#connectionsOpen,#diagnosticsOpen){font-size:0!important}}
+.flow-manual-connect{margin-top:16px;padding:12px 0;border-top:1px solid var(--mooz-line);font-size:12px}.flow-manual-connect summary{cursor:pointer;font-weight:600;margin-bottom:10px}.flow-manual-connect label{margin-top:10px}.flow-manual-connect button{font-size:12px;width:100%;white-space:normal}.flow-manual-connect .field-help{margin:8px 0 0}
+:root[data-ui-theme][data-ui-size=large] body[data-app-surface=batch] .flow-node-handle>strong{font-size:17px}
+:root[data-ui-theme][data-ui-size=large] body[data-app-surface=batch] :is(.flow-port-row,.flow-node-summary){font-size:14px}
+:root[data-ui-theme][data-ui-size=large] body[data-app-surface=batch] .flow-properties label{font-size:15px}
+:root[data-ui-theme][data-ui-size=large] body[data-app-surface=canvas] .node-body :is(input,select,textarea,button){font-size:14px}
+
+/* Keep the desktop tool list usable at 1280 × 800 without shrinking actions. */
+@media(min-width:1101px){:root[data-ui-theme] body[data-app-surface=canvas] .studio-sidebar-footer{padding-top:4px}}
+
+:root[data-ui-theme] body[data-app-surface=posting] .posting-sidebar :is(#appearanceOpen,#windowSwitcherOpen,#connectionsOpen,#diagnosticsOpen){display:flex;align-items:center;justify-content:center;gap:8px}
