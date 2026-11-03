@@ -1,4 +1,4 @@
-# MooZ Agent 0.61.2
+# MooZ Agent 0.61.3
 
 **0.60.0 · Một cửa sổ, các tab làm việc:** thiết kế lại Video hàng loạt theo bố cục khung nhập lớn / hàng chờ bên phải, có dự án, thống kê, Đầu → Cuối, Nối dài bằng Muse và Dừng / xóa từng thẻ. Sửa nhận nhầm clip, xác nhận ảnh tải lên Muse, thông báo / huy hiệu lỗi, hộp Facebook và nút Giao diện. Cần **MooZ Connect 1.8.1**, cập nhật tiện ích rồi tải lại tab Muse. [Đối chiếu góp ý và kiểm thử](docs/USER-REVIEW-060.md).
 

@@ -18,6 +18,8 @@ const {PostingService}=require('./posting-service.cjs');
 const {AgentService}=require('./agent-service.cjs');
 const {PostingAI}=require('./posting-ai.cjs');
 const {BatchAI}=require('./batch-ai.cjs');
+const {BatchImages}=require('./batch-images.cjs');
+const batchImages=new BatchImages({dialog:{showOpenDialog:(owner,options)=>dialog.showOpenDialog(owner,options)}});
 const {AIDispatch}=require('./ai-dispatch.cjs');
 const {MusePublishing}=require('./muse-publishing.cjs');
 const {PostingOAuth}=require('./posting-oauth.cjs');
@@ -177,6 +179,7 @@ async function handleWorkflowCall(event,method,data={}){
   if(method.startsWith('batch.')){
    if(!ctx.batch)throw Error('Mở Video hàng loạt trước.');
    if(method==='batch.tabs')return batchAI.tabs({check:true});
+   if(method==='batch.pickImages')return batchImages.pick(nativeOwner(win));
    if(method==='batch.focus')return batchAI.focus(data.workerId);
    if(method==='batch.generate')return batchAI.generate(data);
    if(method==='batch.stop'){batchAI.stop(data.workerId);return;}

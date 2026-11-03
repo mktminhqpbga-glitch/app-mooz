@@ -252,3 +252,9 @@ body[data-app-surface=posting] .posting-brand strong span{font-size:9px;letter-s
 body[data-app-surface=batch] .worker-choice-tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:10px 0}
 body[data-app-surface=batch] .worker-choice-tools .muted{font-size:12px;flex:1;min-width:160px}
 body[data-app-surface=batch] #stepWorkerWarning:not([hidden]){padding:10px 12px;border:1px solid var(--mooz-line);border-left:3px solid var(--mooz-warning);border-radius:8px;color:var(--mooz-ink)}
+body[data-app-surface=batch] #productDrop{width:100%;min-height:190px;white-space:normal;user-select:none;border:1px dashed var(--mooz-line);background:var(--mooz-raised);color:var(--mooz-ink)}
+body[data-app-surface=batch] #productDrop:hover:not(:disabled),body[data-app-surface=batch] #productDrop:focus-visible{border-color:var(--mooz-link);background:var(--mooz-soft)}
+body[data-app-surface=batch] #productDrop strong{font-size:16px;color:var(--mooz-link)}
+body[data-app-surface=batch] #importGrouping button[aria-pressed=true]{background:var(--mooz-soft)!important;color:var(--mooz-link)!important;box-shadow:inset 0 0 0 2px var(--mooz-link)!important;font-weight:600}
+body[data-app-surface=batch] .product-import-status{font-size:13px;line-height:1.6;white-space:pre-line;padding:10px 12px;border-radius:8px;background:var(--mooz-raised);color:var(--mooz-muted)}
+body[data-app-surface=batch] .product-import-status.error{color:var(--mooz-danger);border:1px solid var(--mooz-danger)}
