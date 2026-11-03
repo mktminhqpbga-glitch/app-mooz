@@ -13,7 +13,7 @@ Mẫu Ảnh sản phẩm → Video, Prompt + nhân vật → Video và Kịch b�
 
 Form chạy hiển thị **Ảnh nhân vật tham chiếu · cố định theo mẫu** ở trên, **Đầu vào riêng của tác vụ** ở dưới. Bấm **Thay ảnh tham chiếu**, **Chọn từ kho** hoặc **Bỏ ảnh tham chiếu** sẽ lưu lựa chọn vào mẫu ngay, kèm thông báo trong form. Chọn Hủy ở hộp chọn tệp giữ ảnh cũ. Ảnh tham chiếu tùy chọn có thể để trống.
 
-Mỗi tác vụ chốt riêng ảnh sản phẩm, ảnh nhân vật, prompt và phiên bản luồng. Thay ảnh của mẫu chỉ áp dụng cho lượt sau; tác vụ đang chờ/chạy giữ ảnh trước đó. Khi rút một tác vụ về nháp để sửa, ảnh được hiển thị theo bản đã chốt; sửa trong form đó chỉ sửa tác vụ, không đổi mẫu hiện tại. Bản nháp đang sửa trên canvas được giữ khi cập nhật ảnh tham chiếu từ form chạy.
+Mỗi tác vụ chốt riêng ảnh sản phẩm, ảnh nhân vật, prompt và phiên bản luồng. Thay ảnh của mẫu chỉ áp dụng cho lượt sau; tác vụ đang chờ/chạy giữ ảnh trước đó. Khi rút một tác vụ về nháp để sửa, ảnh được hiển thị theo bản đã chốt; sửa trong form đó chỉ sửa tác vụ, không đổi mẫu hiện tại. Bản nháp đang sửa trên canvas được giữ khi cập nhật ảnh tham chiếu từ form chạy. Với mẫu cũ nối cùng một ảnh vào cả cổng sản phẩm và nhân vật, app báo cần tách đầu vào; thao tác thay/bỏ ảnh không ghi một mẫu mới sai cấu trúc lên mẫu đang lưu.
 
 Các mẫu khác có lựa chọn ảnh riêng. Nhân bản mẫu sao chép cấu hình tại lúc nhân bản; thay ảnh một mẫu không thay mảng ảnh của mẫu khác. Thumbnails và danh sách ảnh sản phẩm của tác vụ không trộn ảnh nhân vật vào.
 

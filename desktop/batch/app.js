@@ -170,11 +170,11 @@ function saveFlowReference(plan,inputId,assetId){
  const previous=state.flowTemplates.find(f=>f.id===plan.id);if(!previous||previous.version!==plan.version)throw Error('Mẫu luồng đã thay đổi. Đóng và mở lại form để lấy cấu hình mới.');
  if(assetId){const a=asset(assetId);if(!a?.blob||a.deleted||a.kind!=='image')throw Error('Ảnh tham chiếu không còn trong kho. Chọn lại ảnh.');}
  const saved=G.copy(plan.flow),n=saved.nodes.find(n=>n.id===inputId);if(!n||!G.isReference(saved,n))throw Error('Đầu vào ảnh tham chiếu đã thay đổi. Mở lại form.');
- Object.assign(n,{imageRole:'reference',maxFiles:1,defaultAssets:assetId?[assetId]:[]});saved.version=previous.version+1;G.schema(saved);
+ Object.assign(n,{imageRole:'reference',maxFiles:1,defaultAssets:assetId?[assetId]:[]});saved.version=previous.version+1;const compiled=G.compile(saved);
  const templates=state.flowTemplates,draft=state.flowDrafts[saved.id];state.flowTemplates=templates.map(f=>f.id===saved.id?saved:f);
  if(draft){const merged=G.copy(draft),ref=merged.nodes.find(n=>n.id===inputId);if(ref&&G.isReference(merged,ref))Object.assign(ref,{imageRole:'reference',maxFiles:1,defaultAssets:G.copy(n.defaultAssets)});state.flowDrafts[saved.id]=merged;}
  try{saveNow();}catch(e){state.flowTemplates=templates;if(draft)state.flowDrafts[saved.id]=draft;throw e;}
- if(view==='workflow')renderWorkflow();return G.compile(saved);
+ if(view==='workflow')renderWorkflow();return compiled;
 }
 function openFlowRun(plan,editing=null){
  const existing=editing?{name:editing.name,values:editing.flowValues}:state.flowRunDrafts[plan.id];
