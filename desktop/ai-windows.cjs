@@ -34,7 +34,7 @@ class AIWindows {
       if(typeof message!=='string'||!message.startsWith('__WORKFLOW_PROGRESS__'))return;
       try{const value=JSON.parse(message.slice(21));if(value.type==='WORKFLOW_AI_PROGRESS'&&typeof value.requestId==='string'&&typeof value.text==='string')this.notify({type:'message',tabId:id,message:value});}catch{}
     });
-    win.on('closed',()=>{this.windows.delete(id);void this.dispatch?.disconnect('native:'+id);});
+    win.on('closed',()=>{this.windows.delete(id);void this.dispatch?.disconnect('native:'+id);this.notify({type:'removed',tabId:id});});
     win.loadURL(URLS[provider]).catch(()=>{});
     const result={id,windowId:id,url:URLS[provider],title:provider};this.notify({type:'created',tab:result});return result;
   }

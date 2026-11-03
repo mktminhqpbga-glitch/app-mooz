@@ -39,7 +39,7 @@
  }
  function refreshWorkers(previous,tabs){
   const old=new Map(previous.map(w=>[w.id,w])),next=tabs.map(t=>{const id=t.transport+':'+t.id,p=old.get(id);return {id,tabId:t.id,transport:t.transport,provider:t.provider,name:p?.customName||t.title||t.provider,url:t.url,selected:p?.selected||false,online:true,ready:t.ready!==false,health:t.health||'unchecked',reason:t.reason||'',visibility:t.visibility||'unknown',mediaMode:t.mediaMode||'unknown',modeProtocol:t.modeProtocol||0,checkedAt:t.checkedAt||null,customName:p?.customName};});
-  // Keep missing selections visible so queued jobs never silently switch providers.
+  // Retain missing identities for saved pins and leases; selectors show only current connections.
   for(const w of previous)if(w.provider!=='local'&&!next.some(t=>t.id===w.id))next.push({...w,online:false,ready:false,health:'offline',reason:'Tab đã đóng hoặc mất kết nối.'});
   return [...next,...defaultWorkers()];
  }

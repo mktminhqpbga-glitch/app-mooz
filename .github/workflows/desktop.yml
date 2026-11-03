@@ -67,7 +67,9 @@ jobs:
         if: inputs.quick_package == true
         env:
           MOOZ_UI_AUDIT_DIR: ${{ runner.temp }}/mooz-ui-review
-        run: node tests/desktop-ui-refresh-smoke.cjs
+        run: |
+          node tests/desktop-ui-refresh-smoke.cjs
+          node tests/desktop-batch-live-tabs-smoke.cjs
       - name: Lưu ảnh và số đo kiểm tra giao diện
         if: always()
         uses: actions/upload-artifact@v4
