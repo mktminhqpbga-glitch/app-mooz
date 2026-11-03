@@ -1,4 +1,6 @@
-# MooZ Agent 0.63.1
+# MooZ Agent 0.64.0
+
+**0.64.0 · Ảnh tham chiếu cố định theo mẫu và kho prompt Canvas:** mỗi mẫu dùng một ảnh nhân vật, có thể thay/bỏ; ảnh sản phẩm nhập riêng cho tác vụ mới. Xem và dùng prompt từ kho của từng dự án Canvas ngay trong luồng. Thêm phát hiện kết nối relay bị treo. [Hướng dẫn và kiểm chứng](docs/USER-REVIEW-0640.md).
 
 **0.63.1 · Kho media mới → cũ:** ghi thời gian thêm tệp và hiển thị mới nhất trước trong kho tải lên, kho kết quả và hộp chọn media. Tìm kiếm, lọc, đổi tên và mở lại app giữ thứ tự. Tệp cũ chưa có mốc thêm dùng ngày sửa tệp nếu có; blob cũ không còn thông tin thời gian không thể khôi phục chính xác thứ tự lịch sử.
 

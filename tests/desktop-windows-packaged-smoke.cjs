@@ -114,7 +114,7 @@ const path = require('node:path');
       const flowInputs=await batch.evaluate(()=>{const s=MooZBatch.state,f=s.flowTemplates.find(f=>f.id===s.flowTemplateId);return f.nodes.filter(n=>n.kind==='input').map(n=>({id:n.id,type:n.dataType}));});const promptInput=flowInputs.find(n=>n.type==='text'),characterInput=flowInputs.find(n=>n.type==='image');
       await batch.click('#flowRunQueue');assert.match(await batch.locator('#flow-error-'+promptInput.id).innerText(),/bắt buộc/);assert.equal(await batch.evaluate(()=>MooZBatch.state.jobs.length),1);
       await batch.fill('[data-flow-value="'+promptInput.id+'"]','Bản nháp luồng Windows, chưa gửi AI.');await batch.fill('#flowTaskName','Windows canvas QA');await pick(false,'[data-flow-upload="'+characterInput.id+'"]');await batch.waitForFunction(()=>document.querySelector('#flowRunDialog .flow-input-files img')?.naturalWidth>0);await batch.screenshot({path:path.join(review,'windows-flow-run-inputs.png')});await batch.click('#flowRunQueue');
-      const frozen=await batch.evaluate(()=>{const j=MooZBatch.state.jobs.find(j=>j.inputMode==='graph');return {state:j.state,schema:j.plan.schema,values:j.flowInputSnapshot};});assert.equal(frozen.state,'queued');assert.equal(frozen.schema,'mooz-flow-plan-v1');assert.match(frozen.values[promptInput.id].text,/Windows/);assert.equal(frozen.values[characterInput.id].assets.length,1);
+      const frozen=await batch.evaluate(()=>{const j=MooZBatch.state.jobs.find(j=>j.inputMode==='graph');return {state:j.state,schema:j.plan.schema,values:j.flowInputSnapshot};});assert.equal(frozen.state,'queued');assert.equal(frozen.schema,'mooz-flow-plan-v1');assert.match(frozen.values[promptInput.id].text,/Windows/);assert.equal(frozen.values[characterInput.id].assets.length,1);const fixedReference=await batch.evaluate(id=>{const s=MooZBatch.state;return s.flowTemplates.find(f=>f.id===s.flowTemplateId).nodes.find(n=>n.id===id).defaultAssets;},characterInput.id);assert.deepEqual(fixedReference,frozen.values[characterInput.id].assets,'Reference is saved on the template as well as frozen on the task');
 
 
     }
@@ -155,6 +155,7 @@ const path = require('node:path');
       localFontSurfaces,
       canvasMovementControls: process.env.MOOZ_WINDOWS_NATIVE_PICKER==='1',
       commonVideoPrompt: true,
+      fixedTemplateReference: process.env.MOOZ_WINDOWS_NATIVE_PICKER==='1',
       flowCanvas: process.env.MOOZ_WINDOWS_NATIVE_PICKER==='1',
       nativeCharacterReference: process.env.MOOZ_WINDOWS_NATIVE_PICKER==='1',
       grokAndFlowOptions: true,

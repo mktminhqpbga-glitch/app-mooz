@@ -66,3 +66,12 @@ test('AI scene script follows its wired product facts, then image/video requests
  assert.equal(calls.length,6);assert.match(calls[1].prompt,/FACTS_OWN_PRODUCT/);assert.match(calls[1].prompt,/JSON/);assert.ok(calls.slice(0,2).every(c=>c.referenceImages.length===1));
  const images=calls.filter(c=>c.mediaType==='image'),videos=calls.filter(c=>c.mediaType==='video');for(let i=0;i<2;i++){assert.match(images[i].prompt,new RegExp('IMAGE_SCENE_'+(i+1)));assert.doesNotMatch(images[i].prompt,new RegExp('IMAGE_SCENE_'+(2-i)));assert.match(videos[i].prompt,new RegExp('VIDEO_SCENE_'+(i+1)));assert.equal(images[i].referenceImages.length,2);assert.equal(videos[i].referenceImages.length,2);assert.equal(images[i].referenceImages[1],videos[i].referenceImages[1]);}assert.notEqual(videos[0].referenceImages[0],videos[1].referenceImages[0]);
 });
+
+test('one fixed reference belongs to the template while product defaults stay empty for new tasks',()=>{
+ const f=G.preset('sales'),product=f.nodes.find(n=>n.imageRole==='product'),reference=f.nodes.find(n=>n.imageRole==='reference');product.defaultAssets=['OLD_PRODUCT'];reference.defaultAssets=['PERSON_A'];
+ const plan=G.compile(f),first=G.defaults(plan),second=G.defaults(plan);assert.deepEqual(first[product.id].assets,[]);assert.deepEqual(first[reference.id].assets,['PERSON_A']);first[product.id].assets.push('PRODUCT_1');first[reference.id].assets[0]='PERSON_B';assert.deepEqual(second[product.id].assets,[]);assert.deepEqual(second[reference.id].assets,['PERSON_A']);assert.deepEqual(reference.defaultAssets,['PERSON_A']);
+ reference.maxFiles=2;assert.throws(()=>G.schema(f),/một ảnh/);reference.maxFiles=1;const extra=G.input('image','Another reference');Object.assign(extra,{imageRole:'reference',maxFiles:1});f.nodes.push(extra);assert.throws(()=>G.schema(f),/một đầu vào/);
+});
+test('old character ports remain recognisable without rewriting queued plans',()=>{
+ const f=G.preset('video'),reference=f.nodes.find(n=>n.imageRole==='reference');delete reference.imageRole;reference.defaultAssets=['PERSON'];const before=G.copy(f),plan=G.compile(f);assert.equal(G.isReference(f,reference),true);assert.deepEqual(G.defaults(plan)[reference.id].assets,['PERSON']);G.validatePlan(plan);assert.deepEqual(f,before);
+});

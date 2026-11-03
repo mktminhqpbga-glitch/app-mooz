@@ -156,6 +156,18 @@ async function fetchBounded(id,data){
 async function handleWorkflowCall(event,method,data={}){
   const ctx=context(event),{win,id}=ctx;
   if(typeof method!=='string')throw Error('Thao tác không hợp lệ.');
+  if(method.startsWith('promptLibrary.')){
+   if(!ctx.batch&&!id)throw Error('Mở Canvas hoặc Video hàng loạt trước.');
+   const projects=(await store.list()).filter(p=>!p.error&&!p.trashed);
+   if(method==='promptLibrary.sources')return projects.map(p=>({id:p.id,name:p.name}));
+   const project=projects.find(p=>p.id===data.projectId);if(!project)throw Error('Dự án Canvas không còn tồn tại. Chọn lại nguồn prompt.');
+   if(method==='promptLibrary.list'){
+    const saved=await store.readStorage(project.id),items=saved.workflowPromptLibrary;
+    return (Array.isArray(items)?items:[]).filter(p=>typeof p?.id==='string'&&typeof p.name==='string'&&typeof p.content==='string').slice(0,500).map(p=>({id:p.id,name:p.name,content:p.content,updatedAt:p.updatedAt}));
+   }
+   if(method==='promptLibrary.open'){await openProject(project.id);await canvases.get(project.id).webContents.executeJavaScript('document.getElementById("promptLibraryBtn")?.click()');return;}
+   throw Error('Thao tác kho prompt không được hỗ trợ.');
+  }
   if(method==='aiDispatch.snapshot')return aiDispatch.snapshot();
   if(method==='aiDispatch.save')return aiDispatch.configure(data);
   if(method==='aiDispatch.resume'){

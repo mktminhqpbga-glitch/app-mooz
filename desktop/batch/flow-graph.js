@@ -29,11 +29,14 @@
    if(typeof n.name!=='string'||!n.name.trim()||n.name.length>80||!Number.isFinite(n.x)||!Number.isFinite(n.y)||Math.abs(n.x)>10000||Math.abs(n.y)>10000)throw Error('Tên hoặc vị trí node chưa hợp lệ.');
    if(n.kind==='input'){
     if(!kinds.includes(n.dataType)||typeof n.required!=='boolean'||!Number.isInteger(n.maxFiles)||n.maxFiles<1||n.maxFiles>(n.dataType==='image'?8:1))throw Error(n.name+': loại đầu vào hoặc số tệp chưa hợp lệ.');
+    if(n.imageRole!==undefined&&(n.dataType!=='image'||!['product','reference'].includes(n.imageRole)))throw Error(n.name+': vai trò ảnh chưa hợp lệ.');
+    if(n.imageRole==='reference'&&n.maxFiles!==1)throw Error('Mỗi mẫu luồng dùng một ảnh nhân vật tham chiếu.');
     if(typeof n.defaultText!=='string'||n.defaultText.length>4000||!Array.isArray(n.defaultAssets)||n.defaultAssets.length>n.maxFiles||n.defaultAssets.some(id=>typeof id!=='string'||!id||id.length>200))throw Error(n.name+': giá trị mặc định chưa hợp lệ.');
    }else if(n.kind==='process'){
     if(!definitions[n.type]||!definitions[n.type].providers.includes(n.provider)||typeof n.prompt!=='string'||n.prompt.length>4000||n.workerId!==undefined&&(typeof n.workerId!=='string'||n.workerId.length>200))throw Error(n.name+': AI hoặc yêu cầu của bước chưa hợp lệ.');
    }else if(n.kind!=='output'||!kinds.includes(n.dataType))throw Error('Loại node không được hỗ trợ.');
   }
+  if(f.nodes.filter(n=>isReference(f,n)).length>1&&f.nodes.some(n=>n.imageRole==='reference'))throw Error('Mỗi mẫu luồng chỉ có một đầu vào ảnh nhân vật tham chiếu.');
   const edges=new Set();for(const e of f.edges){if(!e||!validId(e.id)||edges.has(e.id)||!ids.has(e.from)||!ids.has(e.to)||typeof e.port!=='string')throw Error('Dây nối không còn đủ hai đầu hoặc mã bị trùng.');edges.add(e.id);}
   return true;
  }
@@ -50,6 +53,8 @@
   const seen=new Set();
   for(const e of f.edges){const a=nodes.get(e.from),b=nodes.get(e.to),p=ports(b)[e.port],key=e.from+'|'+e.to+'|'+e.port;
    if(a.kind==='output'||b.kind==='input'||!p||!compatible(outputType(a),p.type))throw Error('Dây nối '+a.name+' → '+b.name+' sai loại dữ liệu.');
+   if(a.kind==='input'&&a.imageRole==='product'&&e.port==='characters')throw Error(a.name+': đổi Loại ảnh thành ảnh nhân vật tham chiếu trước khi nối cổng Nhân vật.');
+   if(a.kind==='input'&&a.imageRole==='reference'&&e.port==='images')throw Error(a.name+': nối ảnh tham chiếu vào cổng Nhân vật; ảnh sản phẩm cần đầu vào riêng.');
    if(seen.has(key))throw Error('Dây nối bị trùng.');seen.add(key);
    if(!p.many&&f.edges.filter(x=>x.to===e.to&&x.port===e.port).length>1)throw Error(b.name+' · '+p.name+': chỉ nối một nguồn.');
    if(b.type==='video'&&e.port==='video'&&b.provider!=='muse')throw Error(b.name+': video gốc hiện cần AI Muse.');
@@ -76,7 +81,8 @@
   return {schema:'mooz-flow-plan-v1',id:f.id,name:f.name,version:f.version||1,ratio:f.ratio,scenes:f.scenes,duration:f.duration,flow,steps};
  }
  function validatePlan(plan){const expected=compile(plan.flow);for(const k of ['id','name','version','ratio','scenes','duration','steps'])if(JSON.stringify(plan[k])!==JSON.stringify(expected[k]))throw Error('Bản luồng đã chốt không khớp graph. Chọn lại luồng và xếp hàng.');return true;}
- function defaults(plan){return Object.fromEntries(plan.flow.nodes.filter(n=>n.kind==='input').map(n=>[n.id,{text:n.defaultText||'',assets:copy(n.defaultAssets||[])}]));}
+ function isReference(flow,n){return n.kind==='input'&&n.dataType==='image'&&(n.imageRole==='reference'||!n.imageRole&&flow.edges.some(e=>e.from===n.id&&e.port==='characters'));}
+ function defaults(plan){return Object.fromEntries(plan.flow.nodes.filter(n=>n.kind==='input').map(n=>[n.id,{text:n.defaultText||'',assets:n.dataType==='image'&&!isReference(plan.flow,n)?[]:copy(n.defaultAssets||[])}]));}
  function validateValues(plan,values,getAsset){
   validatePlan(plan);if(!values||typeof values!=='object'||Array.isArray(values))throw Error('Chưa có dữ liệu đầu vào của tác vụ.');
   const nodes=new Map(plan.flow.nodes.map(n=>[n.id,n])),inputIds=new Set(plan.flow.nodes.filter(n=>n.kind==='input').map(n=>n.id));if(Object.keys(values).some(id=>!inputIds.has(id)))throw Error('Đầu vào không còn khớp mẫu luồng. Mở lại form để nhập theo mẫu mới.');
@@ -102,7 +108,7 @@
   if(!Array.isArray(scenes)||scenes.length!==plan.scenes||scenes.some((s,i)=>s.scene!==i+1||!['voiceover','imagePrompt','videoPrompt'].every(k=>typeof s[k]==='string'&&s[k].trim()&&s[k].length<=4000)))throw Error('Kịch bản cần đúng '+plan.scenes+' cảnh; mỗi đoạn cách một dòng trống, hoặc JSON có voiceover/imagePrompt/videoPrompt.');
   return scenes.map(s=>({...s,duration:plan.duration,size:plan.ratio}));
  }
- function input(dataType='text',name='Đầu vào'){return {id:uid(),kind:'input',name,dataType,required:true,maxFiles:dataType==='image'?8:1,defaultText:'',defaultAssets:[],x:40,y:40};}
+ function input(dataType='text',name='Đầu vào'){return {id:uid(),kind:'input',name,dataType,required:true,...(dataType==='image'?{imageRole:'product'}:{}),maxFiles:dataType==='image'?8:1,defaultText:'',defaultAssets:[],x:40,y:40};}
  function process(type='video'){const d=definitions[type];return {id:uid(),kind:'process',type,name:d.name,provider:d.providers[0],prompt:'',x:330,y:40};}
  function output(dataType='video'){return {id:uid(),kind:'output',name:'Z · Kết quả',dataType,x:620,y:40};}
  function layout(flow){const f=copy(flow);let sorted;try{sorted=order(f);}catch{sorted=f.nodes.map(n=>n.id);}let inputIndex=0,stepIndex=0;for(const id of sorted){const n=f.nodes.find(n=>n.id===id);if(n.kind==='input'){n.x=30;n.y=35+(inputIndex++)*185;}else{n.x=330+(stepIndex%3)*280;n.y=35+Math.floor(stepIndex/3)*330;stepIndex++;}}return f;}
@@ -111,15 +117,15 @@
   const add=n=>{f.nodes.push(n);return n;},wire=(a,b,p)=>f.edges.push({id:uid(),from:a.id,to:b.id,port:p});
   if(kind==='blank'){add(input('text','A · Yêu cầu'));add(output('video'));return layout(f);}
   if(kind==='sales'){
-   const a=add(input('image','A · Ảnh sản phẩm')),b=add(input('text','B · Prompt chung')),c=add(input('image','C · Nhân vật'));b.required=false;c.required=false;c.maxFiles=1;
+   const a=add(input('image','A · Ảnh sản phẩm')),b=add(input('text','B · Prompt chung')),c=add(input('image','C · Nhân vật'));b.required=false;c.required=false;c.maxFiles=1;c.imageRole='reference';
    const v=add(process('vision')),s=add(process('text')),i=add(process('image')),m=add(process('video')),g=add(process('assemble')),z=add(output());
    wire(a,v,'images');wire(v,s,'context');wire(a,s,'images');wire(s,i,'script');wire(a,i,'images');wire(c,i,'characters');wire(i,m,'images');wire(s,m,'script');wire(b,m,'prompt');wire(c,m,'characters');wire(m,g,'videos');wire(g,z,'result');
   }else if(kind==='script'){
-   const a=add(input('text','A · Kịch bản có sẵn')),c=add(input('image','B · Nhân vật'));c.required=false;c.maxFiles=1;const s=add(process('split')),i=add(process('image')),v=add(process('video')),g=add(process('assemble')),z=add(output());wire(a,s,'text');wire(s,i,'script');wire(c,i,'characters');wire(i,v,'images');wire(c,v,'characters');wire(s,v,'script');wire(v,g,'videos');wire(g,z,'result');
+   const a=add(input('text','A · Kịch bản có sẵn')),c=add(input('image','B · Nhân vật'));c.required=false;c.maxFiles=1;c.imageRole='reference';const s=add(process('split')),i=add(process('image')),v=add(process('video')),g=add(process('assemble')),z=add(output());wire(a,s,'text');wire(s,i,'script');wire(c,i,'characters');wire(i,v,'images');wire(c,v,'characters');wire(s,v,'script');wire(v,g,'videos');wire(g,z,'result');
   }else if(kind==='write'){
    const a=add(input('text','A · Yêu cầu')),b=add(process('write')),z=add(output('text'));wire(a,b,'prompt');wire(b,z,'result');
   }else{
-   const a=add(input('text','A · Prompt video')),c=add(input('image','B · Nhân vật'));c.required=false;c.maxFiles=1;const v=add(process('video')),g=add(process('assemble')),z=add(output());wire(a,v,'prompt');wire(c,v,'characters');wire(v,g,'videos');wire(g,z,'result');
+   const a=add(input('text','A · Prompt video')),c=add(input('image','B · Nhân vật'));c.required=false;c.maxFiles=1;c.imageRole='reference';const v=add(process('video')),g=add(process('assemble')),z=add(output());wire(a,v,'prompt');wire(c,v,'characters');wire(v,g,'videos');wire(g,z,'result');
   }
   return layout(f);
  }
@@ -135,8 +141,8 @@
    if(n.type==='assemble'){if(video)wire(video,n,'videos');wire(n,z,'result');}
   }
   // Remove optional inputs with no consumers in unusual legacy flows.
-  f.nodes=f.nodes.filter(n=>n.kind!=='input'||f.edges.some(e=>e.from===n.id));return layout(f);
+  f.nodes=f.nodes.filter(n=>n.kind!=='input'||f.edges.some(e=>e?.from===n.id));return layout(f);
  }
- const api={copy,types,kinds,definitions,outputType,ports,compatible,schema,order,validate,connect,compile,validatePlan,defaults,validateValues,splitScript,input,process,output,layout,preset,fromLegacy};
+ const api={copy,types,kinds,definitions,outputType,ports,compatible,schema,order,validate,connect,compile,validatePlan,isReference,defaults,validateValues,splitScript,input,process,output,layout,preset,fromLegacy};
  if(typeof module!=='undefined')module.exports=api;else root.MooZFlowGraph=api;
 })(globalThis);
