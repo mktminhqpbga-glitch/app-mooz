@@ -1,4 +1,6 @@
-# MooZ Agent 0.61.3
+# MooZ Agent 0.61.4
+
+**0.61.4:** thêm **Prompt chung** cạnh **Thêm bước** trong Luồng & tab AI; nhập yêu cầu áp dụng cho các cảnh video rồi **Lưu vào luồng**. Sửa form kết nối bị chặn bởi ô URL đã ẩn, panel Affiliate che điều khiển và dòng thương hiệu Batch bị cắt. [Các luồng đã kiểm tra](docs/USER-REVIEW-0614.md).
 
 **0.60.0 · Một cửa sổ, các tab làm việc:** thiết kế lại Video hàng loạt theo bố cục khung nhập lớn / hàng chờ bên phải, có dự án, thống kê, Đầu → Cuối, Nối dài bằng Muse và Dừng / xóa từng thẻ. Sửa nhận nhầm clip, xác nhận ảnh tải lên Muse, thông báo / huy hiệu lỗi, hộp Facebook và nút Giao diện. Cần **MooZ Connect 1.8.1**, cập nhật tiện ích rồi tải lại tab Muse. [Đối chiếu góp ý và kiểm thử](docs/USER-REVIEW-060.md).
 

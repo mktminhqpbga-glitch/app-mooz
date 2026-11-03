@@ -96,6 +96,7 @@ const path = require('node:path');
     assert.equal(await batch.locator('#composerSubmit').isEnabled(), true);
     assert.equal(await batch.locator('#taskHistory').isVisible(), true);
     await batch.screenshot({path: path.join(review, 'windows-batch-composer.png')});
+    await batch.click('[data-view=workflow]');await batch.click('#workflowCommonPrompt');await batch.fill('#commonPromptValue','Ánh sáng tự nhiên, giữ đúng sản phẩm.');await batch.screenshot({path:path.join(review,'windows-common-prompt.png')});await batch.locator('#commonPromptForm [type=submit]').click();assert.equal(await batch.evaluate(()=>MooZBatch.state.workflow.commonVideoPrompt),'Ánh sáng tự nhiên, giữ đúng sản phẩm.');await batch.click('[data-view=production]');
     if(process.env.MOOZ_WINDOWS_NATIVE_PICKER==='1'){
       const {promisify}=require('node:util'),exec=promisify(require('node:child_process').execFile),file=path.join(root,'ảnh-sản-phẩm.png'),bytes=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAEUlEQVR4nGNwaDjwH4QZYAwAVPQJ/Q4itk8AAAAASUVORK5CYII=','base64');await fs.writeFile(file,bytes);
       await batch.click('[data-composer-mode=images]');await batch.click('#addProducts');
@@ -134,6 +135,7 @@ const path = require('node:path');
     await fs.writeFile(path.join(review, 'windows-package.json'), JSON.stringify({
       ...info,
       projectSurvivesRestart: true,
+      commonVideoPrompt: true,
       grokAndFlowOptions: true,
       remoteOffByDefault: true,
       nativeFilePicker:process.env.MOOZ_WINDOWS_NATIVE_PICKER==='1',keyboardSave:true,installedExecutable:!!process.env.MOOZ_INSTALLED_EXE,liveAIRequests: 0

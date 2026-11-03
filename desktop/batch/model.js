@@ -30,6 +30,7 @@
  function validate(w,workers,{requireTabs=true}={}){
   if(!String(w.name||'').trim()||!w.steps?.length||w.steps.length>12)throw Error('Đặt tên luồng và chọn từ 1 đến 12 bước.');
   if(!Number.isInteger(w.scenes)||w.scenes<1||w.scenes>12)throw Error('Số cảnh từ 1 đến 12.');
+  if(w.commonVideoPrompt!==undefined&&(typeof w.commonVideoPrompt!=='string'||w.commonVideoPrompt.length>4000)||w.commonVideoPromptMode!==undefined&&!['append','replace'].includes(w.commonVideoPromptMode))throw Error('Prompt chung cần là văn bản tối đa 4.000 ký tự và cách dùng hợp lệ.');
   if(!['9:16','16:9','1:1'].includes(w.ratio)||w.duration!==null&&![5,10,15,30,40].includes(w.duration))throw Error('Tỷ lệ hoặc thời lượng không hợp lệ.');
   if(w.steps.filter(s=>s.type==='assemble').length!==1||w.steps.at(-1).type!=='assemble'||!w.steps.some(s=>s.type==='video'))throw Error('Cần bước Tạo video và một bước Ghép thành phẩm ở cuối.');
   let media=false,video=false;for(const s of w.steps){if(['vision','text'].includes(s.type)&&media)throw Error(s.name+': đặt bước phân tích/kịch bản trước bước tạo ảnh và video.');if(s.type==='image'&&video)throw Error('Đặt bước Tạo ảnh trước Tạo video.');if(['image','video'].includes(s.type))media=true;if(s.type==='video')video=true;}
