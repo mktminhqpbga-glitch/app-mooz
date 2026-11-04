@@ -1,4 +1,6 @@
-# MooZ Agent 0.67.0
+# MooZ Agent 0.68.0
+
+**0.68.0 · Canvas Studio theo bố cục LibTV:** thẻ ảnh/video lớn, thanh công cụ theo lựa chọn, bảng thiết lập bên cạnh, kho nhân vật cá nhân, chỉnh ảnh trên máy, lưu/chèn mẫu luồng và hàng đợi cạnh canvas. Giữ workflow cũ; cả nhóm dùng cùng AI và tab đã chọn. Tiện ích giữ **MooZ Connect 1.9.1**. [Cách dùng và kiểm chứng](docs/USER-REVIEW-0680.md) · [Đối chiếu khả năng với LibTV](docs/CANVAS-STUDIO-CAPABILITIES.md).
 
 **0.67.0 · Gọn giao diện, chắc thao tác:** rút gọn nội dung ở cả năm màn; hướng dẫn và cài đặt ít dùng mở khi cần. Canvas gom trạng thái AI; khung soạn video giữ tùy chọn trên màn hình; sửa chọn/phân trang hàng đợi, giữ tab AI đã chọn và bảo vệ bản nháp khi lưu. Kết nối dùng **MooZ Connect 1.9.1**, bổ sung xử lý timeout nối lại và socket cũ. [Thay đổi và kiểm chứng](docs/USER-REVIEW-0670.md).
 

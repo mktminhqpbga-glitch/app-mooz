@@ -1,0 +1,23 @@
+/* Local pixels and derived-output contract, using a real browser canvas. No remote model. */
+'use strict';
+const {chromium}=require('playwright'),assert=require('node:assert/strict'),path=require('node:path');
+(async()=>{
+ const browser=await chromium.launch({headless:true,args:['--no-sandbox']}),page=await browser.newPage({viewport:{width:1120,height:800}});
+ try{
+  await page.setContent('<!doctype html><html><body><button id="launch">Chỉnh ảnh</button></body></html>');await page.addStyleTag({path:path.resolve('canvas-image-editor.css')});
+  await page.evaluate(()=>{window.outputs=[];window.MooZCanvasStudio={addMedia:async value=>{if(window.failImageSave)throw Error('Chưa lưu được ảnh thử nghiệm.');outputs.push(value);}};const canvas=document.createElement('canvas');canvas.width=64;canvas.height=32;const c=canvas.getContext('2d');c.fillStyle='#ff0000';c.fillRect(0,0,32,32);c.fillStyle='#0000ff';c.fillRect(32,0,32,32);window.sourceImage=canvas.toDataURL();});
+  await page.addScriptTag({path:path.resolve('canvas-image-editor.js')});
+  const open=()=>page.evaluate(()=>MooZImageEditor.open({nodeId:'image-source',name:'Ảnh gốc.png',dataUrl:sourceImage}));
+  await open();await page.click('#imageEditorFlipX');await page.click('#imageEditorApply');await page.waitForFunction(()=>outputs.length===1&&!document.querySelector('#canvasImageEditor').open);
+  const inspect=()=>page.evaluate(async()=>{const data=outputs.at(-1),image=new Image();image.src=data.dataUrl;await image.decode();const canvas=document.createElement('canvas');canvas.width=image.width;canvas.height=image.height;const c=canvas.getContext('2d');c.drawImage(image,0,0);return {width:image.width,height:image.height,pixel:[...c.getImageData(0,0,1,1).data],sourceNodeId:data.sourceNodeId,name:data.name};});
+  let result=await inspect();assert.equal(result.width,64);assert.equal(result.height,32);assert.deepEqual(result.pixel,[0,0,255,255]);assert.equal(result.sourceNodeId,'image-source');assert.match(result.name,/\.png$/);
+  await open();for(const [id,value]of [['Width','32'],['Height','16'],['X','32']]){await page.fill('#imageEditor'+id,value);await page.locator('#imageEditor'+id).press('Tab');}
+  await page.click('#imageEditorRotateRight');await page.locator('#imageEditorBrightness').evaluate(e=>{e.value='50';e.dispatchEvent(new Event('input',{bubbles:true}));});await page.selectOption('#imageEditorResize','1280');await page.fill('#imageEditorName','Tên ảnh riêng');await page.click('#imageEditorCancel');await open();assert.equal(await page.inputValue('#imageEditorName'),'Tên ảnh riêng');assert.equal(await page.inputValue('#imageEditorX'),'32');assert.equal(await page.inputValue('#imageEditorHeight'),'16');assert.equal(await page.inputValue('#imageEditorBrightness'),'50');
+  await page.evaluate(()=>window.failImageSave=true);await page.click('#imageEditorApply');await page.waitForFunction(()=>document.querySelector('#imageEditorError').textContent.includes('Chưa lưu'));assert.equal(await page.locator('#canvasImageEditor').evaluate(e=>e.open),true);assert.equal(await page.inputValue('#imageEditorX'),'32');
+  await page.evaluate(()=>window.failImageSave=false);await page.click('#imageEditorApply');await page.waitForFunction(()=>outputs.length===2&&!document.querySelector('#canvasImageEditor').open);result=await inspect();assert.equal(result.width,1280);assert.equal(result.height,2560);assert.deepEqual([result.pixel[0],result.pixel[1],result.pixel[3]],[0,0,255]);assert.ok(result.pixel[2]>=127&&result.pixel[2]<=128,'Half brightness allows browser rounding by one level');
+  await open();await page.fill('#imageEditorWidth','');await page.locator('#imageEditorWidth').press('Tab');assert.equal(await page.locator('#imageEditorApply').isDisabled(),true);await page.click('#imageEditorReset');await page.waitForFunction(()=>!document.querySelector('#imageEditorApply').disabled);assert.equal(await page.locator('#imageEditorWidth').evaluate(e=>e.checkValidity()),true);await page.click('#imageEditorCancel');
+  assert.equal(await page.evaluate(()=>outputs.every(value=>value.dataUrl!==sourceImage)),true,'Derived image never replaces its source');
+  await assert.rejects(()=>page.evaluate(()=>MooZImageEditor.open({nodeId:'remote',dataUrl:'https://outside.example/image.png'})),/không tải ảnh từ website/);
+  console.log('PASS local image editor: mirror pixels, exact crop, rotation dimensions, resize/interpolation, brightness pixels, cancel draft, failed-save retention, derived source link, remote-image refusal. No AI call.');
+ }finally{await browser.close();}
+})().catch(error=>{console.error(error);process.exitCode=1;});

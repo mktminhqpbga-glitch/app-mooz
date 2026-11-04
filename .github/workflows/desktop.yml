@@ -63,12 +63,12 @@ jobs:
           MOOZ_UI_AUDIT_DIR: ${{ runner.temp }}/mooz-ui-review
           MOOZ_THEME_REVIEW_DIR: ${{ runner.temp }}/mooz-ui-review/colors
         run: npm run test:desktop
-      - name: Verify the changed connection recovery in quick packages
+      - name: Verify Canvas Studio in quick packages
         if: inputs.quick_package == true
         run: |
-          node --test tests/desktop-connection-recovery.test.cjs tests/desktop-recovery-lifecycle.test.cjs
-          node tests/desktop-settings-navigation-smoke.cjs
-          node tests/desktop-interaction-audit-smoke.cjs
+          node --test tests/desktop-canvas-presets.test.cjs tests/desktop-canvas-characters.test.cjs
+          node tests/desktop-canvas-studio-smoke.cjs
+          node tests/desktop-canvas-group-run-smoke.cjs
       - name: Lưu ảnh và số đo kiểm tra giao diện
         if: always()
         uses: actions/upload-artifact@v4

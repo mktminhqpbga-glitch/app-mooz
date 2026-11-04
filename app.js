@@ -55,7 +55,8 @@
     suppressPortClick: false,
     contextPoint: {x:120,y:100}
   };
-  const undoStack=[];
+  const undoStack=[],redoStack=[];let canvasStudio=null,canvasExecution=null;
+  const emitCanvasStudio=()=>canvasStudio?.emit();
   const maxUndoSteps=40;
   let lastUndoInput=null;
   let pendingNativeUndoTarget=null;
@@ -73,6 +74,7 @@
     negativePrompt: { title: 'Loại trừ', outputs: [{ id: 'text', label: 'Loại trừ', type: 'negative' }] },
     textAppend: { title: 'Nối văn bản', inputs: [{ id: 'text', label: 'Văn bản', type: 'text' }], outputs: [{ id: 'text', label: 'Văn bản', type: 'text' }] },
     textConcat: { title: 'Gộp văn bản', inputs: [{ id: 'text', label: 'Văn bản', type: 'text' }], outputs: [{ id: 'text', label: 'Văn bản', type: 'text' }] },
+    imageEdit:{title:'Ảnh đã chỉnh',inputs:[{id:'image',label:'Ảnh gốc',type:'image'}],outputs:[{id:'image',label:'Ảnh',type:'image'}]},
     imageInput: { title: 'Ảnh đầu vào', outputs: [{ id: 'image', label: 'Ảnh', type: 'image' }] },
     references: { title: 'Ảnh tham chiếu', inputs: Array.from({length:8},(_,i)=>({id:`reference${i+1}`,label:`Ảnh ${i+1}`,type:'image'})), outputs: [{id:'image',label:'images',type:'image'}] },
     generateImage: {
@@ -100,7 +102,7 @@
   const aiTabs=new Map();
   const activeRuns=new Map(),nodeClaims=new Map(),nodeOutcomes=new Map(),tabQueue=WorkflowRuntime.queue();let completionSequence=0,autoPlan=null;
   const runForNode=id=>nodeClaims.get(id)?.run||[...activeRuns.values()].find(run=>run.activeNodeId===id||run.targetId===id);
-  function syncRuns(){const last=[...activeRuns.values()].at(-1);state.isRunning=activeRuns.size>0||!!autoPlan;state.activeGenerationId=last?.activeNodeId||null;state.generationRequestId=last?.requestId||null;state.generationAbortController=last?.controller||null;$('#runBtn').disabled=false;$('#runBtn').textContent=state.isRunning?`■ Dừng tất cả (${activeRuns.size||1})`:'▶ Chạy workflow';$('#runBtn').title=state.isRunning?'Dừng tất cả nhánh đang chạy và đang chờ':'Chạy workflow';}
+  function syncRuns(){const last=[...activeRuns.values()].at(-1);state.isRunning=activeRuns.size>0||!!autoPlan||!!canvasExecution;state.activeGenerationId=last?.activeNodeId||null;state.generationRequestId=last?.requestId||null;state.generationAbortController=last?.controller||null;$('#runBtn').disabled=false;$('#runBtn').textContent=state.isRunning?`■ Dừng tất cả (${activeRuns.size||1})`:'▶ Chạy workflow';$('#runBtn').title=state.isRunning?'Dừng tất cả nhánh đang chạy và đang chờ':'Chạy workflow';}
   function progressNode(node,text){if(!node)return;node.data.progress=text;const root=document.querySelector(`.node[data-id="${CSS.escape(node.id)}"]`),status=root?.querySelector(".status"),detail=root?.querySelector(".node-status-detail");if(status){status.textContent=text;status.title=text;}if(detail)detail.textContent=text;}
 
   const providerJobs=new Map(),providerHealth=new Map(),healthChecks=new Set();
@@ -296,7 +298,7 @@
   const generationPacer=WorkflowRuntime.pacer(5000);
   async function generateWithProvider(n,request,signal,agentMeta){
     if(pendingChatSelections)throw new Error('Đang cập nhật cuộc trò chuyện đã chọn. Đợi một chút rồi chạy lại.');
-    const provider=n.data.provider||(n.type==='generateText'?'gemini':'muse');request={...request,chatTarget:structuredClone(n.data.chatTarget||aiChatTargets[provider])};
+    const pinned=canvasExecution?.ids.has(n.id)?canvasExecution:null;const provider=pinned?.provider||n.data.provider||(n.type==='generateText'?'gemini':'muse');request={...request,chatTarget:structuredClone(pinned?.target||n.data.chatTarget||aiChatTargets[provider])};
     const references=[],canonical=new Map();
     if(agentMeta){request.requestId='agent-'+agentMeta.attemptId;await workflowDesktop.call('agent.receipt',{...agentMeta,nodeId:n.id,requestId:request.requestId});}
     for(const ref of !agentMeta&&n.id?resolveReferences(n.id):[]){const url=await blobAsDataUrlFromUrl(ref.url);if(signal?.aborted)throw new DOMException('Đã dừng.','AbortError');if(canonical.has(url)){const old=canonical.get(url);old.roles=[...new Set([...old.roles,...ref.roles])];old.aliases=[...new Set([...(old.aliases||[]),ref.componentId,...(ref.aliases||[])])];if(ref.instructions&&!old.instructions.includes(ref.instructions))old.instructions+='\n'+ref.instructions;}else{const copy={...ref,url,roles:[...ref.roles]};canonical.set(url,copy);references.push(copy);}}
@@ -309,7 +311,7 @@
     if(WorkflowAI.providers[provider]?.urls){
       const tabs=await chrome.tabs.query({url:WorkflowAI.providers[provider].urls});const tab=chooseChat(provider,tabs,request.chatTarget);
       request={...request,chatTarget:{tabId:tab.id,url:chatKey(tab.url)}};paceKey='tab:'+tab.id;
-      release=await tabQueue.acquire('tab:'+tab.id,signal,()=>progressNode(n,'Đang đợi lượt dùng tab AI này. Bạn có thể chạy nhánh ở tab khác.'));
+      if(pinned?.acquired){if(tab.id!==pinned.target.tabId)throw Error('Tab của luồng đã đổi; chưa gửi yêu cầu.');release=()=>{};}else release=await tabQueue.acquire('tab:'+tab.id,signal,()=>progressNode(n,'Đang đợi lượt dùng tab AI này. Bạn có thể chạy nhánh ở tab khác.'));
     }
     providerJobs.get(request.requestId).phase='busy';renderHealth();
     if(release){const tabs=await chrome.tabs.query({url:WorkflowAI.providers[provider].urls});chooseChat(provider,tabs,request.chatTarget);if(signal?.aborted)throw new DOMException('Đã dừng.','AbortError');}
@@ -410,7 +412,7 @@
     if(!node||visited.has(node.id)||node.data.storyDirty||['running','queued','error','stopped'].includes(node.data.status))return [];const next=new Set(visited);next.add(node.id);
     if(node.type==='imageCollection'){const assets=[];for(const edge of getIncoming(node.id,'image')){const source=nodeById(edge.source);if(edge.sourcePort==='endFrame'){if(frameMatchesVideo(source))assets.push({...source.data.endFrame,kind:'image'});}else if(source?.type==='referenceBoard'){assets.push(...WorkflowReferences.select(source.data,edge.sourcePort).map(m=>({...m,kind:'image'})));}else assets.push(...postingAssets(source,next).filter(a=>a.kind==='image'));}return assets.filter((a,i)=>assets.findIndex(b=>b.url===a.url)===i);}
     const asset=node.data.asset;if(asset?.url&&['image','video'].includes(asset.kind))return [{...asset,name:asset.name||node.data.customName||node.data.componentId}];
-    if(['imageInput','videoInput'].includes(node.type)&&node.data.localDataUrl)return [{id:node.id,kind:node.type==='videoInput'?'video':'image',url:node.data.localDataUrl,name:node.data.fileName||node.data.customName||node.data.componentId}];return [];
+    if(['imageInput','imageEdit','videoInput'].includes(node.type)&&node.data.localDataUrl)return [{id:node.id,kind:node.type==='videoInput'?'video':'image',url:node.data.localDataUrl,name:node.data.fileName||node.data.customName||node.data.componentId}];return [];
   }
   function postingButton(node,body,read){const b=studioButton(body,'＋ Thêm vào hàng chờ',async()=>{
     if(b.disabled)return;b.disabled=true;try{const assets=read();if(!assets.length)throw Error('Chưa có kết quả hoàn tất để thêm.');if(node.type==='imageCollection'&&getIncoming(node.id,'image').some(e=>{const s=nodeById(e.source);return e.sourcePort==='endFrame'?!frameMatchesVideo(s):s?.type==='referenceBoard'?!WorkflowReferences.select(s.data,e.sourcePort).length:!postingAssets(s).length;}))throw Error('Một nguồn ảnh chưa có kết quả. Chạy đủ các nguồn trước.');const prompts=[],seen=new Set();const visit=n=>{if(!n||seen.has(n.id))return;seen.add(n.id);if(['generateImage','generateVideo'].includes(n.type))prompts.push(resolvePrompt(n.id));for(const e of getIncoming(n.id))visit(nodeById(e.source));};visit(node);await WorkflowPosting.enqueue({assets,title:node.data.customName||node.data.componentId||nodeDefs[node.type].title,sourceKey:node.id,caption:node.data.affiliateCaption||'',sourcePrompt:[node.data.affiliateCaption,...prompts].filter(Boolean).join('\n\n').slice(0,12000),progress:text=>{b.textContent=text;}});setRunStatus('Đã thêm bản sao kết quả vào ứng dụng Đăng bài.','ok');}finally{b.disabled=false;b.textContent='＋ Thêm vào hàng chờ';}
@@ -550,7 +552,7 @@
         if(!definition?.types.includes(kind)){add(n,'AI đã chọn không hỗ trợ '+kind+'.');continue;}
         if(definition.urls){if(!tabs.has(provider))tabs.set(provider,await chrome.tabs.query({url:definition.urls}));if(!tabs.get(provider).length)throw Error('Chưa mở tab '+definition.name+'.');chooseChat(provider,tabs.get(provider),n.data.chatTarget||aiChatTargets[provider]);}
         else if(!aiKeys[provider]&&!definition.custom)add(n,'Chưa nhập API key cho '+definition.name+'.');
-        for(const e of getIncoming(n.id,'reference')){const source=sourceFor(e);if(!source)add(n,'Ảnh tham chiếu đã bị xóa.');else if(source.type==='imageInput'&&!source.data.localDataUrl&&!source.data.asset?.url)add(source,'Chưa chọn tệp ảnh tham chiếu.');else if(source.type==='characterLock'&&!source.data.lockedAsset?.url)add(source,'Chưa khóa ảnh nhân vật chuẩn.');}
+        for(const e of getIncoming(n.id,'reference')){const source=sourceFor(e);if(!source)add(n,'Ảnh tham chiếu đã bị xóa.');else if(['imageInput','imageEdit'].includes(source.type)&&!source.data.localDataUrl&&!source.data.asset?.url)add(source,'Chưa chọn tệp ảnh tham chiếu.');else if(source.type==='characterLock'&&!source.data.lockedAsset?.url)add(source,'Chưa khóa ảnh nhân vật chuẩn.');}
         if(n.type==='generateVideo'){
           if(!getIncoming(n.id,'reference').length)add(n,'Thiếu ảnh khung đầu của cảnh.');
           const approval=storyNeedsApproval(n);if(approval)add(n,approval);
@@ -819,6 +821,7 @@
   }
 
   function createUndoSnapshot(label,{preserveRuntime=true}={}){
+    redoStack.length=0;
     const nodes=state.nodes.map(node=>{
       const data={...(node.data||{})};
       if(data.asset&&typeof data.asset==='object')data.asset={...data.asset};
@@ -834,7 +837,7 @@
 
   function undoLastChange(){
     if(state.isRunning){setRunStatus('Dừng workflow trước khi hoàn tác.','warn');return;}
-    const previous=undoStack.pop();
+    const previous=undoStack.pop();if(previous)redoStack.push(structuredClone({label:previous.label,nodes:state.nodes,edges:state.edges,groups:state.groups,notes:state.notes,settings:state.settings}));
     if(!previous){setRunStatus('Nothing to undo.','warn');return;}
     if(previous.preserveRuntime){const runtimeById=new Map(state.nodes.map(node=>[node.id,{type:node.type,data:node.data||{}}]));
       for(const node of previous.nodes){const current=runtimeById.get(node.id);if(!current||current.type!==node.type)continue;const runtime=current.data;for(const key of ['status','error','asset','endFrame',...(node.type==='generateText'?['text']:[])]){if(Object.hasOwn(runtime,key))node.data[key]=runtime[key];else delete node.data[key];}}}
@@ -851,7 +854,7 @@
       for(const key of ['error','progress','endFrame','storyApprovedAssetId','flowCardId','report','createdIds','lastSceneText','lastSceneMode'])delete copy.data[key];
       copy.data.status='idle';copy.data.storyDirty=true;if(copy.type==='scriptSplit'){WorkflowScriptSplitter.invalidate(copy.data);delete copy.data.approvedConfig;delete copy.data.splitRulesNodeId;}
 
-      if(!['imageInput','videoInput','audioInput'].includes(copy.type)){delete copy.data.asset;if(copy.type==='generateText')copy.data.text='';}else if(copy.data.asset)copy.data.asset.id=uid('asset');
+      if(!['imageInput','videoInput','audioInput','imageEdit'].includes(copy.type)){delete copy.data.asset;if(copy.type==='generateText')copy.data.text='';}else if(copy.data.asset)copy.data.asset.id=uid('asset');
       for(const key of ['storyMasterId','storyActId','storyPartId','storySegmentId','storyReferenceOwner','assemblyId','filmId','scriptSplitterOwner','scriptSplitRulesOwner'])if(copy.data[key]){if(mapping.has(copy.data[key]))copy.data[key]=mapping.get(copy.data[key]);else delete copy.data[key];}
       for(const key of ['actIds','outputOrder','clipOrder'])if(Array.isArray(copy.data[key]))copy.data[key]=copy.data[key].map(id=>mapping.get(id)).filter(Boolean);
       if(copy.data.durations)copy.data.durations=Object.fromEntries(Object.entries(copy.data.durations).filter(([id])=>mapping.has(id)).map(([id,value])=>[mapping.get(id),value]));
@@ -862,7 +865,7 @@
     state.nodes.push(...copies);state.edges.push(...wires);state.selectedNodeIds=copies.map(n=>n.id);state.selectedNodeId=state.selectedNodeIds.at(-1)||null;state.selectedEdgeIds=[];return state.selectedNodeIds;
   }
   function duplicateNodesForDrag(ids){return cloneNodeBundle(ids.map(nodeById).filter(Boolean),state.edges,{externalInputs:true});}
-  function selectedNodeBundle(){const ids=new Set(state.selectedNodeIds.length?state.selectedNodeIds:[state.selectedNodeId]);return {format:'workflow-node-bundle',version:1,nodes:state.nodes.filter(n=>ids.has(n.id)&&!n.data.dockOnly).map(original=>{const n=structuredClone(original);if(!['imageInput','videoInput','audioInput'].includes(n.type))delete n.data.asset;delete n.data.endFrame;return n;}),edges:state.edges.filter(e=>ids.has(e.source)&&ids.has(e.target))};}
+  function selectedNodeBundle(){const ids=new Set(state.selectedNodeIds.length?state.selectedNodeIds:[state.selectedNodeId]);return {format:'workflow-node-bundle',version:1,nodes:state.nodes.filter(n=>ids.has(n.id)&&!n.data.dockOnly).map(original=>{const n=structuredClone(original);if(!['imageInput','videoInput','audioInput','imageEdit'].includes(n.type))delete n.data.asset;delete n.data.endFrame;return n;}),edges:state.edges.filter(e=>ids.has(e.source)&&ids.has(e.target))};}
   function pasteNodeBundle(bundle){
     if(state.isRunning){setRunStatus('Đang có tác vụ chạy. Dừng hoặc đợi hoàn tất trước khi nhân bản nhóm.','warn');return;}
     if(!bundle||bundle.format!=='workflow-node-bundle'||bundle.version!==1||!Array.isArray(bundle.nodes)||!bundle.nodes.length||bundle.nodes.length>2000||!Array.isArray(bundle.edges))throw Error('Không có nhóm node hợp lệ để dán.');
@@ -958,7 +961,7 @@
   }
 
   function removeNode(id) {
-    const existing=nodeById(id);if(!existing)return;storyDirtyAfter(id,true);createUndoSnapshot(`Delete ${nodeDefs[existing.type]?.title||'node'}`);
+    const existing=nodeById(id);if(!existing)return;if(runForNode(id)||canvasExecution?.ids.has(id)){setRunStatus('Dừng tác vụ trước khi xóa node đang dùng.','warn');return;}storyDirtyAfter(id,true);createUndoSnapshot(`Delete ${nodeDefs[existing.type]?.title||'node'}`);
     state.nodes = state.nodes.filter(n => n.id !== id);
     state.edges = state.edges.filter(e => e.source !== id && e.target !== id);
     state.selectedNodeIds=state.selectedNodeIds.filter(nodeId=>nodeId!==id);if(state.selectedNodeId===id)state.selectedNodeId=state.selectedNodeIds.at(-1)||null;
@@ -966,7 +969,7 @@
   }
 
   function selectNode(id,{toggle=false,add=false}={}){let ids=[...state.selectedNodeIds];if(toggle){ids=ids.includes(id)?ids.filter(item=>item!==id):[...ids,id];}else if(add){if(!ids.includes(id))ids.push(id);}else ids=[id];state.selectedNodeIds=ids;state.selectedNodeId=ids.at(-1)||null;document.querySelectorAll('.node').forEach(el=>el.classList.toggle('selected',ids.includes(el.dataset.id)));scheduleDrawEdges();}
-  function removeSelectedNodes(){const ids=new Set(state.selectedNodeIds);if(!ids.size&&state.selectedNodeId)ids.add(state.selectedNodeId);if(!ids.size)return;createUndoSnapshot(`Delete ${ids.size} node${ids.size===1?'':'s'}`);state.nodes=state.nodes.filter(node=>!ids.has(node.id));state.edges=state.edges.filter(edge=>!ids.has(edge.source)&&!ids.has(edge.target));state.selectedNodeIds=[];state.selectedNodeId=null;render();saveState();}
+  function removeSelectedNodes(){if(state.isRunning){setRunStatus('Dừng tác vụ trước khi xóa node.','warn');return;}const ids=new Set(state.selectedNodeIds);if(!ids.size&&state.selectedNodeId)ids.add(state.selectedNodeId);if(!ids.size)return;createUndoSnapshot(`Delete ${ids.size} node${ids.size===1?'':'s'}`);state.nodes=state.nodes.filter(node=>!ids.has(node.id));state.edges=state.edges.filter(edge=>!ids.has(edge.source)&&!ids.has(edge.target));state.selectedNodeIds=[];state.selectedNodeId=null;render();saveState();}
 
   function portCompatible(from, targetNodeId, targetPortId) {
     const sourceNode = nodeById(from.nodeId), targetNode = nodeById(targetNodeId);
@@ -1226,7 +1229,7 @@
   function openNodeText(node,field){
     const dialog=document.createElement('dialog');dialog.className='appearance-dialog node-text-dialog';dialog.setAttribute('aria-label','Nội dung đầy đủ của node');const title=document.createElement('h2');title.textContent=node.data.customName||nodeDefs[node.type].title;const text=document.createElement('textarea');text.value=field.value;text.rows=18;text.setAttribute('aria-label','Nội dung đầy đủ');const close=document.createElement('button');close.type='button';close.textContent='Đóng';close.onclick=()=>dialog.close();text.oninput=()=>{if(runForNode(node.id))return;field.value=text.value;field.dispatchEvent(new Event('input',{bubbles:true}));scheduleAutoSave();};text.readOnly=!!runForNode(node.id);dialog.append(title,text,close);dialog.onclose=()=>dialog.remove();document.body.append(dialog);dialog.showModal();
   }
-  function renderNode(n) {
+  function renderNode(n,inspector=false) {
     const el = document.createElement('section');
     el.className = `node ${['generateImage','generateVideo','generateText'].includes(n.type) ? 'generate' : ''} ${n.type==='timeline'?'timeline-node':''} ${state.selectedNodeIds.includes(n.id)||state.selectedNodeId===n.id ? 'selected' : ''}`;
     el.dataset.id = n.id;
@@ -1347,6 +1350,7 @@
       const download=document.createElement('button');download.type='button';download.className='small-btn';download.textContent='Tải ảnh đã đổi kích thước';download.disabled=!imageUrl;download.onclick=()=>{out.toBlob(blob=>{if(!blob)return;const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`museflow-${n.data.width}x${n.data.height}.png`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);});};body.appendChild(download);
     }
 
+    if(n.type==='imageEdit'){const help=document.createElement('p');help.className='hint';help.textContent='Ảnh đã chỉnh là một bản chốt độc lập. Chọn Chỉnh ảnh để tạo bản mới; ảnh gốc được giữ nguyên.';body.append(help);}
     if (n.type === 'preview') {
       if (n.data.asset?.url) { if(['video','audio'].includes(n.data.asset.kind)){const video=document.createElement(n.data.asset.kind==='audio'?'audio':'video');video.controls=true;video.src=n.data.asset.url;body.appendChild(video);}else{const a=document.createElement('a');a.href=n.data.asset.url;a.target='_blank';const img=document.createElement('img');img.src=n.data.asset.url;a.appendChild(img);body.appendChild(a);} }
       else { const empty=document.createElement('div'); empty.className='empty preview-empty'; empty.textContent='Chạy workflow'; body.appendChild(empty); }
@@ -1359,6 +1363,7 @@
     addPorts(el, n);
     if(['generateImage','generateVideo','generateText'].includes(n.type))studioButton(body,'Xóa kết quả cũ',()=>clearNodeOutput(n),{disabled:!!runForNode(n.id)});
     const issueStatus=body.querySelector('.status');if(issueStatus)issueStatus.dataset.issueKind=MooZIssuePolicy.kind({message:n.data.error||issueStatus.textContent,issueKind:n.data.errorKind});compactGenerator(n,body);if(['generateImage','generateVideo','generateText'].includes(n.type)&&(n.data.asset?.url||n.type==='generateText'&&n.data.text)&&(n.data.status==='error'||n.data.storyDirty)){const old=document.createElement('p');old.className='node-previous-result';old.textContent='Kết quả cũ · chưa có kết quả mới khớp đầu vào hiện tại.';body.prepend(old);}
+    if(!inspector&&window.MooZCanvasBridge)MooZCanvasBridge.decorateNode(n,el,{title:title.textContent,select:selectNode,edit:id=>window.MooZCanvasStudio?.action('edit',{id}),incoming:getIncoming,busy:()=>state.isRunning});
     el.onmousedown = event => {if(event.target.closest('button,input,textarea,select,summary,details,.port,.node-header'))return;if(event.shiftKey||event.ctrlKey||event.metaKey)selectNode(n.id,{toggle:true});else if(!state.selectedNodeIds.includes(n.id))selectNode(n.id);};
     return el;
   }
@@ -1499,7 +1504,7 @@
     if(field&&!node)return {field};
     if(target?.closest?.('#timelineDock'))return {timeline:true};
     if(!node)return null;
-    if(['imageInput','videoInput','audioInput'].includes(node.type))return {node};
+    if(['imageInput','videoInput','audioInput','imageEdit'].includes(node.type))return {node};
     const port=target?.closest?.('.port.in'),kind=files[0]?.type?.split('/')[0]||'image';
     const input=port?(nodeDefs[node.type].inputs||[]).find(p=>p.id===port.dataset.port):(nodeDefs[node.type].inputs||[]).find(p=>p.type===kind||p.type==='media');
     return input&&['image','video','audio','media'].includes(input.type)?{node,port:input}:null;
@@ -1526,8 +1531,8 @@
   }
   document.addEventListener('dragover',event=>{if(event.target.closest?.('#storyReferencesDialog'))return;if(!event.dataTransfer?.types.includes('Files'))return;event.preventDefault();const destination=mediaDestination(event.target,[...(event.dataTransfer.items||[])].filter(i=>i.kind==='file'));document.querySelectorAll('.media-drag-over').forEach(el=>el.classList.remove('media-drag-over'));if(destination){(event.target.closest('.node,.timeline-dock,label'))?.classList.add('media-drag-over');event.dataTransfer.dropEffect='copy';}});
   document.addEventListener('dragleave',event=>{if(!event.target.contains?.(event.relatedTarget))event.target.classList?.remove('media-drag-over');});
-  document.addEventListener('drop',event=>{if(event.target.closest?.('#flowStudioDialog,#batchManagerDialog,#storyReferencesDialog'))return;if(!event.dataTransfer?.files.length)return;event.preventDefault();document.querySelectorAll('.media-drag-over').forEach(el=>el.classList.remove('media-drag-over'));const files=[...event.dataTransfer.files],destination=mediaDestination(event.target,files);if(destination)void importMediaFiles(files,destination).catch(error=>setRunStatus(error.message,'error'));else setRunStatus('Thả tệp vào node ảnh/video hoặc cổng đầu vào tương ứng.','warn');},true);
-  document.addEventListener('paste',event=>{if(event.target.closest?.('#storyReferencesDialog'))return;const files=[...(event.clipboardData?.files||[])];if(!files.length)return;const destination=mediaDestination(event.target,files,{paste:true});if(!destination)return;event.preventDefault();void importMediaFiles(files,destination).catch(error=>setRunStatus(error.message,'error'));});
+  document.addEventListener('drop',event=>{if(event.target.closest?.('#flowStudioDialog,#batchManagerDialog,#storyReferencesDialog'))return;if(!event.dataTransfer?.files.length)return;event.preventDefault();document.querySelectorAll('.media-drag-over').forEach(el=>el.classList.remove('media-drag-over'));const files=[...event.dataTransfer.files],destination=mediaDestination(event.target,files);if(destination)void importMediaFiles(files,destination).catch(error=>setRunStatus(error.message,'error'));else if(window.MooZCanvasStudio&&event.target.closest?.('#viewport'))void MooZCanvasStudio.importFiles(files).catch(error=>setRunStatus(error.message,'error'));else setRunStatus('Thả tệp vào node ảnh/video hoặc cổng đầu vào tương ứng.','warn');},true);
+  document.addEventListener('paste',event=>{if(event.target.closest?.('#storyReferencesDialog'))return;const files=[...(event.clipboardData?.files||[])];if(!files.length)return;const destination=mediaDestination(event.target,files,{paste:true});if(!destination){if(window.MooZCanvasStudio&&event.target.closest?.('#viewport')&&!event.target.closest?.('input,textarea,[contenteditable=true]')){event.preventDefault();void MooZCanvasStudio.importFiles(files).catch(error=>setRunStatus(error.message,'error'));}return;}event.preventDefault();void importMediaFiles(files,destination).catch(error=>setRunStatus(error.message,'error'));});
 
   function ensureDockTimeline(){let timeline=state.nodes.find(item=>item.type==='timeline');if(!timeline){timeline={id:uid('timeline'),type:'timeline',x:0,y:0,data:{clipOrder:[],durations:{},dockOnly:true}};state.nodes.push(timeline);}timeline.data=timeline.data||{};timeline.data.clipOrder=timeline.data.clipOrder||[];timeline.data.durations=timeline.data.durations||{};return timeline;}
 
@@ -1721,7 +1726,7 @@
 
   function drawEdges() {
     document.body.classList.toggle('connecting-wire',!!state.connectingFrom||!!state.draggingWire);scheduleMinimap();
-    edgesSvg.innerHTML='';
+    emitCanvasStudio();edgesSvg.innerHTML='';
     state.edges.forEach(e => {
       const a=getPortCenter(e.source,e.sourcePort,'out'), b=getPortCenter(e.target,e.targetPort,'in'); if(!a||!b)return;
       const incoming=getIncoming(e.target,e.targetPort),index=incoming.findIndex(edge=>edge.id===e.id),fan=isMultiInput(nodeById(e.target)?.type,e.targetPort)&&incoming.length>1?(index-(incoming.length-1)/2)*12:0;
@@ -1764,11 +1769,11 @@
     const frame=document.createElement('div');frame.className='canvas-group';frame.dataset.groupId=group.id;frame.style.left=`${group.x}px`;frame.style.top=`${group.y}px`;frame.style.width=`${group.width}px`;frame.style.height=`${group.height}px`;
     const label=document.createElement('span');label.className='canvas-group-label';label.textContent=group.name||'Group';
     const remove=document.createElement('button');remove.type='button';remove.className='canvas-group-delete';remove.textContent='×';remove.title='Xóa vùng nhóm';remove.setAttribute('aria-label','Xóa vùng nhóm');remove.onclick=event=>{event.stopPropagation();createUndoSnapshot('Xóa vùng nhóm');state.groups=state.groups.filter(item=>item.id!==group.id);render();saveState();};
-    const first=nodeById(group.nodeIds[0]);if(first){setupDrag(label,first,frame);const drag=label.onmousedown;label.title='Kéo để di chuyển cả nhóm';label.onmousedown=event=>{if(state.handMode||state.spaceDown)return;state.selectedNodeIds=group.nodeIds.filter(id=>nodeById(id));state.selectedNodeId=first.id;document.querySelectorAll('.node').forEach(el=>el.classList.toggle('selected',state.selectedNodeIds.includes(el.dataset.id)));drag(event);};}
+    const first=nodeById(group.nodeIds[0]);if(first){setupDrag(label,first,frame);const drag=label.onmousedown;label.title='Kéo để di chuyển cả nhóm';label.onmousedown=event=>{if(state.handMode||state.spaceDown)return;state.selectedNodeIds=group.nodeIds.filter(id=>nodeById(id));state.selectedNodeId=first.id;document.querySelectorAll('.node').forEach(el=>el.classList.toggle('selected',state.selectedNodeIds.includes(el.dataset.id)));emitCanvasStudio();scheduleDrawEdges();drag(event);};}
     frame.append(label,remove);return frame;
   }
 
-  function syncPreviewOutputs(){for(const preview of state.nodes.filter(node=>node.type==='preview')){const edge=getIncoming(preview.id,'media')[0],source=edge&&nodeById(edge.source);let asset=null;if(source){asset=edge.sourcePort==='endFrame'?(frameMatchesVideo(source)?source.data.endFrame:null):source.data?.asset;if(!asset&&source.type==='referenceBoard'){const image=WorkflowReferences.select(source.data,edge.sourcePort)[0];if(image)asset={id:image.id,kind:'image',url:image.url,name:image.name};}if(!asset&&source.type==='imageInput'&&source.data?.localDataUrl)asset={id:source.id,kind:'image',url:source.data.localDataUrl,name:'Input image'};}preview.data.asset=asset||null;}}
+  function syncPreviewOutputs(){for(const preview of state.nodes.filter(node=>node.type==='preview')){const edge=getIncoming(preview.id,'media')[0],source=edge&&nodeById(edge.source);let asset=null;if(source){asset=edge.sourcePort==='endFrame'?(frameMatchesVideo(source)?source.data.endFrame:null):source.data?.asset;if(!asset&&source.type==='referenceBoard'){const image=WorkflowReferences.select(source.data,edge.sourcePort)[0];if(image)asset={id:image.id,kind:'image',url:image.url,name:image.name};}if(!asset&&['imageInput','imageEdit'].includes(source.type)&&source.data?.localDataUrl)asset={id:source.id,kind:'image',url:source.data.localDataUrl,name:'Input image'};}preview.data.asset=asset||null;}}
 
   function applyCanvasTransform(){document.body.classList.toggle('connecting-wire',!!state.connectingFrom||!!state.draggingWire);const transform=`translate(${state.panX}px, ${state.panY}px) scale(${state.zoom})`;canvas.style.transform=transform;edgesSvg.style.transform=transform;$('#zoomLevel').textContent=`${Math.round(state.zoom*100)}%`;$('#zoomOut').disabled=state.zoom<=.25001;$('#zoomIn').disabled=state.zoom>=2.49999;$('#zoomOut').title=$('#zoomOut').disabled?'Đã ở mức nhỏ nhất (25%)':'Thu nhỏ khung vẽ';$('#zoomIn').title=$('#zoomIn').disabled?'Đã ở mức lớn nhất (250%)':'Phóng to khung vẽ';$('#viewport').classList.toggle('hand-mode',state.handMode||state.spaceDown);scheduleMinimap();}
   let minimapFrame=null,minimapBounds=null;
@@ -1909,7 +1914,7 @@
   }
   function resolvePrompt(nodeId){
     const node=nodeById(nodeId);if(node?.data.toolKind==='videoAnalysis'&&!getIncoming(nodeId,'prompt').length)return 'Phân tích video đính kèm và viết prompt tái tạo chi tiết.';
-    return getIncoming(nodeId,'prompt').map(edge=>nodeById(edge.source)).filter(Boolean).map(source=>resolveText(source.id).trim()).filter(Boolean).join('\n\n');
+    return [...getIncoming(nodeId,'prompt').map(edge=>nodeById(edge.source)).filter(Boolean).map(source=>resolveText(source.id).trim()),String(node?.data.studioPrompt||'').trim()].filter(Boolean).join('\n\n');
   }
   function resolveNegativePrompt(nodeId){const source=sourceFor(getIncoming(nodeId,'negative')[0]);return source?resolveText(source.id):'';}
   function timelinePredecessor(nodeId){const timeline=state.nodes.find(item=>item.type==='timeline'),order=timeline?.data?.clipOrder||[],index=order.indexOf(nodeId);return index>0?nodeById(order[index-1]):null;}
@@ -1930,7 +1935,7 @@
       }
       if(source.type==='characterLock'){add(source.data.lockedAsset?.url,'Ảnh nhân vật đã khóa',source.data.componentId,roles,resolveText(source.id));return;}
       if(sourcePort==='endFrame'){add(frameMatchesVideo(source)?source.data.endFrame.url:'',source.data?.endFrame?.name,source.data.componentId+'-END',roles);return;}
-      if(source.type==='imageInput'){add(source.data.localDataUrl,'Ảnh đầu vào',source.data.componentId,roles,[source.data.libraryTag?'Ảnh này là @'+source.data.libraryTag+(source.data.storyReferenceLabel?' — '+source.data.storyReferenceLabel:'')+'.':'',source.data.libraryAlias?'Mã ảnh gốc: '+source.data.libraryAlias+'.':''].filter(Boolean).join(' '));return;}
+      if(['imageInput','imageEdit'].includes(source.type)){add(source.data.localDataUrl,'Ảnh đầu vào',source.data.componentId,roles,[source.data.libraryTag?'Ảnh này là @'+source.data.libraryTag+(source.data.storyReferenceLabel?' — '+source.data.storyReferenceLabel:'')+'.':'',source.data.libraryAlias?'Mã ảnh gốc: '+source.data.libraryAlias+'.':''].filter(Boolean).join(' '));return;}
       if(source.data.asset?.kind==='image')add(source.data.asset.url,source.data.asset.name,source.data.componentId,roles);
     };
     const node=nodeById(nodeId),previous=node?.type==='generateVideo'&&node.data.continuity?timelinePredecessor(nodeId):null;if(previous)add(previous.data.endFrame?.url,'Khung cuối cảnh trước',previous.data.componentId+'-END',['Khung mở đầu']);
@@ -2684,6 +2689,14 @@
       state.selectedNodeIds=nodes.map(n=>n.id);state.selectedNodeId=state.selectedNodeIds.at(-1);state.selectedEdgeIds=[];document.querySelectorAll('.node').forEach(el=>el.classList.toggle('selected',state.selectedNodeIds.includes(el.dataset.id)));applyCanvasTransform();scheduleDrawEdges();setRunStatus('Đang xem '+nodes.length+' node đã chọn.','ok');
     }
   });
+
+  if(window.MooZCanvasBridge){
+    canvasStudio=MooZCanvasBridge.create({ready:workflowReady,state:()=>state,defs:nodeDefs,uid,make:makeNode,add:addNode,place:placeNewNode,render,renderNode,save:scheduleAutoSave,blobData:blobAsDataUrl,nodeElement:id=>canvas.querySelector('.node[data-id="'+CSS.escape(id)+'"]'),undo:createUndoSnapshot,undoLast:undoLastChange,canUndo:()=>undoStack.length>0,canRedo:()=>redoStack.length>0,
+      redo:()=>{if(state.isRunning)throw Error('Chờ tác vụ trước khi làm lại.');const next=redoStack.pop();if(!next)return;undoStack.push(structuredClone({label:next.label,nodes:state.nodes,edges:state.edges,groups:state.groups,notes:state.notes,settings:state.settings}));Object.assign(state,{nodes:next.nodes,edges:next.edges,groups:next.groups,notes:next.notes,settings:next.settings,selectedNodeIds:[],selectedNodeId:null});normalizeSavedGraph();syncSettingsUI();render();scheduleAutoSave();},
+      clone:cloneNodeBundle,removeSelected:removeSelectedNodes,compatible:canConnectTypes,multi:isMultiInput,cycle:wouldCreateCycle,connect:edge=>{state.connectingFrom={nodeId:edge.source,portId:edge.sourcePort};connect(edge.target,edge.targetPort);},touch:storyTouch,required:requiredNodeOrder,order:topoOrder,run:runAutomatic,stop:()=>{canvasExecution?.controller.abort();stopAllRuns();},choose:chooseChat,chatKey,defaultTarget:provider=>aiChatTargets[provider],acquire:(...args)=>tabQueue.acquire(...args),groupExecution:()=>canvasExecution,setGroupExecution:value=>{canvasExecution=value;syncRuns();emitCanvasStudio();},notice:setRunStatus,export:snapshotCanvasCopy,flush:async()=>{await workflowReady;clearTimeout(autoSaveTimer);await queueWorkflowSave();setRunStatus('Đã lưu.','ok');},draw:scheduleDrawEdges,fit:fitCanvas,zoom:setZoom,arrange:arrangeNodes,
+      focus:ids=>{const chosen=ids.map(nodeById).filter(Boolean);if(!chosen.length)return;const rect=$('#viewport').getBoundingClientRect(),x=Math.min(...chosen.map(n=>n.x)),y=Math.min(...chosen.map(n=>n.y));fitToViewport=false;state.panX=60-x*state.zoom;state.panY=100-y*state.zoom;applyCanvasTransform();scheduleDrawEdges();}
+    });window.MooZCanvasStudio=canvasStudio;
+  }
 
   if(window.workflowDesktop){const pauseHeld=async()=>{const snapshot=await workflowDesktop.call('aiDispatch.snapshot');dispatchHolds=Object.fromEntries(Object.entries(snapshot.holds).filter(([,h])=>!h.until||h.until>Date.now()));const holds=Object.values(dispatchHolds);batchQueue.wake();if(holds.length)setRunStatus(holds[0].message+' Mục chưa chạy vẫn được giữ trong hàng chờ.','warn');};workflowDesktop.onEvent(value=>{if(value.type==='aiDispatch')void pauseHeld().catch(()=>{});});void pauseHeld().catch(()=>{});}
 

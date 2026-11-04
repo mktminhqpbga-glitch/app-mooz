@@ -20,6 +20,7 @@
  ['videoAnalysis','Phân tích video','text','Gửi video gốc cho AI để mô tả và viết prompt tái tạo.'],
  ['sceneSplit','Chia cảnh tự động','text','Tách nội dung kịch bản thành các cảnh.'],
  ['promptVariants','Biến thể prompt','text','Dùng AI viết nhiều cách diễn đạt cho cùng yêu cầu.'],
+ ['imageEdit','Ảnh đã chỉnh','image','Ảnh chỉnh cục bộ đã chốt; giữ ảnh gốc và tạo bản mới khi chỉnh tiếp.'],
  ['imageInput','Ảnh đầu vào','image','Chọn hoặc thả một ảnh từ máy để đưa vào workflow.'],
  ['referenceBoard','Bảng ảnh chung','image','Giữ ảnh dùng cho cả workflow; từng ảnh cũng có thể nối riêng.'],
  ['references','Ảnh tham chiếu riêng','image','Gom tối đa 8 ảnh, chỉ gửi đến các node bạn nối.'],

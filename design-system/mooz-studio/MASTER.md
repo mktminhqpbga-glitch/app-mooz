@@ -25,7 +25,7 @@ Bề mặt trung tính, đường viền mảnh, màu nhấn thương hiệu c�
 ## Theo màn
 
 - **Thư viện:** header ngắn, hướng dẫn thu gọn được, card dự án và hành động rõ, ảnh trang trí không lấn nội dung.
-- **Canvas:** canvas là vùng chính, node có header/body rõ và cổng đủ dễ bấm; thanh công cụ không che vùng làm việc.
+- **Canvas Studio 0.68:** tham khảo bố cục media trên canvas của LibTV: thẻ ảnh/video là nội dung chính, nền than trung tính, header dự án mảnh và dock công cụ phía dưới. Thiết lập nằm trong inspector; thanh công cụ hiện theo node/nhóm được chọn. Hàng đợi là ngăn bên không khóa canvas. Thông báo nằm dưới thanh ngữ cảnh, không che nút. Giữ graph/cổng có kiểu và bộ chạy thật; không thêm nút AI khi chưa có bộ xử lý. Kho nhân vật cá nhân, mẫu luồng và bản chỉnh ảnh dùng dữ liệu thật.
 - **Video hàng loạt:** khung soạn + hàng đợi, dock chạy giữ đúng khoảng trống; kho tải lên/kết quả tách riêng; card media không tràn nút.
 - **Luồng A–Z:** phân biệt đầu vào/xử lý/kết quả bằng nhãn và màu; cổng optional có nét đứt, có lựa chọn node/tọa độ/nút di chuyển và phím mũi tên. Giữ nguyên graph và bản chốt của tác vụ.
 - **Đăng bài:** ba card mỗi hàng trên desktop rộng; nội dung và hành động chính luôn thấy, tùy chọn trong disclosure, không xếp chữ dọc thành nút hẹp.
