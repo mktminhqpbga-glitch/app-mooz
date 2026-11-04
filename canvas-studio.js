@@ -33,7 +33,7 @@
   const tabLabel=el('label','', 'Tab chạy toàn bộ tác vụ'),tabs=el('select');tabs.id='canvasStudioFlowTab';tabs.setAttribute('aria-label','Tab chạy toàn bộ tác vụ');tabs.append(new Option('Tự chọn một tab trống',''));tabLabel.append(tabs);
   const note=el('p','canvas-studio-note','Một tác vụ giữ một tab qua các bước AI. Tab bận thì công việc chờ.'),status=el('p','canvas-studio-note');status.id='canvasStudioFlowStatus';status.setAttribute('role','status');if(chosen.length>1)status.textContent='Nhóm đang dùng nhiều AI. Chọn một AI chung trước khi chạy.';
   let revision=0,available=[],originalTarget=view.flowAI?.chatTarget||aiRows.find(n=>n.chatTarget||n.data?.chatTarget)?.chatTarget||aiRows.find(n=>n.data?.chatTarget)?.data.chatTarget||null;
-  const key=t=>t?String(t.transport||'')+':'+String(t.id??t.tabId??''):'';
+  const key=t=>t?String(t.transport||'chrome')+':'+String(t.id??t.tabId??''):'';
   async function refreshTabs(reset=false){
    const current=++revision,value=provider.value,previous=reset?'':tabs.value||key(originalTarget);tabs.disabled=true;refresh.disabled=true;apply.disabled=true;
    try{const next=value&&api.tabs?await api.tabs(value):[];if(current!==revision||!box.isConnected)return;available=next;tabs.replaceChildren(new Option('Tự chọn một tab trống',''));for(const tab of available)tabs.append(new Option((tab.transport==='chrome'?'Chrome · ':'App · ')+(tab.title||tab.name||value),key(tab)));if(previous){if(!available.some(t=>key(t)===previous)){const offline=new Option('Tab đã chọn · đang ngoại tuyến',previous);offline.hidden=true;offline.disabled=true;tabs.append(offline);}tabs.value=previous;}status.textContent=value?(available.length+' tab đang kết nối. Tab bận vẫn được xếp hàng chờ.'):'Chọn AI thực hiện cho cả luồng.';
