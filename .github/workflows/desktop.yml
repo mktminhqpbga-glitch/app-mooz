@@ -65,7 +65,10 @@ jobs:
         run: npm run test:desktop
       - name: Verify the changed connection recovery in quick packages
         if: inputs.quick_package == true
-        run: node --test tests/desktop-connection-recovery.test.cjs
+        run: |
+          node --test tests/desktop-connection-recovery.test.cjs tests/desktop-recovery-lifecycle.test.cjs
+          node tests/desktop-settings-navigation-smoke.cjs
+          node tests/desktop-interaction-audit-smoke.cjs
       - name: Lưu ảnh và số đo kiểm tra giao diện
         if: always()
         uses: actions/upload-artifact@v4

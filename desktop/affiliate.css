@@ -5,3 +5,5 @@
 @media(max-width:1050px){.layout{grid-template-columns:280px minmax(0,1fr)}.row.ai-connect-row{grid-template-columns:1fr 1fr}.row.ai-connect-row button:last-child{grid-column:1/-1}.scene-grid{grid-template-columns:1fr}.workspace-title{align-items:start}.local{white-space:nowrap}}
 
 .shopee-chrome{display:grid;gap:10px;border:1px solid var(--mooz-border,#53617c);border-radius:12px;padding:12px;min-width:0}.shopee-chrome[hidden]{display:none}.shopee-chrome button{font-size:13px;padding:10px}.shopee-chrome .note{margin:0}.shopee-chrome select{max-width:100%;text-overflow:ellipsis}
+
+#message:empty{display:none}.affiliate-intake-scroll h1{max-width:14ch}.intake .queue .muted:empty{display:none}

@@ -37,6 +37,15 @@
 :root[data-ui-theme] body[data-app-surface] dialog :is(h2,h3){font-size:21px;line-height:1.35}
 :root[data-ui-theme] body[data-app-surface] :is(.dialog-footer,.dialog-actions,.appearance-actions){gap:10px;border-color:var(--mooz-line);background:var(--mooz-panel);flex-wrap:wrap}
 :root[data-ui-theme] body[data-app-surface] :is(dialog label,.appearance-grid label,.connections-dialog label){font-size:var(--ui-control);line-height:1.5}
+:root[data-ui-theme] body[data-app-surface] .connections-dialog>section{padding-block:16px}
+:root[data-ui-theme] body[data-app-surface] .connections-dialog :is(#connectionsAPI,#aiDispatchPanel,.setup-guide,.remote-guide){border:1px solid var(--mooz-line);border-radius:10px;padding:12px 14px;margin-block:12px;background:var(--mooz-panel)}
+:root[data-ui-theme] body[data-app-surface] .connections-dialog :is(#connectionsAPI,#aiDispatchPanel,.setup-guide,.remote-guide)>summary{cursor:pointer;font-size:var(--ui-control);font-weight:600;line-height:1.5}
+:root[data-ui-theme] body[data-app-surface] .connections-dialog details[open]>summary{margin-bottom:12px}
+:root[data-ui-theme] body[data-app-surface] .connections-dialog #connectionsStatus:empty{display:none}
+:root[data-ui-theme] body[data-app-surface] .connections-dialog #connectionList article{display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px}
+:root[data-ui-theme] body[data-app-surface] .connections-dialog #connectionList article strong{flex:1 1 100%;overflow-wrap:anywhere}
+:root[data-ui-theme] body[data-app-surface] .connections-dialog #connectionList article p{flex:1 1 200px;margin:0}
+@media(max-width:600px){:root[data-ui-theme] body[data-app-surface] .connections-dialog .connections-grid{grid-template-columns:1fr;gap:0}}
 :root[data-ui-theme] body[data-app-surface] :is(.count,.badge,.post-badge,.project-date,.app-footer,time,progress){font-variant-numeric:tabular-nums}
 /* Library: quiet project previews and a clear primary creation action. */
 :root[data-ui-theme] body[data-app-surface=library] .workspace-heading{padding:24px 0;align-items:center}
@@ -62,6 +71,17 @@
 :root[data-ui-theme] body[data-app-surface=canvas] .studio-quick-actions button{min-height:38px;font-size:13px}
 :root[data-ui-theme] body[data-app-surface=canvas] .studio-tool-list button{min-height:35px;font-size:13px}
 :root[data-ui-theme] body[data-app-surface=canvas] .canvas-navigation{border-color:var(--mooz-line);background:var(--mooz-panel);border-radius:10px;box-shadow:0 3px 12px #00000010}
+/* Keep connection details available without filling the canvas toolbar. */
+:root[data-ui-theme] body[data-app-surface=canvas] .toolbar.compact-toolbar{display:flex;flex-wrap:wrap}
+:root[data-ui-theme] body[data-app-surface=canvas] .studio-run-notice{flex-basis:100%}
+:root[data-ui-theme] body[data-app-surface=canvas] .studio-health{flex:0 1 auto;min-width:0;width:auto}
+:root[data-ui-theme] body[data-app-surface=canvas] #canvasAIStatus{position:relative}
+:root[data-ui-theme] body[data-app-surface=canvas] #canvasAISummary{cursor:pointer;border:1px solid var(--mooz-line);border-radius:9px;padding:8px 12px;font-size:var(--ui-control);white-space:nowrap;background:var(--mooz-panel);color:var(--mooz-panel-ink)}
+:root[data-ui-theme] body[data-app-surface=canvas] #canvasAISummary[data-state=ready]{color:var(--mooz-success)}
+:root[data-ui-theme] body[data-app-surface=canvas] .canvas-ai-popover{position:absolute;top:calc(100% + 8px);left:0;z-index:90;width:min(430px,calc(100vw - 110px));max-height:60vh;overflow:auto;padding:16px;border:1px solid var(--mooz-line);border-radius:12px;background:var(--mooz-panel);box-shadow:0 12px 36px #00000024}
+:root[data-ui-theme] body[data-app-surface=canvas] .canvas-ai-popover #aiHealth{flex-wrap:wrap;gap:8px}
+:root[data-ui-theme] body[data-app-surface=canvas] .canvas-ai-popover #checkAllAIBtn{margin-top:8px}
+:root[data-ui-theme] body[data-app-surface=canvas] .studio-primary-actions{margin-left:auto}
 /* Production: editor/composer first, queue second, clearly separated action dock. */
 :root[data-ui-theme] body[data-app-surface=batch] .production-page{padding:26px 24px 126px}
 :root[data-ui-theme] body[data-app-surface=batch] .production-heading{gap:16px;align-items:flex-start;margin-bottom:22px}

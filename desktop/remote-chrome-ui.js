@@ -8,16 +8,16 @@
  dialog.className = 'connections-dialog remote-chrome-dialog';
  dialog.setAttribute('aria-labelledby', 'remoteChromeTitle');
  dialog.innerHTML = `
- <header><div><small>KẾT NỐI HAI MÁY</small><h2 id="remoteChromeTitle">Chrome ở máy khác</h2></div><button id="remoteChromeClose" type="button">Đóng</button></header>
+ <header><div><h2 id="remoteChromeTitle">Chrome ở máy khác</h2></div><button id="remoteChromeClose" type="button">Đóng</button></header>
  <section>
   <h3>Relay Internet <span class="remote-tag">Không cần tên miền riêng</span></h3>
   <p>Máy này và Chrome cùng kết nối ra máy chủ relay. Máy Chrome chỉ cần MooZ Connect <strong>đi kèm app</strong>.</p>
-  <ol class="remote-steps"><li><strong>1. Triển khai:</strong> bấm Triển khai trên Render, chọn gói phù hợp và đợi dịch vụ Live. Gói Free phù hợp để thử kết nối.</li><li><strong>2. Kết nối app:</strong> lấy địa chỉ dịch vụ và RELAY_ADMIN_KEY từ mục Environment của Render, nhập bên dưới rồi bấm Kết nối relay.</li><li><strong>3. Ghép Chrome:</strong> tạo & sao chép mã, dán vào extension trên máy kia.</li></ol>
+  <details class="remote-guide"><summary>Thiết lập relay lần đầu</summary><ol class="remote-steps"><li><strong>1. Triển khai:</strong> bấm Triển khai trên Render, chọn gói phù hợp và đợi dịch vụ Live. Gói Free phù hợp để thử kết nối.</li><li><strong>2. Kết nối app:</strong> lấy địa chỉ dịch vụ và RELAY_ADMIN_KEY từ mục Environment của Render, nhập bên dưới rồi bấm Kết nối relay.</li><li><strong>3. Ghép Chrome:</strong> tạo & sao chép mã, dán vào extension trên máy kia.</li></ol></details>
   <label>Địa chỉ dịch vụ relay<input id="remoteRelayURL" type="url" placeholder="https://mooz-relay-xxxx.onrender.com" autocomplete="off" spellcheck="false"></label>
   <label>RELAY_ADMIN_KEY · chỉ nhập tại app của bạn<input id="remoteRelayKey" type="password" autocomplete="off" spellcheck="false" placeholder="Khóa quản trị từ Environment của Render"></label>
   <div class="connections-actions"><button id="remoteRelayDeploy" type="button">Triển khai trên Render ↗</button><button id="remoteRelayConnect" class="primary" type="button">Kết nối relay</button></div>
   <p id="remoteRelayState" role="status"></p>
-  <p class="remote-help">App chỉ giữ khóa quản trị trong phiên hiện tại. Nội dung/tệp được mã hóa ở hai đầu trước khi đi qua relay. Render Free có hạn mức băng thông/giờ chạy và có thể cần khoảng một phút để mở lại; xem Usage trong Render. Khi relay khởi động lại, cần tạo mã ghép mới. Để chạy thường xuyên giữa hai máy, cân nhắc Tailscale hoặc máy chủ luôn hoạt động. Cần kiểm tra máy Chrome được phép truy cập địa chỉ này.</p>
+  <p class="remote-help">Khóa chỉ giữ trong phiên app; nội dung được mã hóa hai đầu. Render Free có thể cần một phút để mở lại. Relay khởi động lại cần ghép mã mới.</p>
  </section>
  <details id="remoteChromeCloudflareOptions"><summary>Cloudflare Quick Tunnel · cách thay thế</summary><section>
   <p>MooZ điều phối và xuất video trên máy này. Máy còn lại chỉ cần Chrome, MooZ Connect 1.2.0 trở lên và các tab AI đã đăng nhập.</p>

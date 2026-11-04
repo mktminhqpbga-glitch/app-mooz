@@ -25,7 +25,7 @@
   if(!resultRecovery||!connection||![1001,1005,1006,1011,1012,1013,4001].includes(code)||retryCount>=8||Date.now()>=recoveryUntil)return false;
   const delay=Math.min(15000,1000*2**retryCount);if(Date.now()+delay>=recoveryUntil)return false;
   state='reconnecting';lastError='Mất đường truyền · đang nối lại phiên và chờ kết quả cũ. Không gửi lại yêu cầu AI.';
-  const epoch=lifecycle;retryCount++;retryTimer=setTimeout(()=>{retryTimer=null;if(lifecycle!==epoch||!connection)return;void connectState(connection,{recover:true}).catch(()=>{});},delay);return true;
+  const epoch=lifecycle;retryCount++;retryTimer=setTimeout(()=>{retryTimer=null;if(lifecycle!==epoch||!connection)return;void connectState(connection,{recover:true}).catch(error=>{if(lifecycle!==epoch||socket||retryTimer)return;state='disconnected';lastError=error?.message||'Chưa nối lại được phiên Chrome. Kiểm tra quyền truy cập và kết nối lại.';rememberDiagnostic();});},delay);return true;
  }
 
  function supportedURL(value){return !!globalThis.WorkflowAISites?.providerForURL(value);}
@@ -110,8 +110,8 @@
    const phase=stage=>{trace.stage=stage;trace.socketOpened=true;if(stage==='authenticating_app')trace.roomJoined=true;};
    let current;try{current=next.mode==='relay'?new globalThis.WorkflowRelayChannel.RelaySocket(next,chrome.runtime.id,{onStage:phase}):new WebSocket(remoteMode(next)?next.endpoint:`ws://127.0.0.1:${next.port}/`);}catch{trace.failure='SOCKET_CONSTRUCTION_FAILED';trace.endedAt=Date.now();state='disconnected';lastError='Chrome không khởi tạo được WebSocket. Kiểm tra quyền truy cập địa chỉ và tải lại tiện ích.';rememberDiagnostic();reject(Error(lastError));return;}socket=current;
    const fail=(text,code)=>{trace.failure=code||'TRANSPORT_CLOSED';trace.endedAt=Date.now();lastError=text;rememberDiagnostic();reject(Error(text));};
-   const timeout=setTimeout(()=>{if(socket!==current)return;const failure=globalThis.WorkflowRemoteDiagnostics.connectionFailure(trace,'timeout');fail(failure.message,failure.code);current.close();},remoteMode(next)?45000:15000);
-   current.onopen=()=>{trace.socketOpened=true;trace.stage='authenticating_app';current.send(JSON.stringify({type:'auth',token:next.token,protocol:PROTOCOL,resultRecovery:1,extensionVersion:chrome.runtime.getManifest?.()?.version||'',...(remoteMode(next)?{remoteProtocol:1}:{})}));};
+   const timeout=setTimeout(()=>{if(socket!==current)return;const failure=globalThis.WorkflowRemoteDiagnostics.connectionFailure(trace,'timeout');fail(failure.message,failure.code);current.close(4001,'Authentication timed out');},remoteMode(next)?45000:15000);
+   current.onopen=()=>{if(socket!==current){current.close(1000,'Superseded connection');return;}trace.socketOpened=true;trace.stage='authenticating_app';current.send(JSON.stringify({type:'auth',token:next.token,protocol:PROTOCOL,resultRecovery:1,extensionVersion:chrome.runtime.getManifest?.()?.version||'',...(remoteMode(next)?{remoteProtocol:1}:{})}));};
    current.onmessage=event=>{
     if(socket!==current)return;let message;try{if(typeof event.data!=='string'||event.data.length>128*1024*1024)throw Error();message=JSON.parse(event.data);}catch{current.close(1008,'Invalid message');return;}lastSeen=Date.now();
     if(message.type==='response-ack'&&typeof message.id==='string'){const record=responses.get(message.id);if(record){responseBytes-=record.bytes||0;responses.delete(message.id);}return;}

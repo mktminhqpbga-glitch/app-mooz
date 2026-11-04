@@ -1,4 +1,6 @@
-# MooZ Agent 0.66.0
+# MooZ Agent 0.67.0
+
+**0.67.0 · Gọn giao diện, chắc thao tác:** rút gọn nội dung ở cả năm màn; hướng dẫn và cài đặt ít dùng mở khi cần. Canvas gom trạng thái AI; khung soạn video giữ tùy chọn trên màn hình; sửa chọn/phân trang hàng đợi, giữ tab AI đã chọn và bảo vệ bản nháp khi lưu. Kết nối dùng **MooZ Connect 1.9.1**, bổ sung xử lý timeout nối lại và socket cũ. [Thay đổi và kiểm chứng](docs/USER-REVIEW-0670.md).
 
 **0.66.0 · Nối lại kết nối và giữ kết quả:** dùng cùng **MooZ Connect 1.9.0**. Bỏ kiểm tra hạn mã theo đồng hồ máy Chrome; app/relay vẫn xác thực hạn thật. Khi đường truyền Chrome ngắt tạm thời, giữ phản hồi tối đa 90 giây, chuyển lại đúng mã yêu cầu và xác nhận đã nhận; không tạo lại AI. Relay sửa dọn nhầm phiên sau khi mã ghép hết hạn. [Cách cập nhật và giới hạn](docs/USER-REVIEW-0660.md).
 

@@ -51,3 +51,21 @@ body[data-app-surface=batch]{--bg:var(--mooz-bg);--panel:var(--mooz-panel);--sur
 @media(max-width:1050px){body[data-app-surface=batch] #mainNav button{width:42px;height:42px;padding:0;justify-content:center;font-size:0;gap:0}body[data-app-surface=batch] #mainNav button svg{width:20px;height:20px;flex:none}body[data-app-surface=batch] #mainNav button>span{display:none}}
 /* Keep portrait media inside its own preview, above all labels and actions. */
 body[data-app-surface=batch] .asset-card{display:flex;flex-direction:column;min-width:0;overflow:hidden}body[data-app-surface=batch] .asset-card .asset-preview{position:relative;height:180px!important;min-height:180px;flex:none;overflow:hidden;background:var(--mooz-raised)}body[data-app-surface=batch] .asset-card .asset-preview>img,body[data-app-surface=batch] .asset-card .asset-preview>video{position:absolute!important;inset:0;width:100%!important;height:100%!important;max-height:100%!important;object-fit:contain!important;display:block}body[data-app-surface=batch] .asset-card .asset-type{z-index:2}body[data-app-surface=batch] .asset-card .asset-info{flex:1;min-height:68px}body[data-app-surface=batch] .asset-card .asset-actions{flex:none}.media-source-tabs{display:flex;gap:10px;margin:0 0 18px;flex-wrap:wrap}.media-source-tabs button[aria-pressed=true]{border-color:var(--mooz-link);color:var(--mooz-link);background:var(--mooz-soft)}
+
+/* Let the input flex instead of forcing a 350px textarea above the settings. */
+:root[data-ui-theme] body[data-app-surface=batch] .production-studio .composer-panel{padding:0;min-height:0;overflow:auto}
+:root[data-ui-theme] body[data-app-surface=batch] .composer-panel #composerContent{display:flex;min-height:140px;overflow:auto!important}
+:root[data-ui-theme] body[data-app-surface=batch] .composer-panel .composer-input{display:flex;min-height:0;padding:10px 18px 16px}
+:root[data-ui-theme] body[data-app-surface=batch] .composer-panel #batchPrompts{min-height:140px!important;height:auto!important;resize:vertical;font-size:15px;line-height:1.7;padding:10px}
+:root[data-ui-theme] body[data-app-surface=batch] .composer-panel .composer-footer{padding:14px 18px 18px}
+:root[data-ui-theme] body[data-app-surface=batch] .composer-panel .composer-task-worker{margin-top:12px}
+.flow-canvas-help summary{cursor:pointer;display:list-item;padding:6px 0}.flow-canvas-help p{margin:4px 0 8px}
+@media(min-width:1101px) and (min-height:800px){
+ :root[data-ui-theme] body[data-app-surface=batch] .production-studio{height:auto}
+ :root[data-ui-theme] body[data-app-surface=batch] .production-studio .composer-panel{height:calc(100dvh - 355px)!important;min-height:440px;max-height:none}
+ :root[data-ui-theme] body[data-app-surface=batch] .composer-panel .composer-connection,:root[data-ui-theme] body[data-app-surface=batch] .composer-panel .composer-tabs,:root[data-ui-theme] body[data-app-surface=batch] .composer-panel .composer-footer{flex:none}
+ :root[data-ui-theme] body[data-app-surface=batch] .composer-panel #composerContent{flex:1 1 140px;min-height:100px}
+ :root[data-ui-theme] body[data-app-surface=batch] .composer-panel #batchPrompts{height:100%!important;min-height:100px!important;resize:none}
+}
+
+:root[data-ui-theme] body[data-app-surface=batch] .composer-panel .reference-composer{overflow:auto!important}

@@ -37,7 +37,7 @@
       if (!Array.isArray(projects)) throw new Error('Không đọc được danh sách dự án.');
       status();
       render();
-    } catch (error) { status(displayError(error), true); }
+    } catch (error) { if(revision===refreshRevision)status(displayError(error), true); }
   }
 
   async function open(project) {
@@ -179,7 +179,7 @@
     document.querySelector('.project-library').scrollIntoView({block:'start', behavior:'smooth'});
   };
   let appTool = 'canvas';
-  function pickProject(tool) {appTool=tool;$('appProjectTitle').textContent=tool==='agent'?'MooZ Agent':tool==='voiceover'?'Lồng tiếng trong canvas':'Mở canvas';$('appProjectDescription').textContent=tool==='voiceover'?'Lồng tiếng hiện có trong canvas bằng OpenAI API: Thêm node → Lồng tiếng, nhập lời đọc hoặc nối Văn bản, cấu hình khóa OpenAI trong Kết nối AI, rồi bấm Thực hiện. Dịch vụ có thể tính phí. Bạn chọn dự án trước khi thêm node lồng tiếng.':'Chọn dự án để mở không gian làm việc. Ảnh, video và các bước được giữ trong đúng dự án đó.';$('appProjectOpen').textContent=tool==='voiceover'?'Mở canvas lồng tiếng':'Mở canvas';$('appProjectNew').textContent=tool==='voiceover'?'＋ Dự án lồng tiếng':'＋ Dự án mới';void selectProject();}
+  function pickProject(tool) {appTool=tool;$('appProjectTitle').textContent=tool==='agent'?'MooZ Agent':tool==='voiceover'?'Lồng tiếng trong canvas':'Mở canvas';$('appProjectDescription').textContent=tool==='voiceover'?'Chọn dự án, thêm node Lồng tiếng và kết nối OpenAI API. Dịch vụ có thể tính phí.':'Chọn dự án để mở canvas.';$('appProjectOpen').textContent=tool==='voiceover'?'Mở canvas lồng tiếng':'Mở canvas';$('appProjectNew').textContent=tool==='voiceover'?'＋ Dự án lồng tiếng':'＋ Dự án mới';void selectProject();}
   $('aiAppsAgent').onclick=()=>pickProject('agent');
   $('aiAppsVoice').onclick = ()=>pickProject('voiceover');
   async function selectProject() {
@@ -196,8 +196,9 @@
     if (first) select.value = first.id;
     else select.append(new Option('Chưa có dự án sẵn sàng', ''));
     $('appProjectOpen').disabled = !first;
-    $('appProjectDialog').showModal();
+    if(!$('appProjectDialog').open)$('appProjectDialog').showModal();
   }
+  $('appProjectDialog').addEventListener('cancel',event=>{if(launchingApp)event.preventDefault();});
   $('appProjectCancel').onclick = () => { if (!launchingApp) $('appProjectDialog').close(); };
   async function launchProject(createNew = false) {
     if (launchingApp) return;
@@ -222,6 +223,8 @@
   $('searchProjects').oninput = render;
   $('newProject').onclick = () => nameDialog();
   $('emptyCreate').onclick = () => nameDialog();
+  $('nameDialog').addEventListener('cancel',event=>{if($('submitName').disabled)event.preventDefault();});
+  $('restoreDialog').addEventListener('cancel',event=>{if($('confirmRestore').disabled)event.preventDefault();});
   $('cancelName').onclick = () => $('nameDialog').close();
   $('cancelRestore').onclick = () => $('restoreDialog').close();
   $('cancelDelete').onclick = () => { if (!deleting) $('deleteDialog').close(); };
@@ -261,6 +264,7 @@
 
   $('nameForm').onsubmit = async event => {
     event.preventDefault();
+    if($('submitName').disabled)return;
     const name = $('projectName').value.trim();
     if (!name || name.length > 100 || /[\u0000-\u001f]/.test(name)) {
       $('nameError').textContent = 'Nhập tên từ 1 đến 100 ký tự, không chứa ký tự điều khiển.';

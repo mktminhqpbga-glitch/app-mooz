@@ -11,3 +11,5 @@
 @media(max-width:760px){.ai-app-catalog h2,.app-label,.app-arrow,.app-catalog-note{display:none}.ai-app-catalog{margin-top:22px;padding-top:15px}.app-button{justify-content:center;padding:9px 0;min-height:48px}.app-icon{width:32px;height:32px}.sidebar .brand{flex-shrink:0}}
 /* Project deletion stays visible and can be undone in the library. */
 .project-actions{flex-wrap:wrap;align-items:center;gap:5px}.project-actions .project-delete{margin-left:auto;color:#efabb5;border:1px solid #e990a13d;padding:5px 9px}.project-actions .project-delete:hover{background:#e990a115}.primary.danger{background:#e8a1ae;border-color:#e8a1ae;color:#351b22}.delete-notice{display:flex;align-items:center;justify-content:space-between;gap:15px;padding:12px 15px;margin:0 0 20px;border:1px solid #b6a4ff45;border-radius:9px;background:#b6a4ff0c;font-size:12px;color:#d0c5ef}.delete-notice span{min-width:0;overflow-wrap:anywhere}.delete-notice button{flex-shrink:0;font-size:11px;padding:7px 12px;min-height:32px}
+
+#libraryStatus:empty{display:none}

@@ -68,7 +68,7 @@ const os=require('node:os');
    await resize(width,height);
    await activate('batch');
    if(width>1050){
-    const bounds=await batch.locator('.brand small').evaluate(e=>{const r=e.getBoundingClientRect(),brand=e.closest('.brand').getBoundingClientRect();return {left:r.left,right:r.right,brandLeft:brand.left,brandRight:brand.right};});
+    const bounds=await batch.locator('.brand span').evaluate(e=>{const r=e.getBoundingClientRect(),brand=e.closest('.brand').getBoundingClientRect();return {left:r.left,right:r.right,brandLeft:brand.left,brandRight:brand.right};});
     assert.ok(bounds.left>=bounds.brandLeft&&bounds.right<=bounds.brandRight+1,'Batch tagline fits the whole brand row');
     await batch.screenshot({path:path.join(review,'batch-brand-'+width+'.png')});
    }

@@ -67,7 +67,7 @@ const path = require('node:path');
     }
     console.log('Windows QA: settings');await home.click('#connectionsOpen');
     await home.waitForFunction(version => document.querySelector('#connectionsVersion').textContent.includes(version), require('../manifest.json').version);
-    assert.equal(await home.locator('#extensionManualGuide').getAttribute('open'), '');
+    assert.equal(await home.locator('#extensionManualGuide').getAttribute('open'), null);await home.locator('#extensionManualGuide>summary').click();assert.equal(await home.locator('#extensionManualGuide').getAttribute('open'), '');
     for (const name of ['Mở Grok', 'Mở Google Flow / Veo']) {
       const button = home.getByRole('button', {name, exact: true});
       await button.scrollIntoViewIfNeeded();

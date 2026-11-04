@@ -45,7 +45,7 @@ jobs:
 
       - name: Verify connection recovery in quick packages
         if: inputs.quick_package == true
-        run: node --test tests/desktop-connection-recovery.test.cjs
+        run: node --test tests/desktop-connection-recovery.test.cjs tests/desktop-recovery-lifecycle.test.cjs
 
       - name: Validate optional signing configuration
         env:

@@ -1,5 +1,5 @@
 {
-  "version": "1.9.0",
+  "version": "1.9.1",
   "protocol": 1,
-  "notes": "Dùng với MooZ Agent 0.66.0: xác thực hạn mã tại máy phát hành; nối lại phiên khi rớt mạng, giữ phản hồi đến khi app xác nhận nhận được; không gửi lại yêu cầu AI. Giao thức kết nối 1 tương thích bản cũ."
+  "notes": "Dùng với MooZ Agent 0.67.0: tiếp tục nối lại khi xác thực tạm thời không phản hồi; xử lý mất quyền và socket cũ sau khi ngắt. Giữ phản hồi đúng tác vụ, không tự gửi lại AI. Giao thức kết nối 1."
 }

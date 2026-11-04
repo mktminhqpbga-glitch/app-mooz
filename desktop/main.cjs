@@ -375,7 +375,7 @@ async function handleWorkflowCall(event,method,data={}){
    return Promise.all(list.map(async item=>{let busy=false;const target=item.key==='batch'?batchWindow:canvases.get(item.key);if(target){let timer;try{busy=await Promise.race([target.webContents.executeJavaScript(item.key==='batch'?'!!window.MooZBatch?.busy()':'!!window.WorkflowDesktopLifecycle?.busy()'),new Promise(resolve=>{timer=setTimeout(()=>resolve(null),1500);})]);}catch{busy=null;}finally{clearTimeout(timer);}}else if(item.key==='posting')busy=!!posting?.busy();else if(item.key==='affiliate')busy=!!affiliate?.working;return {...item,busy};}));
   }
   if(method==='windows.focus'){if(data.key==='home')workspace.activate('home');const target=data.key==='home'?home:data.key==='posting'?postingWindow:data.key==='affiliate'?affiliateWindow:data.key==='batch'?batchWindow:canvases.get(data.key);if(!target||target.isDestroyed())throw Error('Cửa sổ đã đóng.');target.show();if(target.isMinimized())target.restore();target.focus();return;}
-  if(method==='home.open'){await openHome();return;}
+  if(method==='home.open'){await openHome();if(data?.connectChrome===true)await home.webContents.executeJavaScript("document.getElementById('connectChrome')?.click()");return;}
   if(!id)throw Error('Project context required.');
   if(method.startsWith('agent.')){
     if(method==='agent.options')return {connections:(await posting.publisher.list()).map(c=>({id:c.id,name:c.name,platform:c.platform}))};

@@ -23,7 +23,7 @@
       <button id="aiAppsBatch" class="app-button" type="button"><span class="app-icon" aria-hidden="true">▷</span><span class="app-label"><strong>Video hàng loạt</strong><small>Sản phẩm · video · hậu kỳ</small></span><span class="app-arrow" aria-hidden="true">↗</span></button>
       <button id="aiAppsAffiliate" class="app-button" type="button"><span class="app-icon affiliate" aria-hidden="true">↗</span><span class="app-label"><strong>Affiliate Shopee</strong><small>Link · kịch bản · workflow video</small></span><span class="app-arrow" aria-hidden="true">↗</span></button>
 
-      <p class="app-catalog-note">Tạo nội dung, hoàn thiện và quản lý đăng bài trong cùng không gian.</p>
+
     </section>
     <section class="ai-app-catalog canvas-tools-catalog"><h2>CÔNG CỤ TRONG DỰ ÁN</h2>      <button id="aiAppsVoice" class="app-button" type="button" title="Tạo lời đọc trong dự án bằng OpenAI API"><span class="app-icon voice" aria-hidden="true">♫</span><span class="app-label"><strong>Lồng tiếng trong canvas</strong><small>Trong canvas · OpenAI API</small></span></button></section>
     <div class="sidebar-bottom"><span class="local-dot"></span><div>Lưu trên máy của bạn<small>Không tự tải dự án lên đám mây</small></div></div>
@@ -32,18 +32,18 @@
   <main>
     <header class="topbar"><span>Không gian làm việc</span><span class="desktop-badge">MOOZ AGENT</span></header>
     <section class="workspace-heading">
-      <div><p class="eyebrow">KHÔNG GIAN SÁNG TẠO CỦA BẠN</p><h1>Không gian làm việc</h1><p class="subtitle">Tiếp tục dự án hoặc bắt đầu một workflow mới.</p></div>
+      <div><h1>Dự án của bạn</h1><p class="subtitle">Tiếp tục dự án hoặc tạo mới.</p></div>
       <button id="newProject" class="primary"><span aria-hidden="true">＋</span> Dự án mới</button>
     </section>
 
     <details id="homeGuide" class="getting-started" aria-labelledby="startHeading" open>
-      <summary class="home-guide-summary"><div class="start-title"><span class="spark" aria-hidden="true">✧</span><div><h2 id="startHeading">Hướng dẫn bắt đầu</h2><p>Tạo dự án, kết nối AI và chạy workflow.</p></div></div><button id="connectChrome" type="button" class="secondary">Kết nối Chrome</button><span class="guide-chevron" aria-hidden="true">⌄</span></summary><div class="home-guide-body">
+      <summary class="home-guide-summary"><div class="start-title"><span class="spark" aria-hidden="true">✧</span><div><h2 id="startHeading">Hướng dẫn bắt đầu</h2></div></div><button id="connectChrome" type="button" class="secondary">Kết nối Chrome</button><span class="guide-chevron" aria-hidden="true">⌄</span></summary><div class="home-guide-body">
       <ol>
         <li><span class="step">01</span><div><strong>Tạo dự án</strong><p>Đặt tên, thêm node và nối các bước trên canvas.</p></div></li>
         <li><span class="step">02</span><div><strong>Kết nối AI</strong><p>Kết nối Chrome để dùng các tab AI đang mở, hoặc mở cửa sổ AI riêng trong app.</p></div></li>
         <li><span class="step">03</span><div><strong>Chạy và kiểm tra</strong><p>Thử một node trước, kiểm tra kết quả rồi chạy cả workflow.</p></div></li>
       </ol>
-      <div class="connection-footer"><p class="connection-note">Kết nối Chrome cần tiện ích đồng hành. Cửa sổ AI trong app có phiên riêng và cần đăng nhập lại; app không sao chép cookie Chrome. API key chỉ giữ trong phiên, không lưu vào tệp dự án.</p></div></div>
+      <div class="connection-footer"><p class="connection-note">Chrome dùng tiện ích MooZ Connect. AI trong app cần đăng nhập riêng. API key chỉ giữ trong phiên.</p></div></div>
     </details>
 
     <section class="project-library" aria-labelledby="libraryHeading">
@@ -56,19 +56,19 @@
   </main>
 
   <dialog id="appProjectDialog" aria-labelledby="appProjectTitle">
-    <span class="app-dialog-eyebrow">ỨNG DỤNG AI</span><h2 id="appProjectTitle">Chọn dự án</h2><p id="appProjectDescription">Chọn dự án để mở không gian làm việc. Ảnh, video và các bước được giữ trong đúng dự án đó.</p><label class="field" for="appProjectSelect">Dự án<select id="appProjectSelect"></select></label><p id="appProjectError" class="form-error" role="alert"></p><div class="dialog-actions"><button id="appProjectCancel" class="secondary" type="button">Hủy</button><button id="appProjectNew" class="secondary" type="button">＋ Dự án mới</button><button id="appProjectOpen" class="primary" type="button">Mở canvas</button></div>
+    <span class="app-dialog-eyebrow">ỨNG DỤNG AI</span><h2 id="appProjectTitle">Chọn dự án</h2><p id="appProjectDescription">Chọn dự án để mở canvas.</p><label class="field" for="appProjectSelect">Dự án<select id="appProjectSelect"></select></label><p id="appProjectError" class="form-error" role="alert"></p><div class="dialog-actions"><button id="appProjectCancel" class="secondary" type="button">Hủy</button><button id="appProjectNew" class="secondary" type="button">＋ Dự án mới</button><button id="appProjectOpen" class="primary" type="button">Mở canvas</button></div>
   </dialog>
   <dialog id="nameDialog">
-    <form id="nameForm"><h2 id="nameDialogTitle">Dự án mới</h2><p id="nameDialogDescription">Một tên dễ nhớ giúp bạn tìm lại công việc của mình.</p><label class="field" for="projectName">Tên dự án<input id="projectName" maxlength="100" required autocomplete="off" placeholder="Ví dụ: Video giới thiệu sản phẩm"></label><p id="nameError" class="form-error" role="alert"></p><div class="dialog-actions"><button id="cancelName" type="button" class="secondary">Hủy</button><button id="submitName" class="primary" type="submit">Tạo dự án</button></div></form>
+    <form id="nameForm"><h2 id="nameDialogTitle">Dự án mới</h2><label class="field" for="projectName">Tên dự án<input id="projectName" maxlength="100" required autocomplete="off" placeholder="Ví dụ: Video giới thiệu sản phẩm"></label><p id="nameError" class="form-error" role="alert"></p><div class="dialog-actions"><button id="cancelName" type="button" class="secondary">Hủy</button><button id="submitName" class="primary" type="submit">Tạo dự án</button></div></form>
   </dialog>
   <dialog id="restoreDialog">
-    <h2>Khôi phục bản lưu trước?</h2><p id="restoreDescription"></p><p>Tệp hiện tại được giữ lại riêng để có thể kiểm tra sau. Bản lưu trước sẽ trở thành phiên bản đang dùng.</p><p id="restoreError" class="form-error" role="alert"></p><div class="dialog-actions"><button id="cancelRestore" class="secondary">Hủy</button><button id="confirmRestore" class="primary">Khôi phục</button></div>
+    <h2>Khôi phục bản lưu trước?</h2><p id="restoreDescription"></p><p>Tệp hiện tại được giữ lại riêng; bản lưu trước sẽ trở thành bản đang dùng.</p><p id="restoreError" class="form-error" role="alert"></p><div class="dialog-actions"><button id="cancelRestore" class="secondary">Hủy</button><button id="confirmRestore" class="primary">Khôi phục</button></div>
   </dialog>
   <dialog id="deleteDialog" aria-labelledby="deleteTitle" aria-describedby="deleteDescription">
-    <h2 id="deleteTitle">Xóa dự án?</h2><p id="deleteDescription"></p><p>Dự án sẽ được chuyển khỏi thư viện. Dữ liệu vẫn được giữ trên máy; bạn có thể bấm Hoàn tác sau khi xóa.</p><p id="deleteError" class="form-error" role="alert"></p><div class="dialog-actions"><button id="cancelDelete" class="secondary" type="button" autofocus>Hủy</button><button id="confirmDelete" class="primary danger" type="button">Xóa dự án</button></div>
+    <h2 id="deleteTitle">Xóa dự án?</h2><p id="deleteDescription"></p><p>Dữ liệu vẫn giữ trên máy. Có thể Hoàn tác sau khi xóa.</p><p id="deleteError" class="form-error" role="alert"></p><div class="dialog-actions"><button id="cancelDelete" class="secondary" type="button" autofocus>Hủy</button><button id="confirmDelete" class="primary danger" type="button">Xóa dự án</button></div>
   </dialog>
   <dialog id="chromeDialog">
-    <h2>Kết nối các tab AI trong Chrome</h2><p>Cài tiện ích MooZ Connect trong Chrome, mở tiện ích rồi dán mã kết nối dưới đây. Giữ app và các tab AI mở khi chạy.</p><label class="field" for="chromePairing">Mã kết nối phiên này<input id="chromePairing" type="password" readonly autocomplete="off" spellcheck="false"></label><p>Mã này cấp quyền thao tác các tab AI qua tiện ích đồng hành. Chỉ dán vào tiện ích MooZ Connect trên máy của bạn.</p><p id="chromeStatus" class="form-error" role="status"></p><div class="dialog-actions"><button id="revealChrome" class="secondary" type="button" aria-pressed="false">Hiện mã</button><button id="closeChrome" class="secondary">Đóng</button><button id="copyChrome" class="primary">Sao chép mã</button></div>
+    <h2>Kết nối các tab AI trong Chrome</h2><p>Mở MooZ Connect trong Chrome và dán mã dưới đây. Giữ app và tab AI mở khi chạy.</p><label class="field" for="chromePairing">Mã kết nối phiên này<input id="chromePairing" type="password" readonly autocomplete="off" spellcheck="false"></label><p>Chỉ dán mã vào MooZ Connect trên máy Chrome của bạn.</p><p id="chromeStatus" class="form-error" role="status"></p><div class="dialog-actions"><button id="revealChrome" class="secondary" type="button" aria-pressed="false">Hiện mã</button><button id="closeChrome" class="secondary">Đóng</button><button id="copyChrome" class="primary">Sao chép mã</button></div>
   </dialog>
   <script src="update-ui.js"></script>
   <script src="home.js"></script>
