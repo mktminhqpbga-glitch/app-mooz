@@ -21,7 +21,7 @@ test('required input form checks actual assets, optional empties and aggregate r
 });
 test('compiler rejects disconnected paid nodes, missing scene contracts and video-source/provider mismatch',()=>{
  const f=G.preset('sales');f.scenes=2;const image=find(f,'image');f.edges=f.edges.filter(e=>!(e.to===image.id&&e.port==='script'));assert.throws(()=>G.compile(f),/từ 2 cảnh/);
- const a=G.preset('video'),unused=G.process('write');a.nodes.push(unused);assert.throws(()=>G.compile(a),/đường nối/);a.nodes.pop();const v=find(a,'video'),src=G.input('video','C · Video gốc');a.nodes.push(src);a.edges.push({id:crypto.randomUUID(),from:src.id,to:v.id,port:'video'});v.provider='grok';assert.throws(()=>G.compile(a),/cần AI Muse/);
+ const a=G.preset('video'),unused=G.process('write');a.nodes.push(unused);assert.throws(()=>G.compile(a),/đường nối/);a.nodes.pop();const v=find(a,'video'),src=G.input('video','C · Video gốc');a.nodes.push(src);a.edges.push({id:crypto.randomUUID(),from:src.id,to:v.id,port:'video'});v.provider='grok';assert.throws(()=>G.compile(a),/cần AI Muse|một AI hỗ trợ toàn bộ/);
 });
 test('single-valued ports replace their wire atomically; draft validation preserves undo source',()=>{
  const f=G.preset('write'),first=input(f,'text'),next=G.input('text','B · Yêu cầu khác'),w=find(f,'write');f.nodes.push(next);
@@ -32,11 +32,11 @@ test('own script is split without AI and requires exact scene count and complete
  const p=G.compile(G.preset('script'));p.scenes=2;
  assert.equal(G.splitScript('Cảnh đầu\n\nCảnh sau',p).length,2);assert.throws(()=>G.splitScript('Chỉ một cảnh',p),/đúng 2 cảnh/);assert.throws(()=>G.splitScript('{bad json',p),/JSON/);assert.throws(()=>G.splitScript(JSON.stringify({scenes:[{scene:1}]}),p),/đúng 2 cảnh/);
 });
-test('queue freezes each flow, values, graph bindings and worker pins; failed validation cannot partially enqueue',()=>{
+test('queue freezes each flow, values, graph bindings and whole-task tab choice; failed validation cannot partially enqueue',()=>{
  const f=G.preset('write'),w=find(f,'write');w.workerId='native:pinned';const p=G.compile(f),a=input(f,'text'),va=G.defaults(p),vb=G.defaults(p);va[a.id].text='PRODUCT_A';
- const data={workflow:M.defaultWorkflow(),jobs:[{id:'a',name:'A',inputMode:'graph',images:[],draftPlan:p,flowValues:va,state:'draft',logs:[]},{id:'b',name:'B',inputMode:'graph',images:[],draftPlan:G.copy(p),flowValues:vb,state:'draft',logs:[]}],workers:M.defaultWorkers(),running:false,maxConcurrent:2};const e=M.create(data);
+ const data={workflow:M.defaultWorkflow(),jobs:[{id:'a',name:'A',inputMode:'graph',images:[],draftPlan:p,requestedWorkerId:'native:pinned',flowValues:va,state:'draft',logs:[]},{id:'b',name:'B',inputMode:'graph',images:[],draftPlan:G.copy(p),requestedWorkerId:'native:pinned',flowValues:vb,state:'draft',logs:[]}],workers:M.defaultWorkers(),running:false,maxConcurrent:2};const e=M.create(data);
  assert.throws(()=>e.enqueue(['a','b'],data.workflow),/bắt buộc/);assert.ok(data.jobs.every(j=>j.state==='draft'));
- vb[a.id].text='PRODUCT_B';assert.equal(e.enqueue(['a','b'],data.workflow),2);p.steps[0].prompt='CHANGED';va[a.id].text='OTHER';f.nodes.find(n=>n.id===w.id).workerId='native:other';assert.equal(data.jobs[0].flowInputSnapshot[a.id].text,'PRODUCT_A');assert.equal(data.jobs[1].flowInputSnapshot[a.id].text,'PRODUCT_B');assert.equal(data.jobs[0].plan.steps[0].workerId,'native:pinned');
+ vb[a.id].text='PRODUCT_B';assert.equal(e.enqueue(['a','b'],data.workflow),2);p.steps[0].prompt='CHANGED';va[a.id].text='OTHER';f.nodes.find(n=>n.id===w.id).workerId='native:other';assert.equal(data.jobs[0].flowInputSnapshot[a.id].text,'PRODUCT_A');assert.equal(data.jobs[1].flowInputSnapshot[a.id].text,'PRODUCT_B');assert.equal(data.jobs[0].plan.steps[0].workerId,undefined);assert.ok(data.jobs[0].plan.flow.nodes.every(n=>!n.workerId));assert.equal(data.jobs[0].workerPreferenceSnapshot.workerId,'native:pinned');
  e.unqueue('a');assert.equal(data.jobs[0].flowInputSnapshot,null);assert.equal(data.jobs[0].draftPlan.schema,'mooz-flow-plan-v1');assert.throws(()=>e.setImages('a',['different']),/form đầu vào/);
 });
 test('compiled plan tampering is rejected before AI requests',()=>{const p=G.compile(G.preset('video'));p.steps.reverse();assert.throws(()=>M.validate(p,[],{requireTabs:false}),/không khớp graph/);});

@@ -1,4 +1,6 @@
-# MooZ Agent 0.64.0
+# MooZ Agent 0.65.0
+
+**0.65.0 · Một luồng, một tab:** chọn AI một lần cho mẫu; chọn tab chạy cả tác vụ ở form bên ngoài canvas hoặc màn tạo video. Tab bận thì xếp hàng chờ; tác vụ giữ nguyên tab qua mọi bước AI và ghép/xuất. [Hướng dẫn](docs/USER-REVIEW-0650.md).
 
 **0.64.0 · Ảnh tham chiếu cố định theo mẫu và kho prompt Canvas:** mỗi mẫu dùng một ảnh nhân vật, có thể thay/bỏ; ảnh sản phẩm nhập riêng cho tác vụ mới. Xem và dùng prompt từ kho của từng dự án Canvas ngay trong luồng. Thêm phát hiện kết nối relay bị treo. [Hướng dẫn và kiểm chứng](docs/USER-REVIEW-0640.md).
 

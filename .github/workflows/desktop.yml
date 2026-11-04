@@ -68,7 +68,7 @@ jobs:
         env:
           MOOZ_UI_AUDIT_DIR: ${{ runner.temp }}/mooz-ui-review
         run: |
-          node --test tests/desktop-flow-graph.test.cjs tests/desktop-flow-media.test.cjs tests/desktop-outbound-relay.test.cjs
+          node --test tests/desktop-flow-graph.test.cjs tests/desktop-flow-media.test.cjs tests/desktop-outbound-relay.test.cjs tests/desktop-flow-tab-routing.test.cjs
           node tests/desktop-flow-reference-template-smoke.cjs
           node tests/desktop-flow-canvas-smoke.cjs
           node tests/desktop-media-order-smoke.cjs

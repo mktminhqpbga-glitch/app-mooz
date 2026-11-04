@@ -32,14 +32,14 @@ test('Draft reference removal is persisted, never deletes assets; queued snapsho
  e.unqueue('p0');e.setImages('p0',['c']);e.enqueue(['p0'],d.workflow);assert.deepEqual(d.jobs[0].inputSnapshot,['c']);d.jobs[0].attempts.video=1;assert.throws(()=>e.unqueue('p0'),/chưa gửi/);d.jobs[0].completed.push({stepId:'video'});assert.throws(()=>e.unqueue('p0'),/chưa gửi/);
  const data=setup(1),f=M.create(data,{persist:()=>{throw Error('disk');}});assert.throws(()=>f.setImages('p0',[]),/disk/);assert.deepEqual(data.jobs[0].images,['image-0']);
 });
-test('Waiting reasons distinguish hold, offline, unchecked, wrong mode, busy and pause; pinning never falls back to another tab',async()=>{
+test('Waiting reasons distinguish hold, offline, unchecked, wrong mode, busy and pause; whole-task selection never falls back to another tab',async()=>{
  const d=setup(2),e=M.create(d,{run:()=>new Promise(()=>{})});e.enqueue(['p0','p1'],d.workflow);const j=d.jobs[0];
  d.providerHolds={muse:{message:'Cần đăng nhập lại'}};assert.match(e.waitingReason(j),/Cần đăng nhập lại/);d.providerHolds={};
  for(const w of d.workers)if(w.provider==='muse')w.online=false;assert.match(e.waitingReason(j),/mất kết nối/);
  const w=d.workers[0];w.online=true;w.ready=false;w.reason='Tải lại tab AI';assert.equal(e.waitingReason(j),w.reason);
  w.ready=true;w.mediaMode='image';assert.match(e.waitingReason(j),/không khớp/);w.mediaMode='video';assert.match(e.waitingReason(j),/tạm dừng/);
- j.plan.steps[0].workerId='chrome:2';d.jobs[1].plan.steps[0].workerId='chrome:2';d.running=true;e.tick();await flush();assert.equal(j.state,'queued');assert.match(e.waitingReason(j),/mất kết nối/);
- delete j.plan.steps[0].workerId;d.jobs[1].plan.steps[0].workerId=w.id;e.tick();await flush();assert.equal(j.active.workerId,w.id);assert.match(e.waitingReason(d.jobs[1]),/đang bận/);
+ j.workerPreferenceSnapshot.workerId='chrome:2';d.jobs[1].workerPreferenceSnapshot.workerId='chrome:2';d.running=true;e.tick();await flush();assert.equal(j.state,'queued');assert.match(e.waitingReason(j),/mất kết nối/);
+ j.workerPreferenceSnapshot.workerId=null;d.jobs[1].workerPreferenceSnapshot.workerId=w.id;e.tick();await flush();assert.equal(j.active.workerId,w.id);assert.match(e.waitingReason(d.jobs[1]),/đang bận/);
 });
 test('Multi-scene scripts require strict complete JSON and valid ordering before any media can run',()=>{
  const w=M.defaultWorkflow();w.scenes=2;const row=n=>({scene:n,title:'Cảnh '+n,voiceover:'Lời '+n,imagePrompt:'Ảnh '+n,videoPrompt:'Video '+n,duration:null,size:'9:16'});
