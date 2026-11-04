@@ -11,11 +11,12 @@ class ChromeRelay {
  constructor(options={}) {
   this.notify=typeof options==='function'?options:options.notify||(()=>{});
   this.appVersion=typeof options==='object'?options.version||null:null;this.companion=null;
+  this.recoveryMs=options.recoveryMs??90000;this.recovery=null;this.resultRecovery=false;
   this.instanceId=randomUUID();this.remoteHttp=null;this.server=null;this.remoteServer=null;this.remoteIngressPort=null;this.client=null;this.extensionId=null;this.port=null;this.token=null;this.pending=new Map();this.remoteEndpoint=null;this.remoteLease=null;this.remoteSession=null;this.connectionMode=null;this.heartbeat=null;
  }
  get isConnected(){return this.client?.readyState===WebSocket.OPEN;}
  dispatchKey(id){return this.tabKey?this.tabKey(id):'chrome:'+id;}
- status(){return {connected:!!this.isConnected,port:this.port,extensionId:this.extensionId,companion:this.companion,mode:this.connectionMode,remoteEnabled:!!this.remoteEndpoint};}
+ status(){return {connected:!!this.isConnected,port:this.port,extensionId:this.extensionId,companion:this.companion,mode:this.connectionMode,remoteEnabled:!!this.remoteEndpoint,recovering:!!this.recovery,recoveryUntil:this.recovery?.until||null};}
  async start({port=0}={}){
   if(this.server)return this.status();
   this.token=randomBytes(32).toString('hex');
@@ -44,8 +45,8 @@ class ChromeRelay {
  pairingURI(){if(!this.port||!this.token)throw Error('Kết nối Chrome chưa được khởi tạo.');return `workflow-connect://127.0.0.1:${this.port}/${this.token}`;}
  configureRemote(value){const next=value?Remote.endpoint(value):null;if(next===this.remoteEndpoint)return;this.revokeRemote();this.remoteEndpoint=next;this.changed();}
  remotePairingURI(){if(!this.remoteEndpoint)throw Error('Bật kết nối từ xa trước khi tạo mã.');this.remoteLease={token:randomBytes(32).toString('hex'),expiresAt:Date.now()+10*60*1000};return {url:Remote.pairing(this.remoteEndpoint,this.remoteLease.token,this.remoteLease.expiresAt),expiresAt:this.remoteLease.expiresAt};}
- revokeLocal(){this.token=randomBytes(32).toString('hex');if(this.connectionMode==='local')this.disconnect();this.changed();}
- revokeRemote(){this.remoteLease=null;this.remoteSession=null;if(this.connectionMode==='remote')this.disconnect();this.changed();}
+ revokeLocal(){this.token=randomBytes(32).toString('hex');if(this.connectionMode==='local'||this.recovery?.mode==='local')this.disconnect();this.changed();}
+ revokeRemote(){this.remoteLease=null;this.remoteSession=null;if(this.connectionMode==='remote'||this.recovery?.mode==='remote')this.disconnect();this.changed();}
  changed(){try{this.notify({type:'relay',...this.status()});}catch{}}
  send(socket,value){
   const text=JSON.stringify(value);
@@ -58,9 +59,9 @@ class ChromeRelay {
   // has been assembled. The public ingress must not buffer 128 MB to reject it.
   let authBytes=0;const budget=chunk=>{if(authenticated)return;authBytes+=chunk.length;if(authBytes>8192)socket.terminate();};
   request.socket?.on('data',budget);
-  const authTimer=setTimeout(()=>socket.close(1008,'Authentication required'),5000);authTimer.unref?.();
+  const authTimer=setTimeout(()=>socket.close(1008,'Authentication required'),remote?15000:5000);authTimer.unref?.();
   socket.on('error',()=>{});
-  socket.on('close',()=>{request.socket?.removeListener('data',budget);clearTimeout(authTimer);if(this.client===socket)this.clearClient();});
+  socket.on('close',code=>{request.socket?.removeListener('data',budget);clearTimeout(authTimer);if(this.client===socket)this.clearClient({recoverable:this.resultRecovery&&[1001,1005,1006,1011,1012,1013,4001].includes(code)});});
   socket.on('message',bytes=>{
    if(!authenticated&&bytes.length>4096){socket.close(1008,'Invalid authentication');return;}let message;try{message=JSON.parse(bytes.toString());}catch{socket.close(1008,'Invalid message');return;}
    if(!message||typeof message!=='object'||Array.isArray(message)){socket.close(1008,'Invalid message');return;}
@@ -70,9 +71,13 @@ class ChromeRelay {
     if(message.type!=='auth'||!supplied||!allowed.some(token=>timingSafeEqual(supplied,Buffer.from(token,'hex')))||remote&&(!this.remoteEndpoint||message.remoteProtocol!==1)){socket.close(1008,'Authentication failed or pairing expired');return;}
     if(this.isConnected){socket.close(1013,'Already connected');return;}
     if(message.protocol!==undefined&&message.protocol!==1){socket.close(1008,'Companion protocol update required');return;}
+    const extensionId=EXTENSION_ORIGIN.exec(request.headers.origin)[1];
+    if(this.recovery&&(this.recovery.extensionId!==extensionId||this.recovery.mode!==(remote?'remote':'local'))){socket.close(1008,'Resume identity required');return;}
+    const recovery=this.recovery;if(recovery){clearTimeout(recovery.timer);this.recovery=null;}
+    this.resultRecovery=message.resultRecovery===1;
     authenticated=true;request.socket?.removeListener('data',budget);clearTimeout(authTimer);this.client=socket;this.connectionMode=remote?'remote':'local';if(remote){this.remoteLease=null;this.remoteSession=randomBytes(32).toString('hex');}this.extensionId=EXTENSION_ORIGIN.exec(request.headers.origin)[1];
     this.companion={protocol:message.protocol||1,version:typeof message.extensionVersion==='string'&&/^\d+\.\d+\.\d+$/.test(message.extensionVersion)?message.extensionVersion:null};
-    this.send(socket,{type:'ready',protocol:1,appVersion:this.appVersion,...(remote?{remoteProtocol:1,sessionToken:this.remoteSession}:{})});this.changed();return;
+    this.send(socket,{type:'ready',protocol:1,appVersion:this.appVersion,...(this.resultRecovery?{resultRecovery:1,recoveryMs:this.recoveryMs,pendingRequests:recovery?[...this.pending.keys()]:[]}:{}),...(remote?{remoteProtocol:1,sessionToken:this.remoteSession}:{})});if(recovery){if(!this.resultRecovery)this.failPending();for(const waiter of recovery.waiters)waiter.resolve();}this.changed();return;
    }
    if(socket!==this.client)return;
    if(message.type==='ping'){try{this.send(socket,{type:'pong'});}catch{}return;}
@@ -80,6 +85,7 @@ class ChromeRelay {
     void Promise.resolve(this.dispatch?.gate(this.dispatchKey(message.tabId),message.message)||{ok:false,error:'App chưa hỗ trợ điều phối gửi.'}).then(result=>{if(socket===this.client)this.send(socket,{type:'gate-result',callId:message.callId,result});}).catch(()=>{});return;
    }
    if(message.type==='response'&&typeof message.id==='string'){
+    if(this.resultRecovery){try{this.send(socket,{type:'response-ack',id:message.id});}catch{}}
     const item=this.pending.get(message.id);if(!item)return;clearTimeout(item.timer);this.pending.delete(message.id);
     if(typeof message.error==='string')item.reject(Error(message.error));else item.resolve(message.result);
    }else if(message.type==='notification'){
@@ -91,10 +97,19 @@ class ChromeRelay {
    }
   });
  }
- clearClient(){
-  this.client=null;this.extensionId=null;this.companion=null;this.connectionMode=null;
+ clearClient({recoverable=false}={}){
+  const identity={extensionId:this.extensionId,mode:this.connectionMode};
+  this.client=null;this.extensionId=null;this.companion=null;this.connectionMode=null;this.resultRecovery=false;
+  if(recoverable){
+   const recovery={...identity,until:Date.now()+this.recoveryMs,waiters:[]};this.recovery=recovery;
+   recovery.timer=setTimeout(()=>{if(this.recovery!==recovery)return;this.recovery=null;this.failPending();for(const waiter of recovery.waiters)waiter.reject(Error('Chrome chưa nối lại trong thời gian cho phép. Kiểm tra kết quả trên tab AI trước khi chạy lại.'));this.changed();},this.recoveryMs);recovery.timer.unref?.();
+  }else{this.cancelRecovery();this.failPending();}
+  this.changed();
+ }
+ cancelRecovery(){const recovery=this.recovery;if(!recovery)return;this.recovery=null;clearTimeout(recovery.timer);for(const waiter of recovery.waiters)waiter.reject(Error('Chrome đã ngắt kết nối.'));}
+ failPending(){
   for(const item of this.pending.values()){clearTimeout(item.timer);item.reject(Error('Chrome đã ngắt kết nối. Kiểm tra tab AI trước khi chạy lại; không tự gửi lại yêu cầu.'));}
-  this.pending.clear();for(const key of new Set([...this.dispatch?.records.values()||[]].filter(r=>r.key.startsWith('chrome:')&&(!this.ownsTabKey||this.ownsTabKey(r.key))).map(r=>r.key)))void this.dispatch.disconnect(key);this.changed();
+  this.pending.clear();for(const key of new Set([...this.dispatch?.records.values()||[]].filter(r=>r.key.startsWith('chrome:')&&(!this.ownsTabKey||this.ownsTabKey(r.key))).map(r=>r.key)))void this.dispatch.disconnect(key);
  }
  async request(operation,payload={}){
   if(this.dispatch&&operation==='tabs.message'){
@@ -106,6 +121,7 @@ class ChromeRelay {
  }
  rawRequest(operation,payload={}){
   if(!OPERATIONS.has(operation))return Promise.reject(Error('Thao tác Chrome không được phép.'));
+  if(!this.isConnected&&this.recovery){if(operation==='tabs.message'&&['WORKFLOW_AI_GENERATE','MUSEFLOW_GENERATE','MUSEFLOW_JOB_START'].includes(payload?.message?.type))return Promise.reject(Error('Chrome đang nối lại; chưa gửi yêu cầu AI mới.'));if(this.recovery.waiters.length>=64)return Promise.reject(Error('Có quá nhiều yêu cầu Chrome đang chờ nối lại.'));return new Promise((resolve,reject)=>this.recovery.waiters.push({resolve,reject})).then(()=>this.rawRequest(operation,payload));}
   if(!this.isConnected)return Promise.reject(Error('Chưa kết nối tiện ích Workflow trong Chrome.'));
   if(this.pending.size>=64)return Promise.reject(Error('Có quá nhiều yêu cầu Chrome đang chờ.'));
   const id=randomUUID(),timeout=operation==='shopee.read'?90000:operation==='tabs.message'&&/GENERATE|JOB_START/.test(payload?.message?.type||'')?11*60*1000:this.connectionMode==='remote'?60000:30000;
@@ -115,7 +131,7 @@ class ChromeRelay {
    try{this.send(this.client,{type:'request',id,operation,payload});}catch(error){clearTimeout(timer);this.pending.delete(id);reject(error);}
   });
  }
- disconnect(){if(this.client){const socket=this.client;this.clearClient();socket.close(1000,'Disconnected');}}
+ disconnect(){if(this.recovery){this.cancelRecovery();this.failPending();this.changed();}if(this.client){const socket=this.client;this.clearClient();socket.close(1000,'Disconnected');}}
  async close(){
   clearInterval(this.heartbeat);this.heartbeat=null;this.revokeRemote();this.remoteEndpoint=null;this.disconnect();const server=this.server;this.server=null;this.token=null;this.port=null;
   const remote=this.remoteServer;this.remoteServer=null;this.remoteIngressPort=null;

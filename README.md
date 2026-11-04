@@ -1,4 +1,6 @@
-# MooZ Agent 0.65.0
+# MooZ Agent 0.66.0
+
+**0.66.0 · Nối lại kết nối và giữ kết quả:** dùng cùng **MooZ Connect 1.9.0**. Bỏ kiểm tra hạn mã theo đồng hồ máy Chrome; app/relay vẫn xác thực hạn thật. Khi đường truyền Chrome ngắt tạm thời, giữ phản hồi tối đa 90 giây, chuyển lại đúng mã yêu cầu và xác nhận đã nhận; không tạo lại AI. Relay sửa dọn nhầm phiên sau khi mã ghép hết hạn. [Cách cập nhật và giới hạn](docs/USER-REVIEW-0660.md).
 
 **0.65.0 · Một luồng, một tab:** chọn AI một lần cho mẫu; chọn tab chạy cả tác vụ ở form bên ngoài canvas hoặc màn tạo video. Tab bận thì xếp hàng chờ; tác vụ giữ nguyên tab qua mọi bước AI và ghép/xuất. [Hướng dẫn](docs/USER-REVIEW-0650.md).
 

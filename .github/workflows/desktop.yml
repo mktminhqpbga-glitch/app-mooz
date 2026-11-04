@@ -63,24 +63,9 @@ jobs:
           MOOZ_UI_AUDIT_DIR: ${{ runner.temp }}/mooz-ui-review
           MOOZ_THEME_REVIEW_DIR: ${{ runner.temp }}/mooz-ui-review/colors
         run: npm run test:desktop
-      - name: Kiểm tra riêng giao diện mới trong bản đóng gói nhanh
+      - name: Verify the changed connection recovery in quick packages
         if: inputs.quick_package == true
-        env:
-          MOOZ_UI_AUDIT_DIR: ${{ runner.temp }}/mooz-ui-review
-        run: |
-          node --test tests/desktop-flow-graph.test.cjs tests/desktop-flow-media.test.cjs tests/desktop-outbound-relay.test.cjs tests/desktop-flow-tab-routing.test.cjs
-          node tests/desktop-flow-reference-template-smoke.cjs
-          node tests/desktop-flow-canvas-smoke.cjs
-          node tests/desktop-media-order-smoke.cjs
-          node tests/desktop-studio-system-smoke.cjs
-          node tests/desktop-layout-review-smoke.cjs
-          node tests/desktop-theme-smoke.cjs
-          node tests/desktop-ui-refresh-smoke.cjs
-          node tests/desktop-batch-live-tabs-smoke.cjs
-          node tests/desktop-product-import-smoke.cjs
-          node tests/desktop-interaction-audit-smoke.cjs
-          node tests/desktop-batch-common-prompt-smoke.cjs
-          node tests/desktop-batch-character-reference-smoke.cjs
+        run: node --test tests/desktop-connection-recovery.test.cjs
       - name: Lưu ảnh và số đo kiểm tra giao diện
         if: always()
         uses: actions/upload-artifact@v4

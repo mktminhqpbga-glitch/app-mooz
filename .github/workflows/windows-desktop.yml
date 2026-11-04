@@ -41,7 +41,11 @@ jobs:
 
       - name: Verify AI adapters and remote transport on Windows
         if: inputs.quick_package != true
-        run: node --test tests/muse-jobs.test.mjs tests/canvas-diagram.test.mjs tests/desktop-theme.test.cjs tests/desktop-diagnostics.test.cjs tests/desktop-product.test.cjs tests/providers.test.mjs tests/script-splitter.test.mjs tests/desktop-ai-sites.test.cjs tests/desktop-batch.test.cjs tests/desktop-batch-composer.test.cjs tests/desktop-activity.test.cjs tests/desktop-muse-background.test.cjs tests/desktop-relay.test.cjs tests/desktop-chrome-devices.test.cjs tests/desktop-outbound-relay.test.cjs tests/desktop-shopee-chrome.test.cjs tests/desktop-facebook-recovery.test.cjs tests/desktop-remote-diagnostics.test.cjs tests/desktop-ai-connections.test.cjs
+        run: node --test tests/muse-jobs.test.mjs tests/canvas-diagram.test.mjs tests/desktop-theme.test.cjs tests/desktop-diagnostics.test.cjs tests/desktop-product.test.cjs tests/providers.test.mjs tests/script-splitter.test.mjs tests/desktop-ai-sites.test.cjs tests/desktop-batch.test.cjs tests/desktop-batch-composer.test.cjs tests/desktop-activity.test.cjs tests/desktop-muse-background.test.cjs tests/desktop-relay.test.cjs tests/desktop-chrome-devices.test.cjs tests/desktop-outbound-relay.test.cjs tests/desktop-shopee-chrome.test.cjs tests/desktop-facebook-recovery.test.cjs tests/desktop-remote-diagnostics.test.cjs tests/desktop-ai-connections.test.cjs tests/desktop-connection-recovery.test.cjs
+
+      - name: Verify connection recovery in quick packages
+        if: inputs.quick_package == true
+        run: node --test tests/desktop-connection-recovery.test.cjs
 
       - name: Validate optional signing configuration
         env:

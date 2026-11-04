@@ -37,7 +37,7 @@ class ChromeDevices{
  get dispatch(){return this._dispatch;}
  get isConnected(){return [...this.devices.values()].some(d=>d.relay?.isConnected);}
  get companion(){const list=[...this.devices.values()].filter(d=>d.relay?.isConnected).map(d=>d.relay.companion);return list.sort((a,b)=>(a?.version||'0').localeCompare(b?.version||'0',undefined,{numeric:true}))[0]||null;}
- status(){return {...this.primary.status(),connected:this.isConnected,companion:this.companion,deviceCount:[...this.devices.values()].filter(d=>d.relay?.isConnected).length,devices:[...this.devices.values()].map(d=>({id:d.id,name:d.name,kind:d.kind,connected:!!d.relay?.isConnected,mode:d.relay?.connectionMode||d.kind,version:d.relay?.companion?.version||null,lastSeen:d.lastSeen,error:d.broker?.error||'',waiting:!!(d.broker?.room||d.relay?.token)&&!d.relay?.isConnected})),warning:this.warning};}
+ status(){return {...this.primary.status(),connected:this.isConnected,companion:this.companion,deviceCount:[...this.devices.values()].filter(d=>d.relay?.isConnected).length,devices:[...this.devices.values()].map(d=>({id:d.id,name:d.name,kind:d.kind,connected:!!d.relay?.isConnected,recovering:!!d.relay?.recovery,mode:d.relay?.connectionMode||d.kind,version:d.relay?.companion?.version||null,lastSeen:d.lastSeen,error:d.broker?.error||'',waiting:!!(d.broker?.room||d.relay?.token)&&!d.relay?.isConnected})),warning:this.warning};}
  changed(){try{this.notify({type:'relay',...this.status()});}catch{}}
  async save(){if(this.warning)throw Error(this.warning);const value={version:1,nextSlot:this.nextSlot,primaryName:this.devices.get('primary').name,devices:[...this.devices.values()].filter(d=>d.id!=='primary').map(({id,name,kind,slot})=>({id,name,kind,slot}))};
   const write=this.writes.catch(()=>{}).then(async()=>{await fs.mkdir(path.dirname(this.file),{recursive:true});const tmp=this.file+'.'+randomUUID()+'.tmp';try{await fs.writeFile(tmp,JSON.stringify(value),{mode:0o600});await fs.rename(tmp,this.file);}finally{await fs.rm(tmp,{force:true});}});this.writes=write;await write;
@@ -46,7 +46,7 @@ class ChromeDevices{
  device(id){const d=this.devices.get(id);if(!d)throw Error('Không tìm thấy thiết bị Chrome.');return d;}
  virtualId(d,id){if(!Number.isInteger(id)||id<0||id>=2**32)throw Error('ID tab Chrome không hợp lệ.');if(d.id==='primary')return id;if(!d.tabs.has(id)){const virtual=BASE+d.slot*2**32+id;d.tabs.set(id,virtual);this.routes.set(virtual,{deviceId:d.id,id});}return d.tabs.get(id);}
  publicTab(d,tab){if(!tab||!Number.isInteger(tab.id))throw Error('Chrome trả tab không hợp lệ.');return {...tab,id:this.virtualId(d,tab.id),deviceId:d.id,deviceName:d.name,title:(tab.title||'Tab AI')+' · '+d.name};}
- route(id){if(!Number.isSafeInteger(id)||id<0)throw Error('ID tab Chrome không hợp lệ.');const r=id<BASE?{deviceId:'primary',id}:this.routes.get(id);if(!r)throw Error('Tab không thuộc phiên Chrome này. Cập nhật danh sách tab.');const d=this.devices.get(r.deviceId);if(!d?.relay?.isConnected)throw Error('Chrome của tab này đã ngắt kết nối. Kiểm tra tác vụ trước khi chạy lại; không tự gửi sang máy khác.');return {d,id:r.id};}
+ route(id){if(!Number.isSafeInteger(id)||id<0)throw Error('ID tab Chrome không hợp lệ.');const r=id<BASE?{deviceId:'primary',id}:this.routes.get(id);if(!r)throw Error('Tab không thuộc phiên Chrome này. Cập nhật danh sách tab.');const d=this.devices.get(r.deviceId);if(!d?.relay?.isConnected&&!d?.relay?.recovery)throw Error('Chrome của tab này đã ngắt kết nối. Kiểm tra tác vụ trước khi chạy lại; không tự gửi sang máy khác.');return {d,id:r.id};}
  async operate(raw,operation,payload={}){
   if(['tabs.query','shopee.tabs'].includes(operation)){
    const devices=[...this.devices.values()].filter(d=>d.relay?.isConnected&&(!payload.deviceId||d.id===payload.deviceId));
@@ -69,6 +69,7 @@ class ChromeDevices{
  async prepare(d){if(d.relay)return;const relay=new ChromeRelay({version:this.primary.appVersion});d.relay=relay;this.register(d);try{await relay.start();}catch(e){d.relay=null;throw e;}}
  async pairDevice(d,{endpoint,key}={}){
   if(d.id==='primary')throw Error('Dùng mã kết nối chính trong Cài đặt để ghép Chrome chính.');
+  if(d.relay?.recovery)throw Error('Chrome đang nối lại phiên; thu hồi phiên trước khi tạo mã khác.');
   if(d.relay?.isConnected)throw Error('Chrome này đã kết nối. Thêm thiết bị mới để giữ nguyên phiên đang chạy.');
   d.lastPair=null;
   await this.prepare(d);
@@ -85,7 +86,7 @@ class ChromeDevices{
  }
  add(data){return this.locked(async()=>{if(this.warning)throw Error(this.warning);if(this.devices.size>=MAX_DEVICES)throw Error('Tối đa 8 Chrome. Relay mặc định hỗ trợ 4 Chrome từ xa cùng lúc.');if(!['local','relay'].includes(data.kind))throw Error('Chọn kết nối cùng máy hoặc relay.');const d=this.register({id:randomUUID(),name:label(data.name),kind:data.kind,slot:this.nextSlot++,relay:null});try{await this.save();return await this.pairDevice(d,data);}catch(e){this.devices.delete(d.id);await d.broker?.stop();await d.relay?.close();await this.save();throw e;}});}
  pair(id,data={}){return this.locked(()=>this.pairDevice(this.device(id),data));}
- pairCode(id){const d=this.device(id),p=d.lastPair;if(!p||d.relay?.isConnected||p.expiresAt&&p.expiresAt<=Date.now())throw Error('Mã đã dùng, hết hạn hoặc bị thu hồi. Tạo mã mới cho thiết bị chưa kết nối.');return p.url;}
+ pairCode(id){const d=this.device(id),p=d.lastPair;if(!p||d.relay?.isConnected||d.relay?.recovery||p.expiresAt&&p.expiresAt<=Date.now())throw Error('Mã đã dùng, hết hạn hoặc bị thu hồi. Tạo mã mới cho thiết bị chưa kết nối.');return p.url;}
  rename(id,name){return this.locked(async()=>{const d=this.device(id),old=d.name;d.name=label(name);try{await this.save();}catch(e){d.name=old;throw e;}return this.status();});}
  revoke(id){return this.locked(async()=>{const d=this.device(id);d.lastPair=null;if(id==='primary'){d.relay.revokeLocal();this.remote.revoke();}else{d.relay?.revokeLocal();d.relay?.revokeRemote();await d.broker?.stop();}return this.status();});}
  remove(id){return this.locked(async()=>{if(id==='primary')throw Error('Chrome chính có thể đổi tên hoặc thu hồi.');const d=this.device(id);await d.broker?.stop();await d.relay?.close();this.devices.delete(id);try{await this.save();}catch(e){this.devices.set(id,d);throw e;}return this.status();});}

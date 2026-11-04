@@ -56,7 +56,7 @@
    <button id="remoteChromeRevoke" type="button">Thu hồi phiên từ xa</button>
    <button id="remoteChromeDisable" type="button">Dừng kết nối từ xa</button>
   </div>
-  <p>Chỉ chia sẻ mã với máy Chrome của bạn. Mỗi lần kết nối một Chrome. Mất kết nối: kiểm tra kết quả AI trước khi thử lại; app không tự gửi lại prompt. Khởi động lại MooZ cần ghép mã mới.</p>
+  <p>Chỉ chia sẻ mã với máy Chrome của bạn. Mỗi lần kết nối một Chrome. Rớt mạng ngắn: MooZ Connect 1.9.0 tự nối lại và chuyển tiếp phản hồi đang chờ trong tối đa 90 giây. App không tự gửi lại prompt. Khởi động lại MooZ cần ghép mã mới.</p>
  </section>
  <details id="remoteChromeTailscale"><summary>Tailscale · mạng riêng thay thế</summary>
   <p>Cài, mở Tailscale trên cả hai máy và đăng nhập cùng mạng riêng. Nếu được yêu cầu, bật HTTPS trong phần quản trị rồi thiết lập lại.</p>
@@ -89,7 +89,7 @@
   $('remoteRelayState').textContent=broker.ready?'App đã đăng nhập relay. Tạo mã để ghép Chrome.':broker.canReconnect?'Relay đã ngắt. Khóa vẫn còn trong phiên; có thể bấm Kết nối relay.':'Chưa đăng nhập máy chủ relay.';
   const cf = s.cloudflare || {}, transport = s.mode==='relay'?'relay Internet':s.mode === 'cloudflare' ? 'Cloudflare' : s.mode === 'tailscale' ? 'Tailscale' : 'WSS';
   $('remoteChromeTool').textContent = cf.running ? (s.publicCheck?.ok?'Đã kiểm tra đường Internet · cloudflared ':'Công cụ đang chạy; cần xác nhận đường Internet · cloudflared ') + cf.version : cf.starting ? 'Đang chờ Cloudflare cấp đường kết nối…' : cf.installed ? 'Đã có cloudflared ' + cf.version + '. Có thể bấm Bắt đầu.' : 'Chưa tìm thấy cloudflared. Bấm Tải cloudflared hoặc Kiểm tra công cụ nếu đã cài.';
-  $('remoteChromeState').textContent = s.connected ? 'Đã kết nối Chrome từ xa qua ' + transport + (s.companionVersion ? ' · Tiện ích ' + s.companionVersion : '') : s.connectionMode === 'local' ? 'Chrome chính cùng máy đang kết nối. Bấm Thiết bị & nhiều Chrome để ghép thêm máy khác mà vẫn giữ phiên này.' : s.mode==='cloudflare'&&cf.running&&!s.publicCheck?.ok ? 'Chưa xác nhận được đường Internet. Bấm Kiểm tra đường truyền; chưa tạo mã khi đường còn lỗi.' : s.enabled ? 'Đường ' + transport + ' đã khởi động. Tạo mã và kết nối trên máy Chrome để xác nhận đường truyền.' : 'Chưa bật kết nối từ xa. Kết nối relay hoặc mở một cách kết nối thay thế bên dưới.';
+  $('remoteChromeState').textContent = s.recovering ? 'Đang nối lại Chrome · giữ tác vụ và chờ kết quả cũ tối đa 90 giây. Không gửi lại prompt.' : s.connected ? 'Đã kết nối Chrome từ xa qua ' + transport + (s.companionVersion ? ' · Tiện ích ' + s.companionVersion : '') : s.connectionMode === 'local' ? 'Chrome chính cùng máy đang kết nối. Bấm Thiết bị & nhiều Chrome để ghép thêm máy khác mà vẫn giữ phiên này.' : s.mode==='cloudflare'&&cf.running&&!s.publicCheck?.ok ? 'Chưa xác nhận được đường Internet. Bấm Kiểm tra đường truyền; chưa tạo mã khi đường còn lỗi.' : s.enabled ? 'Đường ' + transport + ' đã khởi động. Tạo mã và kết nối trên máy Chrome để xác nhận đường truyền.' : 'Chưa bật kết nối từ xa. Kết nối relay hoặc mở một cách kết nối thay thế bên dưới.';
   $('remoteChromeEndpoint').textContent = s.endpoint || '';
   $('remoteChromeBackend').textContent = s.remoteIngressPort ? 'Đích nội bộ chỉ nhận từ xa: http://127.0.0.1:' + s.remoteIngressPort + ' · WebSocket nhận đường dẫn /remote.' : s.listenPort ? 'Đích nội bộ: http://127.0.0.1:' + s.listenPort + ' · WebSocket nhận đường dẫn /remote.' : '';
   $('remoteChromeWarning').textContent = s.warning || '';

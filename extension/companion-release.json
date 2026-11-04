@@ -1,5 +1,5 @@
 {
-  "version": "1.8.1",
+  "version": "1.9.0",
   "protocol": 1,
-  "notes": "MooZ Connect: xác nhận tải tệp trong ô Muse, ghép kết quả theo đúng lượt gửi, từ chối clip cũ hoặc khi đổi chat. Dùng với MooZ Agent 0.60.0; giao thức kết nối 1 giữ nguyên."
+  "notes": "Dùng với MooZ Agent 0.66.0: xác thực hạn mã tại máy phát hành; nối lại phiên khi rớt mạng, giữ phản hồi đến khi app xác nhận nhận được; không gửi lại yêu cầu AI. Giao thức kết nối 1 tương thích bản cũ."
 }

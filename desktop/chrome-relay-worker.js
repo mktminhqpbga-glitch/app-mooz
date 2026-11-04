@@ -12,6 +12,22 @@
  const PROTOCOL=1,releaseURL='https://raw.githubusercontent.com/mktminhqpbga-glitch/app-mooz/main/extension/companion-release.json';
  let updateInfo=null,updateTask=null,lastUpdateAttempt=0;
  const knownTabs=new Set(),gateCalls=new Map();
+ const responses=new Map(),seenRequests=new Set();let responseBytes=0,resultRecovery=false,responseEpoch=0,retryTimer=null,retryCount=0,recoveryUntil=0;
+ function resetRecovery(){clearTimeout(retryTimer);retryTimer=null;retryCount=0;recoveryUntil=0;resultRecovery=false;responseEpoch++;responses.clear();seenRequests.clear();responseBytes=0;}
+ function flushResponse(record){if(!record.text||state!=='connected'||socket?.readyState!==1)return;try{socket.send(record.text);}catch{socket.close(4001,'Response transport interrupted');}}
+ function rememberResponse(id,value,epoch){
+  if(epoch!==responseEpoch)return;const record=responses.get(id);if(!record)return;
+  let text;try{text=JSON.stringify(value);}catch{text=JSON.stringify({type:'response',id,error:'Không mã hóa được kết quả Chrome.'});}
+  if(responseBytes+new TextEncoder().encode(text).length>128*1024*1024)text=JSON.stringify({type:'response',id,error:'Kết quả đang chờ vượt giới hạn 128 MB. Kiểm tra kết quả trên tab AI; chưa gửi lại yêu cầu.'});
+  record.text=text;record.bytes=new TextEncoder().encode(text).length;responseBytes+=record.bytes;flushResponse(record);
+ }
+ function scheduleReconnect(code){
+  if(!resultRecovery||!connection||![1001,1005,1006,1011,1012,1013,4001].includes(code)||retryCount>=8||Date.now()>=recoveryUntil)return false;
+  const delay=Math.min(15000,1000*2**retryCount);if(Date.now()+delay>=recoveryUntil)return false;
+  state='reconnecting';lastError='Mất đường truyền · đang nối lại phiên và chờ kết quả cũ. Không gửi lại yêu cầu AI.';
+  const epoch=lifecycle;retryCount++;retryTimer=setTimeout(()=>{retryTimer=null;if(lifecycle!==epoch||!connection)return;void connectState(connection,{recover:true}).catch(()=>{});},delay);return true;
+ }
+
  function supportedURL(value){return !!globalThis.WorkflowAISites?.providerForURL(value);}
  function parseURI(value){
   if(Remote)return Remote.parseURI(value);
@@ -19,7 +35,7 @@
   if(uri.protocol!=='workflow-connect:'||uri.hostname!=='127.0.0.1'||!/^\d+$/.test(uri.port)||Number(uri.port)<1||Number(uri.port)>65535||uri.username||uri.password||uri.search||uri.hash||!/^\/[a-f0-9]{64}$/.test(uri.pathname))throw Error('Mã kết nối không hợp lệ. Sao chép lại từ ứng dụng Workflow.');
   return {port:Number(uri.port),token:uri.pathname.slice(1)};
  }
- function status(){return {museBackground:globalThis.WorkflowMuseBackground?.snapshot(),connected:state==='connected',state,port:connection?.port||null,protocol:PROTOCOL,appVersion,extensionVersion:chrome.runtime.getManifest?.()?.version||'',update:updateInfo,mode:connection?.mode||restoredReport?.mode||'local',endpoint:remoteMode(connection)?connection.endpoint:restoredReport?.endpoint||null,canReconnect:!!connection&&state!=='connected'&&state!=='connecting',error:lastError||undefined,diagnostics:lastDiagnostic,transport:lastTransport?{stage:lastTransport.stage,socketOpened:lastTransport.socketOpened,roomJoined:lastTransport.roomJoined,appAuthenticated:lastTransport.appAuthenticated,closeCode:lastTransport.closeCode,failure:lastTransport.failure,elapsedMs:(lastTransport.endedAt||Date.now())-lastTransport.startedAt}:restoredReport?.connection||null};}
+ function status(){return {museBackground:globalThis.WorkflowMuseBackground?.snapshot(),connected:state==='connected',state,retryCount,pendingResults:responses.size,port:connection?.port||null,protocol:PROTOCOL,appVersion,extensionVersion:chrome.runtime.getManifest?.()?.version||'',update:updateInfo,mode:connection?.mode||restoredReport?.mode||'local',endpoint:remoteMode(connection)?connection.endpoint:restoredReport?.endpoint||null,canReconnect:!!connection&&state!=='connected'&&state!=='connecting'&&state!=='reconnecting',error:lastError||undefined,diagnostics:lastDiagnostic,transport:lastTransport?{stage:lastTransport.stage,socketOpened:lastTransport.socketOpened,roomJoined:lastTransport.roomJoined,appAuthenticated:lastTransport.appAuthenticated,closeCode:lastTransport.closeCode,failure:lastTransport.failure,elapsedMs:(lastTransport.endedAt||Date.now())-lastTransport.startedAt}:restoredReport?.connection||null};}
  function rememberDiagnostic(){const report=globalThis.WorkflowRemoteDiagnostics.connectionReport(status());restoredReport=report;diagnosticWrites=diagnosticWrites.catch(()=>{}).then(()=>chrome.storage.session.set({[DIAGNOSTIC]:report}));void diagnosticWrites.catch(()=>{});}
  async function checkUpdate(){
   if(updateTask)return updateTask;if(typeof fetch!=='function')return status();
@@ -79,39 +95,47 @@
   throw Error('Thao tác Chrome không được phép.');
  }
  function clearGates(){for(const p of gateCalls.values()){clearTimeout(p.timer);p.reply({ok:false,error:'Chrome đã ngắt kết nối; chưa gửi AI.'});}gateCalls.clear();}
- async function disconnect(){lifecycle++;restoredReport=null;lastDiagnostic=null;diagnosticTask=null;clearGates();lastError='';lastTransport=null;appVersion=null;const previous=socket;socket=null;connection=null;state='disconnected';clearInterval(heartbeat);heartbeat=null;previous?.close();await diagnosticWrites.catch(()=>{});await chrome.storage.session.remove([SETTINGS,DIAGNOSTIC]);return status();}
+ async function disconnect(){lifecycle++;resetRecovery();restoredReport=null;lastDiagnostic=null;diagnosticTask=null;clearGates();lastError='';lastTransport=null;appVersion=null;const previous=socket;socket=null;connection=null;state='disconnected';clearInterval(heartbeat);heartbeat=null;previous?.close();await diagnosticWrites.catch(()=>{});await chrome.storage.session.remove([SETTINGS,DIAGNOSTIC]);return status();}
  async function connect(uri){return connectState(parseURI(uri));}
- async function connectState(next){
+ async function connectState(next,{recover=false}={}){
+  const before=lifecycle;
   if(remoteMode(next)){
    if(!Remote||next.mode==='relay'&&!globalThis.WorkflowRelayChannel)throw Error('Cập nhật Workflow Connect 1.3.0 để kết nối relay.');next=Remote.saved(next);
-   if(next.expiresAt&&next.expiresAt<=Date.now())throw Error('Mã từ xa đã hết hạn. Tạo mã mới trong MooZ.');
    if(!await chrome.permissions.contains({origins:[Remote.origin(next.endpoint)]}))throw Error('Chưa cấp quyền kết nối tới máy MooZ. Dán mã và bấm Kết nối để cấp quyền.');
   }
-  await disconnect();connection=next;state='connecting';lastError='';
+  if(lifecycle!==before)throw Error('Kết nối đã được thay đổi.');
+  if(!recover){await disconnect();if(lifecycle!==before+1)throw Error('Kết nối đã được thay đổi.');}else{clearTimeout(retryTimer);retryTimer=null;}connection=next;state='connecting';lastError='';
   return new Promise((resolve,reject)=>{
    const trace={stage:'opening_socket',socketOpened:false,roomJoined:false,appAuthenticated:false,closeCode:null,failure:null,startedAt:Date.now(),endedAt:null};lastTransport=trace;
    const phase=stage=>{trace.stage=stage;trace.socketOpened=true;if(stage==='authenticating_app')trace.roomJoined=true;};
    let current;try{current=next.mode==='relay'?new globalThis.WorkflowRelayChannel.RelaySocket(next,chrome.runtime.id,{onStage:phase}):new WebSocket(remoteMode(next)?next.endpoint:`ws://127.0.0.1:${next.port}/`);}catch{trace.failure='SOCKET_CONSTRUCTION_FAILED';trace.endedAt=Date.now();state='disconnected';lastError='Chrome không khởi tạo được WebSocket. Kiểm tra quyền truy cập địa chỉ và tải lại tiện ích.';rememberDiagnostic();reject(Error(lastError));return;}socket=current;
    const fail=(text,code)=>{trace.failure=code||'TRANSPORT_CLOSED';trace.endedAt=Date.now();lastError=text;rememberDiagnostic();reject(Error(text));};
    const timeout=setTimeout(()=>{if(socket!==current)return;const failure=globalThis.WorkflowRemoteDiagnostics.connectionFailure(trace,'timeout');fail(failure.message,failure.code);current.close();},remoteMode(next)?45000:15000);
-   current.onopen=()=>{trace.socketOpened=true;trace.stage='authenticating_app';current.send(JSON.stringify({type:'auth',token:next.token,protocol:PROTOCOL,extensionVersion:chrome.runtime.getManifest?.()?.version||'',...(remoteMode(next)?{remoteProtocol:1}:{})}));};
+   current.onopen=()=>{trace.socketOpened=true;trace.stage='authenticating_app';current.send(JSON.stringify({type:'auth',token:next.token,protocol:PROTOCOL,resultRecovery:1,extensionVersion:chrome.runtime.getManifest?.()?.version||'',...(remoteMode(next)?{remoteProtocol:1}:{})}));};
    current.onmessage=event=>{
     if(socket!==current)return;let message;try{if(typeof event.data!=='string'||event.data.length>128*1024*1024)throw Error();message=JSON.parse(event.data);}catch{current.close(1008,'Invalid message');return;}lastSeen=Date.now();
+    if(message.type==='response-ack'&&typeof message.id==='string'){const record=responses.get(message.id);if(record){responseBytes-=record.bytes||0;responses.delete(message.id);}return;}
     if(message.type==='gate-result'){const p=gateCalls.get(message.callId);if(p){clearTimeout(p.timer);gateCalls.delete(message.callId);p.reply(message.result);}return;}
     if(message.type==='ready'){
      if(message.protocol!==undefined&&message.protocol!==PROTOCOL||remoteMode(next)&&(message.remoteProtocol!==1||!/^[a-f0-9]{64}$/.test(message.sessionToken||''))){clearTimeout(timeout);current.close();fail('App và tiện ích cần cập nhật giao thức kết nối tương thích.','RELAY_PROTOCOL_ERROR');return;}
-     if(state==='connected')return;appVersion=typeof message.appVersion==='string'?message.appVersion:null;
+     if(state==='connected')return;resultRecovery=message.resultRecovery===1;retryCount=0;recoveryUntil=0;appVersion=typeof message.appVersion==='string'?message.appVersion:null;
      if(remoteMode(next)){connection=next.mode==='relay'?{...current.state(),token:message.sessionToken,expiresAt:null}:{mode:'remote',endpoint:next.endpoint,token:message.sessionToken,expiresAt:null};}
-     clearTimeout(timeout);trace.stage='connected';trace.appAuthenticated=true;trace.endedAt=Date.now();state='connected';lastError='';void chrome.storage.session.set({[SETTINGS]:connection});heartbeat=setInterval(()=>{if(Date.now()-lastSeen>60000){current.close();return;}try{send({type:'ping'});}catch{}void checkUpdate();},20000);resolve(status());return;
+     clearTimeout(timeout);trace.stage='connected';trace.appAuthenticated=true;trace.endedAt=Date.now();state='connected';lastError='';
+     if(resultRecovery){for(const id of Array.isArray(message.pendingRequests)?message.pendingRequests.slice(0,64):[]){if(typeof id==='string'&&!responses.has(id)){responses.set(id,{bytes:0});rememberResponse(id,{type:'response',id,error:'Chrome đã khởi động lại và không còn phản hồi đang chờ. Kiểm tra kết quả trên tab AI; app không tự gửi lại.'},responseEpoch);}}for(const record of responses.values())flushResponse(record);}
+     void chrome.storage.session.set({[SETTINGS]:connection});heartbeat=setInterval(()=>{if(Date.now()-lastSeen>60000){current.close(4001,'Heartbeat timed out');return;}try{send({type:'ping'});}catch{}void checkUpdate();},20000);resolve(status());return;
     }
     if(state!=='connected'||message.type!=='request'||typeof message.id!=='string')return;
-    void perform(message.operation,message.payload).then(result=>{if(socket===current)send({type:'response',id:message.id,result});},error=>{if(socket===current)send({type:'response',id:message.id,error:error?.message||'Không thực hiện được thao tác Chrome.'});}).catch(()=>{});
+    if(!resultRecovery){void perform(message.operation,message.payload).then(result=>{if(socket===current)send({type:'response',id:message.id,result});},error=>{if(socket===current)send({type:'response',id:message.id,error:error?.message||'Không thực hiện được thao tác Chrome.'});}).catch(()=>{});return;}
+    if(responses.has(message.id)){flushResponse(responses.get(message.id));return;}
+    if(seenRequests.has(message.id)||responses.size>=64){send({type:'response',id:message.id,error:'Yêu cầu đã xử lý hoặc quá nhiều kết quả đang chờ. Không gửi lại AI.'});return;}
+    seenRequests.add(message.id);if(seenRequests.size>512)seenRequests.delete(seenRequests.values().next().value);responses.set(message.id,{bytes:0});const epoch=responseEpoch;
+    void perform(message.operation,message.payload).then(result=>rememberResponse(message.id,{type:'response',id:message.id,result},epoch),error=>rememberResponse(message.id,{type:'response',id:message.id,error:error?.message||'Không thực hiện được thao tác Chrome.'},epoch)).catch(()=>{});
    };
-   current.onerror=()=>{if(socket!==current)return;clearTimeout(timeout);const failure=globalThis.WorkflowRemoteDiagnostics.connectionFailure(trace);fail(remoteMode(next)?failure.message:'Không kết nối được ứng dụng Workflow. Kiểm tra ứng dụng đã mở và mã còn hiệu lực.',failure.code);current.close();};
-   current.onclose=event=>{clearTimeout(timeout);if(socket===current){socket=null;state='disconnected';clearInterval(heartbeat);heartbeat=null;clearGates();trace.closeCode=event?.code;trace.endedAt=Date.now();if(!lastError){const failure=globalThis.WorkflowRemoteDiagnostics.connectionFailure(trace);trace.failure=failure.code;lastError=failure.message;}rememberDiagnostic();}reject(Error(lastError||'Kết nối đã đóng.'));};
+   current.onerror=()=>{if(socket!==current)return;clearTimeout(timeout);const failure=globalThis.WorkflowRemoteDiagnostics.connectionFailure(trace);fail(remoteMode(next)?failure.message:'Không kết nối được ứng dụng Workflow. Kiểm tra ứng dụng đã mở và mã còn hiệu lực.',failure.code);current.close(4001,'Transport interrupted');};
+   current.onclose=event=>{clearTimeout(timeout);if(socket===current){socket=null;state='disconnected';clearInterval(heartbeat);heartbeat=null;clearGates();trace.closeCode=event?.code;trace.endedAt=Date.now();if(trace.appAuthenticated&&resultRecovery)recoveryUntil=Date.now()+90000;if(!lastError){const failure=globalThis.WorkflowRemoteDiagnostics.connectionFailure(trace);trace.failure=failure.code;lastError=failure.message;}scheduleReconnect(event?.code);rememberDiagnostic();}reject(Error(lastError||'Kết nối đã đóng.'));};
   });
  }
- async function reconnect(){if(!connection)throw Error('Dán mã mới từ MooZ trước.');return connectState(Remote?Remote.saved(connection):connection);}
+ async function reconnect(){if(!connection)throw Error('Dán mã mới từ MooZ trước.');return connectState(Remote?Remote.saved(connection):connection,{recover:resultRecovery&&recoveryUntil>Date.now()});}
  async function diagnose(){
   const target=connection||(restoredReport?.endpoint?{mode:restoredReport.mode,endpoint:restoredReport.endpoint}:null),epoch=lifecycle;if(!remoteMode(target))throw Error('Dán mã từ xa và bấm Kết nối trước khi kiểm tra.');
   if(!globalThis.WorkflowRemoteDiagnostics)throw Error('Cập nhật tiện ích để kiểm tra đường truyền.');

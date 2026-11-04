@@ -7,7 +7,7 @@ class OutboundRelay{
  status(){return {ready:this.ready,peer:!!this.channel,endpoint:this.endpoint,canReconnect:!!this.adminKey&&!this.ready,error:this.error};}
  changed(){this.notify(this.status());}
  send(m){if(this.ws?.readyState!==WebSocket.OPEN)throw Error('Máy chủ relay đã ngắt.');this.ws.send(JSON.stringify(m));}
- disposePeer(){this.channel?.close();this.channel=null;const local=this.local;this.local=null;local?.close();}
+ disposePeer(recoverable=false){this.channel?.close();this.channel=null;const local=this.local;this.local=null;local?.close(recoverable?4001:1000,recoverable?'Peer transport interrupted':'Disconnected');}
  lost(message){clearInterval(this.heartbeat);this.heartbeat=null;this.authenticated=false;this.disposePeer();this.room=null;this.error=message;const pending=this.pendingRoom;this.pendingRoom=null;if(pending){clearTimeout(pending.timer);pending.reject(Error(message));}this.changed();}
  pulse(ws){
   if(this.ws!==ws||!this.ready)return;const now=Date.now();
@@ -29,10 +29,10 @@ class OutboundRelay{
     if(m.type==='host-ready'&&!settled){if(m.relayProtocol!==1){ws.close(1008,'Relay protocol required');return;}settled=true;clearTimeout(timeout);this.authenticated=true;this.error='';this.lastReplyAt=Date.now();this.lastPulseAt=this.lastReplyAt;this.heartbeat=setInterval(()=>this.pulse(ws),this.heartbeatMs);this.heartbeat.unref?.();this.changed();resolve(this.status());return;}
     if(!this.authenticated)return;
     this.lastReplyAt=Date.now();
-    if(m.type==='room'&&m.request===this.pendingRoom?.id){const p=this.pendingRoom;this.pendingRoom=null;clearTimeout(p.timer);if(typeof m.room!=='string'||typeof m.invite!=='string'||!/^[a-f0-9]{32}$/.test(m.room||'')||!/^[a-f0-9]{64}$/.test(m.invite||'')||!Number.isSafeInteger(m.expiresAt)||m.expiresAt<=Date.now()||m.expiresAt>Date.now()+15*60*1000){p.reject(Error('Máy chủ trả mã phòng chưa hợp lệ.'));return;}this.disposePeer();this.room={room:m.room,invite:m.invite,expiresAt:m.expiresAt,relayKey:randomBytes(32).toString('hex')};p.resolve({...this.room});return;}
+    if(m.type==='room'&&m.request===this.pendingRoom?.id){const p=this.pendingRoom;this.pendingRoom=null;clearTimeout(p.timer);if(typeof m.room!=='string'||typeof m.invite!=='string'||!/^[a-f0-9]{32}$/.test(m.room||'')||!/^[a-f0-9]{64}$/.test(m.invite||'')||!Number.isSafeInteger(m.expiresAt)||m.expiresAt<=0||m.expiresAt>8640000000000000||m.leaseMs!==undefined&&(!Number.isInteger(m.leaseMs)||m.leaseMs<1||m.leaseMs>15*60*1000)){p.reject(Error('Máy chủ trả mã phòng chưa hợp lệ.'));return;}this.disposePeer();this.room={room:m.room,invite:m.invite,expiresAt:Date.now()+Math.max(1,(m.leaseMs??600000)-(Date.now()-p.startedAt)),relayKey:randomBytes(32).toString('hex')};p.resolve({...this.room});return;}
     if(m.type==='room-error'&&m.request===this.pendingRoom?.id){const p=this.pendingRoom;this.pendingRoom=null;clearTimeout(p.timer);p.reject(Error('Máy chủ relay đã hết số phòng cho phép. Kiểm tra các app đang kết nối.'));return;}
     if(m.type==='room-closed'&&m.room===this.room?.room){this.disposePeer();this.room=null;this.changed();return;}
-    if(m.type==='peer-left'&&m.room===this.room?.room){this.disposePeer();this.changed();return;}
+    if(m.type==='peer-left'&&m.room===this.room?.room){this.disposePeer(true);this.changed();return;}
     if(m.type==='peer'&&m.room===this.room?.room){this.peer(m,ws);return;}
     if(m.type==='data'&&m.generation===this.generation&&this.channel)void this.channel.receive(m).catch(()=>{});
    });
@@ -50,7 +50,7 @@ class OutboundRelay{
   local.on('message',bytes=>{if(this.local===local)void channel.send(bytes.toString()).catch(()=>{});});
   local.on('error',()=>{});local.on('close',code=>{if(this.local===local){void channel.send(JSON.stringify({type:'relay-close',code})).catch(()=>{}).finally(()=>{if(this.local===local){this.disposePeer();this.changed();}});}});this.changed();
  }
- newRoom(){if(!this.ready)return Promise.reject(Error('Kết nối máy chủ relay trước khi tạo mã.'));if(this.pendingRoom)return Promise.reject(Error('Đang tạo mã relay.'));return new Promise((resolve,reject)=>{const id=randomUUID(),timer=setTimeout(()=>{if(this.pendingRoom?.id===id)this.pendingRoom=null;reject(Error('Relay chưa tạo được phòng. Thử lại sau khi kiểm tra dịch vụ.'));},10000);timer.unref?.();this.pendingRoom={id,timer,resolve,reject};this.send({type:'new-room',request:id});});}
+ newRoom(){if(!this.ready)return Promise.reject(Error('Kết nối máy chủ relay trước khi tạo mã.'));if(this.pendingRoom)return Promise.reject(Error('Đang tạo mã relay.'));return new Promise((resolve,reject)=>{const id=randomUUID(),timer=setTimeout(()=>{if(this.pendingRoom?.id===id)this.pendingRoom=null;reject(Error('Relay chưa tạo được phòng. Thử lại sau khi kiểm tra dịch vụ.'));},10000);timer.unref?.();this.pendingRoom={id,timer,resolve,reject,startedAt:Date.now()};this.send({type:'new-room',request:id});});}
  revoke(){if(this.ready)this.send({type:'revoke'});this.disposePeer();this.room=null;this.changed();}
  async stop(){this.epoch++;clearInterval(this.heartbeat);this.heartbeat=null;const ws=this.ws;this.ws=null;this.adminKey=null;this.authenticated=false;this.disposePeer();this.room=null;this.seen.clear();const p=this.pendingRoom;this.pendingRoom=null;if(p){clearTimeout(p.timer);p.reject(Error('Đã dừng relay.'));}if(ws){ws.close(1000,'Disconnected');const timer=setTimeout(()=>ws.terminate(),1000);timer.unref?.();ws.once('close',()=>clearTimeout(timer));}this.changed();}
 }

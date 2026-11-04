@@ -36,7 +36,7 @@ function createRelayServer({adminKey,port=0,host='127.0.0.1',maxRooms=4,leaseMs=
    if(m.type==='new-room'&&s.role==='host'&&typeof m.request==='string'&&/^[a-f0-9-]{36}$/.test(m.request)){
     if(s.room)drop(s.room);if(rooms.size>=maxRooms){send(s,{type:'room-error',request:m.request,message:'Relay room limit reached'});return;}
     const invite=randomBytes(32).toString('hex'),room={id:randomBytes(16).toString('hex'),owner:s,guest:null,generation:null,inviteHash:hash(invite),resumeHash:null,leaseAt:Date.now()+leaseMs,expiresAt:Date.now()+sessionMs};rooms.set(room.id,room);s.room=room;
-    send(s,{type:'room',request:m.request,room:room.id,invite,expiresAt:room.leaseAt});return;
+    send(s,{type:'room',request:m.request,room:room.id,invite,expiresAt:room.leaseAt,leaseMs:Math.max(1,room.leaseAt-Date.now())});return;
    }
    if(m.type==='revoke'&&s.role==='host'){drop(s.room);return;}
    const room=s.room;if(m.type!=='data'||!room||rooms.get(room.id)!==room||!room.guest||room.owner.readyState!==WebSocket.OPEN||room.guest.readyState!==WebSocket.OPEN)return;
@@ -47,7 +47,7 @@ function createRelayServer({adminKey,port=0,host='127.0.0.1',maxRooms=4,leaseMs=
    const peer=s.role==='host'?room.guest:room.owner;send(peer,{type:'data',generation:room.generation,seq:m.seq,index:m.index,total:m.total,iv:m.iv,cipher:m.cipher},s);
   });
  });
- const interval=setInterval(()=>{for(const s of wss.clients){if(s.alive===false){s.terminate();continue;}s.alive=false;s.ping();}for(const room of rooms.values())if(room.expiresAt<=Date.now()||!room.guest&&room.leaseAt<=Date.now())drop(room);},heartbeatMs);interval.unref?.();
+ const interval=setInterval(()=>{for(const s of wss.clients){if(s.alive===false){s.terminate();continue;}s.alive=false;s.ping();}for(const room of rooms.values())if(room.expiresAt<=Date.now()||!room.guest&&!room.resumeHash&&room.leaseAt<=Date.now())drop(room);},heartbeatMs);interval.unref?.();
  return {server,wss,rooms,async listen(){await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(port,host,resolve);});return server.address().port;},async close(){closing=true;clearInterval(interval);for(const room of [...rooms.values()])drop(room);for(const s of wss.clients)s.terminate();await new Promise(resolve=>wss.close(resolve));server.closeAllConnections();await new Promise(resolve=>server.close(resolve));}};
 }
 if(require.main===module){const relay=createRelayServer({adminKey:process.env.RELAY_ADMIN_KEY,port:Number(process.env.PORT||10000),host:'0.0.0.0'});relay.listen().then(()=>console.log('MooZ relay ready')).catch(()=>process.exit(1));for(const signal of ['SIGINT','SIGTERM'])process.once(signal,()=>{void relay.close().then(()=>process.exit(0));});}
