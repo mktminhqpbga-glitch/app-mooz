@@ -1,5 +1,7 @@
 # Hồ sơ bàn giao sản phẩm và kỹ thuật — MooZ Agent / Canvas Studio
 
+**Tài liệu tiếp theo:** [Phần 2 — kết nối AI, đọc và ghi nhận kết quả](PARTNER-HANDBOOK-APP-MOOZ-PART-2-AI.md).
+
 **Phiên bản đối chiếu:** mã nguồn `mktminhqpbga-glitch/app-mooz`, `package.json` phiên bản **0.69.0**, MooZ Connect **1.9.2**, ngày 05/11/2026.
 **Đối tượng đọc:** đối tác sản phẩm, thiết kế, frontend, desktop, tích hợp AI, QA và vận hành.
 **Phạm vi:** **ứng dụng MooZ Agent trong repo `app-mooz`**. Thư mục `liblib-canvas-web/` là website thử nghiệm riêng, **không phải app được đặc tả trong tài liệu này**. `mooz.gt.tc/workflow/` và repo `mooz-test` cũng không phải kênh phát hành ứng dụng desktop.
