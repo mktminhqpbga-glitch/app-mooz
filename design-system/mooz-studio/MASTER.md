@@ -2,6 +2,8 @@
 
 Áp dụng cho Thư viện dự án, Canvas, Video hàng loạt / Luồng A–Z, Đăng bài, Affiliate và các dialog dùng chung. Nền tảng thực tế: Electron + HTML/CSS/JavaScript, không chuyển framework.
 
+Từ 0.69, bố cục tham khảo các ảnh LibTV người dùng cung cấp cho toàn app: nền than trung tính, rail biểu tượng hẹp, thanh điều hướng gọn, media và nội dung là vùng chính. Không dùng dashboard nhiều ô số liệu hoặc hình workflow trang trí. `desktop/studio-foundation.css` là lớp giao diện chung; mỗi workspace giữ CSS bố cục riêng.
+
 ## Nguồn và quyết định
 
 Dùng UI UX Pro Max cài ở `.agents/skills/ui-ux-pro-max`, nguồn/commit ghi trong `INSTALLATION.json`.
@@ -24,12 +26,12 @@ Bề mặt trung tính, đường viền mảnh, màu nhấn thương hiệu c�
 
 ## Theo màn
 
-- **Thư viện:** header ngắn, hướng dẫn thu gọn được, card dự án và hành động rõ, ảnh trang trí không lấn nội dung.
+- **Thư viện:** rail 72 px, header và lối mở Canvas Studio rõ, gallery dự án thật, hướng dẫn thu gọn. Không tự tạo ảnh xem trước nếu dự án chưa có media.
 - **Canvas Studio 0.68:** tham khảo bố cục media trên canvas của LibTV: thẻ ảnh/video là nội dung chính, nền than trung tính, header dự án mảnh và dock công cụ phía dưới. Thiết lập nằm trong inspector; thanh công cụ hiện theo node/nhóm được chọn. Hàng đợi là ngăn bên không khóa canvas. Thông báo nằm dưới thanh ngữ cảnh, không che nút. Giữ graph/cổng có kiểu và bộ chạy thật; không thêm nút AI khi chưa có bộ xử lý. Kho nhân vật cá nhân, mẫu luồng và bản chỉnh ảnh dùng dữ liệu thật.
-- **Video hàng loạt:** khung soạn + hàng đợi, dock chạy giữ đúng khoảng trống; kho tải lên/kết quả tách riêng; card media không tràn nút.
+- **Video hàng loạt:** rail 68 px, prompt nổi giữa không gian media, nút gửi nằm trong khung soạn, hàng đợi mảnh bên phải. Luồng, kho media và hậu kỳ dùng cùng thiết kế; giữ engine và kho dữ liệu thật.
 - **Luồng A–Z:** phân biệt đầu vào/xử lý/kết quả bằng nhãn và màu; cổng optional có nét đứt, có lựa chọn node/tọa độ/nút di chuyển và phím mũi tên. Giữ nguyên graph và bản chốt của tác vụ.
-- **Đăng bài:** ba card mỗi hàng trên desktop rộng; nội dung và hành động chính luôn thấy, tùy chọn trong disclosure, không xếp chữ dọc thành nút hẹp.
-- **Affiliate:** nguồn ở bên trái, nội dung ở bên phải, chân panel không che điều khiển; trên cửa sổ hẹp chuyển thành một cột cuộn được.
+- **Đăng bài:** mỗi bài là một vùng soạn với media lớn và caption bên cạnh; rail icon, tổng quan dùng thành phẩm và lịch thật. Thương hiệu, tài khoản và lịch đồng nhất, không dùng lưới ba card dashboard cũ.
+- **Affiliate:** vùng ảnh sản phẩm và phân cảnh là nội dung chính; nguồn và lịch sử là ngăn mở khi cần. Thông báo lỗi ở ngoài ngăn nguồn để luôn thấy.
 - **Dialog/cài đặt:** tiêu đề và nhãn rõ, footer có khoảng trống, không giấu focus dưới phần cố định.
 
 ## Kiểm chứng

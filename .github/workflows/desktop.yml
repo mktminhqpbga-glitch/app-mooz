@@ -65,10 +65,14 @@ jobs:
         run: npm run test:desktop
       - name: Verify Canvas Studio in quick packages
         if: inputs.quick_package == true
+        env:
+          MOOZ_UI_AUDIT_DIR: ${{ runner.temp }}/mooz-ui-review
         run: |
           node --test tests/desktop-canvas-presets.test.cjs tests/desktop-canvas-characters.test.cjs
           node tests/desktop-canvas-studio-smoke.cjs
           node tests/desktop-canvas-group-run-smoke.cjs
+          node tests/desktop-canvas-libtv-review.cjs
+          node tests/desktop-studio-all-surfaces-smoke.cjs
       - name: Lưu ảnh và số đo kiểm tra giao diện
         if: always()
         uses: actions/upload-artifact@v4

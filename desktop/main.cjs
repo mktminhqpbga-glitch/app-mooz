@@ -189,6 +189,7 @@ async function handleWorkflowCall(event,method,data={}){
    if(method==='diagnostics.download'){const report=win.diagnosticsReport||await diagnostics.report();return downloads.download(win,{url:'data:application/json;base64,'+Buffer.from(report).toString('base64'),filename:'MooZ-bao-loi-'+new Date(Date.now()+7*3600000).toISOString().slice(0,10)+'.json'});}
    throw Error('Thao tác báo lỗi không hợp lệ.');
   }
+  if(method==='canvas.open'){const projects=await store.list();const chosen=data.projectId?projects.find(p=>p.id===data.projectId):projects.find(p=>!p.recoveryRequired);if(data.projectId&&!chosen)throw Error('Không tìm thấy dự án.');const project=chosen||await store.create('Dự án mới');return openProject(project.id);}
   if(method==='batch.open'){await openBatch();return;}
   if(method.startsWith('batch.')){
    if(!ctx.batch)throw Error('Mở Video hàng loạt trước.');

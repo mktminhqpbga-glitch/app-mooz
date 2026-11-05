@@ -1,0 +1,143 @@
+/* Production, assets and finishing share the same quiet media workspace. */
+:root[data-ui-theme] body[data-app-surface=batch]{
+ --bg:var(--mooz-bg);--panel:var(--mooz-panel);--raised:var(--mooz-raised);--line:var(--mooz-line);
+ --ink:var(--mooz-ink);--muted:var(--mooz-muted);--accent:var(--mooz-accent);--on-accent:var(--mooz-accent-ink);
+ --soft:var(--mooz-soft);--blue:var(--mooz-link);--red:var(--mooz-danger);--shadow:0 16px 48px #0003;
+ overflow:hidden;
+}
+:root[data-ui-theme] body[data-app-surface=batch] .shell{grid-template-columns:68px minmax(0,1fr);height:100dvh}
+:root[data-ui-theme] body[data-app-surface=batch] .batch-studio-rail{padding:18px 10px 12px;align-items:center;gap:20px;border-right:1px solid var(--mooz-line);background:var(--mooz-bg)}
+.batch-studio-rail .brand{padding:0;min-height:34px}.batch-studio-rail .brand>span{display:none}
+.batch-studio-rail .brand-mark{width:31px;height:31px;border-radius:8px}
+.batch-studio-rail #mainNav{width:100%;gap:13px;margin-top:16px}
+:root[data-ui-theme] body[data-app-surface=batch] .batch-studio-rail #mainNav button{position:relative;justify-content:center;width:44px;height:44px;min-width:44px;min-height:44px;padding:11px;border:0;border-radius:11px;color:var(--mooz-muted);background:transparent}
+:root[data-ui-theme] body[data-app-surface=batch] .batch-studio-rail #mainNav button.active{background:var(--mooz-raised);color:var(--mooz-ink)}
+.batch-studio-rail .rail-label{position:absolute!important;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;padding:0!important;margin:-1px!important}
+.batch-studio-rail #mainNav button>span:not(.rail-label){position:absolute;right:-2px;top:-2px;font-size:9px;line-height:1.4;padding:1px 4px;min-width:13px;background:var(--mooz-panel);border-radius:5px;color:var(--mooz-muted)}
+.batch-studio-rail .sidebar-note,.batch-studio-rail .storage-status{display:none}
+:root[data-ui-theme] body[data-app-surface=batch] .batch-studio-rail #backHome{margin-top:auto;width:42px;height:42px;padding:10px}
+.batch-studio-rail #backHome svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.6}
+:root[data-ui-theme] body[data-app-surface=batch] .workspace{grid-template-rows:57px minmax(0,1fr) 25px;min-height:0}
+:root[data-ui-theme] body[data-app-surface=batch] .topbar{padding:0 20px;gap:12px;background:var(--mooz-bg);border-bottom:0;min-width:0}
+.topbar .breadcrumbs{min-width:0;gap:12px;font-size:12px}.topbar .batch-space-label{font-size:11px;letter-spacing:.01em;padding-right:12px;border-right:1px solid var(--mooz-line);opacity:.65}
+.topbar #viewName{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
+.top-actions{gap:5px;flex:none}
+:root[data-ui-theme] body[data-app-surface=batch] .topbar button{min-height:32px;border:0;border-radius:8px;background:transparent;padding:6px 9px;font-size:11px}
+:root[data-ui-theme] body[data-app-surface=batch] .app-footer{padding:0 20px;border:0;background:var(--mooz-bg);font-size:10px;color:var(--mooz-muted)}
+.app-footer>span:last-child{opacity:.55}
+:root[data-ui-theme] body[data-app-surface=batch] #main{background-color:var(--mooz-bg);background-image:radial-gradient(color-mix(in srgb,var(--mooz-muted) 15%,transparent) .65px,transparent .65px);background-size:22px 22px;scroll-padding:20px}
+:root[data-ui-theme] body[data-app-surface=batch] .production-page{padding:8px 18px 20px;min-height:100%;max-width:none}
+.production-heading{margin:0;position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+.batch-project-toolbar{min-height:45px;padding:0 0 12px;gap:7px;border:0;background:transparent;align-items:center}
+.batch-project-toolbar>label{font-size:0;min-width:190px;max-width:310px;flex:0 1 310px;gap:0}
+:root[data-ui-theme] body[data-app-surface=batch] .batch-project-toolbar select{min-height:35px;padding:6px 30px 6px 11px;font-size:12px;background:var(--mooz-panel);border:1px solid var(--mooz-line);border-radius:9px}
+:root[data-ui-theme] body[data-app-surface=batch] .batch-project-toolbar>button{padding:6px 9px;min-height:32px;font-size:11px;background:transparent;border:0}
+.batch-project-stats{display:flex;gap:12px;margin-left:auto;flex:none}
+.batch-project-stats>div{display:flex;align-items:center;gap:5px;min-width:0;padding:0;border:0;background:none}
+.batch-project-stats>div>span{font-size:10px;color:var(--mooz-muted)}
+.batch-project-stats>div>strong{font-size:11px;font-weight:500;line-height:1.5;margin:0}
+:root[data-ui-theme] body[data-app-surface=batch] .production-studio{grid-template-columns:minmax(0,1fr) 310px;gap:22px;align-items:start;min-height:calc(100dvh - 160px);height:auto}
+:root[data-ui-theme] body[data-app-surface=batch] .production-studio .composer-panel{align-self:start;margin:40px auto 35px;width:min(100%,930px);height:auto!important;max-height:none!important;min-height:460px!important;border:1px solid var(--mooz-line);border-radius:22px;box-shadow:0 20px 60px #00000018;background:var(--mooz-panel);overflow:hidden}
+:root[data-ui-theme] body[data-app-surface=batch] .composer-panel .composer-connection{order:0;margin:0;padding:10px 17px;border:0;border-bottom:1px solid var(--mooz-line);border-radius:0;background:none;font-size:10px;line-height:1.5}
+.composer-connection>div svg{width:14px;height:14px}.composer-connection>div>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+:root[data-ui-theme] body[data-app-surface=batch] .composer-panel .composer-connection button{background:none;border:0;font-size:10px;padding:4px 6px;min-height:25px}
+.composer-panel .composer-tabs{padding:11px 15px 3px;gap:4px;flex-wrap:wrap;align-content:start}
+:root[data-ui-theme] body[data-app-surface=batch] .composer-tabs button{min-height:30px;padding:6px 8px;font-size:11px;border:0;background:transparent;border-radius:8px}
+:root[data-ui-theme] body[data-app-surface=batch] .composer-tabs button[aria-pressed=true]{background:var(--mooz-raised);color:var(--mooz-ink);border:0}
+.composer-tabs svg{width:15px;height:15px}
+.composer-panel #composerContent{flex:1;min-height:255px}
+.composer-panel .composer-input{padding:15px 22px 20px}
+:root[data-ui-theme] body[data-app-surface=batch] .composer-panel #batchPrompts{height:260px!important;min-height:200px!important;max-height:48dvh;resize:vertical;font-size:15px;line-height:1.9;color:var(--mooz-panel-ink);padding:0;background:transparent}
+.composer-panel #batchPrompts::placeholder{font-size:15px;color:var(--mooz-panel-muted);opacity:.75}
+.composer-panel .composer-sources{margin:8px 17px 0;gap:9px}
+:root[data-ui-theme] body[data-app-surface=batch] .composer-panel .composer-source{border-radius:10px;background:var(--mooz-raised);border-color:var(--mooz-line);padding:12px;font-size:12px}
+.composer-source-hint{font-size:11px!important;line-height:1.6;margin:8px 18px!important;color:var(--mooz-muted)}
+.composer-panel .reference-composer{padding:13px 20px 8px}
+.composer-panel .composer-section-title{margin-bottom:12px}.composer-section-title h2{font-size:13px}.composer-section-title p{display:none}
+.composer-products{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;max-height:340px}
+:root[data-ui-theme] body[data-app-surface=batch] .composer-product{position:relative;padding:0 0 6px;border:0;background:transparent;border-radius:8px;box-shadow:none}
+.composer-product label{display:flex;flex-direction:column;align-items:stretch;gap:7px}.composer-product label>span{padding:0 3px}.composer-product img{width:100%;height:150px;object-fit:cover;border-radius:8px}
+.composer-product strong{font-size:11px;font-weight:500}.composer-product small{font-size:10px;margin-top:2px}
+:root[data-ui-theme] body[data-app-surface=batch] .composer-product>button{font-size:10px;min-height:27px;margin-top:6px;background:none;border:0}
+:root[data-ui-theme] body[data-app-surface=batch] .composer-product.selected img{outline:2px solid var(--mooz-link);outline-offset:2px}
+:root[data-ui-theme] body[data-app-surface=batch] .composer-upload{min-height:165px;border-radius:12px;background:transparent;border-color:var(--mooz-line);gap:9px}
+.composer-upload strong{font-size:13px;font-weight:500}.composer-upload span{font-size:11px}
+.composer-panel .composer-note{font-size:11px;margin-top:14px}.composer-note textarea{font-size:13px;line-height:1.7;background:transparent;min-height:80px;border-color:var(--mooz-line)}
+:root[data-ui-theme] body[data-app-surface=batch] .composer-panel .composer-footer{margin-top:auto;padding:8px 17px 0;border:0}
+.composer-options{align-items:center;gap:6px}
+.composer-options>label{gap:2px;flex:0 1 auto;min-width:100px}.composer-options>label>span{font-size:9px;color:var(--mooz-muted)}
+:root[data-ui-theme] body[data-app-surface=batch] .composer-options select{font-size:11px;min-height:30px;padding:5px 8px;border:0;background:transparent;max-width:180px}
+.composer-ratios{border:0;background:var(--mooz-raised);padding:2px;border-radius:8px}
+:root[data-ui-theme] body[data-app-surface=batch] .composer-ratios button{min-height:27px!important;min-width:34px!important;font-size:10px!important;padding:5px 7px;background:none}
+:root[data-ui-theme] body[data-app-surface=batch] .composer-ratios button[aria-pressed=true]{color:var(--mooz-ink);background:var(--mooz-button);border:0}
+.composer-panel .composer-task-worker{display:flex;align-items:center;gap:9px;font-size:10px!important;margin-top:8px!important;color:var(--mooz-muted)}
+:root[data-ui-theme] body[data-app-surface=batch] .composer-task-worker select{max-width:100%;min-width:0;flex:1;padding:6px 8px;font-size:11px;min-height:30px;background:transparent;border:0}
+:root[data-ui-theme] body[data-app-surface=batch] .composer-panel .production-action-dock{position:static!important;inset:auto!important;width:auto!important;margin:0;padding:12px 17px 16px;border:0!important;background:none!important;box-shadow:none!important;transform:none!important}
+.composer-panel .composer-submit-row{gap:12px;margin:0;align-items:center}
+.composer-panel .composer-submit-row p{font-size:10px;line-height:1.6;max-width:none;flex:1}
+:root[data-ui-theme] body[data-app-surface=batch] .composer-submit-row .composer-send{min-height:36px;padding:8px 11px;font-size:11px;border-radius:10px}
+.render-sidebar{gap:12px;position:sticky;top:8px;max-height:calc(100dvh - 150px);overflow:auto;overscroll-behavior:contain;padding-bottom:8px}
+:root[data-ui-theme] body[data-app-surface=batch] .render-queue,:root[data-ui-theme] body[data-app-surface=batch] .task-history{border-radius:13px;border:1px solid var(--mooz-line);background:var(--mooz-panel);box-shadow:none}
+.render-queue-header{padding:13px 14px 11px;border-bottom:1px solid var(--mooz-line)}
+.render-queue-header>div:first-child{display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap}.render-queue-header h2{font-size:14px;font-weight:500;margin:0}.render-queue-header p{font-size:10px;margin:0}
+.render-queue-actions{display:flex;flex-wrap:wrap;gap:4px;margin-top:10px}
+:root[data-ui-theme] body[data-app-surface=batch] .render-queue-actions button{flex:1 1 45%;min-height:28px!important;padding:5px 6px;font-size:10px!important;background:transparent;border:0;justify-content:flex-start}
+.render-queue-actions svg{width:13px;height:13px}
+.render-queue-note{padding:9px 14px;border:0;background:none;font-size:10px;color:var(--mooz-muted)}
+.queue-filter-panel{border-block:1px solid var(--mooz-line);padding:8px 14px;font-size:10px}.queue-filter-panel summary{font-size:10px}
+.render-queue .product-table{border:0;border-radius:0;background:none}.render-queue .table-head{background:none;padding:10px 13px;border:0;font-size:10px}
+.render-queue .table-head>span{font-size:10px}.render-queue #jobRows .product-row{margin:0;padding:11px 13px;border:0;border-top:1px solid var(--mooz-line);border-radius:0;background:transparent;box-shadow:none}
+.render-queue .product-row-summary{gap:7px}.render-queue .product-row-summary img{width:40px;height:52px;border-radius:6px}.render-queue .product-row-summary strong{font-size:11px;font-weight:500}
+.render-queue .product-row-summary small,.render-queue .job-step,.render-queue .job-worker{font-size:10px}
+.render-queue .product-row-actions{gap:4px}.render-queue .product-row-actions button{font-size:10px;min-height:26px;padding:4px 6px}
+.render-queue .queue-empty{padding:24px 15px;min-height:170px}.queue-empty h3{font-size:13px!important;font-weight:500}.queue-empty p{font-size:11px;line-height:1.6}
+.render-queue .selection-actions{padding:8px 13px;gap:6px;font-size:10px}.render-queue .selection-actions button{font-size:10px;padding:4px 6px;min-height:26px}
+.render-queue .queue-pages{padding:9px 13px;font-size:10px}.render-queue .queue-pages button{font-size:10px;min-height:27px;padding:4px 7px}
+.queue-run-footer{padding:11px 13px;border-top:1px solid var(--mooz-line)}.queue-run-footer button{min-height:32px;font-size:11px!important}
+.task-history>summary{padding:12px 14px;font-size:12px}.task-history>summary>span{font-size:10px}.task-history #taskHistoryRows>button{padding:10px 13px;font-size:11px}.task-history time,.task-history small{font-size:10px}
+/* A-Z remains a real graph; its controls float around the canvas rather than a dashboard. */
+:root[data-ui-theme] body[data-app-surface=batch] .flow-editor{padding:8px 18px 18px}
+.flow-heading{align-items:center;gap:10px;margin:0 0 10px}.flow-heading .eyebrow,.flow-heading p{display:none}.flow-heading h1{font-size:16px;margin:0;font-weight:500;letter-spacing:0}
+.flow-heading-actions{gap:5px}.flow-heading-actions button{font-size:11px;min-height:31px;padding:6px 9px}
+.flow-template-bar{padding:3px 0 13px;gap:7px}.flow-template-bar>label{font-size:0;gap:0}.flow-template-bar select{font-size:12px;min-height:32px}.flow-template-bar>button{font-size:10px;min-height:29px;padding:5px 8px}#flowSaveState{font-size:10px;min-width:80px}
+.flow-editor-layout{grid-template-columns:minmax(0,1fr) 265px;gap:14px}.flow-tools{padding:7px 9px;border-radius:10px;gap:5px;background:var(--mooz-panel)}.flow-tools button{font-size:11px;padding:5px 7px;min-height:30px}.flow-tools select{font-size:11px;min-height:30px}
+:root[data-ui-theme] body[data-app-surface=batch] .flow-viewport{height:calc(100dvh - 255px);min-height:460px;max-height:none;border:1px solid var(--mooz-line);border-radius:12px;background-color:var(--mooz-bg);background-image:radial-gradient(color-mix(in srgb,var(--mooz-muted) 20%,transparent) .7px,transparent .7px);background-size:22px 22px}
+.flow-node{border:1px solid var(--mooz-line)!important;border-radius:10px;background:var(--mooz-panel);box-shadow:none}.flow-node-handle{padding:11px 12px;gap:6px}.flow-node-handle>span{font-size:9px;letter-spacing:.04em}.flow-node-handle>strong{font-size:13px;font-weight:500}.flow-node-summary,.flow-port-row{font-size:11px}.flow-wire{stroke-width:1.5;stroke:var(--mooz-muted)}.flow-wire.selected{stroke:var(--mooz-link);stroke-width:2}
+.flow-properties{padding:14px;border-radius:12px;max-height:calc(100dvh - 190px);overflow:auto;background:var(--mooz-panel)}.flow-properties h2{font-size:14px;font-weight:500;margin:15px 0 10px}.flow-properties label{font-size:11px;gap:6px;margin-bottom:11px}.flow-properties small{font-size:10px}.flow-properties input,.flow-properties select,.flow-properties textarea{font-size:12px;min-height:32px}.flow-global-fields{gap:8px;padding-bottom:12px}.flow-canvas-help{font-size:10px}#flowIssue{font-size:10px}
+/* Media is the gallery content, with tools revealed below each original file. */
+body[data-batch-view=library] .page{max-width:none;padding:14px 22px 28px}.page-heading h1{font-size:22px;font-weight:500;letter-spacing:-.3px}.page-heading .eyebrow{display:none}.page-heading p{font-size:11px;margin-top:6px}.page-heading{margin-bottom:17px}.page-heading button{font-size:11px;min-height:32px;padding:6px 10px}
+.library-tools{margin:14px 0}.asset-grid{grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:24px 18px}
+:root[data-ui-theme] body[data-app-surface=batch] .asset-card{border:0;border-radius:0;background:none;box-shadow:none;overflow:visible}
+.asset-card .asset-preview{height:220px;border-radius:9px;background:var(--mooz-raised);overflow:hidden}.asset-card .asset-preview img,.asset-card .asset-preview video{object-fit:contain;max-height:220px}.asset-type{font-size:9px;border:0;border-radius:5px;top:7px;left:7px;background:var(--mooz-panel);opacity:.9}
+.asset-info{padding:8px 0 0}.asset-info strong{font-size:11px;font-weight:500}.asset-info small{font-size:10px;margin-top:3px}.asset-actions{padding:6px 0 0;border:0;gap:3px}.asset-actions button{min-height:26px;font-size:10px;padding:4px 6px;border:0;background:transparent}
+.library-drop-note{border-color:var(--mooz-line);border-radius:10px;padding:18px;font-size:11px;margin-top:24px}.compact.asset-grid{gap:18px 13px}.compact .asset-preview{height:170px}
+/* Finishing keeps the actual player and timeline as the central working surface. */
+body[data-batch-view=editor] .page{max-width:none;padding:12px 20px 25px}.editor-shell{grid-template-columns:minmax(0,1fr) 280px;gap:16px;align-items:start}.editor-stage{border-radius:13px;background:var(--mooz-panel);border:1px solid var(--mooz-line);box-shadow:none}.editor-preview{min-height:360px;background:#101010;padding:18px}.editor-preview video{max-height:460px;border-radius:4px}.preview-label{background:#252525d9;border-color:#555;color:#ccc;font-size:9px;letter-spacing:0}
+.editor-controls{padding:10px 14px}.editor-controls button{min-height:28px;font-size:10px;padding:5px 8px}.timeline-panel{padding:14px 17px}.track-heading{margin-bottom:9px}.track-heading>strong{font-size:11px;font-weight:500}.video-strip{height:49px;border-radius:6px}.audio-waveform{height:70px;border-radius:7px}.editor-settings{gap:12px}.settings-card{padding:14px;border-radius:12px;background:var(--mooz-panel);box-shadow:none}.settings-card h3{font-size:13px;font-weight:500;margin-bottom:12px}.slider-field{font-size:11px}.slider-field span{font-size:11px}.export-form>button{min-height:34px;font-size:11px}.export-note{font-size:10px;line-height:1.6}.editor-pick{max-width:650px;margin:70px auto;padding:38px;border-radius:18px;background:var(--mooz-panel);border:1px solid var(--mooz-line)}.editor-pick h2{font-size:20px;font-weight:500}.editor-pick p{font-size:12px;max-width:420px}.editor-pick .square-icon{background:none;width:40px;height:40px;color:var(--mooz-muted)}
+/* All dialogs belong to this studio, retaining their native focus/file handlers. */
+:root[data-ui-theme] body[data-app-surface=batch] dialog{padding:22px;border:1px solid var(--mooz-line);border-radius:18px;background:var(--mooz-panel);color:var(--mooz-panel-ink);box-shadow:0 28px 100px #0006;max-width:calc(100vw - 32px)}
+body[data-app-surface=batch] dialog header{gap:12px;margin-bottom:16px}.dialog-footer{padding-top:16px;gap:7px}body[data-app-surface=batch] dialog h2{font-size:19px;font-weight:500;letter-spacing:-.2px}body[data-app-surface=batch] dialog p,body[data-app-surface=batch] dialog small{font-size:12px;line-height:1.7}body[data-app-surface=batch] dialog button{min-height:34px;font-size:12px}.dropzone{border-radius:12px;background:var(--mooz-raised);border-color:var(--mooz-line);min-height:210px}.dropzone strong{font-size:15px;font-weight:500}.dropzone span{font-size:11px}.drop-icon{background:none}.pool-row{border-radius:10px;padding:11px}.callout{background:var(--mooz-raised);border:0;border-radius:10px;font-size:11px}.pool-actions{gap:6px}.segmented{padding:3px;border-radius:10px;background:var(--mooz-raised)}.segmented button{border:0;font-size:12px;background:none}.segmented button.active{background:var(--mooz-button)}
+@media(min-width:1600px){:root[data-ui-theme] body[data-app-surface=batch] .production-studio{grid-template-columns:minmax(0,1fr) 340px;gap:34px}.production-studio .composer-panel{margin-top:65px!important}.asset-grid{grid-template-columns:repeat(auto-fill,minmax(210px,1fr))}}
+@media(max-width:1200px){.batch-project-stats>div>span{display:none}.batch-project-stats{gap:11px}.topbar .batch-space-label{display:none}.topbar .top-actions #quickRefresh{max-width:95px;overflow:hidden;text-overflow:ellipsis}.production-studio{gap:14px!important;grid-template-columns:minmax(0,1fr) 285px!important}.flow-editor-layout{grid-template-columns:minmax(0,1fr) 240px}.composer-panel .composer-tabs{gap:2px;padding-inline:11px}.composer-options>label{min-width:85px}.composer-options select{max-width:145px}.composer-panel .production-action-dock{padding-inline:12px!important}}
+@media(max-width:1000px){:root[data-ui-theme] body[data-app-surface=batch] .topbar{padding-inline:14px}.topbar .top-actions #quickRefresh{font-size:0!important;width:32px;padding:6px}.topbar .top-actions #quickRefresh::after{content:'↻';font-size:17px}.batch-project-toolbar>label{flex-basis:210px;min-width:150px}.batch-project-toolbar #batchProjectNew{font-size:0;min-width:30px}.batch-project-toolbar #batchProjectNew svg{width:16px;height:16px}.batch-project-toolbar #batchProjectRename{font-size:10px}.production-studio .composer-panel{margin-top:18px!important}.production-studio{grid-template-columns:minmax(0,1fr) 255px!important;gap:12px!important}.render-queue-actions button{font-size:9px!important}.render-sidebar{max-height:none}.composer-panel .composer-connection{padding-inline:11px!important}.composer-connection>div span{max-width:210px}.composer-panel .composer-task-worker{flex-wrap:wrap}.composer-task-worker select{flex-basis:100%}.editor-shell{grid-template-columns:minmax(0,1fr) 235px;gap:12px}.editor-preview{min-height:300px}.settings-card{padding:12px}}
+@media(max-width:820px){:root[data-ui-theme] body[data-app-surface=batch] .shell{grid-template-columns:54px minmax(0,1fr)}:root[data-ui-theme] body[data-app-surface=batch] .batch-studio-rail{padding:15px 5px;gap:12px}:root[data-ui-theme] body[data-app-surface=batch] .batch-studio-rail #mainNav button{width:42px;height:42px;padding:11px}.batch-studio-rail .brand-mark{width:29px;height:29px}:root[data-ui-theme] body[data-app-surface=batch] .topbar{gap:8px;padding-inline:11px}.topbar #helpOpen{display:none}.topbar .top-actions{gap:2px}.topbar .top-actions button{font-size:10px;min-height:30px;padding:5px 7px}.production-page{padding:5px 12px 20px!important}.batch-project-toolbar{flex-wrap:wrap;gap:5px}.batch-project-stats{display:none}.batch-project-toolbar #batchReadyStatus{margin-left:auto}.production-studio{grid-template-columns:1fr!important;gap:15px!important;min-height:0!important}.production-studio .composer-panel{margin:12px 0 0!important;min-height:420px!important}.render-sidebar{position:static;max-height:none;display:grid;grid-template-columns:1fr;overflow:visible;gap:12px}.render-queue .queue-empty{min-height:135px}.render-queue-actions{display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}.render-queue-actions button{flex:auto;font-size:10px!important}.render-queue-header>div:first-child{justify-content:flex-start;gap:12px}.render-queue .queue-workspace{max-height:none}.queue-run-footer{padding-block:9px}.flow-editor-layout{grid-template-columns:1fr}.flow-properties{position:static;max-height:none}.flow-viewport{height:480px!important;min-height:380px!important}.flow-global-fields{grid-template-columns:1fr 1fr}.editor-shell{grid-template-columns:1fr}.editor-settings{display:grid;grid-template-columns:1fr 1fr;gap:12px}.editor-settings .export-form{grid-column:1/-1}.editor-preview{min-height:330px}.asset-grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:22px 13px}.asset-card .asset-preview{height:190px}.app-footer>span:last-child{display:none}.page-heading{align-items:flex-start;flex-wrap:wrap;gap:10px}.page-heading .heading-actions{width:100%}.flow-heading{align-items:flex-start;gap:9px}.flow-heading-actions{justify-content:flex-start}.flow-template-bar>label{width:100%;flex:1}.flow-template-bar select{width:100%;min-width:0}.flow-properties .flow-global-fields{display:grid}}
+@media(max-width:560px){.topbar .top-actions #themeToggle{display:none}.topbar #viewName{max-width:95px;font-size:11px}.composer-connection>div span{white-space:normal;max-width:none;font-size:9px}.composer-panel .composer-tabs{padding:10px 8px 1px;gap:1px}.composer-tabs button{font-size:10px!important;min-height:29px!important;padding:5px 6px!important}.composer-tabs svg{width:13px;height:13px}.composer-panel .composer-input{padding:12px 15px}.composer-panel #batchPrompts{font-size:14px!important;min-height:180px!important;height:220px!important}.composer-panel .composer-footer{padding-inline:11px!important}.composer-options{gap:4px}.composer-options>label{min-width:80px}.composer-options select{font-size:10px!important;max-width:135px}.composer-panel .composer-submit-row p{font-size:9px}.composer-panel .composer-send{font-size:10px!important;min-height:33px!important;padding:7px 8px!important}.render-queue-actions{grid-template-columns:1fr 1fr}.editor-settings{grid-template-columns:1fr}.editor-pick{margin:25px 0;padding:25px 18px}.editor-preview{min-height:260px}.flow-global-fields{grid-template-columns:1fr!important}.flow-heading-actions{gap:4px}.flow-heading-actions button{font-size:10px;padding:5px 7px}.page-heading h1{font-size:20px}.asset-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 10px}.asset-card .asset-preview{height:160px}.asset-actions{flex-wrap:wrap}.asset-actions button{flex:1;min-width:35px}.asset-info strong{font-size:10px}}
+@media(prefers-reduced-motion:reduce){body[data-app-surface=batch] *{scroll-behavior:auto!important;transition:none!important}}
+
+/* These geometry rules deliberately outrank the previous shared dashboard skin. */
+:root[data-ui-theme] body[data-app-surface=batch] .batch-project-toolbar{display:flex;flex-wrap:nowrap;align-items:center;gap:7px;min-height:38px;margin:0;padding:0 0 10px;border:0;background:transparent}
+:root[data-ui-theme] body[data-app-surface=batch] .batch-project-toolbar>label{font-size:0!important;line-height:0;display:block;flex:0 1 265px;min-width:150px;max-width:265px}
+:root[data-ui-theme] body[data-app-surface=batch] .batch-project-stats{display:flex;gap:13px;margin-left:auto;flex:0 0 auto}
+:root[data-ui-theme] body[data-app-surface=batch] .batch-project-stats>div{display:flex;min-width:0;gap:5px;padding:0;margin:0;border:0;background:none;box-shadow:none}
+:root[data-ui-theme] body[data-app-surface=batch] .batch-project-stats>div>span{display:none}
+:root[data-ui-theme] body[data-app-surface=batch] .batch-project-stats>div>strong{font-size:11px;font-weight:500;line-height:1.5;margin:0;padding:0}
+:root[data-ui-theme] body[data-app-surface=batch] .composer-panel .composer-tabs{display:flex;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;gap:3px;padding:11px 12px 3px}
+:root[data-ui-theme] body[data-app-surface=batch] .composer-panel .composer-tabs button{flex:0 0 auto;white-space:nowrap;min-width:0;min-height:30px;padding:6px 8px;font-size:11px;border:0}
+:root[data-ui-theme] body[data-app-surface=batch] .composer-panel #composerContent{min-height:230px;flex:1 1 auto}
+:root[data-ui-theme] body[data-app-surface=batch] .composer-panel #batchPrompts{height:230px!important;min-height:200px!important}
+:root[data-ui-theme] body[data-app-surface=batch] .composer-panel .composer-options{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+:root[data-ui-theme] body[data-app-surface=batch] .composer-panel .composer-options>label>span{font-size:9px}
+:root[data-ui-theme] body[data-app-surface=batch] .composer-panel .composer-task-worker{font-size:10px;line-height:1.5}
+:root[data-ui-theme] body[data-app-surface=batch] .batch-studio-rail #backHome::before{display:none}
+@media(max-width:1000px){:root[data-ui-theme] body[data-app-surface=batch] .batch-project-toolbar{flex-wrap:wrap}:root[data-ui-theme] body[data-app-surface=batch] .batch-project-toolbar>label{flex-basis:210px;max-width:210px}:root[data-ui-theme] body[data-app-surface=batch] .batch-project-stats{display:none}}
+@media(max-width:820px){:root[data-ui-theme] body[data-app-surface=batch] .production-studio .composer-panel{min-height:400px!important}:root[data-ui-theme] body[data-app-surface=batch] .composer-panel .composer-tabs{padding:10px 10px 3px}:root[data-ui-theme] body[data-app-surface=batch] .composer-panel .composer-tabs button{font-size:10px;min-height:28px;padding:5px 7px}:root[data-ui-theme] body[data-app-surface=batch] .composer-panel #batchPrompts{height:210px!important;min-height:190px!important}}

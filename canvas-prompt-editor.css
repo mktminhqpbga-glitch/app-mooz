@@ -1,0 +1,33 @@
+/* A canvas-native floating composer; no full-screen form or blocking backdrop. */
+:root[data-ui-theme] body.canvas-studio dialog.canvas-prompt-editor[open]{position:fixed;inset:auto;left:50%;top:53%;transform:translate(-50%,-50%);display:flex;flex-direction:column;gap:0;width:690px;min-width:360px;max-width:calc(100vw - 32px);height:470px;min-height:330px;max-height:calc(100vh - 100px);margin:0;padding:0;resize:both;overflow:auto;border:1px solid var(--mooz-line);border-radius:18px;background:var(--mooz-panel);color:var(--mooz-panel-ink);box-shadow:0 20px 70px #0007;z-index:125;font-family:var(--ds-font,Arial,sans-serif)}
+.canvas-prompt-editor[open]>*{box-sizing:border-box}.canvas-prompt-editor [hidden]{display:none!important}
+.canvas-prompt-editor>header{display:flex;align-items:center;gap:8px;min-height:48px;flex:none;padding:9px 14px 6px 20px;cursor:grab;touch-action:none}
+.canvas-prompt-editor>header:active{cursor:grabbing}.canvas-prompt-editor>header>strong{flex:1;font-size:14px;font-weight:550}
+:root[data-ui-theme] body.canvas-studio .canvas-prompt-editor .canvas-prompt-tool,:root[data-ui-theme] body.canvas-studio .canvas-prompt-editor .canvas-prompt-close{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:32px;padding:6px 10px;border:1px solid transparent;border-radius:8px;background:transparent;color:var(--mooz-panel-muted);box-shadow:none;font-size:12px;cursor:pointer}
+:root[data-ui-theme] body.canvas-studio .canvas-prompt-editor .canvas-prompt-tool:hover,:root[data-ui-theme] body.canvas-studio .canvas-prompt-editor .canvas-prompt-close:hover{background:var(--mooz-hover);color:var(--mooz-panel-ink)}
+:root[data-ui-theme] body.canvas-studio .canvas-prompt-editor .canvas-prompt-close{width:32px;font-size:23px;padding:0}
+.canvas-prompt-tools{display:flex;align-items:center;flex-wrap:wrap;gap:7px;padding:0 16px 8px;flex:none}
+.canvas-prompt-references{display:flex;align-items:center;gap:8px;overflow-x:auto;padding:1px 20px 10px;max-height:88px;flex:none}
+:root[data-ui-theme] body.canvas-studio .canvas-prompt-editor .canvas-prompt-reference{width:49px;height:58px;min-width:49px;padding:0;border:1px solid var(--mooz-line);border-radius:7px;overflow:hidden;background:var(--mooz-bg);cursor:pointer}
+.canvas-prompt-reference>:is(img,video){display:block;width:100%;height:100%;object-fit:cover}
+.canvas-prompt-source{display:inline-block;max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px;padding:6px 9px;border:1px solid var(--mooz-line);border-radius:6px;color:var(--mooz-panel-muted)}
+.canvas-prompt-input-label{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+:root[data-ui-theme] body.canvas-studio .canvas-prompt-editor>#canvasPromptText{display:block;flex:1;min-height:110px;width:100%;max-width:100%;margin:0;padding:12px 22px;border:0;border-radius:0;outline:none;resize:none;box-shadow:none;background:transparent;color:var(--mooz-panel-ink);font-family:inherit;font-size:16px;line-height:1.7}
+.canvas-prompt-editor>#canvasPromptText::placeholder{color:var(--mooz-panel-muted);opacity:.75}
+.canvas-prompt-editor>footer{display:flex;align-items:center;flex-wrap:wrap;gap:8px;flex:none;padding:12px 18px 8px}
+:root[data-ui-theme] body.canvas-studio .canvas-prompt-editor>footer>select{min-width:0;max-width:220px;width:auto;height:36px;margin:0;padding:5px 27px 5px 11px;border:1px solid var(--mooz-line);border-radius:9px;background:var(--mooz-raised);color:var(--mooz-panel-ink);font-size:12px}
+:root[data-ui-theme] body.canvas-studio .canvas-prompt-editor .canvas-prompt-submit{display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;min-height:42px;min-width:42px;margin-left:auto;padding:0;border:0;border-radius:50%;background:var(--mooz-accent);color:var(--mooz-accent-ink);font:26px/1 Arial,sans-serif;cursor:pointer;box-shadow:none}
+.canvas-prompt-editor .canvas-prompt-submit.running{opacity:.6}
+.canvas-prompt-status{flex:none;margin:0!important;padding:2px 20px 10px;font-size:11px;line-height:1.5;color:var(--mooz-panel-muted);overflow-wrap:anywhere;max-height:70px;overflow:auto}
+.canvas-prompt-status:empty{padding-bottom:6px}
+.canvas-prompt-source-chooser{flex:none;margin:0 18px 6px;padding:10px;border:1px solid var(--mooz-line);border-radius:10px;background:var(--mooz-raised);max-height:220px;overflow:auto}
+.canvas-prompt-source-chooser>input{display:block;width:100%;min-height:32px;padding:6px 9px;margin:0 0 8px;border:1px solid var(--mooz-line);border-radius:7px;background:var(--mooz-bg);color:var(--mooz-panel-ink);font-size:12px}
+.canvas-prompt-source-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+:root[data-ui-theme] body.canvas-studio .canvas-prompt-editor .canvas-prompt-source-choice{display:flex;align-items:center;gap:8px;min-height:52px;min-width:0;padding:6px;border:1px solid transparent;border-radius:7px;background:transparent;color:var(--mooz-panel-ink);text-align:left;cursor:pointer}
+:root[data-ui-theme] body.canvas-studio .canvas-prompt-editor .canvas-prompt-source-choice:hover{background:var(--mooz-hover);border-color:var(--mooz-line)}
+.canvas-prompt-source-choice>:is(img,video){display:block;flex:none;width:36px;height:41px;border-radius:4px;object-fit:cover}
+.canvas-prompt-source-choice>span:last-child{min-width:0;display:grid;gap:4px}.canvas-prompt-source-choice strong{font-size:11px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.canvas-prompt-source-choice small{font-size:10px;color:var(--mooz-panel-muted)}
+.canvas-prompt-source-type{display:grid;place-items:center;flex:none;width:36px;height:41px;font-size:18px;color:var(--mooz-panel-muted);border:1px solid var(--mooz-line);border-radius:4px}
+.canvas-prompt-empty{grid-column:1/-1;font-size:12px;color:var(--mooz-panel-muted);padding:8px;margin:0}
+.canvas-prompt-editor :is(button,input,textarea,select):focus-visible{outline:2px solid var(--mooz-focus);outline-offset:2px}.canvas-prompt-editor :disabled{opacity:.5;cursor:wait}
+@media(max-width:700px){:root[data-ui-theme] body.canvas-studio dialog.canvas-prompt-editor[open]{width:calc(100vw - 20px);min-width:0;max-width:calc(100vw - 20px);max-height:calc(100vh - 60px);height:440px;resize:none;border-radius:14px}.canvas-prompt-editor>header{padding-left:16px}.canvas-prompt-editor>footer{padding-inline:12px;gap:6px}:root[data-ui-theme] body.canvas-studio .canvas-prompt-editor>footer>select{max-width:160px;font-size:11px;padding-left:8px}.canvas-prompt-source-list{grid-template-columns:1fr}:root[data-ui-theme] body.canvas-studio .canvas-prompt-editor>#canvasPromptText{font-size:15px;padding:10px 16px}}

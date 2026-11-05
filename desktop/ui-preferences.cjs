@@ -2,7 +2,7 @@
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const {DEFAULT_ACCENT,hex,customColors}=require('./theme-colors.js');
-const defaults = Object.freeze({theme:'violet',size:'standard',accent:DEFAULT_ACCENT});
+const defaults = Object.freeze({theme:'dark',size:'standard',accent:DEFAULT_ACCENT});
 class UIPreferences {
   constructor(directory) { this.file=path.join(directory,'ui-preferences.json'); this.value={...defaults}; this.pending=Promise.resolve(); }
   async load() { try { const value=JSON.parse(await fs.readFile(this.file,'utf8')); try{this.value=this.validate(value);}catch{this.value={...defaults};} } catch(error) { if(error.code!=='ENOENT' && !(error instanceof SyntaxError)) throw error; } return this.get(); }

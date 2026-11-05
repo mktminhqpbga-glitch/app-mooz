@@ -26,8 +26,9 @@
 .canvas-studio-chrome :is(button,summary,input,select,textarea):focus-visible{outline:2px solid var(--mooz-focus);outline-offset:3px}
 .canvas-studio-chrome [hidden]{display:none!important}
 .canvas-studio-topbar{
- z-index:50; position:absolute;top:14px;left:18px;right:18px;min-height:48px;display:flex;align-items:center;gap:9px;padding:5px 8px;border:1px solid var(--cs-line);border-radius:14px;background:var(--cs-surface);box-shadow:0 3px 14px #0000000b;
+ z-index:50;position:absolute;top:14px;left:18px;right:18px;min-height:42px;display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:0;border:0;background:none;box-shadow:none;pointer-events:none;
 }
+.canvas-studio-project-cluster{display:flex;align-items:center;min-width:0;max-width:45%;gap:7px;padding:4px 8px 4px 3px;border:1px solid var(--cs-line);border-radius:10px;background:var(--cs-surface);pointer-events:auto}
 .canvas-studio-topbar #canvasStudioHome{width:38px;height:38px;padding:3px}
 .canvas-studio-topbar #canvasStudioHome img{display:block;width:30px;height:30px}
 .canvas-studio-project{position:relative;min-width:0;max-width:360px}
@@ -38,7 +39,7 @@
 .canvas-studio-project>summary>strong{display:block;min-width:0;max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:550}
 .canvas-studio-menu{position:absolute;left:0;top:calc(100% + 15px);min-width:235px;padding:8px;border:1px solid var(--cs-line);border-radius:12px;background:var(--cs-surface);box-shadow:var(--cs-shadow)}
 .canvas-studio-menu .canvas-studio-button{width:100%;justify-content:flex-start!important;text-align:left}
-.canvas-studio-header-actions{display:flex;align-items:center;gap:6px;margin-left:auto;min-width:0}
+.canvas-studio-header-actions{display:flex;align-items:center;justify-content:flex-end;gap:6px;margin-left:auto;min-width:0;pointer-events:auto}
 :root[data-ui-theme] body.canvas-studio .canvas-studio-header-actions>button{min-height:36px;padding:7px 11px;font-size:12px;border:1px solid var(--cs-line);border-radius:9px;white-space:nowrap;background:var(--cs-surface);color:var(--cs-ink)}
 :root[data-ui-theme] body.canvas-studio .canvas-studio-header-actions>#runBtn{background:var(--mooz-accent);border-color:var(--mooz-accent);color:var(--mooz-accent-ink);min-height:36px}
 :root[data-ui-theme] body.canvas-studio .canvas-studio-header-actions #canvasAISummary{min-height:36px;font-size:12px;padding:7px 10px}
@@ -167,5 +168,3 @@
 
 #canvasStudioPresets{overflow:auto;min-height:0;flex:1;padding:14px}.canvas-studio-preset{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:12px;border:1px solid var(--cs-line);border-radius:11px;margin:10px 0;background:var(--cs-raised)}.canvas-studio-preset>strong{flex:1 1 100%;font-size:13px;overflow-wrap:anywhere}.canvas-studio-preset>.canvas-studio-button{font-size:12px}.canvas-studio-preset>.canvas-studio-button:last-child{margin-left:auto}.canvas-studio-preset-dialog{width:min(430px,calc(100vw - 32px))}.canvas-studio-preset-dialog h2{font-size:19px;margin:0 0 18px}.canvas-studio-preset-dialog label{display:grid;gap:8px;font-size:13px}.canvas-studio-preset-dialog input{width:100%}.canvas-studio-preset-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:20px}.canvas-studio-flow-ai>label{display:grid;gap:8px}.canvas-studio-flow-ai>label>select{width:100%;margin:0}.canvas-studio-flow-ai>button.primary{width:100%;margin-top:6px}.canvas-studio-flow-ai #canvasStudioFlowStatus{overflow-wrap:anywhere}.canvas-studio-source-actions>#canvasStudioImportFiles{grid-column:1/-1}
 .canvas-studio-task-history{padding:14px 18px;border-bottom:1px solid var(--mooz-line)}.canvas-studio-task-history h3{font-size:14px;margin:0 0 10px}.canvas-studio-task-row{display:flex;align-items:center;gap:8px;padding:10px 0;border-top:1px solid var(--mooz-line)}.canvas-studio-task-row>div{min-width:0;flex:1}.canvas-studio-task-row strong,.canvas-studio-task-row span{display:block;overflow-wrap:anywhere}.canvas-studio-task-row strong{font-size:13px}.canvas-studio-task-row button{min-height:34px;padding:6px 9px}.canvas-studio-task-error{font-size:12px;color:var(--mooz-danger);white-space:normal;overflow-wrap:anywhere;margin:6px 0 0}
-/* Neutral canvas defaults; custom palettes and other workspaces keep their saved colors. */
-:root[data-ui-theme=dark][data-batch-palette=reference] body.canvas-studio{--mooz-bg:#18191a;--mooz-panel:#232425;--mooz-node:#262728;--mooz-header:#2b2d2f;--mooz-raised:#2c2e30;--mooz-line:#424649;--mooz-button:#303335;--mooz-hover:#383b3e}

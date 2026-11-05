@@ -4,7 +4,7 @@
     "extension_pages": "script-src 'self'; object-src 'none'; connect-src 'self' https: wss: ws://127.0.0.1:*"
   },
   "name": "MooZ Connect",
-  "version": "1.9.1",
+  "version": "1.9.2",
   "description": "Kết nối AI và lấy thông tin, ảnh sản phẩm từ tab Shopee đã mở trong Chrome cho MooZ.",
   "action": {
     "default_title": "Kết nối MooZ Agent",

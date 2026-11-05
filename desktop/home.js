@@ -89,15 +89,29 @@
     const button = document.createElement('button');
     button.className = 'project-open';
     button.type = 'button';
-    button.setAttribute('aria-label', 'Mở dự án ' + project.name);
+    button.setAttribute('aria-label', 'Mở dự án ' + project.name + ' trong Canvas Studio');
+    button.title = 'Mở ' + project.name + ' trong Canvas Studio';
     button.onclick = () => void open(project);
     const art = document.createElement('div');
     art.className = 'project-art';
     art.setAttribute('aria-hidden', 'true');
-    const flow = document.createElement('span');
-    flow.className = 'flow-art';
-    for (const tag of ['i', 'b', 'i', 'b', 'i']) flow.append(document.createElement(tag));
-    art.append(flow);
+    const preview = project.thumbnail || project.previewImage;
+    if (typeof preview === 'string' && /^data:image\/(?:png|jpeg|webp);base64,[a-z0-9+/=]+$/i.test(preview) && preview.length < 2 * 1024 * 1024) {
+      const image = document.createElement('img');
+      image.src = preview;
+      image.alt = '';
+      image.loading = 'lazy';
+      image.onerror = () => image.remove();
+      art.append(image);
+    }
+    const canvasIcon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    canvasIcon.setAttribute('viewBox', '0 0 24 24');
+    const canvasPath = document.createElementNS(canvasIcon.namespaceURI, 'path');
+    canvasPath.setAttribute('d', 'M3 3h18v18H3zM3 15l5-5 5 5 3-3 5 5M8 7h.01');
+    canvasIcon.append(canvasPath);
+    const previewLabel = document.createElement('span');
+    previewLabel.textContent = 'Mở canvas';
+    art.append(canvasIcon, previewLabel);
     const info = document.createElement('div');
     info.className = 'project-info';
     const title = document.createElement('h3');
@@ -106,7 +120,10 @@
     const date = document.createElement('p');
     date.className = 'project-date';
     date.textContent = dateLabel(project.updatedAt);
-    info.append(title, date);
+    const kind = document.createElement('span');
+    kind.className = 'project-canvas-label';
+    kind.textContent = 'Canvas Studio';
+    info.append(kind, title, date);
     if (project.recoveryRequired) {
       const warning = document.createElement('p');
       warning.className = 'recovery-label';
@@ -140,7 +157,7 @@
 
   let guideInitialized=false;
   function render() {
-    if(!guideInitialized){$('homeGuide').open=projects.length===0;guideInitialized=true;}
+    if(!guideInitialized){$('homeGuide').open=false;guideInitialized=true;}
     const query = $('searchProjects').value.trim().toLocaleLowerCase('vi');
     const since = Date.now() - 7 * 24 * 60 * 60 * 1000;
     const visible = projects.filter(project => (!recentOnly || Date.parse(project.updatedAt) >= since) && project.name.toLocaleLowerCase('vi').includes(query));
@@ -149,8 +166,8 @@
     $('projectGrid').replaceChildren(...visible.map(card));
     $('emptyState').hidden = visible.length !== 0;
     const filtered = !!query || recentOnly;
-    $('emptyTitle').textContent = filtered ? 'Chưa tìm thấy dự án phù hợp' : 'Chưa có dự án nào';
-    $('emptyDescription').textContent = filtered ? 'Thử tên khác hoặc chọn Tất cả dự án.' : 'Tạo dự án đầu tiên để bắt đầu xây dựng workflow AI.';
+    $('emptyTitle').textContent = filtered ? 'Chưa tìm thấy dự án phù hợp' : 'Chưa có canvas nào';
+    $('emptyDescription').textContent = filtered ? 'Thử tên khác hoặc chọn Tất cả dự án.' : 'Tạo canvas đầu tiên để bắt đầu.';
     $('emptyCreate').hidden = filtered;
   }
 
@@ -171,44 +188,74 @@
     render();
   };
   let launchingApp = false;
+  let pickerRevision = 0;
+  let pickerLoading = false;
+  let pickerProjects = [];
   $('aiAppsBatch').onclick=()=>void window.workflowDesktop.call('batch.open').catch(error=>status(displayError(error),true));
   $('aiAppsAffiliate').onclick=()=>void window.workflowDesktop.call('affiliate.open').catch(error=>status(displayError(error),true));
   $('aiAppsHubPosting').onclick=()=>void window.workflowDesktop.call('posting.open',{view:'overview'}).catch(error=>status(displayError(error),true));
-  $('aiAppsWorkflow').onclick = () => {
-    $('allProjects').click();
-    document.querySelector('.project-library').scrollIntoView({block:'start', behavior:'smooth'});
-  };
+  $('aiAppsWorkflow').onclick = () => pickProject('canvas');
+  $('homeOpenCanvas').onclick = () => pickProject('canvas');
   let appTool = 'canvas';
-  function pickProject(tool) {appTool=tool;$('appProjectTitle').textContent=tool==='agent'?'MooZ Agent':tool==='voiceover'?'Lồng tiếng trong canvas':'Mở canvas';$('appProjectDescription').textContent=tool==='voiceover'?'Chọn dự án, thêm node Lồng tiếng và kết nối OpenAI API. Dịch vụ có thể tính phí.':'Chọn dự án để mở canvas.';$('appProjectOpen').textContent=tool==='voiceover'?'Mở canvas lồng tiếng':'Mở canvas';$('appProjectNew').textContent=tool==='voiceover'?'＋ Dự án lồng tiếng':'＋ Dự án mới';void selectProject();}
+  function pickProject(tool) {if(launchingApp || pickerLoading && tool===appTool && $('appProjectDialog').open)return;appTool=tool;$('appProjectTitle').textContent=tool==='agent'?'MooZ Agent':tool==='voiceover'?'Lồng tiếng trong canvas':'Mở Canvas Studio';$('appProjectDescription').textContent=tool==='voiceover'?'Chọn dự án, thêm node Lồng tiếng và kết nối OpenAI API. Dịch vụ có thể tính phí.':'Chọn dự án để mở Canvas Studio.';$('appProjectOpen').textContent=tool==='voiceover'?'Mở canvas lồng tiếng':tool==='agent'?'Mở MooZ Agent':'Mở Canvas Studio';$('appProjectNew').textContent=tool==='voiceover'?'＋ Dự án lồng tiếng':'＋ Canvas mới';void selectProject();}
   $('aiAppsAgent').onclick=()=>pickProject('agent');
   $('aiAppsVoice').onclick = ()=>pickProject('voiceover');
   async function selectProject() {
-    $('appProjectError').textContent = '';
-    await refresh();
+    const revision = ++pickerRevision;
+    const dialog = $('appProjectDialog');
     const select = $('appProjectSelect');
-    select.replaceChildren();
-    for (const project of projects) {
-      const option = new Option(project.name, project.id);
-      option.disabled = !!project.recoveryRequired;
-      select.append(option);
+    const previous = select.value;
+    pickerLoading = true;
+    pickerProjects = [];
+    $('appProjectError').textContent = '';
+    select.replaceChildren(new Option('Đang mở danh sách dự án…', ''));
+    select.disabled = true;
+    $('appProjectOpen').disabled = true;
+    $('appProjectNew').disabled = true;
+    if (!dialog.open) dialog.showModal();
+    try {
+      // The picker owns this result; project-grid refreshes must not supersede it.
+      const latest = await api.listProjects();
+      if (revision !== pickerRevision || !dialog.open || launchingApp) return;
+      if (!Array.isArray(latest)) throw Error('Không đọc được danh sách dự án.');
+      pickerProjects = [...new Map(latest.map(project => [project.id, project])).values()];
+      select.replaceChildren(...pickerProjects.map(project => {
+        const option = new Option(project.name, project.id);
+        option.disabled = !!project.recoveryRequired;
+        return option;
+      }));
+      const ready = pickerProjects.filter(project => !project.recoveryRequired);
+      const selected = ready.find(project => project.id === previous) || ready[0];
+      if (!selected) select.append(new Option('Chưa có dự án sẵn sàng', ''));
+      select.value = selected?.id || '';
+      select.disabled = !selected;
+      $('appProjectOpen').disabled = !selected;
+    } catch (error) {
+      if (revision !== pickerRevision || !dialog.open || launchingApp) return;
+      select.replaceChildren(new Option('Chưa đọc được danh sách dự án', ''));
+      select.disabled = true;
+      $('appProjectOpen').disabled = true;
+      $('appProjectError').textContent = displayError(error);
+    } finally {
+      if (revision === pickerRevision && !launchingApp) {
+        pickerLoading = false;
+        $('appProjectNew').disabled = false;
+      }
     }
-    const first = projects.find(project => !project.recoveryRequired);
-    if (first) select.value = first.id;
-    else select.append(new Option('Chưa có dự án sẵn sàng', ''));
-    $('appProjectOpen').disabled = !first;
-    if(!$('appProjectDialog').open)$('appProjectDialog').showModal();
   }
-  $('appProjectDialog').addEventListener('cancel',event=>{if(launchingApp)event.preventDefault();});
-  $('appProjectCancel').onclick = () => { if (!launchingApp) $('appProjectDialog').close(); };
+  $('appProjectDialog').addEventListener('cancel',event=>{if(launchingApp)event.preventDefault();else{pickerRevision++;pickerLoading=false;}});
+  $('appProjectDialog').addEventListener('close',()=>{if(!$('appProjectDialog').open){pickerRevision++;pickerLoading=false;}});
+  $('appProjectCancel').onclick = () => { if (!launchingApp) { pickerRevision++;pickerLoading=false;$('appProjectDialog').close(); } };
   async function launchProject(createNew = false) {
-    if (launchingApp) return;
+    if (launchingApp || pickerLoading) return;
     launchingApp = true;
+    const tool = appTool;
     $('appProjectError').textContent = '';
     for (const id of ['appProjectCancel', 'appProjectNew', 'appProjectOpen']) $(id).disabled = true;
     try {
-      const id = createNew ? (await api.createProject(appTool==='voiceover'?'Lồng tiếng':'Dự án mới')).id : $('appProjectSelect').value;
-      if (!id) throw Error('Chọn dự án hoặc tạo một dự án mới.');
-      await api.openProject(id, appTool==='canvas'?undefined:appTool);
+      const id = createNew ? (await api.createProject(tool==='voiceover'?'Lồng tiếng':'Dự án mới')).id : $('appProjectSelect').value;
+      if (!id || !createNew && !pickerProjects.some(project => project.id===id && !project.recoveryRequired)) throw Error('Chọn dự án hoặc tạo một dự án mới.');
+      await api.openProject(id, tool==='canvas'?undefined:tool);
       $('appProjectDialog').close();
     } catch (error) {
       $('appProjectError').textContent = displayError(error);
@@ -324,8 +371,26 @@
     finally { $('confirmRestore').disabled = false; $('cancelRestore').disabled = false; }
   };
 
+  function decorateHomeTools() {
+    const paths = {appearanceOpen:'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18M12 3v18',windowSwitcherOpen:'M3 4h13v13H3zM8 17v4h13V8h-5',connectionsOpen:'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4',desktopUpdateButton:'M12 3v12M7 10l5 5 5-5M4 17v4h16v-4',diagnosticsOpen:'M9 9a3 3 0 1 1 5 2c-2 1-2 2-2 3M12 17h.01M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20'};
+    for (const [id,path] of Object.entries(paths)) {
+      const button = $(id);
+      if (!button || !button.closest('.topbar')) continue;
+      if (!button.getAttribute('aria-label')) button.setAttribute('aria-label',button.textContent.trim());
+      if (!button.title) button.title = button.getAttribute('aria-label');
+      button.classList.add('home-icon-tool');
+      if (button.querySelector('svg')) continue;
+      const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+      svg.setAttribute('viewBox','0 0 24 24');svg.setAttribute('aria-hidden','true');
+      const shape = document.createElementNS(svg.namespaceURI,'path');shape.setAttribute('d',path);svg.append(shape);button.prepend(svg);
+    }
+  }
+  document.addEventListener('DOMContentLoaded',decorateHomeTools,{once:true});
+
   if (!api) {
     $('aiAppsVoice').disabled = true;
+    $('aiAppsWorkflow').disabled = true;
+    $('homeOpenCanvas').disabled = true;
     $('connectChrome').disabled = true;
     $('newProject').disabled = true;
     $('emptyCreate').disabled = true;

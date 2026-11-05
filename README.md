@@ -1,4 +1,6 @@
-# MooZ Agent 0.68.0
+# MooZ Agent 0.69.0
+
+**0.69.0 · Thiết kế lại toàn bộ MooZ Studio:** trang chủ, canvas, Hàng loạt, Đăng bài, Affiliate, cài đặt và hộp thoại dùng chung thiết kế trung tính theo ảnh tham khảo LibTV. Ảnh/video đặt trực tiếp trên canvas; node xử lý và kết quả tách riêng, có thanh soạn prompt nổi và menu thao tác thật. Canvas Studio có lối mở chính; dữ liệu và engine hàng loạt được giữ. Đi kèm **MooZ Connect 1.9.2** với giao diện kết nối mới. [Cách dùng và phạm vi](docs/USER-REVIEW-0690.md).
 
 **0.68.0 · Canvas Studio theo bố cục LibTV:** thẻ ảnh/video lớn, thanh công cụ theo lựa chọn, bảng thiết lập bên cạnh, kho nhân vật cá nhân, chỉnh ảnh trên máy, lưu/chèn mẫu luồng và hàng đợi cạnh canvas. Giữ workflow cũ; cả nhóm dùng cùng AI và tab đã chọn. Tiện ích giữ **MooZ Connect 1.9.1**. [Cách dùng và kiểm chứng](docs/USER-REVIEW-0680.md) · [Đối chiếu khả năng với LibTV](docs/CANVAS-STUDIO-CAPABILITIES.md).
 

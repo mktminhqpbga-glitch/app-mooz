@@ -1,5 +1,5 @@
 {
-  "version": "1.9.1",
+  "version": "1.9.2",
   "protocol": 1,
-  "notes": "Dùng với MooZ Agent 0.67.0: tiếp tục nối lại khi xác thực tạm thời không phản hồi; xử lý mất quyền và socket cũ sau khi ngắt. Giữ phản hồi đúng tác vụ, không tự gửi lại AI. Giao thức kết nối 1."
+  "notes": "Giao diện MooZ Connect mới đồng bộ MooZ Agent 0.69.0. Giữ giao thức kết nối 1 và các sửa nối lại, đối chiếu phản hồi, không tự gửi lại AI của 1.9.1."
 }

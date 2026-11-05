@@ -5,41 +5,35 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'">
   <script src="theme-colors.js"></script><script src="theme-init.js"></script>
-  <title>MooZ Agent — Không gian làm việc</title>
+  <title>MooZ Agent — Canvas Studio</title>
   <link rel="stylesheet" href="home.css">
   <link rel="stylesheet" href="update-ui.css">
-<link rel="stylesheet" href="appearance.css"><link rel="stylesheet" href="studio-polish.css"><link rel="stylesheet" href="usability.css"><link rel="stylesheet" href="theme.css"><link rel="stylesheet" href="design-system.css"><script src="issue-policy.js"></script><link rel="stylesheet" href="workspace-tabs.css"><link rel="stylesheet" href="refined-ui.css"><link rel="stylesheet" href="studio-system.css"></head>
-<body data-app-surface="library">
-  <aside class="sidebar">
-    <a class="brand" href="home.html" aria-label="MooZ Agent, trang chủ"><img class="brand-mark" src="../icons/mooz-mark.svg" alt=""><span>MooZ Agent<small>KHÔNG GIAN SÁNG TẠO</small></span></a>
-    <p class="nav-label">KHÔNG GIAN LÀM VIỆC</p>
-    <nav aria-label="Thư viện dự án">
-      <button class="nav-button selected" id="allProjects" aria-current="page"><span>▦</span>Tất cả dự án</button>
-      <button class="nav-button" id="recentProjects"><span>◷</span>Gần đây</button>
-    </nav>
-    <section class="ai-app-catalog" aria-labelledby="aiAppsHeading">
-      <h2 id="aiAppsHeading">ỨNG DỤNG</h2>
-      <button id="aiAppsAgent" class="app-button" type="button"><span class="app-icon">✦</span><span class="app-label"><strong>MooZ Agent</strong><small>Lập kế hoạch · tạo thành phẩm</small></span></button><button id="aiAppsWorkflow" class="app-button" type="button" title="Canvas tạo ảnh và video"><span class="app-icon" aria-hidden="true">▦</span><span class="app-label"><strong>Canvas sáng tạo</strong><small>Canvas · ảnh · video</small></span></button><button id="aiAppsHubPosting" class="app-button" type="button" title="Đăng bài"><span class="app-icon" aria-hidden="true">↗</span><span class="app-label"><strong>Đăng bài & lịch</strong><small>Bài viết · lịch · thương hiệu</small></span><span class="app-arrow" aria-hidden="true">↗</span></button>
-      <button id="aiAppsBatch" class="app-button" type="button"><span class="app-icon" aria-hidden="true">▷</span><span class="app-label"><strong>Video hàng loạt</strong><small>Sản phẩm · video · hậu kỳ</small></span><span class="app-arrow" aria-hidden="true">↗</span></button>
-      <button id="aiAppsAffiliate" class="app-button" type="button"><span class="app-icon affiliate" aria-hidden="true">↗</span><span class="app-label"><strong>Affiliate Shopee</strong><small>Link · kịch bản · workflow video</small></span><span class="app-arrow" aria-hidden="true">↗</span></button>
-
-
+<link rel="stylesheet" href="appearance.css"><link rel="stylesheet" href="studio-polish.css"><link rel="stylesheet" href="usability.css"><link rel="stylesheet" href="theme.css"><link rel="stylesheet" href="design-system.css"><script src="issue-policy.js"></script><link rel="stylesheet" href="workspace-tabs.css"><link rel="stylesheet" href="refined-ui.css"><link rel="stylesheet" href="studio-system.css"><link rel="stylesheet" href="studio-foundation.css"></head>
+<body id="homeStudio" class="home-studio" data-app-surface="library">
+  <aside class="sidebar" aria-label="Không gian làm việc">
+    <a class="brand" href="home.html" title="Thư viện MooZ" aria-label="MooZ Agent, trang chủ"><img class="brand-mark" src="../icons/mooz-mark.svg" alt=""><span>MooZ Agent<small>CANVAS STUDIO</small></span></a>
+    <section class="ai-app-catalog" aria-labelledby="aiAppsHeading"><h2 id="aiAppsHeading">Không gian làm việc</h2>
+      <button id="aiAppsWorkflow" class="app-button canvas-primary" type="button" title="Canvas Studio" aria-label="Canvas Studio"><span class="app-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z"/></svg></span><span class="app-label"><strong>Canvas Studio</strong></span></button>
+      <button id="aiAppsAgent" class="app-button " type="button" title="MooZ Agent" aria-label="MooZ Agent"><span class="app-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.4 6.6L21 12l-6.6 2.4L12 21l-2.4-6.6L3 12l6.6-2.4z"/></svg></span><span class="app-label"><strong>MooZ Agent</strong></span></button>
+      <button id="aiAppsHubPosting" class="app-button " type="button" title="Đăng bài & lịch" aria-label="Đăng bài & lịch"><span class="app-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v16H4zM4 10h16M8 3v4M16 3v4"/></svg></span><span class="app-label"><strong>Đăng bài & lịch</strong></span></button>
+      <button id="aiAppsBatch" class="app-button " type="button" title="Công cụ hàng loạt" aria-label="Công cụ hàng loạt"><span class="app-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4l12 8-12 8zM3 4v16"/></svg></span><span class="app-label"><strong>Công cụ hàng loạt</strong></span></button>
+      <button id="aiAppsAffiliate" class="app-button " type="button" title="Affiliate Shopee" aria-label="Affiliate Shopee"><span class="app-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8h18l-2 13H5zM8 8V6a4 4 0 0 1 8 0v2"/></svg></span><span class="app-label"><strong>Affiliate Shopee</strong></span></button>
     </section>
-    <section class="ai-app-catalog canvas-tools-catalog"><h2>CÔNG CỤ TRONG DỰ ÁN</h2>      <button id="aiAppsVoice" class="app-button" type="button" title="Tạo lời đọc trong dự án bằng OpenAI API"><span class="app-icon voice" aria-hidden="true">♫</span><span class="app-label"><strong>Lồng tiếng trong canvas</strong><small>Trong canvas · OpenAI API</small></span></button></section>
-    <div class="sidebar-bottom"><span class="local-dot"></span><div>Lưu trên máy của bạn<small>Không tự tải dự án lên đám mây</small></div></div>
+    <section class="ai-app-catalog canvas-tools-catalog" aria-label="Công cụ"><button id="aiAppsVoice" class="app-button" type="button" title="Lồng tiếng trong canvas" aria-label="Lồng tiếng trong canvas"><span class="app-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18V5l11-2v13M9 9l11-2M9 18a3 3 0 1 1-3-3h3M20 16a3 3 0 1 1-3-3h3"/></svg></span><span class="app-label"><strong>Lồng tiếng</strong></span></button></section>
+    <div class="sidebar-bottom" title="Dự án lưu trên máy của bạn"><span class="local-dot" aria-hidden="true"></span><span class="rail-storage-label">Lưu trên máy</span></div>
   </aside>
 
   <main>
-    <header class="topbar"><span>Không gian làm việc</span><span class="desktop-badge">MOOZ AGENT</span></header>
-    <section class="workspace-heading">
-      <div><h1>Dự án của bạn</h1><p class="subtitle">Tiếp tục dự án hoặc tạo mới.</p></div>
-      <button id="newProject" class="primary"><span aria-hidden="true">＋</span> Dự án mới</button>
+    <header class="topbar"><span class="home-location">Thư viện <span> / </span><strong>Canvas</strong></span><span class="desktop-badge">MOOZ STUDIO</span></header>
+    <section class="workspace-heading canvas-library-heading">
+      <div><h1>Canvas Studio</h1><p class="subtitle">Tiếp tục dự án hoặc bắt đầu canvas mới.</p></div>
+      <div class="canvas-library-actions"><button id="homeOpenCanvas" class="secondary" type="button">Mở canvas</button><button id="newProject" class="primary"><span aria-hidden="true">＋</span> Canvas mới</button></div>
     </section>
 
-    <details id="homeGuide" class="getting-started" aria-labelledby="startHeading" open>
-      <summary class="home-guide-summary"><div class="start-title"><span class="spark" aria-hidden="true">✧</span><div><h2 id="startHeading">Hướng dẫn bắt đầu</h2></div></div><button id="connectChrome" type="button" class="secondary">Kết nối Chrome</button><span class="guide-chevron" aria-hidden="true">⌄</span></summary><div class="home-guide-body">
+    <details id="homeGuide" class="getting-started" aria-labelledby="startHeading">
+      <summary class="home-guide-summary"><div class="start-title"><span class="spark" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3v6M15 3v6M6 9h12v3a6 6 0 0 1-12 0zM12 18v3"/></svg></span><div><h2 id="startHeading">Kết nối AI & hướng dẫn</h2></div></div><button id="connectChrome" type="button" class="secondary">Kết nối Chrome</button><span class="guide-chevron" aria-hidden="true">⌄</span></summary><div class="home-guide-body">
       <ol>
-        <li><span class="step">01</span><div><strong>Tạo dự án</strong><p>Đặt tên, thêm node và nối các bước trên canvas.</p></div></li>
+        <li><span class="step">01</span><div><strong>Mở Canvas Studio</strong><p>Chọn một dự án hoặc tạo canvas mới.</p></div></li>
         <li><span class="step">02</span><div><strong>Kết nối AI</strong><p>Kết nối Chrome để dùng các tab AI đang mở, hoặc mở cửa sổ AI riêng trong app.</p></div></li>
         <li><span class="step">03</span><div><strong>Chạy và kiểm tra</strong><p>Thử một node trước, kiểm tra kết quả rồi chạy cả workflow.</p></div></li>
       </ol>
@@ -47,16 +41,16 @@
     </details>
 
     <section class="project-library" aria-labelledby="libraryHeading">
-      <div class="library-toolbar"><div><h2 id="libraryHeading">Tất cả dự án</h2><span id="projectCount" class="count">…</span></div><label class="search"><span aria-hidden="true">⌕</span><input id="searchProjects" type="search" placeholder="Tìm dự án…" aria-label="Tìm dự án theo tên"></label></div>
+      <div class="library-toolbar"><div class="library-title"><h2 id="libraryHeading">Tất cả dự án</h2><span id="projectCount" class="count">…</span></div><label class="search"><span aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 3a7 7 0 1 0 0 14 7 7 0 0 0 0-14M15 15l6 6"/></svg></span><input id="searchProjects" type="search" placeholder="Tìm canvas…" aria-label="Tìm dự án theo tên"></label></div><nav class="library-filters" aria-label="Lọc dự án"><button class="nav-button selected" id="allProjects" aria-current="page">Tất cả</button><button class="nav-button" id="recentProjects">Gần đây</button></nav>
       <p id="libraryStatus" class="status" role="status" aria-live="polite">Đang mở thư viện…</p>
       <div id="deleteNotice" class="delete-notice" hidden><span id="deleteNoticeText" role="status"></span><button id="undoDelete" class="secondary" type="button">Hoàn tác</button></div>
       <div id="projectGrid" class="project-grid"></div>
-      <div id="emptyState" class="empty-state" hidden><div class="empty-icon" aria-hidden="true">◇</div><h3 id="emptyTitle">Chưa có dự án nào</h3><p id="emptyDescription">Tạo dự án đầu tiên để bắt đầu xây dựng workflow AI.</p><button id="emptyCreate" class="secondary">＋ Tạo dự án đầu tiên</button></div>
+      <div id="emptyState" class="empty-state" hidden><div class="empty-icon" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h18v18H3zM12 7v10M7 12h10"/></svg></div><h3 id="emptyTitle">Chưa có canvas nào</h3><p id="emptyDescription">Tạo canvas đầu tiên để bắt đầu.</p><button id="emptyCreate" class="secondary">＋ Tạo canvas đầu tiên</button></div>
     </section>
   </main>
 
   <dialog id="appProjectDialog" aria-labelledby="appProjectTitle">
-    <span class="app-dialog-eyebrow">ỨNG DỤNG AI</span><h2 id="appProjectTitle">Chọn dự án</h2><p id="appProjectDescription">Chọn dự án để mở canvas.</p><label class="field" for="appProjectSelect">Dự án<select id="appProjectSelect"></select></label><p id="appProjectError" class="form-error" role="alert"></p><div class="dialog-actions"><button id="appProjectCancel" class="secondary" type="button">Hủy</button><button id="appProjectNew" class="secondary" type="button">＋ Dự án mới</button><button id="appProjectOpen" class="primary" type="button">Mở canvas</button></div>
+    <span class="app-dialog-eyebrow">KHÔNG GIAN LÀM VIỆC</span><h2 id="appProjectTitle">Chọn dự án</h2><p id="appProjectDescription">Chọn dự án để mở Canvas Studio.</p><label class="field" for="appProjectSelect">Dự án<select id="appProjectSelect"></select></label><p id="appProjectError" class="form-error" role="alert"></p><div class="dialog-actions"><button id="appProjectCancel" class="secondary" type="button">Hủy</button><button id="appProjectNew" class="secondary" type="button">＋ Dự án mới</button><button id="appProjectOpen" class="primary" type="button">Mở Canvas Studio</button></div>
   </dialog>
   <dialog id="nameDialog">
     <form id="nameForm"><h2 id="nameDialogTitle">Dự án mới</h2><label class="field" for="projectName">Tên dự án<input id="projectName" maxlength="100" required autocomplete="off" placeholder="Ví dụ: Video giới thiệu sản phẩm"></label><p id="nameError" class="form-error" role="alert"></p><div class="dialog-actions"><button id="cancelName" type="button" class="secondary">Hủy</button><button id="submitName" class="primary" type="submit">Tạo dự án</button></div></form>
