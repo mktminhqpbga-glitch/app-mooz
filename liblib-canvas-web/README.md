@@ -39,7 +39,7 @@ Nếu chưa kết nối adapter, yêu cầu vào hàng đợi và nút **Gắn k
 
 Đã dùng CLI của [storytold/craft-anything](https://github.com/storytold/craft-anything) theo chu trình quan sát → dựng → kiểm tra. Route `/canvas` của LibLib chuyển khách chưa đăng nhập về trang chủ, nên đối chiếu giao diện dựa trên ảnh người dùng cung cấp trong cuộc trò chuyện. Những tính năng riêng của LibLib như model nội bộ, AutoLink, chỉnh phần tử bằng AI hay thư viện nhân vật chính thức không thể chạy nếu không có dịch vụ của họ. UI này cung cấp các thao tác tương ứng trong phạm vi website độc lập.
 
-Hai ảnh minh họa ban đầu được tải từ [Unsplash](https://unsplash.com/) (`photo-1534528741775-53994a69daeb` và `photo-1539109136881-3be0616acf4b`); chỉ dùng để trình bày bản dựng, có thể thay bằng ảnh của bạn.
+Màn mẫu điện ảnh dùng ba ảnh WebP có sẵn từ bản demo trước của repo `mooz-test`. Hai ảnh Unsplash cũ vẫn được giữ để các dự án đã lưu không bị mất ảnh khi cập nhật. Tất cả ảnh mẫu có thể thay bằng ảnh của bạn.
 
 ## Kiểm tra
 

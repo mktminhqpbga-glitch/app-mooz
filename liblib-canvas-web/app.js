@@ -29,6 +29,7 @@ let db,
   saveTimer,
   refs = [],
   composerCollapsed = false;
+let composeTarget = null;
 const mediaUrls = new Map();
 
 function openDb() {
@@ -60,67 +61,65 @@ const getMedia = (key) => tx("media", "readonly", (s) => s.get(key));
 function demoState() {
   const p = {
     id: uid(),
-    name: "Dự án sáng tạo",
+    name: "Dự án điện ảnh",
     updatedAt: Date.now(),
     view: { x: -1700, y: -925, scale: 0.8 },
     nodes: [],
     edges: [],
     queue: [],
   };
-  const text = {
+  const source = {
     id: uid(),
-    type: "text",
+    type: "image",
     x: 2050,
-    y: 1230,
-    w: 320,
-    h: 150,
-    title: "Ý tưởng ban đầu",
-    text: "Một chân dung điện ảnh với ánh sáng dịu, chuyển tiếp sang một cảnh chuyển động.",
+    y: 1350,
+    w: 440,
+    title: "Cảnh tham chiếu · Phố cũ",
+    src: "./assets/street.webp",
+    sample: true,
   };
   const portrait = {
     id: uid(),
     type: "image",
     x: 2050,
-    y: 1450,
-    w: 260,
-    h: 350,
-    title: "Ảnh nhân vật",
-    src: "./assets/portrait.jpg",
-    ratio: "portrait",
-    sample: true,
-  };
-  const fashion = {
-    id: uid(),
-    type: "image",
-    x: 2390,
-    y: 1450,
-    w: 260,
-    h: 350,
-    title: "Ảnh tham chiếu",
-    src: "./assets/fashion.jpg",
+    y: 1640,
+    w: 245,
+    title: "Nhân vật",
+    src: "./assets/character.webp",
     ratio: "portrait",
     sample: true,
   };
   const generator = {
     id: uid(),
     type: "generator",
-    x: 2780,
-    y: 1430,
+    x: 2480,
+    y: 1610,
     w: 280,
     h: 260,
-    title: "Tạo cảnh mới",
+    title: "Chuyển cảnh",
     prompt:
-      "Chân dung điện ảnh, ánh sáng tự nhiên, giữ nhân vật nhất quán qua từng cảnh.",
+      "Một con phố sau mưa lúc chiều muộn. Nhân vật bước qua ánh đèn, góc máy điện ảnh, chuyển động mượt và giữ khuôn mặt nhất quán.",
     mode: "image",
     ratio: "16:9",
   };
-  p.nodes.push(text, portrait, fashion, generator);
+  const result = {
+    id: uid(),
+    type: "image",
+    x: 2830,
+    y: 1350,
+    w: 440,
+    title: "Cảnh chuyển động · Đêm mưa",
+    src: "./assets/rider.webp",
+    sample: true,
+  };
+  p.nodes.push(source, portrait, generator, result);
   p.edges.push(
-    { id: uid(), from: text.id, to: generator.id },
+    { id: uid(), from: source.id, to: generator.id },
     { id: uid(), from: portrait.id, to: generator.id },
-    { id: uid(), from: fashion.id, to: generator.id },
+    { id: uid(), from: generator.id, to: result.id },
   );
   return {
+    sampleVersion: 2,
     currentProjectId: p.id,
     projects: [p],
     assets: [],
@@ -245,7 +244,7 @@ function render() {
 }
 function makeNode(node) {
   const el = document.createElement("article");
-  el.className = `node ${node.type} ${node.ratio === "portrait" ? "portrait" : ""} ${selected.has(node.id) ? "selected" : ""}`;
+  el.className = `node ${node.type} ${node.type === "image" && !urlFor(node) ? "empty" : ""} ${node.ratio === "portrait" ? "portrait" : ""} ${selected.has(node.id) ? "selected" : ""}`;
   el.dataset.id = node.id;
   el.style.cssText = `left:${node.x}px;top:${node.y}px;width:${node.w}px`;
   const typeIcon =
@@ -258,7 +257,7 @@ function makeNode(node) {
           : "▤";
   let body;
   if (node.type === "image")
-    body = `<div class="node-card media-card">${urlFor(node) ? `<img draggable="false" src="${esc(urlFor(node))}" alt="${esc(node.title)}">` : '<span class="empty-hint">Chưa có hình ảnh</span>'}${node.sample ? '<span class="media-badge">MẪU</span>' : ""}</div>`;
+    body = `<div class="node-card media-card">${urlFor(node) ? `<img draggable="false" src="${esc(urlFor(node))}" alt="${esc(node.title)}">` : '<div class="empty-image"><span class="empty-image-icon">▧</span><span>Thử:</span><button data-empty-action="ai">✦ Tạo ảnh bằng AI</button><button data-empty-action="upload">↑ Tải ảnh từ máy</button></div>'}${node.sample ? '<span class="media-badge">MẪU</span>' : ""}</div>`;
   else if (node.type === "video")
     body = `<div class="node-card media-card">${urlFor(node) ? `<video preload="metadata" src="${esc(urlFor(node))}"></video><span class="play-badge">▷</span>` : '<span class="empty-hint">Chưa có video</span>'}</div>`;
   else if (node.type === "generator")
@@ -282,6 +281,32 @@ function makeNode(node) {
       portClick(node.id, port.classList.contains("out") ? "out" : "in");
     }),
   );
+  el.querySelectorAll("[data-empty-action]").forEach((button) => {
+    button.addEventListener("pointerdown", (ev) => ev.stopPropagation());
+    button.onclick = (ev) => {
+      ev.stopPropagation();
+      if (button.dataset.emptyAction === "upload")
+        chooseFiles(
+          "fill-node",
+          (asset) => {
+            node.assetId = asset.id;
+            node.title = asset.name;
+            save();
+            render();
+          },
+          "image/*",
+        );
+      else {
+        composeTarget = node.id;
+        selected = new Set([node.id]);
+        $("#mode-select").value = "image";
+        $("#mode-select").dispatchEvent(new Event("change"));
+        setComposerCollapsed(false);
+        $("#prompt-input").focus();
+        render();
+      }
+    };
+  });
   if (node.type === "video")
     el.querySelector(".media-card").addEventListener("dblclick", (ev) => {
       ev.stopPropagation();
@@ -623,7 +648,10 @@ async function handleFiles(files) {
         name: file.name.replace(/\.[^.]+$/, ""),
         createdAt: Date.now(),
       });
-    } else if (intent === "output" && fileCallback) {
+    } else if (
+      (intent === "output" || intent === "fill-node") &&
+      fileCallback
+    ) {
       fileCallback(asset);
     } else if (intent === "reference") {
       const node = addNode(file.type.startsWith("video/") ? "video" : "image", {
@@ -668,18 +696,25 @@ function submitPrompt() {
   const mode = $("#mode-select").value,
     ratio = $("#ratio-select").value,
     duration = Number($("#duration-select").value);
+  const target =
+    mode === "image" && composeTarget ? nodeById(composeTarget) : null;
   const pos = defaultPosition(),
-    generator = addNode(
-      "generator",
-      {
-        prompt,
-        mode,
-        ratio,
-        title: mode === "image" ? "Tạo hình ảnh" : "Tạo video",
-      },
-      pos,
-    );
-  const currentRefs = [...new Set(refs)].filter(nodeById);
+    generator =
+      target ||
+      addNode(
+        "generator",
+        {
+          prompt,
+          mode,
+          ratio,
+          title: mode === "image" ? "Tạo hình ảnh" : "Tạo video",
+        },
+        pos,
+      );
+  if (target) target.prompt = prompt;
+  const currentRefs = [...new Set(refs)].filter(
+    (id) => id !== generator.id && nodeById(id),
+  );
   for (const id of currentRefs)
     project.edges.push({ id: uid(), from: id, to: generator.id });
   const job = {
@@ -696,6 +731,7 @@ function submitPrompt() {
   project.queue.unshift(job);
   $("#prompt-input").value = "";
   refs = [];
+  composeTarget = null;
   save();
   render();
   openPanel("queue");
@@ -754,6 +790,17 @@ async function runAdapter(job) {
   }
 }
 function completeJob(job, asset) {
+  const target = nodeById(job.nodeId);
+  if (target?.type === job.mode && !target.assetId) {
+    target.assetId = asset.id;
+    target.title = asset.name;
+    job.status = "done";
+    job.resultId = target.id;
+    save();
+    render();
+    toast("Đã nhận kết quả");
+    return;
+  }
   const source = nodeById(job.nodeId),
     result = addNode(
       job.mode,
@@ -1041,6 +1088,9 @@ function newProject() {
   state.currentProjectId = p.id;
   selected.clear();
   refs = [];
+  composeTarget = null;
+  $("#prompt-input").value = "";
+  setComposerCollapsed(true);
   current();
   closePanel();
   save();
@@ -1167,6 +1217,10 @@ function bind() {
   $("#dock-help").onclick = showHelp;
   $("#add-node").onclick = (ev) =>
     showMenu(ev.clientX, ev.clientY - 240, [
+      {
+        label: "▧ Nút hình ảnh",
+        run: () => addNode("image", { w: 420, title: "Nút hình ảnh" }),
+      },
       { label: "▧ Tải ảnh / video", run: () => chooseFiles("canvas") },
       { label: "▤ Thêm văn bản", run: () => addNode("text") },
       { label: "✦ Nút tạo ảnh", run: () => addNode("generator") },
@@ -1313,12 +1367,33 @@ async function main() {
     db = await openDb();
     const saved = await getKv("state");
     state = saved || demoState();
+    let showDemo = !saved;
+    if (saved && state.sampleVersion !== 2) {
+      const previous = state.projects.find(
+        (p) =>
+          p.nodes?.some((n) => n.src === "./assets/portrait.jpg") &&
+          p.nodes.length === 4 &&
+          !p.queue?.length,
+      );
+      const demo = demoState().projects[0];
+      state.projects.unshift(demo);
+      if (previous && state.currentProjectId === previous.id) {
+        state.currentProjectId = demo.id;
+        showDemo = true;
+      }
+      state.sampleVersion = 2;
+    }
     current();
     await loadMedia();
     bind();
-    setComposerCollapsed(true);
+    setComposerCollapsed(!(showDemo && innerWidth >= 700));
+    if (showDemo) {
+      selected = new Set([project.nodes[0].id]);
+      $("#prompt-input").value =
+        project.nodes.find((n) => n.type === "generator")?.prompt || "";
+    }
     render();
-    if (!saved && project.nodes.length) {
+    if (showDemo && project.nodes.length) {
       fit();
       if (innerWidth < 620) {
         const target = project.nodes.find((n) => n.type === "image");
@@ -1333,7 +1408,7 @@ async function main() {
         }
       }
     }
-    if (!saved) save();
+    if (!saved || state.sampleVersion === 2) save();
   } catch (error) {
     document.body.innerHTML = `<main style="padding:40px;color:white;font-family:sans-serif"><h1>Không mở được Canvas Studio</h1><p>${esc(error.message)}</p><p>Hãy dùng trình duyệt mới hỗ trợ IndexedDB.</p></main>`;
   }

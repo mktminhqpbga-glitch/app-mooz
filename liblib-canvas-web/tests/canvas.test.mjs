@@ -54,7 +54,15 @@ test("canvas: projects, uploads, queue, results and persistence", async () => {
       await page.locator(".node.text").textContent(),
       /Nội dung đã lưu/,
     );
-    await page.click("#composer-reopen");
+    await page.click("#add-node");
+    await page.getByText("Nút hình ảnh", { exact: false }).last().click();
+    assert.equal(await page.locator(".node.empty").count(), 1);
+    await page.locator(".node.empty [data-empty-action=upload]").click();
+    await page.locator("#file-input").setInputFiles(png);
+    await page.waitForFunction(() => document.querySelectorAll(".node.empty").length === 0);
+    assert.equal(await page.locator(".node").count(), 2);
+    if (await page.locator("#composer-reopen").isVisible())
+      await page.click("#composer-reopen");
     await page.fill("#prompt-input", "Một bông hoa đỏ");
     await page.click("#submit-prompt");
     assert.equal(await page.locator("#queue-count").textContent(), "1");
@@ -63,11 +71,11 @@ test("canvas: projects, uploads, queue, results and persistence", async () => {
     await page.waitForFunction(
       () => document.querySelector("#queue-count")?.textContent === "0",
     );
-    assert.equal(await page.locator(".node.image").count(), 1);
+    assert.equal(await page.locator(".node.image").count(), 2);
     await page.waitForTimeout(400);
     await page.reload();
     await page.locator(".node").first().waitFor();
-    assert.equal(await page.locator(".node").count(), 3);
+    assert.equal(await page.locator(".node").count(), 4);
     assert.equal(await page.locator("#queue-count").textContent(), "0");
     assert.match(
       await page.locator(".node.text").textContent(),
