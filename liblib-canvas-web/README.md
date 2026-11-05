@@ -48,7 +48,3 @@ npm test
 ```
 
 Kiểm tra trình duyệt dùng Playwright đã có tại workspace phát triển; nếu chạy ở máy khác cần cài `playwright` và trình duyệt Chromium cho bộ kiểm tra. Website không phụ thuộc Playwright.
-
-## Đưa lên mooz.gt.tc
-
-Workflow **Cập nhật website Canvas** trong GitHub Actions đăng website tĩnh lên GitHub Pages khi bấm **Run workflow**. Không cần FTP. Sau khi kích hoạt Pages trong **Settings → Pages → Build and deployment: GitHub Actions**, website có địa chỉ `https://mktminhqpbga-glitch.github.io/app-mooz/`. Để dùng `mooz.gt.tc`, cần đặt custom domain này trong Settings → Pages và đổi bản ghi DNS của tên miền thành CNAME trỏ tới `mktminhqpbga-glitch.github.io`. Tên miền hiện trỏ tới hosting khác, nên bước DNS cần được thực hiện ở nơi quản lý `gt.tc`.
