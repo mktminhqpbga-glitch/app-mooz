@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#151617" />
+    <title>Canvas Studio — Không gian sáng tạo</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <div id="app" class="app">
+      <header class="topbar">
+        <button
+          id="brand"
+          class="brand icon-button"
+          title="Canvas Studio"
+          aria-label="Canvas Studio"
+        >
+          <span class="brand-mark">▰</span><span class="brand-chevron">⌄</span>
+        </button>
+        <div class="top-separator"></div>
+        <button id="project-button" class="project-button" title="Chọn dự án">
+          <strong id="project-name">Dự án chưa đặt tên</strong
+          ><span class="muted">⌄</span>
+        </button>
+        <button id="board-button" class="subtle compact" title="Bảng vẽ">
+          Bảng vẽ 1 ⌄
+        </button>
+        <div class="top-separator"></div>
+        <button
+          id="new-project"
+          class="icon-button"
+          title="Dự án mới"
+          aria-label="Dự án mới"
+        >
+          ＋
+        </button>
+        <button
+          id="fit-button"
+          class="icon-button"
+          title="Vừa khung"
+          aria-label="Vừa khung"
+        >
+          ⛶
+        </button>
+        <span class="top-spacer"></span>
+        <span id="save-status" class="save-status">Đã lưu</span>
+        <button
+          id="share-button"
+          class="icon-button"
+          title="Xuất dự án"
+          aria-label="Xuất dự án"
+        >
+          ↗
+        </button>
+        <button id="queue-toggle" class="top-pill" title="Hàng đợi">
+          <span class="cyan-dot"></span><span>Hàng đợi</span
+          ><b id="queue-count">0</b>
+        </button>
+        <button id="assets-toggle" class="top-pill" title="Tài sản">
+          ▦ <span>Tài sản</span>
+        </button>
+        <button
+          id="help-button"
+          class="avatar-button"
+          title="Phím tắt"
+          aria-label="Phím tắt"
+        >
+          ?
+        </button>
+      </header>
+
+      <main
+        id="canvas-viewport"
+        class="canvas-viewport"
+        tabindex="0"
+        aria-label="Canvas sáng tạo"
+      >
+        <div id="canvas-space" class="canvas-space">
+          <svg
+            id="edges"
+            class="edges"
+            width="6000"
+            height="4000"
+            viewBox="0 0 6000 4000"
+            aria-hidden="true"
+          ></svg>
+          <div id="nodes" class="nodes"></div>
+        </div>
+        <div id="selection-toolbar" class="selection-toolbar hidden"></div>
+        <div id="canvas-empty" class="canvas-empty hidden">
+          <span>✦</span>
+          <h1>Biến ý tưởng thành hình ảnh</h1>
+          <p>Thêm hình ảnh, video hoặc bắt đầu bằng một câu mô tả.</p>
+          <button id="empty-create" class="primary-button">
+            Tạo nút đầu tiên
+          </button>
+        </div>
+      </main>
+
+      <div class="bottom-left">
+        <button id="library-toggle" title="Quản lý tài sản">
+          ▣ <span>Quản lý tài sản</span></button
+        ><button id="characters-toggle" title="Nhân vật">♙</button
+        ><button id="prompts-toggle" title="Kho prompt">☷</button
+        ><button id="zoom-out" title="Thu nhỏ">−</button
+        ><button id="zoom-label" title="Độ phóng">100%</button
+        ><button id="zoom-in" title="Phóng to">＋</button>
+      </div>
+      <nav class="bottom-dock" aria-label="Công cụ canvas">
+        <button id="add-node" class="dock-primary" title="Thêm nút">＋</button
+        ><button id="tool-select" class="active" title="Chọn / kéo nút">
+          ↖</button
+        ><button id="tool-pan" title="Kéo canvas">✋</button
+        ><button id="tool-connect" title="Nối các nút">⌁</button
+        ><button id="dock-character" title="Thư viện nhân vật">♙</button
+        ><button id="dock-prompt" title="Kho prompt">☷</button
+        ><button id="dock-history" title="Hàng đợi">◷</button
+        ><button id="dock-help" title="Cách dùng">?</button>
+      </nav>
+
+      <section id="composer" class="composer" aria-label="Tạo ảnh và video">
+        <div class="composer-top">
+          <button id="composer-upload" class="chip">＋ Tải lên</button
+          ><button id="composer-reference" class="chip">
+            ▧ Tham chiếu canvas</button
+          ><button id="composer-template" class="chip">✦ Prompt mẫu</button
+          ><button id="composer-characters" class="chip">♙ Nhân vật</button
+          ><button
+            id="composer-minimize"
+            class="composer-expand"
+            title="Thu gọn"
+          >
+            ↙
+          </button>
+        </div>
+        <div id="reference-list" class="reference-list"></div>
+        <textarea
+          id="prompt-input"
+          spellcheck="false"
+          placeholder="Mô tả hình ảnh hoặc video bạn muốn tạo…"
+        ></textarea>
+        <div class="composer-footer">
+          <div class="composer-controls">
+            <select id="mode-select" title="Loại kết quả">
+              <option value="image">✦ Tạo ảnh</option>
+              <option value="video">▷ Tạo video</option></select
+            ><select id="ratio-select" title="Tỉ lệ">
+              <option>16:9</option>
+              <option>9:16</option>
+              <option>1:1</option>
+              <option>4:3</option>
+              <option>3:4</option>
+              <option>21:9</option></select
+            ><select id="duration-select" class="hidden" title="Thời lượng">
+              <option value="5">5 giây</option>
+              <option value="10">10 giây</option>
+              <option value="15">15 giây</option></select
+            ><span class="composer-hint" id="composer-hint"
+              >Lưu yêu cầu vào hàng đợi</span
+            >
+          </div>
+          <button
+            id="submit-prompt"
+            class="send-button"
+            title="Tạo yêu cầu"
+            aria-label="Tạo yêu cầu"
+          >
+            ↑
+          </button>
+        </div>
+      </section>
+      <button id="composer-reopen" class="composer-reopen hidden">
+        ✦ Tạo mới
+      </button>
+
+      <aside
+        id="side-panel"
+        class="side-panel hidden"
+        aria-label="Bảng bên"
+      ></aside>
+      <div id="context-menu" class="context-menu hidden"></div>
+      <div id="modal-backdrop" class="modal-backdrop hidden">
+        <div id="modal" class="modal" role="dialog" aria-modal="true"></div>
+      </div>
+      <input
+        id="file-input"
+        type="file"
+        accept="image/*,video/*"
+        multiple
+        hidden
+      />
+      <input
+        id="project-import"
+        type="file"
+        accept="application/json,.json"
+        hidden
+      />
+      <div id="toast" class="toast hidden" role="status"></div>
+    </div>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
