@@ -48,3 +48,7 @@ npm test
 ```
 
 Kiểm tra trình duyệt dùng Playwright đã có tại workspace phát triển; nếu chạy ở máy khác cần cài `playwright` và trình duyệt Chromium cho bộ kiểm tra. Website không phụ thuộc Playwright.
+
+## Đưa lên mooz.gt.tc
+
+Workflow **Cập nhật website Canvas** trong GitHub Actions đăng website tĩnh lên hosting qua FTP khi bấm **Run workflow**. Cấu hình một lần ba repository secrets `CANVAS_FTP_SERVER`, `CANVAS_FTP_USERNAME`, `CANVAS_FTP_PASSWORD`; nếu thư mục website trên FTP không phải `/htdocs/`, đặt repository variable `CANVAS_FTP_DIR` thành đường dẫn phù hợp, có dấu `/` ở cuối. Workflow chỉ đưa `index.html`, `app.js`, `style.css` và `assets/` lên hosting, không xóa tệp khác trên máy chủ.

@@ -1,0 +1,37 @@
+name: Cập nhật website Canvas
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Kiểm tra cấu hình hosting
+        env:
+          FTP_SERVER: ${{ secrets.CANVAS_FTP_SERVER }}
+          FTP_USERNAME: ${{ secrets.CANVAS_FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.CANVAS_FTP_PASSWORD }}
+        run: |
+          if [ -z "$FTP_SERVER" ] || [ -z "$FTP_USERNAME" ] || [ -z "$FTP_PASSWORD" ]; then
+            echo 'Cần thiết lập CANVAS_FTP_SERVER, CANVAS_FTP_USERNAME và CANVAS_FTP_PASSWORD trong GitHub Actions secrets.' >&2
+            exit 1
+          fi
+      - name: Chuẩn bị website tĩnh
+        run: |
+          mkdir -p site/assets
+          cp liblib-canvas-web/index.html liblib-canvas-web/app.js liblib-canvas-web/style.css site/
+          cp liblib-canvas-web/assets/* site/assets/
+      - name: Cập nhật mooz.gt.tc
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.6
+        with:
+          server: ${{ secrets.CANVAS_FTP_SERVER }}
+          username: ${{ secrets.CANVAS_FTP_USERNAME }}
+          password: ${{ secrets.CANVAS_FTP_PASSWORD }}
+          local-dir: ./site/
+          server-dir: ${{ vars.CANVAS_FTP_DIR || '/htdocs/' }}
+          dangerous-clean-slate: false
