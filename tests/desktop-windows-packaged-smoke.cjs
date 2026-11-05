@@ -81,7 +81,7 @@ const path = require('node:path');
     console.log('Windows QA: affiliate');const affiliateOpened = application.waitForEvent('window');
     await home.click('#aiAppsAffiliate');
     const affiliate = await affiliateOpened;
-    await affiliate.waitForSelector('#affiliateSourceToggle');await affiliate.click('#affiliateSourceToggle');await affiliate.waitForSelector('#sourceMode');await verifyDesign(affiliate,'affiliate');
+    await affiliate.waitForSelector('#affiliateSourceToggle');if(await affiliate.locator('#affiliateSourceToggle').getAttribute('aria-expanded')!=='true')await affiliate.click('#affiliateSourceToggle');await affiliate.waitForSelector('#sourceMode:visible');await verifyDesign(affiliate,'affiliate');
     assert.equal(await affiliate.inputValue('#sourceMode'), 'chrome');
     assert.equal(await affiliate.locator('#openShopee').isVisible(), true);
     assert.equal(await affiliate.locator('#refreshShopeeTabs').isVisible(), true);
