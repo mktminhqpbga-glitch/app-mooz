@@ -51,4 +51,4 @@ Kiểm tra trình duyệt dùng Playwright đã có tại workspace phát triể
 
 ## Đưa lên mooz.gt.tc
 
-Workflow **Cập nhật website Canvas** trong GitHub Actions đăng website tĩnh lên hosting qua FTP khi bấm **Run workflow**. Cấu hình một lần ba repository secrets `CANVAS_FTP_SERVER`, `CANVAS_FTP_USERNAME`, `CANVAS_FTP_PASSWORD`; nếu thư mục website trên FTP không phải `/htdocs/`, đặt repository variable `CANVAS_FTP_DIR` thành đường dẫn phù hợp, có dấu `/` ở cuối. Workflow chỉ đưa `index.html`, `app.js`, `style.css` và `assets/` lên hosting, không xóa tệp khác trên máy chủ.
+Workflow **Cập nhật website Canvas** trong GitHub Actions đăng website tĩnh lên GitHub Pages khi bấm **Run workflow**. Không cần FTP. Sau khi kích hoạt Pages trong **Settings → Pages → Build and deployment: GitHub Actions**, website có địa chỉ `https://mktminhqpbga-glitch.github.io/app-mooz/`. Để dùng `mooz.gt.tc`, cần đặt custom domain này trong Settings → Pages và đổi bản ghi DNS của tên miền thành CNAME trỏ tới `mktminhqpbga-glitch.github.io`. Tên miền hiện trỏ tới hosting khác, nên bước DNS cần được thực hiện ở nơi quản lý `gt.tc`.
