@@ -257,7 +257,7 @@ function makeNode(node) {
           : "▤";
   let body;
   if (node.type === "image")
-    body = `<div class="node-card media-card">${urlFor(node) ? `<img draggable="false" src="${esc(urlFor(node))}" alt="${esc(node.title)}">` : '<div class="empty-image"><span class="empty-image-icon">▧</span><span>Thử:</span><button data-empty-action="ai">✦ Tạo ảnh bằng AI</button><button data-empty-action="upload">↑ Tải ảnh từ máy</button></div>'}${node.sample ? '<span class="media-badge">MẪU</span>' : ""}</div>`;
+    body = `<div class="node-card media-card">${urlFor(node) ? `<img draggable="false" src="${esc(urlFor(node))}" alt="${esc(node.title)}">` : '<div class="empty-image"><span class="empty-image-icon"><svg viewBox="0 0 72 52" aria-hidden="true"><circle cx="51" cy="10" r="6"/><path d="M3 46 23 17l14 21 9-12 23 20a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3Z"/></svg></span><span>Thử:</span><button data-empty-action="ai">✦ Tạo ảnh bằng AI</button><button data-empty-action="upload">↑ Tải ảnh từ máy</button></div>'}${node.sample ? '<span class="media-badge">MẪU</span>' : ""}</div>`;
   else if (node.type === "video")
     body = `<div class="node-card media-card">${urlFor(node) ? `<video preload="metadata" src="${esc(urlFor(node))}"></video><span class="play-badge">▷</span>` : '<span class="empty-hint">Chưa có video</span>'}</div>`;
   else if (node.type === "generator")
@@ -291,6 +291,8 @@ function makeNode(node) {
           (asset) => {
             node.assetId = asset.id;
             node.title = asset.name;
+            composeTarget = null;
+            setComposerCollapsed(true);
             save();
             render();
           },
@@ -299,6 +301,8 @@ function makeNode(node) {
       else {
         composeTarget = node.id;
         selected = new Set([node.id]);
+        focusNode(node);
+        $("#app").classList.add("focus-mode");
         $("#mode-select").value = "image";
         $("#mode-select").dispatchEvent(new Event("change"));
         setComposerCollapsed(false);
@@ -545,6 +549,24 @@ function zoom(
   applyView();
   save();
 }
+function focusNode(node) {
+  const viewport = $("#canvas-viewport");
+  const scale = Math.max(
+    0.45,
+    Math.min(
+      1.55,
+      (viewport.clientWidth - 150) / node.w,
+      (viewport.clientHeight - 280) / 368,
+    ),
+  );
+  project.view = {
+    scale,
+    x: viewport.clientWidth / 2 - (node.x + node.w / 2) * scale,
+    y: 70 - node.y * scale,
+  };
+  applyView();
+  save();
+}
 function fit() {
   if (!project.nodes.length) return;
   const rect = $("#canvas-viewport").getBoundingClientRect(),
@@ -732,6 +754,7 @@ function submitPrompt() {
   $("#prompt-input").value = "";
   refs = [];
   composeTarget = null;
+  $("#app").classList.remove("focus-mode");
   save();
   render();
   openPanel("queue");
@@ -1185,6 +1208,7 @@ async function importProject(file) {
 }
 function setComposerCollapsed(value) {
   composerCollapsed = value;
+  if (value) $("#app").classList.remove("focus-mode");
   $("#composer").classList.toggle("hidden", value);
   $("#composer-reopen").classList.toggle("hidden", !value);
 }
@@ -1219,7 +1243,8 @@ function bind() {
     showMenu(ev.clientX, ev.clientY - 240, [
       {
         label: "▧ Nút hình ảnh",
-        run: () => addNode("image", { w: 420, title: "Nút hình ảnh" }),
+        run: () =>
+          focusNode(addNode("image", { w: 550, title: "Nút hình ảnh" })),
       },
       { label: "▧ Tải ảnh / video", run: () => chooseFiles("canvas") },
       { label: "▤ Thêm văn bản", run: () => addNode("text") },
@@ -1329,6 +1354,8 @@ function bind() {
     );
     if (ev.key === "Escape") {
       closeModal();
+      composeTarget = null;
+      setComposerCollapsed(true);
       $("#context-menu").classList.add("hidden");
       pendingPort = null;
       if (fileIntent === "reference-select") fileIntent = "canvas";
