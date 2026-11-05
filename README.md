@@ -1,6 +1,6 @@
 # MooZ Agent 0.69.0
 
-**Tài liệu bàn giao cho đối tác:** [Phần 1 — ứng dụng và Canvas Studio](docs/PARTNER-HANDBOOK-APP-MOOZ.md) · [Phần 2 — kết nối AI và ghi nhận kết quả](docs/PARTNER-HANDBOOK-APP-MOOZ-PART-2-AI.md).
+**Tài liệu bàn giao cho đối tác:** [Phần 1 — ứng dụng và Canvas Studio](docs/PARTNER-HANDBOOK-APP-MOOZ.md) · [Phần 2 — kết nối AI và ghi nhận kết quả](docs/PARTNER-HANDBOOK-APP-MOOZ-PART-2-AI.md) · [Hướng dẫn tổng hợp AI, tạo hàng loạt và hậu kỳ video](docs/APP-MOOZ-AI-BATCH-VIDEO-POSTPRODUCTION.md).
 
 **0.69.0 · Thiết kế lại toàn bộ MooZ Studio:** trang chủ, canvas, Hàng loạt, Đăng bài, Affiliate, cài đặt và hộp thoại dùng chung thiết kế trung tính theo ảnh tham khảo LibTV. Ảnh/video đặt trực tiếp trên canvas; node xử lý và kết quả tách riêng, có thanh soạn prompt nổi và menu thao tác thật. Canvas Studio có lối mở chính; dữ liệu và engine hàng loạt được giữ. Đi kèm **MooZ Connect 1.9.2** với giao diện kết nối mới. [Cách dùng và phạm vi](docs/USER-REVIEW-0690.md).
 
