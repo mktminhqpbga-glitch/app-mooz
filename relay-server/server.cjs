@@ -1,14 +1,23 @@
 'use strict';
 const http=require('node:http'),{randomBytes,createHash,timingSafeEqual}=require('node:crypto'),{WebSocketServer,WebSocket}=require('ws');
+const {createToonflowGateway}=require('./toonflowGateway.cjs');
 const HEX=/^[a-f0-9]{64}$/,ORIGIN=/^chrome-extension:\/\/([a-p]{32})$/,FRAME=384*1024,BUFFER=2*1024*1024;
 const hash=value=>createHash('sha256').update(String(value)).digest();
 const equal=(value,digest)=>typeof value==='string'&&!!digest&&timingSafeEqual(hash(value),digest);
 function createRelayServer({adminKey,port=0,host='127.0.0.1',maxRooms=4,leaseMs=600000,sessionMs=86400000,authMs=5000,heartbeatMs=20000}={}){
  if(typeof adminKey!=='string'||adminKey.length<32||adminKey.length>256||/[\s\x00-\x1f]/.test(adminKey))throw Error('RELAY_ADMIN_KEY must contain 32–256 non-whitespace characters.');
  const adminHash=hash(adminKey);adminKey=null;const rooms=new Map();let closing=false;
- const server=http.createServer((req,res)=>{res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');if(req.method==='GET'&&req.url==='/health'){res.setHeader('Content-Type','application/json');res.end(JSON.stringify({service:'mooz-outbound-relay',relayProtocol:1,maxFrame:FRAME}));}else{res.setHeader('Content-Type','text/plain');res.writeHead(req.url==='/remote'?426:404);res.end(req.url==='/remote'?'Upgrade Required':'Not found');}});
+ const toonflow=createToonflowGateway({authorizeAdmin:value=>equal(value,adminHash)});
+ const server=http.createServer((req,res)=>{if(toonflow.handleHttp(req,res))return;res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');if(req.method==='GET'&&req.url==='/health'){res.setHeader('Content-Type','application/json');res.end(JSON.stringify({service:'mooz-outbound-relay',relayProtocol:1,maxFrame:FRAME}));}else{res.setHeader('Content-Type','text/plain');res.writeHead(req.url==='/remote'?426:404);res.end(req.url==='/remote'?'Upgrade Required':'Not found');}});
  server.headersTimeout=10000;server.requestTimeout=10000;
- const wss=new WebSocketServer({server,maxPayload:FRAME,perMessageDeflate:false,verifyClient:({origin,req})=>!closing&&wss.clients.size<24&&req.url==='/remote'&&(!origin||ORIGIN.test(origin))});
+ const wss=new WebSocketServer({noServer:true,maxPayload:FRAME,perMessageDeflate:false});
+ server.on('upgrade',(req,socket,head)=>{
+  if(req.url==='/toonflow'){toonflow.handleUpgrade(req,socket,head);return;}
+  if(closing||req.url!=='/remote'||wss.clients.size>=24||(req.headers.origin&&!ORIGIN.test(req.headers.origin))){
+   socket.write('HTTP/1.1 403 Forbidden\r\nConnection: close\r\nContent-Length: 0\r\n\r\n');socket.destroy();return;
+  }
+  wss.handleUpgrade(req,socket,head,client=>wss.emit('connection',client,req));
+ });
  function send(s,m,source){if(s?.readyState!==WebSocket.OPEN)return false;const data=JSON.stringify(m);if(s.bufferedAmount+Buffer.byteLength(data)>BUFFER){s.terminate();return false;}if(source)source._socket.pause();s.send(data,()=>{if(source&&!source._socket.destroyed)source._socket.resume();});return true;}
  function drop(room){if(!room||rooms.get(room.id)!==room)return;rooms.delete(room.id);if(room.owner.room===room)room.owner.room=null;if(room.guest){room.guest.room=null;room.guest.close(1008,'Room revoked');}send(room.owner,{type:'room-closed',room:room.id});room.inviteHash=null;room.resumeHash=null;}
  function peerGone(s){const room=s.room;s.room=null;if(!room)return;if(s.role==='host'){drop(room);return;}if(room.guest===s){room.guest=null;send(room.owner,{type:'peer-left',room:room.id,generation:room.generation});}}
@@ -48,7 +57,7 @@ function createRelayServer({adminKey,port=0,host='127.0.0.1',maxRooms=4,leaseMs=
   });
  });
  const interval=setInterval(()=>{for(const s of wss.clients){if(s.alive===false){s.terminate();continue;}s.alive=false;s.ping();}for(const room of rooms.values())if(room.expiresAt<=Date.now()||!room.guest&&!room.resumeHash&&room.leaseAt<=Date.now())drop(room);},heartbeatMs);interval.unref?.();
- return {server,wss,rooms,async listen(){await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(port,host,resolve);});return server.address().port;},async close(){closing=true;clearInterval(interval);for(const room of [...rooms.values()])drop(room);for(const s of wss.clients)s.terminate();await new Promise(resolve=>wss.close(resolve));server.closeAllConnections();await new Promise(resolve=>server.close(resolve));}};
+ return {server,wss,rooms,async listen(){await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(port,host,resolve);});return server.address().port;},async close(){closing=true;clearInterval(interval);for(const room of [...rooms.values()])drop(room);for(const s of wss.clients)s.terminate();await toonflow.close();await new Promise(resolve=>wss.close(resolve));server.closeAllConnections();await new Promise(resolve=>server.close(resolve));}};
 }
 if(require.main===module){const relay=createRelayServer({adminKey:process.env.RELAY_ADMIN_KEY,port:Number(process.env.PORT||10000),host:'0.0.0.0'});relay.listen().then(()=>console.log('MooZ relay ready')).catch(()=>process.exit(1));for(const signal of ['SIGINT','SIGTERM'])process.once(signal,()=>{void relay.close().then(()=>process.exit(0));});}
 module.exports={createRelayServer};
