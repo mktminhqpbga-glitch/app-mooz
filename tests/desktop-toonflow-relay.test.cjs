@@ -98,3 +98,53 @@ test("untrusted webpage origins cannot join ToonFlow socket", async t => {
     socket.once("error", reject);
   }));
 });
+
+
+test("video jobs require a real video result, never an image thumbnail", async t => {
+  const f = await setup(t);
+  const pairing = await f.api("POST", "/toonflow/pairings", { deviceId: "chrome-video" });
+  const client = await f.connect("chrome-video", { pairingCode: pairing.body.pairingCode });
+  const next = once(client.socket, "message");
+  const job = await f.api("POST", "/toonflow/jobs", {
+    deviceId: "chrome-video", mediaType: "video", prompt: "A cinematic street scene", ratio: "9:16",
+  });
+  assert.equal(job.status, 202);
+  const received = JSON.parse((await next)[0].toString());
+  assert.equal(received.mediaType, "video");
+  assert.equal(received.ratio, "9:16");
+  client.socket.send(JSON.stringify({
+    type: "result", jobId: received.jobId, result: { imageUrl: "https://example.com/thumbnail.png" },
+  }));
+  let status;
+  for (let i = 0; i < 100; i++) {
+    status = (await f.api("GET", "/toonflow/jobs/" + job.body.jobId)).body;
+    if (status.state === "error") break;
+    await new Promise(resolve => setTimeout(resolve, 5));
+  }
+  assert.equal(status.state, "error");
+  assert.match(status.error, /video/);
+
+  const next2 = once(client.socket, "message");
+  const job2 = await f.api("POST", "/toonflow/jobs", { deviceId: "chrome-video", mediaType: "video", prompt: "Sunset city" });
+  assert.equal(job2.status, 202);
+  const received2 = JSON.parse((await next2)[0].toString());
+  client.socket.send(JSON.stringify({
+    type: "result", jobId: received2.jobId, result: { videoData: "data:video/mp4;base64,AA==" },
+  }));
+  for (let i = 0; i < 100; i++) {
+    status = (await f.api("GET", "/toonflow/jobs/" + job2.body.jobId)).body;
+    if (status.state === "done") break;
+    await new Promise(resolve => setTimeout(resolve, 5));
+  }
+  assert.equal(status.state, "done");
+  assert.equal(status.result.videoData, "data:video/mp4;base64,AA==");
+  client.socket.close();
+});
+
+test("reject unsupported media type before scheduling a video job", async t => {
+  const f = await setup(t);
+  const invalid = await f.api("POST", "/toonflow/jobs", {
+    deviceId: "chrome-main", mediaType: "audio", prompt: "Hello",
+  });
+  assert.equal(invalid.status, 400);
+});

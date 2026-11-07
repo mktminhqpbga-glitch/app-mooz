@@ -6,7 +6,8 @@ const { WebSocket, WebSocketServer } = require("ws");
 const devicePattern = /^[a-zA-Z0-9_-]{1,64}$/;
 const extensionOrigin = /^chrome-extension:\/\/[a-p]{32}$/;
 const tokenPattern = /^[a-f0-9]{64}$/;
-const resultPattern = /^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/]+={0,2}$/;
+const imageResultPattern = /^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/]+={0,2}$/;
+const videoResultPattern = /^data:video\/(?:mp4|webm|quicktime);base64,[A-Za-z0-9+/]+={0,2}$/;
 const pairLeaseMs = 10 * 60 * 1000;
 const maxJobMs = 10 * 60 * 1000;
 
@@ -57,7 +58,7 @@ function receiveJson(req) {
  * Unlike MooZ /remote, this MVP relays media payloads in memory without E2E encryption.
  */
 function createToonflowGateway({ authorizeAdmin }) {
-  const clients = new WebSocketServer({ noServer: true, maxPayload: 12 * 1024 * 1024, perMessageDeflate: false });
+  const clients = new WebSocketServer({ noServer: true, maxPayload: 24 * 1024 * 1024, perMessageDeflate: false });
   const devices = new Map();
   const pairings = new Map();
   const jobs = new Map();
@@ -85,7 +86,7 @@ function createToonflowGateway({ authorizeAdmin }) {
     job.updatedAt = Date.now();
     active.set(deviceId, job.id);
     socket.send(JSON.stringify({
-      type: "job", jobId: job.id, prompt: job.prompt, ratio: job.ratio, size: job.size, quality: job.quality,
+      type: "job", jobId: job.id, prompt: job.prompt, mediaType: job.mediaType, ratio: job.ratio, size: job.size, quality: job.quality,
     }), err => {
       if (err) {
         fail(job, "Could not deliver job to Chrome. Check Muse before retrying.");
@@ -130,6 +131,10 @@ function createToonflowGateway({ authorizeAdmin }) {
         sendJson(res, 400, { error: "Invalid deviceId or prompt" });
         return;
       }
+      if (input.mediaType !== undefined && !["image", "video"].includes(input.mediaType)) {
+        sendJson(res, 400, { error: "Invalid mediaType" });
+        return;
+      }
       for (const key of ["ratio", "size", "quality"]) {
         if (input[key] !== undefined && (typeof input[key] !== "string" || input[key].length > 32)) {
           sendJson(res, 400, { error: "Invalid " + key });
@@ -147,7 +152,7 @@ function createToonflowGateway({ authorizeAdmin }) {
       const id = randomUUID();
       jobs.set(id, {
         id, deviceId: input.deviceId, prompt: input.prompt.trim(), ratio: input.ratio || "",
-        size: input.size || "", quality: input.quality || "", state: "queued",
+        size: input.size || "", quality: input.quality || "", mediaType: input.mediaType || "image", state: "queued",
         createdAt: Date.now(), updatedAt: Date.now(),
       });
       pump(input.deviceId);
@@ -240,12 +245,18 @@ function createToonflowGateway({ authorizeAdmin }) {
         const result = message.result;
         const imageData = result?.imageData;
         const imageUrl = result?.imageUrl;
-        const supportedData = typeof imageData === "string" && imageData.length <= 10 * 1024 * 1024 && resultPattern.test(imageData);
-        const supportedUrl = typeof imageUrl === "string" && imageUrl.length <= 4096 && /^https:\/\//.test(imageUrl);
-        if (!supportedData && !supportedUrl) fail(job, "Chrome returned no supported image");
-        else {
+        const videoData = result?.videoData;
+        const videoUrl = result?.videoUrl;
+        const supportedImageData = job.mediaType === "image" && typeof imageData === "string" && imageData.length <= 10 * 1024 * 1024 && imageResultPattern.test(imageData);
+        const supportedImageUrl = job.mediaType === "image" && typeof imageUrl === "string" && imageUrl.length <= 4096 && /^https:\/\//.test(imageUrl);
+        // This MVP uses bounded in-memory results; larger video files need a future chunked upload/storage path.
+        const supportedVideoData = job.mediaType === "video" && typeof videoData === "string" && videoData.length <= 18 * 1024 * 1024 && videoResultPattern.test(videoData);
+        const supportedVideoUrl = job.mediaType === "video" && typeof videoUrl === "string" && videoUrl.length <= 4096 && /^https:\/\//.test(videoUrl);
+        if (!supportedImageData && !supportedImageUrl && !supportedVideoData && !supportedVideoUrl) {
+          fail(job, "Chrome returned no supported " + job.mediaType + " result");
+        } else {
           job.state = "done";
-          job.result = supportedData ? { imageData } : { imageUrl };
+          job.result = supportedVideoData ? { videoData } : supportedVideoUrl ? { videoUrl } : supportedImageData ? { imageData } : { imageUrl };
           job.updatedAt = Date.now();
           active.delete(deviceId);
         }
