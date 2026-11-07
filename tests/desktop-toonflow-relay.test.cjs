@@ -62,9 +62,10 @@ test("one-time pairing, image job and rotating resume token work without giving 
   assert.match(client.ready.resumeToken, /^[a-f0-9]{64}$/);
   const devices = await f.api("GET", "/toonflow/devices");
   assert.equal(devices.body.devices[0].connected, true);
+  const nextJob = once(client.socket, "message");
   const task = await f.api("POST", "/toonflow/jobs", { deviceId: "chrome-main", prompt: "An orange bird" });
   assert.equal(task.status, 202);
-  const jobMessage = JSON.parse((await once(client.socket, "message"))[0].toString());
+  const jobMessage = JSON.parse((await nextJob)[0].toString());
   assert.equal(jobMessage.type, "job");
   assert.equal(jobMessage.prompt, "An orange bird");
   client.socket.send(JSON.stringify({ type: "result", jobId: jobMessage.jobId, result: { imageData: "data:image/png;base64,AA==" } }));
