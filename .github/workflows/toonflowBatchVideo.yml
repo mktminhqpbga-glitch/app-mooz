@@ -1,0 +1,23 @@
+name: ToonFlow batch video relay regression
+
+on:
+  push:
+    branches: [feature/toonflowVideoBatchRelay]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --omit=dev --ignore-scripts
+      - run: node --check relay-server/toonflowGateway.cjs
+      - run: node --test tests/desktop-outbound-relay.test.cjs tests/desktop-toonflow-relay.test.cjs
