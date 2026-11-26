@@ -1,5 +1,0 @@
-{
-  "version": "1.9.2",
-  "protocol": 1,
-  "notes": "Giao diện MooZ Connect mới đồng bộ MooZ Agent 0.69.0. Giữ giao thức kết nối 1 và các sửa nối lại, đối chiếu phản hồi, không tự gửi lại AI của 1.9.1."
-}
