@@ -1,0 +1,51 @@
+import { NextRequest, NextResponse } from 'next/server';
+
+// Only Meta/Instagram CDN media is ever downloaded — restrict the proxy to
+// those hosts so it can't be turned into an SSRF fetch-anything endpoint.
+const ALLOWED_HOST = /(^|\.)(fbcdn\.net|facebook\.com|cdninstagram\.com|fbsbx\.com)$/i;
+
+export async function GET(req: NextRequest) {
+  // `u` is the base64-encoded URL — used for inline <img>/<video> so the request
+  // URL carries no "fbcdn"/"facebook" substring for image-targeting ad-blockers
+  // to match. `url` (raw) is still accepted for downloads (an XHR, not blocked).
+  const u = req.nextUrl.searchParams.get('u');
+  let url = req.nextUrl.searchParams.get('url');
+  if (!url && u) {
+    try { url = Buffer.from(u, 'base64').toString('utf8'); } catch { /* invalid */ }
+  }
+  if (!url) return NextResponse.json({ error: 'url required' }, { status: 400 });
+
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return NextResponse.json({ error: 'invalid url' }, { status: 400 });
+  }
+  if (parsed.protocol !== 'https:' || !ALLOWED_HOST.test(parsed.hostname)) {
+    return NextResponse.json({ error: 'host not allowed' }, { status: 403 });
+  }
+
+  try {
+    const res = await fetch(url, { headers: { Referer: 'https://www.facebook.com/' } });
+    if (!res.ok) return NextResponse.json({ error: 'fetch failed' }, { status: 502 });
+
+    const contentType = res.headers.get('content-type') || 'application/octet-stream';
+    const ext = contentType.includes('video') ? '.mp4' : '.jpg';
+    const body = await res.arrayBuffer();
+
+    // inline=1 serves the media for in-page display (img/video src). Routing it
+    // through our same origin also dodges browser ad-blockers / privacy
+    // extensions that block direct requests to facebook.com / fbcdn.net, which
+    // otherwise leave ad previews blank even though the URL is perfectly valid.
+    const inline = req.nextUrl.searchParams.get('inline');
+    const headers: Record<string, string> = {
+      'Content-Type': contentType,
+      'Cache-Control': 'public, max-age=86400',
+    };
+    if (!inline) headers['Content-Disposition'] = `attachment; filename="ad-creative${ext}"`;
+
+    return new NextResponse(body, { headers });
+  } catch (e) {
+    return NextResponse.json({ error: String(e) }, { status: 500 });
+  }
+}

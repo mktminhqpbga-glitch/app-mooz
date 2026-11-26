@@ -1,0 +1,15 @@
+{
+  "name": "mooz-studio",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node start.js",
+    "test": "node --test",
+    "start:main": "node server.js",
+    "setup:scraper": "npm --prefix apps/meta-ads-scraper ci && npm --prefix apps/meta-ads-scraper exec -- playwright install chromium"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
