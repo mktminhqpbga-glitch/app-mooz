@@ -17,11 +17,11 @@ export interface ResultFilters {
 export const EMPTY_RESULT_FILTERS: ResultFilters = { q: '', status: 'ALL', media: [], platforms: [] };
 
 const MEDIA_OPTS: { value: MediaType; label: string }[] = [
-  { value: 'image', label: 'Image' },
+  { value: 'image', label: 'Hình ảnh' },
   { value: 'video', label: 'Video' },
-  { value: 'carousel', label: 'Carousel' },
+  { value: 'carousel', label: 'Băng chuyền' },
   { value: 'meme', label: 'Meme' },
-  { value: 'multi_video', label: 'Multi-video' },
+  { value: 'multi_video', label: 'Nhiều video' },
 ];
 const PLATFORM_OPTS: { value: Platform; label: string }[] = [
   { value: 'FACEBOOK', label: 'Facebook' },
@@ -70,7 +70,7 @@ export function ResultsFilterBar({ filters, onChange, sortBy, onSortChange, show
         <div className="relative flex-1 min-w-[180px]">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
           <Input
-            placeholder="Filter results — advertiser, headline, copy..."
+            placeholder="Lọc kết quả theo nhà quảng cáo, tiêu đề, nội dung..."
             value={filters.q}
             onChange={(e) => onChange({ q: e.target.value })}
             className="h-8 pl-8 text-xs"
@@ -80,9 +80,9 @@ export function ResultsFilterBar({ filters, onChange, sortBy, onSortChange, show
         <Select value={filters.status} onValueChange={(v) => v && onChange({ status: v })}>
           <SelectTrigger className="h-8 text-xs w-28"><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="ALL" className="text-xs">Any status</SelectItem>
-            <SelectItem value="ACTIVE" className="text-xs">Active</SelectItem>
-            <SelectItem value="INACTIVE" className="text-xs">Inactive</SelectItem>
+            <SelectItem value="ALL" className="text-xs">Mọi trạng thái</SelectItem>
+            <SelectItem value="ACTIVE" className="text-xs">Đang chạy</SelectItem>
+            <SelectItem value="INACTIVE" className="text-xs">Đã dừng</SelectItem>
           </SelectContent>
         </Select>
 
@@ -102,13 +102,13 @@ export function ResultsFilterBar({ filters, onChange, sortBy, onSortChange, show
           {newCount > 0 && (
             <Badge className="bg-red-500/15 text-red-400 border-red-500/20 text-xs">{newCount} new</Badge>
           )}
-          <span className="text-xs text-muted-foreground">Sort:</span>
+          <span className="text-xs text-muted-foreground">Sắp xếp:</span>
           <Select value={sortBy} onValueChange={(v) => v && onSortChange(v)}>
             <SelectTrigger className="h-8 text-xs w-36"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="scraped_at" className="text-xs">Most Recent</SelectItem>
-              <SelectItem value="days_running" className="text-xs">Days Running</SelectItem>
-              <SelectItem value="started_at" className="text-xs">Start Date</SelectItem>
+              <SelectItem value="scraped_at" className="text-xs">Mới nhất</SelectItem>
+              <SelectItem value="days_running" className="text-xs">Số ngày chạy</SelectItem>
+              <SelectItem value="started_at" className="text-xs">Ngày bắt đầu</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -117,7 +117,7 @@ export function ResultsFilterBar({ filters, onChange, sortBy, onSortChange, show
       {/* Row 2: media + platform multi-select chips */}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
         <div className="flex items-center gap-1.5">
-          <span className="text-[11px] text-muted-foreground uppercase tracking-wide mr-0.5">Media</span>
+          <span className="text-[11px] text-muted-foreground uppercase tracking-wide mr-0.5">Nội dung</span>
           {MEDIA_OPTS.map((m) => (
             <Chip key={m.value} active={filters.media.includes(m.value)} onClick={() => onChange({ media: toggle(filters.media, m.value) })}>
               {m.label}
@@ -125,7 +125,7 @@ export function ResultsFilterBar({ filters, onChange, sortBy, onSortChange, show
           ))}
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="text-[11px] text-muted-foreground uppercase tracking-wide mr-0.5">Platform</span>
+          <span className="text-[11px] text-muted-foreground uppercase tracking-wide mr-0.5">Nền tảng</span>
           {PLATFORM_OPTS.map((p) => (
             <Chip key={p.value} active={filters.platforms.includes(p.value)} onClick={() => onChange({ platforms: toggle(filters.platforms, p.value) })}>
               {p.label}

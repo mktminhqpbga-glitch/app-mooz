@@ -17,7 +17,7 @@ function extFor(url: string, type: string): string {
 }
 
 async function fetchBlob(url: string): Promise<Blob> {
-  const r = await fetch(`/api/download?url=${encodeURIComponent(url)}`);
+  const r = await fetch(`/research/api/download?url=${encodeURIComponent(url)}`);
   if (!r.ok) throw new Error(`download failed: ${r.status}`);
   return r.blob();
 }
@@ -47,7 +47,7 @@ export function mediaSrc(url?: string): string {
       const enc = typeof btoa === 'function'
         ? btoa(url)
         : Buffer.from(url, 'utf8').toString('base64');
-      return `/api/download?inline=1&u=${encodeURIComponent(enc)}`;
+      return `/research/api/download?inline=1&u=${encodeURIComponent(enc)}`;
     }
   } catch { /* fall through */ }
   return url;

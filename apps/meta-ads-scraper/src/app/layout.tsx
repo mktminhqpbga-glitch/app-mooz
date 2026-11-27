@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Meta Ads Scraper",
-  description: "Competitor intelligence from the Meta Ads Library",
+  title: "Nghiên cứu quảng cáo Meta",
+  description: "Nghiên cứu đối thủ từ Thư viện quảng cáo Meta",
 };
 
 export default function RootLayout({
@@ -26,17 +26,17 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
+      lang="vi"
       suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <head>
         {/* Set the theme class before first paint to avoid a flash. Defaults to
-            dark; honors a saved choice from the ThemeToggle. Runs before React
+            light; honors a saved choice from the ThemeToggle. Runs before React
             hydrates and only touches the <html> class, so no hydration mismatch. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('theme');if(t!=='light'&&t!=='dark')t='dark';document.documentElement.classList.toggle('dark',t==='dark');document.documentElement.style.colorScheme=t;}catch(e){document.documentElement.classList.add('dark');document.documentElement.style.colorScheme='dark';}})();`,
+            __html: `(function(){try{var t=localStorage.getItem('theme');if(t!=='light'&&t!=='dark')t='light';document.documentElement.classList.toggle('dark',t==='dark');document.documentElement.style.colorScheme=t;}catch(e){document.documentElement.classList.remove('dark');document.documentElement.style.colorScheme='light';}})();`,
           }}
         />
       </head>

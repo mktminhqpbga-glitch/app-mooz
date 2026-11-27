@@ -53,8 +53,8 @@ export function AdGrid({ ads, loading, hasSearched, onAdClick, onSave }: AdGridP
         <div className="w-14 h-14 rounded-2xl bg-muted/50 flex items-center justify-center mb-4">
           <Search className="w-6 h-6 text-muted-foreground/50" />
         </div>
-        <p className="text-sm font-medium text-muted-foreground">No ads found</p>
-        <p className="text-xs text-muted-foreground/60 mt-1">Try different keywords or broaden your filters</p>
+        <p className="text-sm font-medium text-muted-foreground">Không tìm thấy quảng cáo</p>
+        <p className="text-xs text-muted-foreground/60 mt-1">Thử từ khóa khác hoặc mở rộng bộ lọc</p>
       </motion.div>
     );
   }
@@ -69,8 +69,8 @@ export function AdGrid({ ads, loading, hasSearched, onAdClick, onSave }: AdGridP
         <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
           <Search className="w-6 h-6 text-primary/60" />
         </div>
-        <p className="text-sm font-medium">Search the Meta Ads Library</p>
-        <p className="text-xs text-muted-foreground mt-1">Enter a keyword or advertiser name to get started</p>
+        <p className="text-sm font-medium">Tìm kiếm trong Thư viện quảng cáo Meta</p>
+        <p className="text-xs text-muted-foreground mt-1">Nhập từ khóa hoặc tên nhà quảng cáo để bắt đầu</p>
       </motion.div>
     );
   }

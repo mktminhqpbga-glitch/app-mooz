@@ -89,7 +89,7 @@ export default function HomePage() {
   // without a manual refresh. Polling stops once the job reaches a terminal state.
   const { data: openJobData } = useQuery<{ job: BulkJob | null; companies: BulkCompany[] }>({
     queryKey: ['bulk-job', bulkJobId],
-    queryFn: () => fetch(`/api/bulk/${bulkJobId}/results`).then((r) => r.json()),
+    queryFn: () => fetch(`/research/api/bulk/${bulkJobId}/results`).then((r) => r.json()),
     enabled: !!bulkJobId,
     refetchInterval: (query) => {
       const s = query.state.data?.job?.status;
@@ -101,17 +101,17 @@ export default function HomePage() {
 
   const { data: collections = [], refetch: refetchCollections } = useQuery<Collection[]>({
     queryKey: ['collections'],
-    queryFn: () => fetch('/api/collections').then((r) => r.json()),
+    queryFn: () => fetch('/research/api/collections').then(async (r) => { if (!r.ok) throw new Error(`Lỗi tải dữ liệu (${r.status})`); const data = await r.json(); if (!Array.isArray(data)) throw new Error('Dữ liệu không hợp lệ'); return data; }),
   });
 
   const { data: tags = [] } = useQuery<Tag[]>({
     queryKey: ['tags'],
-    queryFn: () => fetch('/api/tags').then((r) => r.json()),
+    queryFn: () => fetch('/research/api/tags').then(async (r) => { if (!r.ok) throw new Error(`Lỗi tải dữ liệu (${r.status})`); const data = await r.json(); if (!Array.isArray(data)) throw new Error('Dữ liệu không hợp lệ'); return data; }),
   });
 
   const { data: sessions = [] } = useQuery<SearchSession[]>({
     queryKey: ['sessions'],
-    queryFn: () => fetch('/api/sessions').then((r) => r.json()),
+    queryFn: () => fetch('/research/api/sessions').then(async (r) => { if (!r.ok) throw new Error(`Lỗi tải dữ liệu (${r.status})`); const data = await r.json(); if (!Array.isArray(data)) throw new Error('Dữ liệu không hợp lệ'); return data; }),
   });
   const activeSession = sessions.find((s) => s.id === activeSessionId) ?? null;
 
@@ -122,7 +122,7 @@ export default function HomePage() {
       if (activeCollection) params.set('collection_id', activeCollection);
       if (activeTag) params.set('tag_id', activeTag);
       if (savedSearch.trim()) params.set('search', savedSearch.trim());
-      return fetch(`/api/ads?${params}`).then((r) => r.json());
+      return fetch(`/research/api/ads?${params}`).then((r) => r.json());
     },
     enabled: tab === 'saved',
   });
@@ -146,7 +146,7 @@ export default function HomePage() {
       ...override,
     };
     if (!params.keyword && !params.advertiser && !params.page_id) {
-      alert('Enter a keyword or advertiser name to search');
+      alert('Nhập từ khóa hoặc tên nhà quảng cáo để tìm kiếm');
       return;
     }
 
@@ -162,7 +162,7 @@ export default function HomePage() {
     scrapeAbort.current = abort;
 
     try {
-      const res = await fetch('/api/scrape', {
+      const res = await fetch('/research/api/scrape', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(params),
@@ -210,7 +210,7 @@ export default function HomePage() {
   }
 
   async function handleSave(id: string, saved: boolean) {
-    await fetch(`/api/ads/${id}/save`, {
+    await fetch(`/research/api/ads/${id}/save`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ saved, session_id: activeSessionId || undefined }),
@@ -234,7 +234,7 @@ export default function HomePage() {
   async function analyzeAdSet(params: Record<string, string>, label: string) {
     const sp = new URLSearchParams({ limit: '500', sort: 'days_running', ...params });
     try {
-      const data = await fetch(`/api/ads?${sp}`).then((r) => r.json());
+      const data = await fetch(`/research/api/ads?${sp}`).then((r) => r.json());
       openHooks({ label, ads: (data.ads as Ad[]) || [] });
     } catch {
       openHooks({ label, ads: [] });
@@ -242,7 +242,7 @@ export default function HomePage() {
   }
 
   async function createCollection(name: string, color: string) {
-    await fetch('/api/collections', {
+    await fetch('/research/api/collections', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, color }),
@@ -251,7 +251,7 @@ export default function HomePage() {
   }
 
   async function deleteCollection(id: string) {
-    await fetch('/api/collections', {
+    await fetch('/research/api/collections', {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id }),
@@ -261,7 +261,7 @@ export default function HomePage() {
   }
 
   async function createTag(name: string, color: string) {
-    await fetch('/api/tags', {
+    await fetch('/research/api/tags', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, color }),
@@ -270,7 +270,7 @@ export default function HomePage() {
   }
 
   async function deleteTag(id: string) {
-    await fetch('/api/tags', {
+    await fetch('/research/api/tags', {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id }),
@@ -296,7 +296,7 @@ export default function HomePage() {
 
     let sse: Response;
     try {
-      sse = await fetch(`/api/bulk/${jobId}/stream`, { signal: abort.signal });
+      sse = await fetch(`/research/api/bulk/${jobId}/stream`, { signal: abort.signal });
     } catch {
       if (streamingRef.current === jobId) streamingRef.current = null;
       return;
@@ -344,7 +344,7 @@ export default function HomePage() {
 
     // Set the status server-side first so the running worker sees it before we
     // close the stream — otherwise the abort races the DB write.
-    await fetch(`/api/bulk/${bulkJobId}/control`, {
+    await fetch(`/research/api/bulk/${bulkJobId}/control`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action }),
@@ -383,10 +383,10 @@ export default function HomePage() {
 
   async function deleteBulkJobAndExit() {
     if (!bulkJobId) return;
-    if (!window.confirm('Delete this job permanently? This removes the run and its company results (scraped ad data is kept).')) return;
+    if (!window.confirm('Xóa vĩnh viễn tác vụ và kết quả doanh nghiệp? Dữ liệu quảng cáo đã thu thập vẫn được giữ lại.')) return;
     bulkAbort.current?.abort();
     streamingRef.current = null;
-    await fetch(`/api/bulk/${bulkJobId}`, { method: 'DELETE' });
+    await fetch(`/research/api/bulk/${bulkJobId}`, { method: 'DELETE' });
     queryClient.invalidateQueries({ queryKey: ['bulk-jobs'] });
     setBulkJobId(null);
     setDedupCount(0);
@@ -477,10 +477,10 @@ export default function HomePage() {
   const newCount = filteredAds.filter((a) => a.is_new).length;
   const displayAds = tab === 'saved' ? (savedData?.ads || []) : filteredAds;
   const savedScopeLabel = activeCollection
-    ? `List: ${collections.find((c) => c.id === activeCollection)?.name ?? 'List'}`
+    ? `Danh sách: ${collections.find((c) => c.id === activeCollection)?.name ?? 'Danh sách'}`
     : activeTag
-    ? `Tag: ${tags.find((t) => t.id === activeTag)?.name ?? 'Tag'}`
-    : 'Saved ads';
+    ? `Thẻ: ${tags.find((t) => t.id === activeTag)?.name ?? 'Thẻ'}`
+    : 'Quảng cáo đã lưu';
 
   const SEARCH_PER_PAGE = 24;
   const searchTotalPages = Math.max(1, Math.ceil(filteredAds.length / SEARCH_PER_PAGE));
@@ -518,35 +518,35 @@ export default function HomePage() {
       {!showFilters && tab === 'search' && (
         <button
           onClick={() => setShowFilters(true)}
-          title="Show filters"
+          title="Hiện bộ lọc"
           className="group shrink-0 w-10 border-r border-border/50 bg-card/30 hover:bg-accent/50 flex flex-col items-center pt-3.5 gap-2 transition-colors"
         >
           <PanelLeftOpen className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
           <span className="[writing-mode:vertical-rl] rotate-180 text-[11px] font-medium uppercase tracking-wider text-muted-foreground group-hover:text-foreground transition-colors">
-            Filters
+            Bộ lọc
           </span>
         </button>
       )}
 
       <main className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* Top nav */}
-        <header className="border-b border-border/50 px-4 py-3 flex items-center gap-3 shrink-0 bg-card/50 backdrop-blur-sm">
+        <header className="border-b border-border/50 px-4 py-3 flex flex-wrap items-center gap-3 shrink-0 bg-card/50 backdrop-blur-sm">
           <div className="flex items-center gap-2 shrink-0">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo.svg" alt="Meta Ads" className="h-6 w-auto" />
+            <img src="/research/logo.svg" alt="Meta Ads" className="h-6 w-auto" />
             <span className="font-bold text-sm tracking-tight">Meta Ads</span>
           </div>
           <Separator orientation="vertical" className="h-5" />
-          <Tabs value={tab} onValueChange={setTab}>
+          <Tabs className="shrink-0" value={tab} onValueChange={setTab}>
             <TabsList className="h-8">
               <TabsTrigger value="search" className="text-xs">
-                <Search className="w-3.5 h-3.5 mr-1" />Search
+                <Search className="w-3.5 h-3.5 mr-1" />Tìm kiếm
               </TabsTrigger>
               <TabsTrigger value="saved" className="text-xs">
-                <BookMarked className="w-3.5 h-3.5 mr-1" />Saved
+                <BookMarked className="w-3.5 h-3.5 mr-1" />Đã lưu
               </TabsTrigger>
               <TabsTrigger value="bulk" className="text-xs">
-                <Users className="w-3.5 h-3.5 mr-1" />Bulk
+                <Users className="w-3.5 h-3.5 mr-1" />Hàng loạt
               </TabsTrigger>
             </TabsList>
           </Tabs>
@@ -556,10 +556,10 @@ export default function HomePage() {
             {tab === 'search' && (
               <>
                 <Button size="sm" variant="outline" onClick={() => openHooks()} className="h-8 text-xs">
-                  <Zap className="w-3 h-3 mr-1" />Hooks
+                  <Zap className="w-3 h-3 mr-1" />Câu mở đầu
                 </Button>
                 <Button size="sm" variant="outline" onClick={() => setCollectionsOpen(true)} className="h-8 text-xs">
-                  <FolderPlus className="w-3 h-3 mr-1" />Collections
+                  <FolderPlus className="w-3 h-3 mr-1" />Bộ sưu tập
                 </Button>
                 {activeSession ? (
                   // A session is live (playing) — show its name + a pulse when it
@@ -567,7 +567,7 @@ export default function HomePage() {
                   <div className="flex items-center h-8 rounded-md border border-emerald-500/50 bg-emerald-500/10 overflow-hidden max-w-[220px]">
                     <button
                       onClick={() => setSessionsOpen(true)}
-                      title={`Live session: ${activeSession.name}`}
+                      title={`Phiên đang chạy: ${activeSession.name}`}
                       className="flex items-center gap-1.5 h-full pl-2.5 pr-2 text-xs min-w-0 hover:bg-emerald-500/15 transition-colors"
                     >
                       {activeSession.webhook_url ? (
@@ -578,11 +578,11 @@ export default function HomePage() {
                       ) : (
                         <Webhook className="w-3 h-3 shrink-0 text-emerald-400" />
                       )}
-                      <span className="truncate text-emerald-300">{activeSession.name}</span>
+                      <span className="truncate text-emerald-700 dark:text-emerald-300">{activeSession.name}</span>
                     </button>
                     <button
                       onClick={() => setActiveSessionId(null)}
-                      title="Pause session"
+                      title="Tạm dừng phiên"
                       className="h-full px-2 border-l border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 transition-colors shrink-0"
                     >
                       <Pause className="w-3.5 h-3.5" />
@@ -594,10 +594,10 @@ export default function HomePage() {
                     variant="outline"
                     onClick={() => setSessionsOpen(true)}
                     className="h-8 text-xs"
-                    title="Search sessions"
+                    title="Phiên tìm kiếm"
                   >
                     <Webhook className="w-3 h-3 mr-1 shrink-0" />
-                    <span>Sessions</span>
+                    <span>Phiên làm việc</span>
                   </Button>
                 )}
                 {filteredAds.length > 0 && (
@@ -628,11 +628,11 @@ export default function HomePage() {
               >
                 <div className="mx-6 mt-4 flex items-start gap-2.5 rounded-lg border border-amber-500/25 bg-amber-500/10 px-3.5 py-3 text-sm">
                   <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-amber-400" />
-                  <p className="flex-1 text-amber-200/90">{scrapeWarning}</p>
+                  <p className="flex-1 text-amber-900 dark:text-amber-200/90">{scrapeWarning}</p>
                   <button
                     onClick={() => setScrapeWarning(null)}
                     className="text-amber-400/70 hover:text-amber-300 transition-colors shrink-0"
-                    title="Dismiss"
+                    title="Đóng"
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -641,7 +641,7 @@ export default function HomePage() {
             )}
           </AnimatePresence>
 
-          <AnimatePresence mode="wait">
+          <AnimatePresence mode="sync" initial={false}>
             {/* Search Tab */}
             {tab === 'search' && (
               <motion.div
@@ -657,7 +657,7 @@ export default function HomePage() {
                   <div className="flex-1 relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
                     <Input
-                      placeholder="Keyword in ad copy..."
+                      placeholder="Từ khóa trong nội dung quảng cáo..."
                       value={keyword}
                       onChange={(e) => setKeyword(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && startScrape()}
@@ -673,11 +673,11 @@ export default function HomePage() {
                   />
                   {scraping ? (
                     <Button onClick={stopScrape} variant="destructive" className="px-6 h-10 shrink-0">
-                      <Square className="w-3.5 h-3.5 mr-1.5 fill-current" /> Stop
+                      <Square className="w-3.5 h-3.5 mr-1.5 fill-current" /> Dừng
                     </Button>
                   ) : (
                     <Button onClick={() => startScrape()} className="px-6 h-10 shrink-0">
-                      Scrape
+                      Thu thập
                     </Button>
                   )}
                 </div>
@@ -694,7 +694,7 @@ export default function HomePage() {
                     >
                       <span className="w-2 h-2 rounded-full bg-primary animate-pulse shrink-0" />
                       <span className="text-muted-foreground">
-                        Deep scraping — {liveAds.length} ads found
+                        Đang thu thập — tìm thấy {liveAds.length} quảng cáo
                       </span>
                     </motion.div>
                   )}
@@ -743,14 +743,14 @@ export default function HomePage() {
               >
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2 shrink-0">
-                    <h2 className="font-semibold">Saved Ads</h2>
+                    <h2 className="font-semibold">Quảng cáo đã lưu</h2>
                     {savedData?.total > 0 && <Badge variant="secondary">{savedData.total}</Badge>}
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="relative w-56 max-w-[40vw]">
                       <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
                       <Input
-                        placeholder="Search saved ads..."
+                        placeholder="Tìm quảng cáo đã lưu..."
                         value={savedSearch}
                         onChange={(e) => setSavedSearch(e.target.value)}
                         className="h-8 pl-8 text-xs"
@@ -759,27 +759,27 @@ export default function HomePage() {
                     {(savedData?.ads?.length ?? 0) > 0 && (
                       <>
                         <Button size="sm" variant="outline" onClick={() => openHooks({ label: savedScopeLabel, ads: savedData!.ads })} className="h-8 text-xs">
-                          <Zap className="w-3 h-3 mr-1" />Hooks
+                          <Zap className="w-3 h-3 mr-1" />Câu mở đầu
                         </Button>
                         <Button size="sm" variant="outline" onClick={() => downloadSaved('csv')} className="h-8 text-xs">
-                          <Download className="w-3 h-3 mr-1" />Export
+                          <Download className="w-3 h-3 mr-1" />Xuất
                         </Button>
                       </>
                     )}
                     <Button size="sm" variant="outline" onClick={() => setCollectionsOpen(true)} className="h-8 text-xs">
-                      <FolderPlus className="w-3 h-3 mr-1" />Manage
+                      <FolderPlus className="w-3 h-3 mr-1" />Quản lý
                     </Button>
                   </div>
                 </div>
 
                 {collections.length > 0 && (
                   <div className="flex gap-1.5 flex-wrap items-center">
-                    <span className="text-[11px] text-muted-foreground uppercase tracking-wide mr-1">Lists</span>
+                    <span className="text-[11px] text-muted-foreground uppercase tracking-wide mr-1">Danh sách</span>
                     <button
                       onClick={() => setActiveCollection(null)}
                       className={`px-3 py-1 rounded-full text-xs border transition-colors ${!activeCollection ? 'bg-primary text-primary-foreground border-primary' : 'hover:bg-muted border-border'}`}
                     >
-                      All
+                      Tất cả
                     </button>
                     {collections.map((c) => (
                       <button
@@ -796,10 +796,10 @@ export default function HomePage() {
 
                 {tags.length > 0 && (
                   <div className="flex gap-1.5 flex-wrap items-center">
-                    <span className="text-[11px] text-muted-foreground uppercase tracking-wide mr-1">Tags</span>
+                    <span className="text-[11px] text-muted-foreground uppercase tracking-wide mr-1">Thẻ</span>
                     {activeTag && (
                       <button onClick={() => setActiveTag(null)} className="px-2.5 py-1 rounded-full text-xs border border-border hover:bg-muted transition-colors text-muted-foreground">
-                        Clear
+                        Bỏ lọc
                       </button>
                     )}
                     {tags.map((t) => (
@@ -851,15 +851,15 @@ export default function HomePage() {
                         onClick={() => { bulkAbort.current?.abort(); streamingRef.current = null; setBulkJobId(null); setDedupCount(0); }}
                         className="h-8 text-xs"
                       >
-                        <ArrowLeft className="w-3.5 h-3.5 mr-1" /> All Jobs
+                        <ArrowLeft className="w-3.5 h-3.5 mr-1" /> Tất cả tác vụ
                       </Button>
                       {bulkJob && (
                         <BulkResultsTable
                           job={bulkJob}
                           companies={bulkCompanies}
                           onCompanyClick={(c) => { setSelectedBulkCompany(c); setCompanyDrawerOpen(true); }}
-                          onExport={() => window.open(`/api/bulk/${bulkJobId}/export`, '_blank')}
-                          onExportAds={() => window.open(`/api/bulk/${bulkJobId}/export?type=ads`, '_blank')}
+                          onExport={() => window.open(`/research/api/bulk/${bulkJobId}/export`, '_blank')}
+                          onExportAds={() => window.open(`/research/api/bulk/${bulkJobId}/export?type=ads`, '_blank')}
                           onPause={() => controlBulk('pause')}
                           onResume={() => controlBulk('resume')}
                           onStop={() => controlBulk('stop')}
@@ -888,7 +888,7 @@ export default function HomePage() {
         onDelete={deleteCollection}
         onCreateTag={createTag}
         onDeleteTag={deleteTag}
-        onAnalyze={(id, name) => { setCollectionsOpen(false); analyzeAdSet({ saved: 'true', collection_id: id }, `List: ${name}`); }}
+        onAnalyze={(id, name) => { setCollectionsOpen(false); analyzeAdSet({ saved: 'true', collection_id: id }, `Danh sách: ${name}`); }}
       />
 
       <SessionsPanel
@@ -898,7 +898,7 @@ export default function HomePage() {
         activeSessionId={activeSessionId}
         onSelectActive={setActiveSessionId}
         onChanged={() => queryClient.invalidateQueries({ queryKey: ['sessions'] })}
-        onAnalyze={(id, name) => { setSessionsOpen(false); analyzeAdSet({ session_id: id }, `Session: ${name}`); }}
+        onAnalyze={(id, name) => { setSessionsOpen(false); analyzeAdSet({ session_id: id }, `Phiên: ${name}`); }}
       />
 
       <HookExtractor

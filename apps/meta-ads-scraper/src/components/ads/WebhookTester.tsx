@@ -25,7 +25,7 @@ export function WebhookTester({ url, secret, source, className }: WebhookTesterP
     setLoading(true);
     setResult(null);
     try {
-      const res = await fetch('/api/webhook/test', {
+      const res = await fetch('/research/api/webhook/test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: url.trim(), secret: secret?.trim() || undefined, source }),

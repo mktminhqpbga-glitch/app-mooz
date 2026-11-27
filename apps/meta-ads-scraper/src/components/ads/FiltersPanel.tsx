@@ -12,7 +12,7 @@ import { CountryCombobox } from './CountryCombobox';
 
 
 const LANGUAGES = [
-  { code: '', name: 'All Languages' },
+  { code: '', name: 'Tất cả ngôn ngữ' },
   { code: 'en', name: 'English' }, { code: 'es', name: 'Spanish' }, { code: 'fr', name: 'French' },
   { code: 'de', name: 'German' }, { code: 'pt', name: 'Portuguese' }, { code: 'it', name: 'Italian' },
   { code: 'nl', name: 'Dutch' }, { code: 'pl', name: 'Polish' }, { code: 'ru', name: 'Russian' },
@@ -139,22 +139,22 @@ function PillGroup<T extends string>({ value, options, onChange }: {
 
 
 const CATEGORY_OPTS = [
-  { value: 'ALL', label: 'All' },
-  { value: 'POLITICAL', label: 'Political' },
-  { value: 'HOUSING', label: 'Housing' },
-  { value: 'EMPLOYMENT', label: 'Jobs' },
-  { value: 'CREDIT', label: 'Credit' },
+  { value: 'ALL', label: 'Tất cả' },
+  { value: 'POLITICAL', label: 'Chính trị' },
+  { value: 'HOUSING', label: 'Nhà ở' },
+  { value: 'EMPLOYMENT', label: 'Việc làm' },
+  { value: 'CREDIT', label: 'Tín dụng' },
 ];
 const MEDIA_OPTS = [
-  { value: 'ALL', label: 'All' },
-  { value: 'image', label: 'Image' },
+  { value: 'ALL', label: 'Tất cả' },
+  { value: 'image', label: 'Hình ảnh' },
   { value: 'video', label: 'Video' },
-  { value: 'carousel', label: 'Carousel' },
+  { value: 'carousel', label: 'Băng chuyền' },
   { value: 'meme', label: 'Meme' },
-  { value: 'multi_video', label: 'Multi-video' },
+  { value: 'multi_video', label: 'Nhiều video' },
 ];
 const PLATFORM_OPTS = [
-  { value: 'ALL', label: 'All' },
+  { value: 'ALL', label: 'Tất cả' },
   { value: 'FACEBOOK', label: 'Facebook' },
   { value: 'INSTAGRAM', label: 'Instagram' },
   { value: 'AUDIENCE_NETWORK', label: 'Audience Net' },
@@ -184,7 +184,7 @@ export function FiltersPanel({ params, onChange, onReset, onClose, collections, 
       {/* Sticky header */}
       <div className="sticky top-0 z-10 flex items-center justify-between px-4 h-12 bg-card/80 backdrop-blur-sm border-b border-border/50">
         <div className="flex items-center gap-2">
-          <h3 className="text-sm font-semibold">Filters</h3>
+          <h3 className="text-sm font-semibold">Bộ lọc</h3>
           {activeCount > 0 && (
             <span className="flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full bg-primary/15 text-primary text-[10px] font-semibold">
               {activeCount}
@@ -197,12 +197,12 @@ export function FiltersPanel({ params, onChange, onReset, onClose, collections, 
             disabled={activeCount === 0}
             className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-40 disabled:pointer-events-none"
           >
-            <RotateCcw className="w-3 h-3" /> Reset
+            <RotateCcw className="w-3 h-3" /> Đặt lại
           </button>
           {onClose && (
             <button
               onClick={onClose}
-              title="Hide filters"
+              title="Ẩn bộ lọc"
               className="ml-1 p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
             >
               <PanelLeftClose className="w-4 h-4" />
@@ -212,13 +212,13 @@ export function FiltersPanel({ params, onChange, onReset, onClose, collections, 
       </div>
 
       <div className="p-4 space-y-5">
-        <Group label="Geography">
-          <Field label="Country">
+        <Group label="Khu vực">
+          <Field label="Quốc gia">
             <CountryCombobox value={params.country || 'ALL'} onChange={(v) => onChange({ country: v })} />
           </Field>
-          <Field label="Language">
+          <Field label="Ngôn ngữ">
             <Select value={params.language || ''} onValueChange={(v) => onChange({ language: v || undefined })}>
-              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="All Languages" /></SelectTrigger>
+              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Tất cả ngôn ngữ" /></SelectTrigger>
               <SelectContent className="max-h-60">
                 {LANGUAGES.map((l) => (
                   <SelectItem key={l.code} value={l.code} className="text-xs">{l.name}</SelectItem>
@@ -230,13 +230,13 @@ export function FiltersPanel({ params, onChange, onReset, onClose, collections, 
 
         <Separator className="opacity-30" />
 
-        <Group label="Status">
+        <Group label="Trạng thái">
           <Segmented
             value={(params.status as string) || 'ALL'}
             options={[
-              { value: 'ALL', label: 'Both' },
-              { value: 'ACTIVE', label: 'Active' },
-              { value: 'INACTIVE', label: 'Inactive' },
+              { value: 'ALL', label: 'Tất cả' },
+              { value: 'ACTIVE', label: 'Đang chạy' },
+              { value: 'INACTIVE', label: 'Đã dừng' },
             ]}
             onChange={(v) => onChange({ status: v === 'ALL' ? undefined : (v as SearchParams['status']) })}
           />
@@ -244,7 +244,7 @@ export function FiltersPanel({ params, onChange, onReset, onClose, collections, 
 
         <Separator className="opacity-30" />
 
-        <Group label="Media type">
+        <Group label="Loại nội dung">
           <FilterSelect
             value={params.ad_type || 'ALL'}
             options={MEDIA_OPTS}
@@ -252,7 +252,7 @@ export function FiltersPanel({ params, onChange, onReset, onClose, collections, 
           />
         </Group>
 
-        <Group label="Platform">
+        <Group label="Nền tảng">
           <FilterSelect
             value={params.platform || 'ALL'}
             options={PLATFORM_OPTS}
@@ -260,7 +260,7 @@ export function FiltersPanel({ params, onChange, onReset, onClose, collections, 
           />
         </Group>
 
-        <Group label="Category">
+        <Group label="Danh mục">
           <FilterSelect
             value={params.category || 'ALL'}
             options={CATEGORY_OPTS}
@@ -270,9 +270,9 @@ export function FiltersPanel({ params, onChange, onReset, onClose, collections, 
 
         <Separator className="opacity-30" />
 
-        <Group label="Date started">
+        <Group label="Ngày bắt đầu">
           <div className="grid grid-cols-2 gap-2">
-            <Field label="After">
+            <Field label="Từ ngày">
               <Input
                 type="date"
                 className="h-8 text-xs"
@@ -281,7 +281,7 @@ export function FiltersPanel({ params, onChange, onReset, onClose, collections, 
                 onChange={(e) => onChange({ date_from: e.target.value || undefined })}
               />
             </Field>
-            <Field label="Before">
+            <Field label="Đến ngày">
               <Input
                 type="date"
                 className="h-8 text-xs"
@@ -295,7 +295,7 @@ export function FiltersPanel({ params, onChange, onReset, onClose, collections, 
 
         <Separator className="opacity-30" />
 
-        <Group label="Max ads to scrape">
+        <Group label="Số quảng cáo tối đa">
           <PillGroup
             value={String(params.limit || 100)}
             options={LIMIT_OPTS}
@@ -306,7 +306,7 @@ export function FiltersPanel({ params, onChange, onReset, onClose, collections, 
         {collections.length > 0 && (
           <>
             <Separator className="opacity-30" />
-            <Group label="Collections">
+            <Group label="Bộ sưu tập">
               <div className="space-y-1">
                 <button
                   onClick={() => onCollectionChange(null)}
@@ -315,7 +315,7 @@ export function FiltersPanel({ params, onChange, onReset, onClose, collections, 
                     !activeCollection ? 'bg-primary/15 text-primary font-medium' : 'text-muted-foreground hover:bg-accent hover:text-foreground'
                   )}
                 >
-                  <FolderOpen className="w-3.5 h-3.5" /> All saved
+                  <FolderOpen className="w-3.5 h-3.5" /> Tất cả đã lưu
                 </button>
                 {collections.map((c) => (
                   <button

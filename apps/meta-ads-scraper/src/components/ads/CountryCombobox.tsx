@@ -63,7 +63,7 @@ export function CountryCombobox({ value, onChange, placeholder = 'All Countries'
               <input
                 ref={inputRef}
                 type="text"
-                placeholder="Search country..."
+                placeholder="Tìm quốc gia..."
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 className="w-full text-xs bg-transparent outline-none placeholder:text-muted-foreground/60 px-1 py-0.5"
@@ -71,7 +71,7 @@ export function CountryCombobox({ value, onChange, placeholder = 'All Countries'
             </div>
             <div className="max-h-48 overflow-y-auto">
               {filtered.length === 0 ? (
-                <p className="text-xs text-muted-foreground text-center py-3">No country found.</p>
+                <p className="text-xs text-muted-foreground text-center py-3">Không tìm thấy quốc gia.</p>
               ) : (
                 filtered.map((c) => (
                   <button

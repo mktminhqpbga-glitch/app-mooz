@@ -44,12 +44,12 @@ interface BulkUploadProps {
 }
 
 const STATUS_META: Record<string, { label: string; color: string }> = {
-  complete: { label: 'Complete', color: 'text-emerald-400' },
-  running: { label: 'Running', color: 'text-red-400' },
-  queued: { label: 'Queued', color: 'text-yellow-400' },
-  paused: { label: 'Paused', color: 'text-orange-400' },
-  cancelled: { label: 'Stopped', color: 'text-muted-foreground' },
-  error: { label: 'Error', color: 'text-red-400' },
+  complete: { label: 'Hoàn tất', color: 'text-emerald-400' },
+  running: { label: 'Đang chạy', color: 'text-red-400' },
+  queued: { label: 'Đang chờ', color: 'text-yellow-400' },
+  paused: { label: 'Tạm dừng', color: 'text-orange-400' },
+  cancelled: { label: 'Đã dừng', color: 'text-muted-foreground' },
+  error: { label: 'Lỗi', color: 'text-red-400' },
 };
 
 const ACTIVE_STATUSES = new Set(['running', 'queued', 'paused']);
@@ -173,9 +173,9 @@ function JobRow({ job, onStart, onPause, onResume, onStop, onArchive, onUnarchiv
 // ---- Wizard scaffolding ----
 
 const STEPS = [
-  { n: 1, label: 'Companies', icon: Building2 },
-  { n: 2, label: 'Targeting', icon: Target },
-  { n: 3, label: 'Run', icon: Rocket },
+  { n: 1, label: 'Doanh nghiệp', icon: Building2 },
+  { n: 2, label: 'Nhắm mục tiêu', icon: Target },
+  { n: 3, label: 'Chạy', icon: Rocket },
 ] as const;
 
 function Stepper({ step, maxReached, onJump }: { step: number; maxReached: number; onJump: (n: number) => void }) {
@@ -316,7 +316,7 @@ export function BulkUpload({ onStart }: BulkUploadProps) {
 
   const { data: pastJobs = [] } = useQuery<BulkJob[]>({
     queryKey: ['bulk-jobs'],
-    queryFn: () => fetch('/api/bulk').then((r) => r.json()),
+    queryFn: () => fetch('/research/api/bulk').then(async (r) => { if (!r.ok) throw new Error(`Lỗi tải dữ liệu (${r.status})`); const data = await r.json(); if (!Array.isArray(data)) throw new Error("Dữ liệu không hợp lệ"); return data; }),
     // Keep the list fresh so active jobs show live progress
     refetchInterval: 4000,
     refetchOnWindowFocus: true,
@@ -324,7 +324,7 @@ export function BulkUpload({ onStart }: BulkUploadProps) {
 
   const { data: archivedJobs = [] } = useQuery<BulkJob[]>({
     queryKey: ['bulk-jobs', 'archived'],
-    queryFn: () => fetch('/api/bulk?archived=1').then((r) => r.json()),
+    queryFn: () => fetch('/research/api/bulk?archived=1').then(async (r) => { if (!r.ok) throw new Error(`Lỗi tải dữ liệu (${r.status})`); const data = await r.json(); if (!Array.isArray(data)) throw new Error("Dữ liệu không hợp lệ"); return data; }),
     enabled: showArchived,
   });
 
@@ -336,7 +336,7 @@ export function BulkUpload({ onStart }: BulkUploadProps) {
   }
 
   async function archiveJob(id: string) {
-    await fetch(`/api/bulk/${id}`, {
+    await fetch(`/research/api/bulk/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ archived: true }),
@@ -345,7 +345,7 @@ export function BulkUpload({ onStart }: BulkUploadProps) {
   }
 
   async function unarchiveJob(id: string) {
-    await fetch(`/api/bulk/${id}`, {
+    await fetch(`/research/api/bulk/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ archived: false }),
@@ -355,12 +355,12 @@ export function BulkUpload({ onStart }: BulkUploadProps) {
 
   async function deleteJob(id: string) {
     if (!window.confirm('Delete this job permanently? This removes the run and its company results (scraped ad data is kept).')) return;
-    await fetch(`/api/bulk/${id}`, { method: 'DELETE' });
+    await fetch(`/research/api/bulk/${id}`, { method: 'DELETE' });
     refreshJobs();
   }
 
   async function controlJob(id: string, action: 'pause' | 'resume' | 'stop') {
-    await fetch(`/api/bulk/${id}/control`, {
+    await fetch(`/research/api/bulk/${id}/control`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action }),
@@ -437,7 +437,7 @@ export function BulkUpload({ onStart }: BulkUploadProps) {
     if (companies.length === 0) return;
     setLoading(true);
     try {
-      const res = await fetch('/api/bulk/start', {
+      const res = await fetch('/research/api/bulk/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -484,9 +484,9 @@ export function BulkUpload({ onStart }: BulkUploadProps) {
         transition={{ type: 'spring', stiffness: 400, damping: 30 }}
         className="text-center space-y-1.5"
       >
-        <h2 className="text-xl font-semibold">Bulk Company Intelligence</h2>
+        <h2 className="text-xl font-semibold">Nghiên cứu doanh nghiệp hàng loạt</h2>
         <p className="text-sm text-muted-foreground">
-          Check the Meta ad activity of a whole list of companies in parallel
+          Kiểm tra quảng cáo Meta của nhiều doanh nghiệp cùng lúc
         </p>
       </motion.div>
 
@@ -516,35 +516,35 @@ export function BulkUpload({ onStart }: BulkUploadProps) {
                 className="space-y-4"
               >
                 <div className="space-y-1">
-                  <h3 className="text-sm font-semibold">Upload your companies</h3>
+                  <h3 className="text-sm font-semibold">Tải danh sách doanh nghiệp</h3>
                   <p className="text-xs text-muted-foreground">
-                    Upload a CSV of companies with their website domains. Duplicates are removed automatically.
+                    Tải tệp CSV chứa doanh nghiệp và tên miền. Các mục trùng lặp được tự động loại bỏ.
                   </p>
                 </div>
 
                 {/* Match mode — determines which columns are required */}
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Match each company by</Label>
+                  <Label className="text-xs">Đối chiếu doanh nghiệp theo</Label>
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       onClick={() => setMatchPages(true)}
                       className={cn('rounded-lg border p-3 text-left transition-colors', matchPages ? 'border-primary bg-primary/10' : 'border-border hover:bg-muted/50')}
                     >
                       <div className="flex items-center gap-1.5 text-sm font-medium">
-                        <Building2 className="w-3.5 h-3.5" /> Brand page
+                        <Building2 className="w-3.5 h-3.5" /> Trang thương hiệu
                         {matchPages && <Check className="w-3.5 h-3.5 text-primary ml-auto" />}
                       </div>
-                      <p className="text-[11px] text-muted-foreground mt-1">Reads each brand&apos;s social handle from its website and matches the exact advertiser page. Needs a Website column.</p>
+                      <p className="text-[11px] text-muted-foreground mt-1">Đọc tài khoản mạng xã hội trên website và đối chiếu đúng trang quảng cáo. Cần cột Website.</p>
                     </button>
                     <button
                       onClick={() => setMatchPages(false)}
                       className={cn('rounded-lg border p-3 text-left transition-colors', !matchPages ? 'border-primary bg-primary/10' : 'border-border hover:bg-muted/50')}
                     >
                       <div className="flex items-center gap-1.5 text-sm font-medium">
-                        <Target className="w-3.5 h-3.5" /> Keyword
+                        <Target className="w-3.5 h-3.5" /> Từ khóa
                         {!matchPages && <Check className="w-3.5 h-3.5 text-primary ml-auto" />}
                       </div>
-                      <p className="text-[11px] text-muted-foreground mt-1">Keyword search of the name across all advertisers. May include lookalikes. No website needed.</p>
+                      <p className="text-[11px] text-muted-foreground mt-1">Tìm theo tên trong tất cả nhà quảng cáo. Có thể gồm thương hiệu trùng tên. Không cần website.</p>
                     </button>
                   </div>
                 </div>
@@ -553,7 +553,7 @@ export function BulkUpload({ onStart }: BulkUploadProps) {
                 {matchPages && (
                   <div className="rounded-md border border-primary/20 bg-primary/[0.04] p-2.5 space-y-1.5">
                     <div className="flex items-center gap-1.5 text-[11px] font-medium text-foreground">
-                      <Info className="w-3 h-3 text-primary" /> How brand-page matching works
+                      <Info className="w-3 h-3 text-primary" /> Cách đối chiếu trang thương hiệu
                     </div>
                     <p className="text-[11px] text-muted-foreground/80 leading-relaxed">
                       For each company we open its <span className="font-medium text-foreground/90">website</span>, read the Facebook/Instagram handle it links to, and match that exact handle against Meta&apos;s advertiser pages. It&apos;s an identity match, not a name guess. A company we can&apos;t verify this way is flagged <span className="font-medium">Needs review</span> rather than scraped as the wrong brand.
@@ -562,10 +562,10 @@ export function BulkUpload({ onStart }: BulkUploadProps) {
                 )}
 
                 <div className="flex items-center justify-between">
-                  <Label className="text-xs">Company CSV</Label>
+                  <Label className="text-xs">CSV doanh nghiệp</Label>
                   {fileName && (
                     <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()} className="h-7 text-xs">
-                      <Upload className="w-3.5 h-3.5 mr-1" /> Replace
+                      <Upload className="w-3.5 h-3.5 mr-1" /> Thay tệp
                     </Button>
                   )}
                   <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={handleFile} />
@@ -577,7 +577,7 @@ export function BulkUpload({ onStart }: BulkUploadProps) {
                     className="w-full rounded-lg border border-dashed border-border hover:border-primary/40 hover:bg-muted/30 transition-colors py-8 flex flex-col items-center gap-2 text-center"
                   >
                     <Upload className="w-5 h-5 text-muted-foreground" />
-                    <span className="text-sm font-medium">Upload a CSV</span>
+                    <span className="text-sm font-medium">Tải tệp CSV</span>
                     <span className="text-[11px] text-muted-foreground">
                       Company name{matchPages ? ' + Website columns required' : ' column required'}
                     </span>
@@ -593,51 +593,51 @@ export function BulkUpload({ onStart }: BulkUploadProps) {
                         <p className="text-xs text-muted-foreground">{rawRows.length.toLocaleString()} rows parsed</p>
                       </div>
                       <button onClick={clearList} className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-xs transition-colors shrink-0">
-                        <X className="w-3.5 h-3.5" /> Remove
+                        <X className="w-3.5 h-3.5" /> Xóa
                       </button>
                     </div>
 
                     {columns.length > 0 && (
                       <div className="border-t border-border/40 bg-background/40 px-3 py-2.5">
                         <div className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground mb-2">
-                          <Columns3 className="w-3 h-3" /> Map columns
+                          <Columns3 className="w-3 h-3" /> Ghép cột
                         </div>
                         <div className="grid grid-cols-2 gap-2">
                           <div className="space-y-1">
-                            <Label className="text-[11px] text-muted-foreground">Company name <span className="text-primary">*</span></Label>
+                            <Label className="text-[11px] text-muted-foreground">Tên doanh nghiệp <span className="text-primary">*</span></Label>
                             <Select value={companyCol} onValueChange={(v) => v && setCompanyCol(v)}>
-                              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select column" /></SelectTrigger>
+                              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Chọn cột" /></SelectTrigger>
                               <SelectContent>
                                 {columns.map((col) => <SelectItem key={col} value={col} className="text-xs">{col}</SelectItem>)}
                               </SelectContent>
                             </Select>
                           </div>
                           <div className="space-y-1">
-                            <Label className="text-[11px] text-muted-foreground">Website / domain {needsWebsite && <span className="text-primary">*</span>}</Label>
+                            <Label className="text-[11px] text-muted-foreground">Website / tên miền {needsWebsite && <span className="text-primary">*</span>}</Label>
                             <Select value={websiteCol} onValueChange={(v) => v && setWebsiteCol(v)}>
-                              <SelectTrigger className={cn('h-8 text-xs', needsWebsite && !websiteMapped && 'border-red-500/60')}><SelectValue placeholder="Select column" /></SelectTrigger>
+                              <SelectTrigger className={cn('h-8 text-xs', needsWebsite && !websiteMapped && 'border-red-500/60')}><SelectValue placeholder="Chọn cột" /></SelectTrigger>
                               <SelectContent>
-                                <SelectItem value={NO_COLUMN} className="text-xs">None</SelectItem>
+                                <SelectItem value={NO_COLUMN} className="text-xs">Không có</SelectItem>
                                 {columns.map((col) => <SelectItem key={col} value={col} className="text-xs">{col}</SelectItem>)}
                               </SelectContent>
                             </Select>
                           </div>
                           <div className="space-y-1">
-                            <Label className="text-[11px] text-muted-foreground">Category / industry (optional)</Label>
+                            <Label className="text-[11px] text-muted-foreground">Danh mục / ngành (tùy chọn)</Label>
                             <Select value={categoryCol} onValueChange={(v) => v && setCategoryCol(v)}>
                               <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                               <SelectContent>
-                                <SelectItem value={NO_COLUMN} className="text-xs">None</SelectItem>
+                                <SelectItem value={NO_COLUMN} className="text-xs">Không có</SelectItem>
                                 {columns.map((col) => <SelectItem key={col} value={col} className="text-xs">{col}</SelectItem>)}
                               </SelectContent>
                             </Select>
                           </div>
                           <div className="space-y-1">
-                            <Label className="text-[11px] text-muted-foreground">Page URL / ID (advanced)</Label>
+                            <Label className="text-[11px] text-muted-foreground">URL / ID trang (nâng cao)</Label>
                             <Select value={pageCol} onValueChange={(v) => v && setPageCol(v)}>
                               <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                               <SelectContent>
-                                <SelectItem value={NO_COLUMN} className="text-xs">None</SelectItem>
+                                <SelectItem value={NO_COLUMN} className="text-xs">Không có</SelectItem>
                                 {columns.map((col) => <SelectItem key={col} value={col} className="text-xs">{col}</SelectItem>)}
                               </SelectContent>
                             </Select>
@@ -676,13 +676,13 @@ export function BulkUpload({ onStart }: BulkUploadProps) {
                 className="space-y-5"
               >
                 <div className="space-y-1">
-                  <h3 className="text-sm font-semibold">Targeting</h3>
-                  <p className="text-xs text-muted-foreground">Which market to look up brands in, and which ads count.</p>
+                  <h3 className="text-sm font-semibold">Nhắm mục tiêu</h3>
+                  <p className="text-xs text-muted-foreground">Chọn thị trường và loại quảng cáo cần thu thập.</p>
                 </div>
 
                 {matchPages && (
                   <div className="space-y-1.5">
-                    <Label className="text-xs">Look up brands in</Label>
+                    <Label className="text-xs">Thị trường tìm kiếm</Label>
                     <CountryCombobox value={matchCountry} onChange={setMatchCountry} placeholder="United States" />
                     <p className="text-[11px] text-muted-foreground/70">
                       The market we search Meta in when resolving each brand&apos;s page.
@@ -691,7 +691,7 @@ export function BulkUpload({ onStart }: BulkUploadProps) {
                 )}
 
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Ad status</Label>
+                  <Label className="text-xs">Trạng thái quảng cáo</Label>
                   <div className="flex gap-1.5">
                     {(['ALL', 'ACTIVE', 'INACTIVE'] as const).map((s) => (
                       <button
@@ -706,7 +706,7 @@ export function BulkUpload({ onStart }: BulkUploadProps) {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Media types {scopeMedia.length === 0 && <span className="text-muted-foreground/50">(all)</span>}</Label>
+                  <Label className="text-xs">Loại nội dung {scopeMedia.length === 0 && <span className="text-muted-foreground/50">(tất cả)</span>}</Label>
                   <div className="flex flex-wrap gap-1.5">
                     {MEDIA_OPTS.map((m) => (
                       <button
@@ -721,7 +721,7 @@ export function BulkUpload({ onStart }: BulkUploadProps) {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Platforms {scopePlatforms.length === 0 && <span className="text-muted-foreground/50">(all)</span>}</Label>
+                  <Label className="text-xs">Nền tảng {scopePlatforms.length === 0 && <span className="text-muted-foreground/50">(tất cả)</span>}</Label>
                   <div className="flex flex-wrap gap-1.5">
                     {PLATFORM_OPTS.map((p) => (
                       <button
@@ -750,18 +750,18 @@ export function BulkUpload({ onStart }: BulkUploadProps) {
                 className="space-y-5"
               >
                 <div className="space-y-1">
-                  <h3 className="text-sm font-semibold">Run settings</h3>
-                  <p className="text-xs text-muted-foreground">Name the job, tune speed, then review and launch.</p>
+                  <h3 className="text-sm font-semibold">Cài đặt chạy</h3>
+                  <p className="text-xs text-muted-foreground">Đặt tên tác vụ, điều chỉnh tốc độ, kiểm tra và bắt đầu.</p>
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Job name (optional)</Label>
-                  <Input placeholder="e.g. Prospect list June 2026" value={jobName} onChange={(e) => setJobName(e.target.value)} className="h-9" />
+                  <Label className="text-xs">Tên tác vụ (tùy chọn)</Label>
+                  <Input placeholder="Ví dụ: Danh sách khách hàng tiềm năng" value={jobName} onChange={(e) => setJobName(e.target.value)} className="h-9" />
                 </div>
 
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <Label className="text-xs">Parallel workers</Label>
+                    <Label className="text-xs">Số luồng song song</Label>
                     <span className="text-xs font-semibold tabular-nums text-foreground">{workers}</span>
                   </div>
                   <input
@@ -779,7 +779,7 @@ export function BulkUpload({ onStart }: BulkUploadProps) {
                     <span className={cn('absolute top-0.5 h-3 w-3 rounded-full bg-white transition-transform', fetchDetails ? 'translate-x-3.5' : 'translate-x-0.5')} />
                   </span>
                   <span className="text-xs">
-                    <span className="font-medium">Fetch ad details</span>
+                    <span className="font-medium">Lấy chi tiết quảng cáo</span>
                     <span className="text-muted-foreground"> — pull EU transparency data (reach, demographics) per ad. Slower.</span>
                   </span>
                 </button>
@@ -796,7 +796,7 @@ export function BulkUpload({ onStart }: BulkUploadProps) {
                       <span className={cn('absolute top-0.5 h-3 w-3 rounded-full bg-white transition-transform', webhookEnabled ? 'translate-x-3.5' : 'translate-x-0.5')} />
                     </span>
                     <span className="text-xs">
-                      <span className="font-medium">Send to webhook</span>
+                      <span className="font-medium">Gửi tới webhook</span>
                       <span className="text-muted-foreground"> — POST each company&apos;s summary + its ads in real time as it finishes.</span>
                     </span>
                   </button>
@@ -830,7 +830,7 @@ export function BulkUpload({ onStart }: BulkUploadProps) {
 
                 {/* Review */}
                 <div className="rounded-lg border border-border/50 bg-muted/20 p-3.5 space-y-2.5">
-                  <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Review</p>
+                  <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Kiểm tra</p>
                   <SummaryRow icon={Building2} label="Companies" value={`${companies.length.toLocaleString()} unique${dupes > 0 ? ` · ${dupes.toLocaleString()} dupes removed` : ''}`} />
                   <SummaryRow icon={matchPages ? Building2 : Target} label="Match by" value={matchPages ? 'Brand page' : 'Keyword'} />
                   {matchPages && <SummaryRow icon={Globe} label="Look up in" value={matchCountry} />}
@@ -862,7 +862,7 @@ export function BulkUpload({ onStart }: BulkUploadProps) {
             </Button>
           ) : (
             <Button size="sm" onClick={handleStart} disabled={companies.length === 0 || (needsWebsite && !websiteMapped) || loading}>
-              {loading ? <><Loader2 className="w-4 h-4 mr-1.5 animate-spin" />Starting…</> : <><Play className="w-4 h-4 mr-1.5" />Start scrape ({companies.length.toLocaleString()})</>}
+              {loading ? <><Loader2 className="w-4 h-4 mr-1.5 animate-spin" />Đang bắt đầu…</> : <><Play className="w-4 h-4 mr-1.5" />Bắt đầu thu thập ({companies.length.toLocaleString()})</>}
             </Button>
           )}
         </div>
@@ -927,7 +927,7 @@ export function BulkUpload({ onStart }: BulkUploadProps) {
               ))}
             </div>
           ) : (
-            <p className="text-xs text-muted-foreground/60 px-1 py-2">No previous jobs.</p>
+            <p className="text-xs text-muted-foreground/60 px-1 py-2">Chưa có tác vụ trước đây.</p>
           )}
         </motion.div>
       )}
@@ -952,7 +952,7 @@ export function BulkUpload({ onStart }: BulkUploadProps) {
               ))}
             </div>
           ) : (
-            <p className="text-xs text-muted-foreground/60 px-1 py-2">No archived jobs.</p>
+            <p className="text-xs text-muted-foreground/60 px-1 py-2">Chưa có tác vụ lưu trữ.</p>
           )}
         </motion.div>
       )}

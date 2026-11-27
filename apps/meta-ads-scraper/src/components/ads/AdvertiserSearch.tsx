@@ -43,7 +43,7 @@ export function AdvertiserSearch({ value, onChange, country, onSelect, onEnter }
   const { data: suggestions = [], isFetching, error } = useQuery<AdvertiserSuggestion[]>({
     queryKey: ['advertisers', q, country],
     queryFn: async () => {
-      const r = await fetch(`/api/advertisers?q=${encodeURIComponent(q)}&country=${country || 'US'}`);
+      const r = await fetch(`/research/api/advertisers?q=${encodeURIComponent(q)}&country=${country || 'US'}`);
       const data = await r.json();
       if (!r.ok) {
         // Surface Meta-API-changed (503) as a thrown error so we can warn loudly.
@@ -64,7 +64,7 @@ export function AdvertiserSearch({ value, onChange, country, onSelect, onEnter }
     <div ref={ref} className="flex-1 relative">
       <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none z-10" />
       <Input
-        placeholder="Advertiser / page name..."
+        placeholder="Nhà quảng cáo / tên trang..."
         value={value}
         onChange={(e) => { onChange(e.target.value); setOpen(true); }}
         onFocus={() => setOpen(true)}
@@ -82,8 +82,8 @@ export function AdvertiserSearch({ value, onChange, country, onSelect, onEnter }
               <div className="flex items-start gap-2 px-3 py-3 text-xs text-amber-400 bg-amber-500/10 border-b border-amber-500/20">
                 <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
                 <div>
-                  <p className="font-medium">Meta changed their search API</p>
-                  <p className="text-amber-400/80 mt-0.5">Advertiser autocomplete is temporarily unavailable. You can still run a keyword search — press Enter.</p>
+                  <p className="font-medium">Meta đã thay đổi API tìm kiếm</p>
+                  <p className="text-amber-400/80 mt-0.5">Tạm thời không có gợi ý nhà quảng cáo. Bạn vẫn có thể tìm theo từ khóa bằng Enter.</p>
                 </div>
               </div>
             )}
@@ -128,7 +128,7 @@ export function AdvertiserSearch({ value, onChange, country, onSelect, onEnter }
               </button>
             ))}
             {!apiChanged && !isFetching && list.length === 0 && (
-              <p className="text-sm text-muted-foreground text-center py-4">No advertisers found</p>
+              <p className="text-sm text-muted-foreground text-center py-4">Không tìm thấy nhà quảng cáo</p>
             )}
             {!apiChanged && isFetching && list.length === 0 && (
               <p className="text-sm text-muted-foreground text-center py-4 flex items-center justify-center gap-2">

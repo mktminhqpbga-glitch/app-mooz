@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "node start.js",
-    "test": "node --test",
+    "test": "node --test tests/*.test.js",
     "start:main": "node server.js",
     "setup:scraper": "npm --prefix apps/meta-ads-scraper ci && npm --prefix apps/meta-ads-scraper exec -- playwright install chromium"
   },

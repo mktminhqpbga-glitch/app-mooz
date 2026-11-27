@@ -34,7 +34,7 @@ function AdSkeleton() {
 export function CompanyDrawer({ company, open, onClose, onAdClick }: CompanyDrawerProps) {
   const { data: ads = [], isLoading } = useQuery<Ad[]>({
     queryKey: ['bulk-company-ads', company?.id],
-    queryFn: () => fetch(`/api/ads?job_id=${company!.id}&limit=50`).then((r) => r.json()).then((d) => d.ads || []),
+    queryFn: () => fetch(`/research/api/ads?job_id=${company!.id}&limit=50`).then((r) => r.json()).then((d) => d.ads || []),
     enabled: !!company && open,
   });
   const loading = isLoading && !!company && open;

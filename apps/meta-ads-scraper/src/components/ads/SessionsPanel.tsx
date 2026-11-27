@@ -45,7 +45,7 @@ function FireOnPicker({ value, onChange }: { value: SessionFireOn; onChange: (v:
 }
 
 async function api(method: string, body: object) {
-  await fetch('/api/sessions', { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  await fetch('/research/api/sessions', { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
 }
 
 function SessionRow({ session, live, onSelectActive, onChanged, onAnalyze }: {
@@ -169,7 +169,7 @@ export function SessionsPanel({ open, onClose, sessions, activeSessionId, onSele
     if (!name.trim()) return;
     setCreating(true);
     try {
-      const res = await fetch('/api/sessions', {
+      const res = await fetch('/research/api/sessions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -19,8 +19,8 @@ export function TagEditor({ adId }: TagEditorProps) {
   const ref = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const { data: allTags = [] } = useQuery<Tag[]>({ queryKey: ['tags'], queryFn: () => fetch('/api/tags').then((r) => r.json()) });
-  const { data: adTags = [] } = useQuery<Tag[]>({ queryKey: ['ad-tags', adId], queryFn: () => fetch(`/api/ads/${adId}/tags`).then((r) => r.json()) });
+  const { data: allTags = [] } = useQuery<Tag[]>({ queryKey: ['tags'], queryFn: () => fetch('/research/api/tags').then(async (r) => { if (!r.ok) throw new Error(`Lỗi tải dữ liệu (${r.status})`); const data = await r.json(); if (!Array.isArray(data)) throw new Error("Dữ liệu không hợp lệ"); return data; }) });
+  const { data: adTags = [] } = useQuery<Tag[]>({ queryKey: ['ad-tags', adId], queryFn: () => fetch(`/research/api/ads/${adId}/tags`).then(async (r) => { if (!r.ok) throw new Error(`Lỗi tải dữ liệu (${r.status})`); const data = await r.json(); if (!Array.isArray(data)) throw new Error("Dữ liệu không hợp lệ"); return data; }) });
 
   useEffect(() => { if (open) setTimeout(() => inputRef.current?.focus(), 40); }, [open]);
   useEffect(() => {
@@ -36,17 +36,17 @@ export function TagEditor({ adId }: TagEditorProps) {
   }
 
   async function addTag(tag: Tag) {
-    await fetch(`/api/ads/${adId}/tags`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tag_id: tag.id }) });
+    await fetch(`/research/api/ads/${adId}/tags`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tag_id: tag.id }) });
     refresh();
   }
   async function createAndAdd(name: string) {
     const color = TAG_COLORS[allTags.length % TAG_COLORS.length];
-    await fetch(`/api/ads/${adId}/tags`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, color }) });
+    await fetch(`/research/api/ads/${adId}/tags`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, color }) });
     setQuery('');
     refresh();
   }
   async function removeTag(tag: Tag) {
-    await fetch(`/api/ads/${adId}/tags`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tag_id: tag.id }) });
+    await fetch(`/research/api/ads/${adId}/tags`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tag_id: tag.id }) });
     refresh();
   }
 

@@ -17,7 +17,7 @@ function apply(theme: Theme) {
 }
 
 export function ThemeToggle() {
-  const [theme, setTheme] = useState<Theme>('dark');
+  const [theme, setTheme] = useState<Theme>('light');
   const [mounted, setMounted] = useState(false);
 
   // Read the theme the pre-paint script already committed, so the icon matches
@@ -36,8 +36,8 @@ export function ThemeToggle() {
   return (
     <button
       onClick={toggle}
-      title={mounted ? `Switch to ${theme === 'dark' ? 'light' : 'dark'} mode` : 'Toggle theme'}
-      aria-label="Toggle color theme"
+      title={mounted ? `Chuyển sang giao diện ${theme === 'dark' ? 'sáng' : 'tối'}` : 'Đổi giao diện'}
+      aria-label="Đổi giao diện sáng/tối"
       className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
     >
       {/* Render both until mounted to avoid a hydration mismatch, then show the
