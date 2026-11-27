@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  basePath: '/research',
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: '**.fbcdn.net' },

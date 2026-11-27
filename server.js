@@ -27,15 +27,33 @@ function json(res, status, body) { res.writeHead(status, { 'Content-Type':'appli
 async function body(req) { let raw=''; for await (const part of req) { raw += part; if (raw.length > 100000) throw new Error('Dữ liệu quá lớn'); } return JSON.parse(raw || '{}'); }
 function text(value, max=5000) { return String(value || '').trim().slice(0,max); }
 function record(message) { state.activity.unshift({id:randomUUID(), message, at:new Date().toISOString()}); state.activity = state.activity.slice(0,50); }
+// Proxy scraper pages, static assets and streamed API responses through Mooz.
+function proxyScraper(req, res, path) {
+  const upstream = http.request({ hostname:'127.0.0.1', port:3101, path, method:req.method, headers:{...req.headers,host:'127.0.0.1:3101'} }, response => {
+    res.writeHead(response.statusCode || 502, response.headers);
+    response.pipe(res);
+  });
+  upstream.on('error', error => {
+    if (!res.headersSent) return json(res,503,{error:'Meta Ads Scraper chưa chạy trên cổng 3101.'});
+    res.destroy(error);
+  });
+  req.on('aborted', () => upstream.destroy());
+  res.on('close', () => { if (!res.writableFinished) upstream.destroy(); });
+  req.pipe(upstream);
+}
 const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, 'http://localhost');
+    if (url.pathname === '/research' || url.pathname.startsWith('/research/')) return proxyScraper(req,res,req.url);
+    if (/^\/api\/(?:ads|advertisers|bulk|collections|download|export|health\/meta|scrape|sessions|tags|webhook\/test)(?:\/|$)/.test(url.pathname)) {
+      return proxyScraper(req,res,`/research${req.url}`);
+    }
     if (url.pathname === '/api/state' && req.method === 'GET') return json(res,200,{...state, connections:{meta:false, ai:Boolean(process.env.AI_API_KEY && process.env.AI_BASE_URL && process.env.AI_MODEL)}});
     if (url.pathname === '/api/research-analysis' && req.method === 'POST') {
       if (!process.env.AI_API_KEY || !process.env.AI_BASE_URL || !process.env.AI_MODEL) return json(res,400,{error:'Chưa cấu hình kết nối AI trên máy chủ.'});
       let library;
       try {
-        const response = await fetch('http://127.0.0.1:3101/api/ads?saved=true&limit=20&sort=days_running', {signal:AbortSignal.timeout(10000)});
+        const response = await fetch('http://127.0.0.1:3101/research/api/ads?saved=true&limit=20&sort=days_running', {signal:AbortSignal.timeout(10000)});
         if (!response.ok) throw new Error('Scraper unavailable');
         library = await response.json();
       } catch { return json(res,503,{error:'Không kết nối được ứng dụng nghiên cứu quảng cáo.'}); }
